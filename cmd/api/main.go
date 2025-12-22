@@ -7,7 +7,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -25,8 +24,12 @@ func buildDBURL() string {
 
 	dbPortStr := os.Getenv("DB_PORT")
 	dbPort, err := strconv.Atoi(dbPortStr)
+
 	if err != nil {
-		log.Printf("Warning: Invalid DB_PORT '%s', defaulting to 3306", dbPortStr)
+		log.Printf(
+			"Warning: Invalid DB_PORT '%s', defaulting to 3306",
+			dbPortStr,
+		)
 		dbPort = 3306
 	}
 
@@ -37,18 +40,13 @@ func buildDBURL() string {
 }
 
 func (app *application) serve() error {
-	r := gin.Default()
-
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "success",
-			"message": "Connected to database via Application Struct!",
-		})
-	})
+	// I used a separate struct function to avoid future bloating -Albert
+	router := app.routes()
 
 	serverAddr := fmt.Sprintf(":%d", app.port)
 	log.Printf("Starting server on port %s", serverAddr)
-	return r.Run(serverAddr)
+
+	return router.Run(serverAddr)
 }
 
 func main() {
@@ -56,17 +54,20 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to open Database connection:", err)
 	}
+
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
 		log.Fatal("Failed to ping DB:", err)
 	}
+
 	fmt.Println("Connected to the Database Successfully!")
 
 	portStr := os.Getenv("API_PORT")
 	if portStr == "" {
 		portStr = "8080"
 	}
+
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		log.Fatal("Invalid API_PORT:", err)
