@@ -1,4 +1,4 @@
-package main
+package bootstrap
 
 import (
 	"net/http"
@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (app *application) routes() *gin.Engine {
+func SetupRoutes(handlers *Handlers) *gin.Engine {
 	g := gin.Default()
 
 	corsConfig := cors.DefaultConfig()
