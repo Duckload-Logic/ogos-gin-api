@@ -9,34 +9,12 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
 type application struct {
 	port int
 	db   *sql.DB
-}
-
-func buildDBURL() string {
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbHost := os.Getenv("DB_HOST")
-	dbName := os.Getenv("DB_NAME")
-
-	dbPortStr := os.Getenv("DB_PORT")
-	dbPort, err := strconv.Atoi(dbPortStr)
-
-	if err != nil {
-		log.Printf(
-			"Warning: Invalid DB_PORT '%s', defaulting to 3306",
-			dbPortStr,
-		)
-		dbPort = 3306
-	}
-
-	return fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Local",
-		dbUser, dbPass, dbHost, dbPort, dbName,
-	)
 }
 
 func (app *application) serve() error {
@@ -50,18 +28,20 @@ func (app *application) serve() error {
 }
 
 func main() {
-	db, err := sql.Open("mysql", buildDBURL())
+	db, err := database.GetDBConnection()
 	if err != nil {
-		log.Fatal("Failed to open Database connection:", err)
-	}
-
-	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		log.Fatal("Failed to ping DB:", err)
+		fmt.Println(err.Error())
+		return
 	}
 
 	fmt.Println("Connected to the Database Successfully!")
+
+	if err := database.RunMigrations(db); err != nil {
+		log.Fatalf("Migration error: %v", err)
+		return
+	}
+
+	log.Println("Database migrations completed successfully")
 
 	portStr := os.Getenv("API_PORT")
 	if portStr == "" {
