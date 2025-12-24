@@ -44,5 +44,7 @@ func SetupRoutes(handlers *Handlers) *gin.Engine {
 	// |                            |
 	// ==============================
 
+	apiV1Routes.POST("/appointments", handlers.AppointmentHandler.Create)
+
 	return g
 }
