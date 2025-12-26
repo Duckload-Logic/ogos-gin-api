@@ -18,16 +18,6 @@ func main() {
 		return
 	}
 
-	fmt.Println("Connected to the Database Successfully!")
-
-	// Run migrations
-	if err := database.RunMigrations(db); err != nil {
-		log.Fatalf("Migration error: %v", err)
-		return
-	}
-
-	log.Println("Database migrations completed successfully")
-
 	// Get application
 	app, err := bootstrap.GetNewApplication(db)
 	if err != nil {

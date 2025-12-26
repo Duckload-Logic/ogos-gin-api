@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 )
 
 func SetupRoutes(handlers *Handlers) *gin.Engine {
@@ -44,7 +46,8 @@ func SetupRoutes(handlers *Handlers) *gin.Engine {
 	// |                            |
 	// ==============================
 
-	apiV1Routes.POST("/appointments", handlers.AppointmentHandler.Create)
+	students.RegisterRoutes(apiV1Routes, handlers.StudentHandler)
+	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
 
 	return g
 }
