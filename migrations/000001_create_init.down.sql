@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS student_guardians;
 
 DROP TABLE IF EXISTS counselor_profiles;
 DROP TABLE IF EXISTS student_records;
+DROP TABLE IF EXISTS excuse_slips;
 DROP TABLE IF EXISTS guardians;
 
 DROP TABLE IF EXISTS users;

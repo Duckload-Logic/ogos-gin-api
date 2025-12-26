@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
 )
 
 func SetupRoutes(handlers *Handlers) *gin.Engine {
@@ -48,6 +49,7 @@ func SetupRoutes(handlers *Handlers) *gin.Engine {
 
 	students.RegisterRoutes(apiV1Routes, handlers.StudentHandler)
 	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
+	excuseslips.RegisterRoutes(apiV1Routes, handlers.ExcuseSlipHandler)
 
 	return g
 }

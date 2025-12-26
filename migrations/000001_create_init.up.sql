@@ -92,6 +92,18 @@ CREATE TABLE student_records(
     FOREIGN KEY (religion_type_id) REFERENCES religion_types(religion_type_id) ON DELETE CASCADE
 );
 
+CREATE TABLE excuse_slips (
+    excuse_slip_id INT AUTO_INCREMENT PRIMARY KEY,
+    student_record_id INT NOT NULL,
+    reason TEXT NOT NULL,
+    date_of_absence DATE NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    excuse_slip_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id) ON DELETE CASCADE
+);
 
 CREATE TABLE guardians(
     guardian_id INT AUTO_INCREMENT PRIMARY KEY,
