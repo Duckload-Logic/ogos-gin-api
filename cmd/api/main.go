@@ -10,6 +10,11 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
+// @title           DuckLoad API
+// @version         1.0
+// @host            localhost:8080
+// @BasePath        /api/v1
+
 func main() {
 	// Get database connection
 	db, err := database.GetDBConnection()

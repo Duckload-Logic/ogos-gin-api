@@ -15,7 +15,7 @@ type Handlers struct {
 func getHandlers(repos *Repositories) *Handlers {
 	studentService := students.NewService(repos.StudentRepo)
 	appointmentService := appointments.NewService(repos.AppointmentRepo)
-	excuseSlipService := excuseslips.NewService(repos.ExcuseSlipRepository)
+	excuseSlipService := excuseslips.NewService(repos.ExcuseSlipRepo)
 
 	return &Handlers{
 		StudentHandler:     students.NewHandler(studentService),

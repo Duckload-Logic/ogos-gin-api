@@ -8,6 +8,11 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
+
+	swaggerFiles "github.com/swaggo/files"
+    ginSwagger "github.com/swaggo/gin-swagger" 
+
+	_ "github.com/olazo-johnalbert/duckload-api/docs"
 )
 
 func SetupRoutes(handlers *Handlers) *gin.Engine {
@@ -20,6 +25,8 @@ func SetupRoutes(handlers *Handlers) *gin.Engine {
 	}
 	corsConfig.AllowCredentials = true
 	corsConfig.AddAllowHeaders("Authorization")
+
+	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	g.Use(cors.New(corsConfig))
 
