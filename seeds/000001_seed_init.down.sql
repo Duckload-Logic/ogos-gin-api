@@ -13,3 +13,5 @@ TRUNCATE TABLE roles;
 TRUNCATE TABLE genders;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+DROP TABLE seed_migrations;

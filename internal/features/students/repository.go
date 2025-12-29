@@ -29,20 +29,25 @@ func (r *Repository) GetStudentRecordByStudentID(
 	studentRec := &StudentRecord{}
 	query := `
 		SELECT 
-			student_record_id, user_id, civil_status_type_id,
+			student_record_id, user_id, 
+			gender_id, civil_status_type_id,
 			religion_type_id, height_cm, weight_kg,
 			student_number, course, year_level, section,
-			good_moral_status, has_derogatory_record
+			good_moral_status, has_derogatory_record,
+			place_of_birth, birth_date, mobile_no
 		FROM student_records
 		WHERE user_id = ?
 	`
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(
 		&studentRec.ID, &studentRec.UserID,
-		&studentRec.CivilStatusTypeID, &studentRec.ReligionTypeID,
+		&studentRec.GenderID, &studentRec.CivilStatusTypeID,
+		&studentRec.ReligionTypeID,
 		&studentRec.HeightCm, &studentRec.WeightKg,
 		&studentRec.StudentNumber, &studentRec.Course,
 		&studentRec.YearLevel, &studentRec.Section,
 		&studentRec.GoodMoralStatus, &studentRec.HasDerogatoryRecord,
+		&studentRec.PlaceOfBirth, &studentRec.BirthDate,
+		&studentRec.MobileNo,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -94,6 +99,7 @@ func (r *Repository) GetGuardians(
 		if err != nil {
 			return nil, err
 		}
+
 		guardians = append(guardians, g)
 	}
 
@@ -130,6 +136,7 @@ func (r *Repository) GetPrimaryGuardian(
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+
 		return nil, err
 	}
 
@@ -160,6 +167,7 @@ func (r *Repository) GetFamily(
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+
 		return nil, err
 	}
 
@@ -293,22 +301,28 @@ func (r *Repository) SaveBaseProfileInfo(
 
 	err := database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		upsertQuery := `
-		INSERT INTO student_records (
-			user_id, civil_status_type_id, 
-			religion_type_id, height_cm, 
-			weight_kg, student_number, 
-			course, year_level, 
-			section, good_moral_status,
-			has_derogatory_record
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			civil_status_type_id = VALUES(civil_status_type_id),
-			religion_type_id = VALUES(religion_type_id),
-			height_cm = VALUES(height_cm), weight_kg = VALUES(weight_kg),
-			course = VALUES(course), year_level = VALUES(year_level), 
-			section = VALUES(section),
-			good_moral_status = VALUES(good_moral_status),
-			has_derogatory_record = VALUES(has_derogatory_record)`
+			INSERT INTO student_records (
+				user_id, civil_status_type_id, 
+				religion_type_id, height_cm, 
+				weight_kg, student_number, 
+				course, year_level, 
+				section, good_moral_status,
+				has_derogatory_record, gender_id,
+				place_of_birth, birth_date, mobile_no
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				civil_status_type_id = VALUES(civil_status_type_id),
+				religion_type_id = VALUES(religion_type_id),
+				height_cm = VALUES(height_cm), weight_kg = VALUES(weight_kg),
+				course = VALUES(course), year_level = VALUES(year_level), 
+				section = VALUES(section),
+				good_moral_status = VALUES(good_moral_status),
+				has_derogatory_record = VALUES(has_derogatory_record),
+				gender_id = VALUES(gender_id),
+				place_of_birth = VALUES(place_of_birth),
+				birth_date = VALUES(birth_date),
+				mobile_no = VALUES(mobile_no)
+		`
 
 		_, err := tx.ExecContext(
 			ctx, upsertQuery,
@@ -318,6 +332,10 @@ func (r *Repository) SaveBaseProfileInfo(
 			record.Course, record.YearLevel,
 			record.Section, record.GoodMoralStatus,
 			record.HasDerogatoryRecord,
+			record.GenderID,
+			record.PlaceOfBirth,
+			record.BirthDate,
+			record.MobileNo,
 		)
 		if err != nil {
 			return err
@@ -517,25 +535,25 @@ func (r *Repository) SaveHealthRecord(
 ) error {
 	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		query := `
-		INSERT INTO student_health_records (
-			student_record_id, vision_remark_id,
-			hearing_remark_id, mobility_remark_id,
-			speech_remark_id, general_health_remark_id,
-			consulted_professional, consultation_reason,
-			date_started, num_sessions, date_concluded
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE
-			vision_remark_id = VALUES(vision_remark_id),
-			hearing_remark_id = VALUES(hearing_remark_id),
-			mobility_remark_id = VALUES(mobility_remark_id),
-			speech_remark_id = VALUES(speech_remark_id),
-			general_health_remark_id = VALUES(general_health_remark_id),
-			consulted_professional = VALUES(consulted_professional),
-			consultation_reason = VALUES(consultation_reason),
-			date_started = VALUES(date_started),
-			num_sessions = VALUES(num_sessions),
-			date_concluded = VALUES(date_concluded)
-	`
+			INSERT INTO student_health_records (
+				student_record_id, vision_remark_id,
+				hearing_remark_id, mobility_remark_id,
+				speech_remark_id, general_health_remark_id,
+				consulted_professional, consultation_reason,
+				date_started, num_sessions, date_concluded
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				vision_remark_id = VALUES(vision_remark_id),
+				hearing_remark_id = VALUES(hearing_remark_id),
+				mobility_remark_id = VALUES(mobility_remark_id),
+				speech_remark_id = VALUES(speech_remark_id),
+				general_health_remark_id = VALUES(general_health_remark_id),
+				consulted_professional = VALUES(consulted_professional),
+				consultation_reason = VALUES(consultation_reason),
+				date_started = VALUES(date_started),
+				num_sessions = VALUES(num_sessions),
+				date_concluded = VALUES(date_concluded)
+		`
 
 		_, err := tx.ExecContext(ctx, query,
 			health.StudentRecordID, health.VisionRemarkID,

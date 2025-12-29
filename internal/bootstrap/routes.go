@@ -1,21 +1,24 @@
 package bootstrap
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 
 	swaggerFiles "github.com/swaggo/files"
-    ginSwagger "github.com/swaggo/gin-swagger" 
+	ginSwagger "github.com/swaggo/gin-swagger"
 
 	_ "github.com/olazo-johnalbert/duckload-api/docs"
 )
 
-func SetupRoutes(handlers *Handlers) *gin.Engine {
+func SetupRoutes(db *sql.DB, handlers *Handlers) *gin.Engine {
 	g := gin.Default()
 
 	corsConfig := cors.DefaultConfig()
@@ -47,14 +50,15 @@ func SetupRoutes(handlers *Handlers) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	// Module routes should be below here
 	// ==============================
 	// |                            |
 	// |       MODULE ROUTES        |
 	// |                            |
 	// ==============================
 
-	students.RegisterRoutes(apiV1Routes, handlers.StudentHandler)
+	auth.RegisterRoutes(apiV1Routes, handlers.AuthHandler)
+	users.RegisterRoutes(db, apiV1Routes, handlers.UserHandler)
+	students.RegisterRoutes(db, apiV1Routes, handlers.StudentHandler)
 	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
 	excuseslips.RegisterRoutes(apiV1Routes, handlers.ExcuseSlipHandler)
 

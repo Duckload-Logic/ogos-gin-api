@@ -20,7 +20,7 @@ func GetNewApplication(db *sql.DB) (*Application, error) {
 
 	handlers := getHandlers(repos)
 
-	router := SetupRoutes(handlers)
+	router := SetupRoutes(db, handlers)
 
 	portStr := os.Getenv("API_PORT")
 	port, err := strconv.Atoi(portStr)

@@ -12,20 +12,15 @@
 -- 1. CREATE GUIDANCE COUNSELOR
 -- ======================================================
 INSERT INTO users (
-    role_id, gender_id, first_name, middle_name, last_name, 
-    email, password_hash, place_of_birth, birth_date, 
-    mobile_no, is_active
+    role_id, first_name, middle_name, last_name, 
+    email, password_hash, is_active
 ) VALUES (
     (SELECT role_id FROM roles WHERE role_name = 'COUNSELOR'),
-    (SELECT gender_id FROM genders WHERE gender_name = 'Female'),
     'Liwanag',
     NULL,
     'Maliksi',
-    'liwanage.maliksi@university.edu',
-    '$2a$10$7uZ8JdLxKXp6W9qY3v4hE.ExampleHashForPassword123', -- In real app, use proper bcrypt hash
-    'Manila',
-    '1985-08-15',
-    '09178889999',
+    'liwanag.maliksi@university.edu',
+    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
 
@@ -45,20 +40,15 @@ INSERT INTO counselor_profiles (
 -- 2. CREATE FRONTDESK STAFF
 -- ======================================================
 INSERT INTO users (
-    role_id, gender_id, first_name, middle_name, last_name, 
-    email, password_hash, place_of_birth, birth_date, 
-    mobile_no, is_active
+    role_id, first_name, middle_name, last_name, 
+    email, password_hash, is_active
 ) VALUES (
     (SELECT role_id FROM roles WHERE role_name = 'FRONTDESK'),
-    (SELECT gender_id FROM genders WHERE gender_name = 'Female'),
     'Anna',
     'Marie',
     'Cruz',
     'anna.cruz@university.edu',
-    '$2a$10$7uZ8JdLxKXp6W9qY3v4hE.ExampleHashForPassword456',
-    'Quezon City',
-    '1990-03-22',
-    '09179998888',
+    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
 
@@ -69,20 +59,15 @@ SET @frontdesk_user_id = LAST_INSERT_ID();
 -- ======================================================
 -- Create the student user
 INSERT INTO users (
-    role_id, gender_id, first_name, middle_name, last_name, 
-    email, password_hash, place_of_birth, birth_date, 
-    mobile_no, is_active
+    role_id, first_name, middle_name, last_name, 
+    email, password_hash, is_active
 ) VALUES (
     (SELECT role_id FROM roles WHERE role_name = 'STUDENT'),
-    (SELECT gender_id FROM genders WHERE gender_name = 'Male'),
     'Juan',
     'Santos',
     'Dela Cruz',
     'juan.delacruz@university.edu',
-    '$2a$10$7uZ8JdLxKXp6W9qY3v4hE.ExampleHashForStudent1',
-    'Manila',
-    '2002-05-15',
-    '09171234567',
+    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
 
@@ -93,7 +78,8 @@ INSERT INTO student_records (
     user_id, civil_status_type_id, religion_type_id, 
     height_cm, weight_kg, student_number, 
     course, year_level, section, 
-    good_moral_status, has_derogatory_record
+    good_moral_status, has_derogatory_record,
+    gender_id, place_of_birth, birth_date, mobile_no
 ) VALUES (
     @complete_student_user_id,
     (SELECT civil_status_type_id FROM civil_status_types WHERE status_name = 'Single'),
@@ -105,7 +91,11 @@ INSERT INTO student_records (
     3, -- year_level
     'CS-3A',
     TRUE,  -- good_moral_status
-    FALSE  -- has_derogatory_record
+    FALSE,  -- has_derogatory_record
+    (SELECT gender_id FROM genders WHERE gender_name = 'Male'),
+    'Manila',
+    '2000-05-15',
+    '09171234567'
 );
 
 SET @complete_student_record_id = LAST_INSERT_ID();
@@ -338,77 +328,16 @@ INSERT INTO session_notes (
 -- 4. STUDENT WITH FRESH USER CREATION (NO PDS FILLED UP)
 -- ======================================================
 INSERT INTO users (
-    role_id, gender_id, first_name, middle_name, last_name, 
-    email, password_hash, place_of_birth, birth_date, 
-    mobile_no, is_active
+    role_id, first_name, middle_name, last_name, 
+    email, password_hash, is_active
 ) VALUES (
     (SELECT role_id FROM roles WHERE role_name = 'STUDENT'),
-    (SELECT gender_id FROM genders WHERE gender_name = 'Female'),
     'Maria',
     'Clara',
     'Santos',
     'maria.santos@university.edu',
-    '$2a$10$7uZ8JdLxKXp6W9qY3v4hE.ExampleHashForStudent2',
-    'Cebu City',
-    '2003-08-25',
-    '09173332222',
+    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
 
 -- Note: This student only has a user account, no student_record or PDS data
-
--- ======================================================
--- VERIFICATION QUERIES
--- ======================================================
-
--- Check all users created
-SELECT 
-    u.user_id,
-    r.role_name,
-    g.gender_name,
-    CONCAT(u.first_name, ' ', u.last_name) as full_name,
-    u.email,
-    CASE 
-        WHEN sr.student_record_id IS NOT NULL THEN 'Has PDS'
-        ELSE 'No PDS'
-    END as pds_status
-FROM users u
-LEFT JOIN roles r ON u.role_id = r.role_id
-LEFT JOIN genders g ON u.gender_id = g.gender_id
-LEFT JOIN student_records sr ON u.user_id = sr.user_id
-ORDER BY u.user_id;
-
--- Check complete student's data
-SELECT '=== COMPLETE STUDENT DATA ===' as section;
-SELECT * FROM student_records WHERE user_id = @complete_student_user_id;
-SELECT * FROM family_backgrounds WHERE student_record_id = @complete_student_record_id;
-SELECT COUNT(*) as total_guardians FROM student_guardians WHERE student_record_id = @complete_student_record_id;
-SELECT COUNT(*) as total_educational_backgrounds FROM educational_backgrounds WHERE student_record_id = @complete_student_record_id;
-SELECT COUNT(*) as total_addresses FROM student_addresses WHERE student_record_id = @complete_student_record_id;
-SELECT * FROM student_finances WHERE student_record_id = @complete_student_record_id;
-SELECT * FROM student_health_records WHERE student_record_id = @complete_student_record_id;
-
--- Check counselor and frontdesk
-SELECT '=== STAFF DATA ===' as section;
-SELECT 
-    u.user_id,
-    r.role_name,
-    CONCAT(u.first_name, ' ', u.last_name) as name,
-    u.email,
-    CASE 
-        WHEN cp.counselor_profile_id IS NOT NULL THEN 'Yes'
-        ELSE 'No'
-    END as has_counselor_profile
-FROM users u
-JOIN roles r ON u.role_id = r.role_id
-LEFT JOIN counselor_profiles cp ON u.user_id = cp.user_id
-WHERE r.role_name IN ('COUNSELOR', 'FRONTDESK');
-
--- ======================================================
--- SUMMARY
--- ======================================================
-SELECT '=== SEEDER SUMMARY ===' as summary;
-SELECT '1 Guidance Counselor created' as item UNION ALL
-SELECT '1 Frontdesk Staff created' UNION ALL
-SELECT '1 Student with complete PDS created' UNION ALL
-SELECT '1 Fresh Student (no PDS) created';

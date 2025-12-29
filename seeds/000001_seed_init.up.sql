@@ -1,71 +1,69 @@
-INSERT INTO genders (gender_name) 
+INSERT INTO genders (gender_id, gender_name) 
 VALUES 
-    ('Male'), 
-    ('Female'), 
-    ('Prefer not to say');
+    (1, 'Male'), 
+    (2, 'Female'), 
+    (3, 'Prefer not to say');
 
-INSERT IGNORE INTO roles (role_name) 
+INSERT IGNORE INTO roles (role_id, role_name) 
 VALUES 
-    ('STUDENT'), 
-    ('COUNSELOR'), 
-    ('FRONTDESK');
+    (1, 'STUDENT'), 
+    (2, 'COUNSELOR'), 
+    (3, 'FRONTDESK');
 
-INSERT INTO relationship_types (relationship_name) 
+INSERT INTO relationship_types (relationship_type_id, relationship_name) 
 VALUES 
-    ('Father'), ('Mother'), 
-    ('Relative'), ('Legal Guardian');
+    (1, 'Father'), (2, 'Mother'), 
+    (3, 'Relative'), (4, 'Legal Guardian');
 
-INSERT INTO address_types (type_name) 
+INSERT INTO address_types (address_type_id, type_name) 
 VALUES 
-    ('Provincial'), ('Residential');
+    (1, 'Provincial'), (2, 'Residential');
+INSERT INTO educational_levels (educational_level_id, level_name) 
+VALUES 
+    (1, 'Elementary'), (2, 'Junior High School'),
+    (3, 'Senior High School'), (4, 'College');
 
-INSERT INTO educational_levels (level_name) 
+INSERT INTO civil_status_types (civil_status_type_id, status_name) 
 VALUES 
-    ('Elementary'), ('Junior High School'),
-    ('Senior High School'), ('College');
+    (1, 'Single'), (2, 'Married'), 
+    (3, 'Widowed'), (4, 'Divorced');
 
-INSERT INTO civil_status_types (status_name) 
+INSERT INTO religion_types (religion_type_id, religion_name) 
 VALUES 
-    ('Single'), ('Married'), 
-    ('Widowed'), ('Divorced');
+    (1, 'Roman Catholicism'), 
+    (2, 'Islam'), 
+    (3, 'Iglesia ni Cristo'),
+    (4, 'Seventh-day Adventist'),
+    (5, 'Bible Baptist Church'),
+    (6, 'Philippine Independent Church'),
+    (7, 'Jehovahs Witnesses'),
+    (8, 'Buddhism'),
+    (9, 'Other');
 
-INSERT INTO religion_types (religion_name) 
+INSERT INTO parental_status_types (parental_status_id, status_name)
 VALUES 
-    ('Roman Catholicism'), 
-    ('Islam'), 
-    ('Iglesia ni Cristo'),
-    ('Seventh-day Adventist'),
-    ('Bible Baptist Church'),
-    ('Philippine Independent Church'),
-    ('Jehovahs Witnesses'),
-    ('Buddhism'),
-    ('Other');
+    (1, 'Married and Living Together'), 
+    (2, 'Married but Living Separately'), 
+    (3, 'Father/Mother working Abroad'),
+    (4, 'Divorced or Annulled'), 
+    (5, 'Separated'), 
+    (6, 'Other');
+INSERT INTO financial_support_types (financial_support_type_id, support_type_name) 
+VALUES 
+    (1, 'Scholarship'), 
+    (2, 'Self-funded'),
+    (3, 'Sponsored'), 
+    (4, 'Parental Support'),
+    (5, 'Others');
 
-INSERT INTO parental_status_types (status_name)
+INSERT INTO health_remark_types (health_remark_type_id, remark_name) 
 VALUES 
-    ('Married and Living Together'), 
-    ('Married but Living Separately'), 
-    ('Father/Mother working Abroad'),
-    ('Divorced or Annulled'), 
-    ('Separated'), 
-    ('Other');
+    (1, 'No problem'), 
+    (2, 'Issue');
 
-INSERT INTO financial_support_types (support_type_name) 
+INSERT INTO appointment_types (appointment_type_id, appointment_type_name) 
 VALUES 
-    ('Scholarship'), 
-    ('Self-funded'),
-    ('Sponsored'), 
-    ('Parental Support'),
-    ('Others');
-
-INSERT INTO health_remark_types (remark_name) 
-VALUES 
-    ('No problem'), 
-    ('Issue');
-
-INSERT INTO appointment_types (appointment_type_name) 
-VALUES 
-    ('Initial Interview'), 
-    ('Mental Health Consultation'), 
-    ('Career Guidance'), 
-    ('Follow-up');
+    (1, 'Initial Interview'), 
+    (2, 'Mental Health Consultation'), 
+    (3, 'Career Guidance'), 
+    (4, 'Follow-up');

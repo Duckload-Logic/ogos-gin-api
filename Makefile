@@ -39,4 +39,9 @@ seed-up:
 fake-up:
 	migrate -path fakes -database "$(DB_URL)?x-migrations-table=fake_migrations" up
 
-refresh: migrate-down migrate-up seed-up fake-up
+# Desc: To undo fake data migrations
+# Usage: make fake-down
+fake-down:
+	migrate -path fakes -database "$(DB_URL)?x-migrations-table=fake_migrations" drop -f
+
+refresh: migrate-down migrate-up seed-up

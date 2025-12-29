@@ -1,80 +1,76 @@
 CREATE TABLE roles(
-    role_id INT AUTO_INCREMENT PRIMARY KEY,
+    role_id INT PRIMARY KEY,
     role_name VARCHAR(50) UNIQUE NOT NULL 
 );
 
 CREATE TABLE genders(
-    gender_id INT AUTO_INCREMENT PRIMARY KEY,
+    gender_id INT  PRIMARY KEY,
     gender_name VARCHAR(50) UNIQUE NOT NULL 
 );
 
 CREATE TABLE educational_levels(
-    educational_level_id INT AUTO_INCREMENT PRIMARY KEY,
+    educational_level_id INT PRIMARY KEY,
     level_name VARCHAR(100) UNIQUE NOT NULL -- ex 'College', 'Vocational'
 );
 
 CREATE TABLE address_types(
-    address_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    address_type_id INT PRIMARY KEY,
     type_name VARCHAR(50) UNIQUE NOT NULL -- ex 'Residential', 'Permanent'
 );
 
 CREATE TABLE civil_status_types (
-    civil_status_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    civil_status_type_id INT PRIMARY KEY,
     status_name VARCHAR(50) UNIQUE NOT NULL
 );
 
 CREATE TABLE religion_types (
-    religion_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    religion_type_id INT PRIMARY KEY,
     religion_name VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE TABLE relationship_types (
-    relationship_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    relationship_type_id INT PRIMARY KEY,
     relationship_name VARCHAR(50) UNIQUE NOT NULL -- ex: 'Father', 'Mother', 'Step-father', 'Aunt'
 );
 
 CREATE TABLE parental_status_types (
-    parental_status_id INT AUTO_INCREMENT PRIMARY KEY,
+    parental_status_id INT PRIMARY KEY,
     status_name VARCHAR(50) UNIQUE NOT NULL
 );
 
 CREATE TABLE financial_support_types (
-    financial_support_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    financial_support_type_id INT PRIMARY KEY,
     support_type_name VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE TABLE health_remark_types (
-    health_remark_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    health_remark_type_id INT PRIMARY KEY,
     remark_name VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE TABLE appointment_types (
-    appointment_type_id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_type_id INT PRIMARY KEY,
     appointment_type_name VARCHAR(50) UNIQUE NOT NULL -- ex 'Walk in', 'Online', 'Referral', or 'follow up'
 );
 
 CREATE TABLE users(
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     role_id INT NOT NULL,
-    gender_id INT, 
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100),
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    place_of_birth VARCHAR(255),
-    birth_date DATE,
-    mobile_no VARCHAR(20),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (role_id) REFERENCES roles(role_id),
-    FOREIGN KEY (gender_id) REFERENCES genders(gender_id)
+    FOREIGN KEY (role_id) REFERENCES roles(role_id)
 );
 
 CREATE TABLE student_records(
     student_record_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNIQUE NOT NULL,       
+    gender_id INT, 
     civil_status_type_id INT NOT NULL,
     religion_type_id INT NOT NULL,
     height_cm DECIMAL(5,2) NOT NULL,               -- ex '165.50' (in cm)
@@ -85,8 +81,12 @@ CREATE TABLE student_records(
     section VARCHAR(50),               -- ex '3-1'
     good_moral_status BOOLEAN DEFAULT TRUE,   
     has_derogatory_record BOOLEAN DEFAULT FALSE, 
+    place_of_birth VARCHAR(255),
+    birth_date DATE,
+    mobile_no VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (gender_id) REFERENCES genders(gender_id),
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (civil_status_type_id) REFERENCES civil_status_types(civil_status_type_id) ON DELETE CASCADE,
     FOREIGN KEY (religion_type_id) REFERENCES religion_types(religion_type_id) ON DELETE CASCADE
@@ -228,7 +228,7 @@ CREATE TABLE student_finances (
 
 CREATE TABLE student_health_records (
     health_id INT NOT NULL AUTO_INCREMENT,
-    student_record_id INT NOT NULL,
+    student_record_id INT UNIQUE NOT NULL,
     vision_remark_id INT NOT NULL,
     hearing_remark_id INT NOT NULL,
     mobility_remark_id INT NOT NULL,

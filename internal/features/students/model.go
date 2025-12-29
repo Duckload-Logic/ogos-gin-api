@@ -8,6 +8,7 @@ import (
 type StudentRecord struct {
 	ID                  int             `db:"student_record_id" json:"id"`
 	UserID              int             `db:"user_id" json:"userId"`
+	GenderID            int             `db:"gender_id" json:"gender_id"`
 	CivilStatusTypeID   int             `db:"civil_status_type_id" json:"civilStatusTypeId"`
 	ReligionTypeID      int             `db:"religion_type_id" json:"religionTypeId"`
 	HeightCm            sql.NullFloat64 `db:"height_cm" json:"heightCm"`
@@ -18,6 +19,9 @@ type StudentRecord struct {
 	Section             sql.NullString  `db:"section" json:"section"`
 	GoodMoralStatus     bool            `db:"good_moral_status" json:"goodMoralStatus"`
 	HasDerogatoryRecord bool            `db:"has_derogatory_record" json:"hasDerogatoryRecord"`
+	PlaceOfBirth        sql.NullString  `db:"place_of_birth" json:"place_of_birth"`
+	BirthDate           sql.NullTime    `db:"birth_date" json:"birth_date"`
+	MobileNo            sql.NullString  `db:"mobile_no" json:"mobile_no"`
 }
 
 // Guardian model

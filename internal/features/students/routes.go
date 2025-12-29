@@ -1,45 +1,94 @@
 package students
 
-import "github.com/gin-gonic/gin"
+import (
+	"database/sql"
 
-func RegisterRoutes(r *gin.RouterGroup, h *Handler) {
+	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
+)
+
+func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	studentRoutes := r.Group("/students")
+	studentRoutes.Use(middleware.AuthMiddleware())
+
+	userLookup := middleware.OwnershipMiddleware(db, "userID")
+	studentRecordLookup := middleware.OwnershipMiddleware(db, "studentRecordID")
+
+	// Shared access routes for Counselors, Front Desk, and Students
+	sharedAccessGroup := studentRoutes.Group("/")
+	sharedAccessGroup.Use(middleware.RoleMiddleware(
+		int(constants.CounselorRoleID),
+		int(constants.FrontDeskRoleID),
+		int(constants.StudentRoleID),
+	))
 	{
 		// Retrieve Routes
-		studentRoutes.GET("/profile/base/:userID", h.HandleGetBaseProfile)
-		studentRoutes.GET(
-			"/profile/family/:studentRecordID", h.HandleGetFamilyInfo,
-		)
-		studentRoutes.GET(
-			"/profile/guardians/:studentRecordID", h.HandleGetGuardiansInfo,
-		)
-		studentRoutes.GET(
-			"/profile/guardians/primary/:studentRecordID",
-			h.HandleGetPrimaryGuardianInfo,
-		)
-		studentRoutes.GET(
-			"/profile/education/:studentRecordID", h.HandleGetEducationInfo,
-		)
-		studentRoutes.GET(
-			"/profile/address/:studentRecordID", h.HandleGetAddressInfo,
-		)
-		studentRoutes.GET(
-			"/profile/health/:studentRecordID", h.HandleGetHealthInfo,
+		sharedAccessGroup.GET(
+			"/profile/base/:userID",
+			userLookup,
+			h.HandleGetBaseProfile,
 		)
 
-		// Save/Update Routes
-		studentRoutes.POST("/onboarding/base", h.HandleSaveBaseProfile)
-		studentRoutes.PUT(
-			"/onboarding/family/:studentRecordID", h.HandleSaveFamilyInfo,
+		studentRecordGroup := sharedAccessGroup.Group("/")
+		studentRecordGroup.Use(studentRecordLookup)
+		{
+			studentRecordGroup.GET(
+				"/profile/family/:studentRecordID", h.HandleGetFamilyInfo,
+			)
+			studentRecordGroup.GET(
+				"/profile/guardians/:studentRecordID", h.HandleGetGuardiansInfo,
+			)
+			studentRecordGroup.GET(
+				"/profile/guardians/primary/:studentRecordID",
+				h.HandleGetPrimaryGuardianInfo,
+			)
+			studentRecordGroup.GET(
+				"/profile/education/:studentRecordID", h.HandleGetEducationInfo,
+			)
+			studentRecordGroup.GET(
+				"/profile/address/:studentRecordID", h.HandleGetAddressInfo,
+			)
+			studentRecordGroup.GET(
+				"/profile/health/:studentRecordID", h.HandleGetHealthInfo,
+			)
+		}
+	}
+
+	// Student-only access routes
+	studentOnly := studentRoutes.Group("/")
+	studentOnly.Use(middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+	))
+	{
+		studentOnly.POST(
+			"/onboarding/base/:userID",
+			userLookup,
+			h.HandleSaveBaseProfile,
 		)
-		studentRoutes.PUT(
-			"/onboarding/education/:studentRecordID", h.HandleSaveEducationInfo,
-		)
-		studentRoutes.PUT(
-			"/onboarding/address/:studentRecordID", h.HandleSaveAddressInfo,
-		)
-		studentRoutes.PUT(
-			"/onboarding/health/:studentRecordID", h.HandleSaveHealthInfo,
-		)
+
+		studentRecordGroup := studentOnly.Group("/")
+		studentRecordGroup.Use(studentRecordLookup)
+		{
+			studentRecordGroup.PUT(
+				"/onboarding/family/:studentRecordID",
+				h.HandleSaveFamilyInfo,
+			)
+
+			studentRecordGroup.PUT(
+				"/onboarding/education/:studentRecordID",
+				h.HandleSaveEducationInfo,
+			)
+
+			studentRecordGroup.PUT(
+				"/onboarding/address/:studentRecordID",
+				h.HandleSaveAddressInfo,
+			)
+
+			studentRecordGroup.PUT(
+				"/onboarding/health/:studentRecordID",
+				h.HandleSaveHealthInfo,
+			)
+		}
 	}
 }

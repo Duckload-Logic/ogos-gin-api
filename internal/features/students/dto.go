@@ -1,34 +1,7 @@
 package students
 
-type PDSProfileResponse struct {
-	// Student Record Info
-	StudentInfo *StudentRecord `json:"studentInfo"`
-
-	// Family Info
-	FamilyInfo *FamilyBackground `json:"familyInfo"`
-
-	// Guardian Info
-	GuardianInfo []Guardian `json:"guardianInfo"`
-
-	// Primary Guardian (optional, can be derived from GuardianInfo)
-	PrimaryGuardian *Guardian `json:"primaryGuardian,omitempty"`
-
-	// Education Info
-	EducationInfo []EducationalBackground `json:"educationInfo"`
-
-	// Address Info
-	AddressInfo []StudentAddress `json:"addressInfo"`
-
-	// Health Info
-	HealthInfo *StudentHealthRecord `json:"healthInfo"`
-
-	// Trackers
-	CurrentStep int  `json:"currentStep"`
-	IsComplete  bool `json:"isComplete"`
-}
-
 type CreateStudentRecordRequest struct {
-	UserID              int     `json:"userId" binding:"required"`
+	GenderID            int     `json:"genderId" binding:"required"`
 	CivilStatusTypeID   int     `json:"civilStatusTypeId" binding:"required"`
 	ReligionTypeID      int     `json:"religionTypeId" binding:"required"`
 	HeightCm            float64 `json:"heightCm" binding:"required"`
@@ -39,6 +12,9 @@ type CreateStudentRecordRequest struct {
 	Section             string  `json:"section,omitempty"` // Optional
 	GoodMoralStatus     bool    `json:"goodMoralStatus"`   // Booleans default to false if missing
 	HasDerogatoryRecord bool    `json:"hasDerogatoryRecord"`
+	PlaceOfBirth        string  `json:"placeOfBirth" binding:"required"`
+	BirthDate           string  `json:"birthDate" binding:"required"`
+	MobileNo            string  `json:"mobileNo" binding:"required"`
 }
 
 type UpdateFamilyRequest struct {

@@ -115,10 +115,11 @@ func (s *Service) GetHealthInfo(
 
 // SaveBaseProfile
 func (s *Service) SaveBaseProfile(
-	ctx context.Context, req CreateStudentRecordRequest,
+	ctx context.Context, userID int, req CreateStudentRecordRequest,
 ) (int, error) {
 	record := &StudentRecord{
-		UserID:              req.UserID,
+		UserID:              userID,
+		GenderID:            req.GenderID,
 		CivilStatusTypeID:   req.CivilStatusTypeID,
 		ReligionTypeID:      req.ReligionTypeID,
 		HeightCm:            sql.NullFloat64{Float64: req.HeightCm, Valid: true},
@@ -306,4 +307,25 @@ func (s *Service) SaveHealthRecord(
 	}
 
 	return s.repo.SaveHealthRecord(ctx, healthRecord)
+}
+
+// =====================================
+// |                                   |
+// |      OWNERSHIP VERIFICATIONS      |
+// |                                   |
+// =====================================
+
+func (s *Service) VerifyStudentRecordOwnership(
+	ctx context.Context, userID int, resourceID int,
+) (bool, error) {
+	studentRecord, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
+	if err != nil {
+		return false, fmt.Errorf("Failed to get student record: %w", err)
+	}
+
+	if studentRecord == nil {
+		return false, nil
+	}
+
+	return studentRecord.ID == resourceID, nil
 }

@@ -298,13 +298,15 @@ func (h *Handler) HandleGetHealthInfo(c *gin.Context) {
 
 // HandleSaveBaseProfile
 func (h *Handler) HandleSaveBaseProfile(c *gin.Context) {
+	userID := c.MustGet("userID")
+
 	var req CreateStudentRecordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	id, err := h.service.SaveBaseProfile(c.Request.Context(), req)
+	id, err := h.service.SaveBaseProfile(c.Request.Context(), userID.(int), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
