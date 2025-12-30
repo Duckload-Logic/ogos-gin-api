@@ -21,6 +21,7 @@ func GetNewApplication(db *sql.DB) (*Application, error) {
 	handlers := getHandlers(repos)
 
 	router := SetupRoutes(db, handlers)
+	router.Static("/uploads", "./uploads")
 
 	portStr := os.Getenv("API_PORT")
 	port, err := strconv.Atoi(portStr)
