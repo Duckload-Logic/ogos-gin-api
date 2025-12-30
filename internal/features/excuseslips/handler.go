@@ -34,7 +34,6 @@ func NewHandler(service *Service) *Handler {
 // @Failure      400             {object} map[string]string      "Invalid input or missing file"
 // @Failure      500             {object} map[string]string      "Internal Server Error"
 // @Router       /excuseslips [post]
-
 func (h *Handler) Submit(c *gin.Context) {
 	var req CreateExcuseSlipRequest
 

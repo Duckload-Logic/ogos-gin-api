@@ -33,8 +33,6 @@ func NewHandler(service *Service) *Handler {
 // @Failure      400      {object}  map[string]string "Invalid user ID"
 // @Failure      500      {object}  map[string]string "Failed to get base profile"
 // @Router       /students/profile/base/{userID} [get]
-
-// HandleGetBaseProfile
 func (h *Handler) HandleGetBaseProfile(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
@@ -66,8 +64,6 @@ func (h *Handler) HandleGetBaseProfile(c *gin.Context) {
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
 // @Failure      500             {object}  map[string]string "Failed to get family info"
 // @Router       /students/profile/family/{studentRecordID} [get]
-
-// HandleGetFamilyInfo
 func (h *Handler) HandleGetFamilyInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -102,8 +98,6 @@ func (h *Handler) HandleGetFamilyInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
 // @Failure      500             {object}  map[string]string "Failed to get guardians info"
 // @Router       /students/profile/guardians/{studentRecordID} [get]
-
-// HandleGetGuardiansInfo
 func (h *Handler) HandleGetGuardiansInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -141,8 +135,6 @@ func (h *Handler) HandleGetGuardiansInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
 // @Failure      500             {object}  map[string]string "Failed to get primary guardian info"
 // @Router       /students/profile/guardians/primary/{studentRecordID} [get]
-
-// HandleGetPrimaryGuardianInfo
 func (h *Handler) HandleGetPrimaryGuardianInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -179,8 +171,6 @@ func (h *Handler) HandleGetPrimaryGuardianInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
 // @Failure      500             {object}  map[string]string "Failed to get education info"
 // @Router       /students/profile/education/{studentRecordID} [get]
-
-// HandleGetEducationInfo
 func (h *Handler) HandleGetEducationInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -217,8 +207,6 @@ func (h *Handler) HandleGetEducationInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
 // @Failure      500             {object}  map[string]string "Failed to get address info"
 // @Router       /students/profile/address/{studentRecordID} [get]
-
-// HandleGetAddressInfo
 func (h *Handler) HandleGetAddressInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -253,8 +241,6 @@ func (h *Handler) HandleGetAddressInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
 // @Failure      500             {object}  map[string]string "Failed to get health info"
 // @Router       /students/profile/health/{studentRecordID} [get]
-
-// HandleGetHealthInfo
 func (h *Handler) HandleGetHealthInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -295,8 +281,6 @@ func (h *Handler) HandleGetHealthInfo(c *gin.Context) {
 // @Failure      400     {object}  map[string]string          "Invalid input"
 // @Failure      500     {object}  map[string]string          "Internal Server Error"
 // @Router       /students/onboarding/base [post]
-
-// HandleSaveBaseProfile
 func (h *Handler) HandleSaveBaseProfile(c *gin.Context) {
 	userID := c.MustGet("userID")
 
@@ -326,8 +310,6 @@ func (h *Handler) HandleSaveBaseProfile(c *gin.Context) {
 // @Failure      400             {object}  map[string]string   "Invalid input or ID"
 // @Failure      500             {object}  map[string]string   "Internal Server Error"
 // @Router       /students/onboarding/family/{studentRecordID} [put]
-
-// HandleSaveFamilyInfo
 func (h *Handler) HandleSaveFamilyInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -365,8 +347,6 @@ func (h *Handler) HandleSaveFamilyInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string      "Invalid input or ID"
 // @Failure      500             {object}  map[string]string      "Internal Server Error"
 // @Router       /students/onboarding/education/{studentRecordID} [put]
-
-// HandleSaveEducationInfo
 func (h *Handler) HandleSaveEducationInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -401,8 +381,6 @@ func (h *Handler) HandleSaveEducationInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string    "Invalid input or ID"
 // @Failure      500             {object}  map[string]string    "Internal Server Error"
 // @Router       /students/onboarding/address/{studentRecordID} [put]
-
-// HandleSaveAddressInfo
 func (h *Handler) HandleSaveAddressInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -437,8 +415,6 @@ func (h *Handler) HandleSaveAddressInfo(c *gin.Context) {
 // @Failure      400             {object}  map[string]string         "Invalid input or ID"
 // @Failure      500             {object}  map[string]string         "Internal Server Error"
 // @Router       /students/onboarding/health/{studentRecordID} [put]
-
-// HandleSaveHealthInfo
 func (h *Handler) HandleSaveHealthInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {

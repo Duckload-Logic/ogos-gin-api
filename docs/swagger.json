@@ -7,5 +7,1594 @@
     },
     "host": "localhost:8080",
     "basePath": "/api/v1",
-    "paths": {}
+    "paths": {
+        "/appointments": {
+            "post": {
+                "description": "Schedules a new appointment for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Appointments"
+                ],
+                "summary": "Book a new appointment",
+                "parameters": [
+                    {
+                        "description": "Appointment Details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/appointments.CreateAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Returns {message: 'Success', data: Appointment}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "description": "Authenticates a user and returns JWT tokens.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "User login",
+                "parameters": [
+                    {
+                        "description": "Login Credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns {token, refreshToken}",
+                        "schema": {
+                            "$ref": "#/definitions/auth.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh-token": {
+            "post": {
+                "description": "Refreshes the JWT token using a valid refresh token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh JWT token",
+                "parameters": [
+                    {
+                        "description": "Refresh Token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns {token, refreshToken}",
+                        "schema": {
+                            "$ref": "#/definitions/auth.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/excuseslips": {
+            "post": {
+                "description": "Allows a student to submit an excuse slip with a supporting document (file upload).",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ExcuseSlips"
+                ],
+                "summary": "Submit an excuse slip",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Reason for absence",
+                        "name": "reason",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Date of absence (YYYY-MM-DD)",
+                        "name": "absenceDate",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Supporting Document (Image/PDF)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Returns {message, data}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or missing file",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/onboarding/address/{studentRecordID}": {
+            "put": {
+                "description": "Updates the address details (region, province, city, barangay) for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Save Address Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Address Info Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/students.UpdateAddressRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message: Address information saved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/onboarding/base": {
+            "post": {
+                "description": "Creates a new student record or updates the basic profile information.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Create or Update Base Profile",
+                "parameters": [
+                    {
+                        "description": "Base Profile Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/students.CreateStudentRecordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns {student_record_id: \u003cid\u003e}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/onboarding/education/{studentRecordID}": {
+            "put": {
+                "description": "Updates the educational background information for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Save Education Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Education Info Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/students.UpdateEducationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message: Education information saved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/onboarding/family/{studentRecordID}": {
+            "put": {
+                "description": "Updates the family information (including parents and guardians) for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Save Family Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Family Info Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/students.UpdateFamilyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message: Family information saved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/onboarding/health/{studentRecordID}": {
+            "put": {
+                "description": "Updates the health records (vision, hearing, remarks) for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Save Health Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Health Info Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/students.UpdateHealthRecordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message: Health information saved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/address/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves the residential address details for the student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Address Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/students.StudentAddress"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get address info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/base/{userID}": {
+            "get": {
+                "description": "Retrieves the basic profile information for a student using their User ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Student Base Profile",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/students.StudentRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get base profile",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/education/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves the student's educational background and history.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Education Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/students.EducationalBackground"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get education info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/family/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves family details associated with a specific student record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Family Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/students.FamilyBackground"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get family info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/guardians/primary/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves details of the primary guardian for the student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Primary Guardian Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/students.Guardian"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get primary guardian info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/guardians/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves a list of guardians linked to the student record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Guardians Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/students.Guardian"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get guardians info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/health/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves the health and medical records for the student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Health Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/students.StudentHealthRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get health info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userID}": {
+            "get": {
+                "description": "Retrieves user information based on the provided user ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get user by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns user details",
+                        "schema": {
+                            "$ref": "#/definitions/users.GetUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get user by ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "appointments.CreateAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "appointmentTypeId",
+                "concernCategory",
+                "scheduledAt",
+                "studentRecordId"
+            ],
+            "properties": {
+                "appointmentTypeId": {
+                    "type": "integer"
+                },
+                "concernCategory": {
+                    "type": "string"
+                },
+                "scheduledAt": {
+                    "type": "string"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "auth.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "refreshToken"
+            ],
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.TokenResponse": {
+            "type": "object",
+            "properties": {
+                "refreshToken": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "sql.NullFloat64": {
+            "type": "object",
+            "properties": {
+                "float64": {
+                    "type": "number",
+                    "format": "float64"
+                },
+                "valid": {
+                    "description": "Valid is true if Float64 is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "sql.NullInt64": {
+            "type": "object",
+            "properties": {
+                "int64": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "valid": {
+                    "description": "Valid is true if Int64 is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "sql.NullString": {
+            "type": "object",
+            "properties": {
+                "string": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if String is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "sql.NullTime": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "students.CreateStudentRecordRequest": {
+            "type": "object",
+            "required": [
+                "birthDate",
+                "civilStatusTypeId",
+                "course",
+                "genderId",
+                "heightCm",
+                "mobileNo",
+                "placeOfBirth",
+                "religionTypeId",
+                "studentNumber",
+                "weightKg",
+                "yearLevel"
+            ],
+            "properties": {
+                "birthDate": {
+                    "type": "string"
+                },
+                "civilStatusTypeId": {
+                    "type": "integer"
+                },
+                "course": {
+                    "type": "string"
+                },
+                "genderId": {
+                    "type": "integer"
+                },
+                "goodMoralStatus": {
+                    "description": "Booleans default to false if missing",
+                    "type": "boolean"
+                },
+                "hasDerogatoryRecord": {
+                    "type": "boolean"
+                },
+                "heightCm": {
+                    "type": "number"
+                },
+                "mobileNo": {
+                    "type": "string"
+                },
+                "placeOfBirth": {
+                    "type": "string"
+                },
+                "religionTypeId": {
+                    "type": "integer"
+                },
+                "section": {
+                    "description": "Optional",
+                    "type": "string"
+                },
+                "studentNumber": {
+                    "type": "string"
+                },
+                "weightKg": {
+                    "type": "number"
+                },
+                "yearLevel": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.EducationalBGDTO": {
+            "type": "object",
+            "required": [
+                "educationalLevelId",
+                "schoolName",
+                "schoolType",
+                "yearCompleted"
+            ],
+            "properties": {
+                "awards": {
+                    "type": "string"
+                },
+                "educationalLevelId": {
+                    "type": "integer"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "schoolName": {
+                    "type": "string"
+                },
+                "schoolType": {
+                    "type": "string",
+                    "enum": [
+                        "Public",
+                        "Private"
+                    ]
+                },
+                "yearCompleted": {
+                    "type": "string"
+                }
+            }
+        },
+        "students.EducationalBackground": {
+            "type": "object",
+            "properties": {
+                "awards": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "educationalLevelId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "location": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "schoolName": {
+                    "type": "string"
+                },
+                "schoolType": {
+                    "type": "string"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                },
+                "yearCompleted": {
+                    "type": "string"
+                }
+            }
+        },
+        "students.FamilyBackground": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "monthlyFamilyIncome": {
+                    "$ref": "#/definitions/sql.NullFloat64"
+                },
+                "parentalStatusDetails": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "parentalStatusId": {
+                    "type": "integer"
+                },
+                "siblingSisters": {
+                    "type": "integer"
+                },
+                "siblingsBrothers": {
+                    "type": "integer"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.Guardian": {
+            "type": "object",
+            "properties": {
+                "birthDate": {
+                    "$ref": "#/definitions/sql.NullTime"
+                },
+                "companyName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "contactNumber": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "educationalLevelId": {
+                    "type": "integer"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "isPrimaryContact": {
+                    "type": "boolean"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "maidenName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "middleName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "occupation": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "relationshipTypeId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.GuardianDTO": {
+            "type": "object",
+            "required": [
+                "birthDate",
+                "educationalLevelId",
+                "firstName",
+                "lastName",
+                "occupation"
+            ],
+            "properties": {
+                "birthDate": {
+                    "description": "Format: YYYY-MM-DD",
+                    "type": "string"
+                },
+                "companyName": {
+                    "type": "string"
+                },
+                "contactNumber": {
+                    "type": "string"
+                },
+                "educationalLevelId": {
+                    "type": "integer"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "isPrimary": {
+                    "description": "Indicates if this guardian is the primary contact",
+                    "type": "boolean"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "maidenName": {
+                    "type": "string"
+                },
+                "middleName": {
+                    "type": "string"
+                },
+                "occupation": {
+                    "type": "string"
+                },
+                "relationshipTypeId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.StudentAddress": {
+            "type": "object",
+            "properties": {
+                "addressTypeId": {
+                    "type": "integer"
+                },
+                "barangayName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "buildingName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "cityName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "provinceName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "regionName": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "streetLotBlk": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                },
+                "unitNo": {
+                    "$ref": "#/definitions/sql.NullString"
+                }
+            }
+        },
+        "students.StudentAddressDTO": {
+            "type": "object",
+            "required": [
+                "addressTypeId",
+                "barangayName",
+                "cityName",
+                "provinceName",
+                "regionName"
+            ],
+            "properties": {
+                "addressTypeId": {
+                    "type": "integer"
+                },
+                "barangayName": {
+                    "type": "string"
+                },
+                "buildingName": {
+                    "type": "string"
+                },
+                "cityName": {
+                    "type": "string"
+                },
+                "provinceName": {
+                    "type": "string"
+                },
+                "regionName": {
+                    "type": "string"
+                },
+                "streetLotBlk": {
+                    "type": "string"
+                },
+                "unitNo": {
+                    "type": "string"
+                }
+            }
+        },
+        "students.StudentHealthRecord": {
+            "type": "object",
+            "properties": {
+                "consultationReason": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "consultedProfessional": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "dateConcluded": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "dateStarted": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "generalHealthId": {
+                    "type": "integer"
+                },
+                "hearingRemarkId": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mobilityRemarkId": {
+                    "type": "integer"
+                },
+                "numberOfSessions": {
+                    "$ref": "#/definitions/sql.NullInt64"
+                },
+                "speechRemarkId": {
+                    "type": "integer"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                },
+                "visionRemarkId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.StudentRecord": {
+            "type": "object",
+            "properties": {
+                "birth_date": {
+                    "$ref": "#/definitions/sql.NullTime"
+                },
+                "civilStatusTypeId": {
+                    "type": "integer"
+                },
+                "course": {
+                    "type": "string"
+                },
+                "gender_id": {
+                    "type": "integer"
+                },
+                "goodMoralStatus": {
+                    "type": "boolean"
+                },
+                "hasDerogatoryRecord": {
+                    "type": "boolean"
+                },
+                "heightCm": {
+                    "$ref": "#/definitions/sql.NullFloat64"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mobile_no": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "place_of_birth": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "religionTypeId": {
+                    "type": "integer"
+                },
+                "section": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "studentNumber": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                },
+                "weightKg": {
+                    "$ref": "#/definitions/sql.NullFloat64"
+                },
+                "yearLevel": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.UpdateAddressRequest": {
+            "type": "object",
+            "required": [
+                "addresses"
+            ],
+            "properties": {
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/students.StudentAddressDTO"
+                    }
+                }
+            }
+        },
+        "students.UpdateEducationRequest": {
+            "type": "object",
+            "required": [
+                "educationalBackgrounds"
+            ],
+            "properties": {
+                "educationalBackgrounds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/students.EducationalBGDTO"
+                    }
+                }
+            }
+        },
+        "students.UpdateFamilyRequest": {
+            "type": "object",
+            "required": [
+                "guardians",
+                "monthlyFamilyIncome",
+                "parentalStatusId",
+                "siblingSisters",
+                "siblingsBrothers"
+            ],
+            "properties": {
+                "guardians": {
+                    "description": "Guardian Data",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/students.GuardianDTO"
+                    }
+                },
+                "monthlyFamilyIncome": {
+                    "type": "number"
+                },
+                "parentalStatusDetails": {
+                    "type": "string"
+                },
+                "parentalStatusId": {
+                    "description": "Family Background fields",
+                    "type": "integer"
+                },
+                "siblingSisters": {
+                    "type": "integer"
+                },
+                "siblingsBrothers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.UpdateHealthRecordRequest": {
+            "type": "object",
+            "required": [
+                "generalHealthRemarkId",
+                "hearingRemarkId",
+                "mobilityRemarkId",
+                "speechRemarkId",
+                "visionRemarkId"
+            ],
+            "properties": {
+                "consultationReason": {
+                    "type": "string"
+                },
+                "consultedProfessional": {
+                    "type": "string"
+                },
+                "dateConcluded": {
+                    "type": "string"
+                },
+                "dateStarted": {
+                    "type": "string"
+                },
+                "generalHealthRemarkId": {
+                    "type": "integer"
+                },
+                "hearingRemarkId": {
+                    "type": "integer"
+                },
+                "mobilityRemarkId": {
+                    "type": "integer"
+                },
+                "numberOfSessions": {
+                    "type": "integer"
+                },
+                "speechRemarkId": {
+                    "type": "integer"
+                },
+                "visionRemarkId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "users.GetUserResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "middle_name": {
+                    "type": "string"
+                },
+                "role_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        }
+    }
 }

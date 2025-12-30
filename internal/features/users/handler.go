@@ -22,7 +22,17 @@ func NewHandler(service *Service) *Handler {
 // |                                      |
 // ========================================
 
-// HandleGetUserByID
+// HandleGetUserByID godoc
+// @Summary      Get user by ID
+// @Description  Retrieves user information based on the provided user ID.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Param        userID   path      int true "User ID"
+// @Success      200      {object}  GetUserResponse        "Returns user details"
+// @Failure      400      {object}  map[string]string     "Invalid user ID"
+// @Failure      500      {object}  map[string]string     "Failed to get user by ID"
+// @Router       /users/{userID} [get]
 func (h *Handler) HandleGetUserByID(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {

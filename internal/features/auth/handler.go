@@ -14,6 +14,17 @@ func NewHandler(s *Service) *Handler {
 	return &Handler{service: s}
 }
 
+// HandleLogin godoc
+// @Summary      User login
+// @Description  Authenticates a user and returns JWT tokens.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body      LoginRequest true "Login Credentials"
+// @Success      200     {object}  TokenResponse          "Returns {token, refreshToken}"
+// @Failure      400     {object}  map[string]string      "Invalid request format"
+// @Failure      401     {object}  map[string]string      "Unauthorized"
+// @Router       /auth/login [post]
 func (h *Handler) HandleLogin(c *gin.Context) {
 	// Map request body to struct
 	var req LoginRequest
@@ -38,6 +49,17 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	})
 }
 
+// HandleRefreshToken godoc
+// @Summary      Refresh JWT token
+// @Description  Refreshes the JWT token using a valid refresh token.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body      RefreshTokenRequest true "Refresh Token"
+// @Success      200     {object}  TokenResponse          "Returns {token, refreshToken}"
+// @Failure      400     {object}  map[string]string      "Invalid request format"
+// @Failure      401     {object}  map[string]string      "Unauthorized"
+// @Router       /auth/refresh-token [post]
 func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	// Map request body to struct
 	var req RefreshTokenRequest

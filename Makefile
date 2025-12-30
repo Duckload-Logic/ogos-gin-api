@@ -32,16 +32,26 @@ migrate-down:
 # Desc: To apply seed data to database
 # Usage: make seed-up
 seed-up:
-	migrate -path seeds -database "$(DB_URL)?x-migrations-table=seed_migrations" up
+	migrate -path seeds -database \
+	"$(DB_URL)?x-migrations-table=seed_migrations" up
 
 # Desc: To apply fake data to database
 # Usage: make fake-up
 fake-up:
-	migrate -path fakes -database "$(DB_URL)?x-migrations-table=fake_migrations" up
+	migrate -path fakes -database \
+	"$(DB_URL)?x-migrations-table=fake_migrations" up
 
 # Desc: To undo fake data migrations
 # Usage: make fake-down
 fake-down:
-	migrate -path fakes -database "$(DB_URL)?x-migrations-table=fake_migrations" drop -f
+	migrate -path fakes -database \
+	"$(DB_URL)?x-migrations-table=fake_migrations" drop -f
 
 refresh: migrate-down migrate-up seed-up
+
+# Desc: To generate swagger docs
+# Usage: make swagger
+swagger:
+	swag init -g main.go \
+	--parseDependency --parseInternal \
+	--dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students

@@ -32,7 +32,6 @@ func NewHandler(service *Service) *Handler {
 // @Failure      400     {object}  map[string]string          "Invalid input"
 // @Failure      500     {object}  map[string]string          "Internal Server Error"
 // @Router       /appointments [post]
-
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateAppointmentRequest
 
