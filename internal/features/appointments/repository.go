@@ -197,3 +197,19 @@ func (r *Repository) GetByStudentID(ctx context.Context, studentID int) ([]Appoi
 
     return appts, nil
 }
+
+func (r *Repository) UpdateStatus(ctx context.Context, id int, status string) error {
+    query := `UPDATE appointments SET status = ?, updated_at = NOW() WHERE appointment_id = ?`
+    result, err := r.db.ExecContext(ctx, query, status, id)
+    if err != nil {
+        return err
+    }
+    rows, err := result.RowsAffected()
+    if err != nil {
+        return err
+    }
+    if rows == 0 {
+        return sql.ErrNoRows
+    }
+    return nil
+}

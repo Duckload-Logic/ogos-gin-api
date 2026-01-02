@@ -1,11 +1,23 @@
 package excuseslips
 
-import "github.com/gin-gonic/gin"
+import (
+    "github.com/gin-gonic/gin"
+    "github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+    "github.com/olazo-johnalbert/duckload-api/internal/middleware"
+)
 
 func RegisterRoutes(api *gin.RouterGroup, h *Handler) {
-    api.POST("/excuseslips", h.Submit)
-    api.GET("/excuseslips", h.GetAll)
-    api.GET("/excuseslips/:id", h.GetByID)
-	api.PATCH("/excuseslips/:id/status", h.UpdateStatus)
-	api.DELETE("/excuseslips/:id", h.Delete)
+    excuseslipGroup := api.Group("/excuseslips")
+    excuseslipGroup.Use(middleware.RoleMiddleware(
+        int(constants.StudentRoleID),
+        int(constants.CounselorRoleID),
+        int(constants.FrontDeskRoleID),
+    ))
+    {
+        excuseslipGroup.GET("", h.GetAll)
+        excuseslipGroup.GET("/:id", h.GetByID)
+        excuseslipGroup.POST("", h.Submit)
+        excuseslipGroup.PATCH("/:id/status", h.UpdateStatus)
+        excuseslipGroup.DELETE("/:id", h.Delete)
+    }
 }

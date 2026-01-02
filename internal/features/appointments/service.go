@@ -1,6 +1,7 @@
 package appointments
 
 import (
+    "fmt"
     "context"
     "time"
 )
@@ -48,4 +49,14 @@ func (s *Service) ListAppointments(ctx context.Context, status string, date stri
 
 func (s *Service) GetAppointmentsByStudentID(ctx context.Context, studentID int) ([]Appointment, error) {
     return s.repo.GetByStudentID(ctx, studentID)
+}
+
+func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, status string) error {
+    validStatuses := map[string]bool{
+        "Pending": true, "Approved": true, "Rejected": true, "Completed": true,
+    }
+    if !validStatuses[status] {
+        return fmt.Errorf("invalid status")
+    }
+    return s.repo.UpdateStatus(ctx, id, status)
 }
