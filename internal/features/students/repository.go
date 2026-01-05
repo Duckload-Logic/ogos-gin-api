@@ -22,6 +22,102 @@ func NewRepository(db *sql.DB) *Repository {
 // |                                   |
 // =====================================
 
+// ListStudents
+func (r *Repository) ListStudents(
+	ctx context.Context, offset int, limit int,
+	course string, yearLevel int, genderID int,
+) ([]StudentProfileView, error) {
+	query := `
+		SELECT 
+			sr.student_record_id,
+			u.first_name,
+			u.middle_name,
+			u.last_name,       
+			u.email,
+			sp.course,
+			sp.year_level,
+			sp.section
+		FROM student_records sr
+		JOIN users u ON sr.user_id = u.user_id
+		JOIN student_profiles sp ON sr.student_record_id = sp.student_record_id
+		WHERE (? = '' OR sp.course = ?)
+		AND (? = 0 OR sp.year_level = ?)
+		AND (? = 0 OR sp.gender_id = ?)
+		ORDER BY sr.student_record_id DESC
+		LIMIT ? OFFSET ?
+	`
+
+	rows, err := r.db.QueryContext(
+		ctx, query,
+		course, course,
+		yearLevel, yearLevel,
+		genderID, genderID,
+		limit, offset,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list students: %w", err)
+	}
+
+	defer rows.Close()
+
+	var students []StudentProfileView
+	for rows.Next() {
+		var student StudentProfileView
+		err := rows.Scan(
+			&student.StudentRecordID,
+			&student.FirstName,
+			&student.MiddleName,
+			&student.LastName,
+			&student.Email,
+			&student.Course,
+			&student.YearLevel,
+			&student.Section,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan student record: %w", err)
+		}
+		students = append(students, student)
+	}
+
+	return students, nil
+}
+
+// GetStudentEnrollmentReasons
+func (r *Repository) GetStudentEnrollmentReasons(
+	ctx context.Context, studentRecordID int,
+) ([]StudentSelectedReason, error) {
+	query := `
+		SELECT student_record_id, reason_id, other_reason_text
+		FROM student_selected_reasons
+		WHERE student_record_id = ?
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, studentRecordID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return []StudentSelectedReason{}, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reasons []StudentSelectedReason
+	for rows.Next() {
+		var reason StudentSelectedReason
+		err := rows.Scan(
+			&reason.StudentRecordID,
+			&reason.ReasonID,
+			&reason.OtherReasonText,
+		)
+		if err != nil {
+			return nil, err
+		}
+		reasons = append(reasons, reason)
+	}
+
+	return reasons, nil
+}
+
 // GetStudentRecordByStudentID
 func (r *Repository) GetStudentRecordByStudentID(
 	ctx context.Context, userID int,
@@ -29,25 +125,13 @@ func (r *Repository) GetStudentRecordByStudentID(
 	studentRec := &StudentRecord{}
 	query := `
 		SELECT 
-			student_record_id, user_id, 
-			gender_id, civil_status_type_id,
-			religion_type_id, height_cm, weight_kg,
-			student_number, course, year_level, section,
-			good_moral_status, has_derogatory_record,
-			place_of_birth, birth_date, mobile_no
+			student_record_id, user_id
 		FROM student_records
 		WHERE user_id = ?
 	`
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&studentRec.ID, &studentRec.UserID,
-		&studentRec.GenderID, &studentRec.CivilStatusTypeID,
-		&studentRec.ReligionTypeID,
-		&studentRec.HeightCm, &studentRec.WeightKg,
-		&studentRec.StudentNumber, &studentRec.Course,
-		&studentRec.YearLevel, &studentRec.Section,
-		&studentRec.GoodMoralStatus, &studentRec.HasDerogatoryRecord,
-		&studentRec.PlaceOfBirth, &studentRec.BirthDate,
-		&studentRec.MobileNo,
+		&studentRec.ID,
+		&studentRec.UserID,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -60,19 +144,56 @@ func (r *Repository) GetStudentRecordByStudentID(
 	return studentRec, nil
 }
 
+// GetStudentProfileByStudentRecordID
+func (r *Repository) GetStudentProfileByStudentRecordID(
+	ctx context.Context, studentRecordID int,
+) (*StudentProfile, error) {
+	profile := &StudentProfile{}
+	query := `
+		SELECT 
+			student_profile_id, student_record_id,
+			gender_id, civil_status_type_id,
+			religion_type_id, height_cm, weight_kg,
+			student_number, course, year_level, section,
+			good_moral_status, has_derogatory_record,
+			place_of_birth, birth_date, mobile_no
+		FROM student_profiles
+		WHERE student_record_id = ?
+	`
+	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
+		&profile.ID, &profile.StudentRecordID,
+		&profile.GenderID, &profile.CivilStatusTypeID,
+		&profile.ReligionTypeID,
+		&profile.HeightCm, &profile.WeightKg,
+		&profile.StudentNumber, &profile.Course,
+		&profile.YearLevel, &profile.Section,
+		&profile.GoodMoralStatus, &profile.HasDerogatoryRecord,
+		&profile.PlaceOfBirth, &profile.BirthDate,
+		&profile.MobileNo,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get student profile: %w", err)
+	}
+
+	return profile, nil
+}
+
 // GetGuardians
 func (r *Repository) GetGuardians(
 	ctx context.Context, studentRecordID int,
-) ([]Guardian, error) {
+) ([]GuardianInfoView, error) {
 	query := `
 		SELECT
-			g.guardian_id, g.educational_level_id, g.birth_date,
-			g.last_name, g.first_name, g.middle_name,
-			g.occupation, g.maiden_name, g.company_name,
-			g.contact_number,
+			g.guardian_id, g.educational_level_id,
+			g.birth_date, g.last_name, g.first_name,
+			g.middle_name, g.occupation, g.maiden_name,
+			g.company_name, g.contact_number,
 			sg.relationship_type_id, sg.is_primary_contact
-		FROM guardians g
-		INNER JOIN student_guardians sg ON g.guardian_id = sg.guardian_id
+		FROM guardians_info_view g
+		JOIN student_guardians sg ON g.guardian_id = sg.guardian_id
 		WHERE sg.student_record_id = ?
 		ORDER BY sg.is_primary_contact DESC
 	`
@@ -85,9 +206,9 @@ func (r *Repository) GetGuardians(
 	}
 	defer rows.Close()
 
-	var guardians []Guardian
+	var guardians []GuardianInfoView
 	for rows.Next() {
-		var g Guardian
+		var g GuardianInfoView
 		err := rows.Scan(
 			&g.ID, &g.EducationalLevelID,
 			&g.BirthDate, &g.LastName,
@@ -130,7 +251,6 @@ func (r *Repository) GetPrimaryGuardian(
 		&g.FirstName, &g.MiddleName,
 		&g.Occupation, &g.MaidenName,
 		&g.CompanyName, &g.ContactNumber,
-		&g.RelationshipTypeID, &g.IsPrimaryContact,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -219,7 +339,7 @@ func (r *Repository) GetAddresses(
 	query := `
 		SELECT
 			student_address_id, student_record_id,
-			address_type_id, region_name,
+			address_type, region_name,
 			province_name, city_name,
 			barangay_name, street_lot_blk,
 			unit_no, building_name
@@ -238,7 +358,7 @@ func (r *Repository) GetAddresses(
 		var addr StudentAddress
 		err := rows.Scan(
 			&addr.ID, &addr.StudentRecordID,
-			&addr.AddressTypeID, &addr.RegionName,
+			&addr.AddressType, &addr.RegionName,
 			&addr.ProvinceName, &addr.CityName,
 			&addr.BarangayName, &addr.StreetLotBlk,
 			&addr.UnitNo, &addr.BuildingName,
@@ -261,9 +381,9 @@ func (r *Repository) GetHealthRecord(
 	query := `
 		SELECT
 			health_id, student_record_id,
-			vision_remark_id, hearing_remark_id, 
-			mobility_remark_id, speech_remark_id,
-			general_health_remark_id, consulted_professional,
+			vision_remark, hearing_remark, 
+			mobility_remark, speech_remark,
+			general_health_remark, consulted_professional,
 			consultation_reason, date_started, 
 			num_sessions, date_concluded
 		FROM student_health_records
@@ -271,9 +391,9 @@ func (r *Repository) GetHealthRecord(
 	`
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
 		&healthRec.ID, &healthRec.StudentRecordID,
-		&healthRec.VisionRemarkID, &healthRec.HearingRemarkID,
-		&healthRec.MobilityRemarkID, &healthRec.SpeechRemarkID,
-		&healthRec.GeneralHealthRemarkID, &healthRec.ConsultedProfessional,
+		&healthRec.VisionRemark, &healthRec.HearingRemark,
+		&healthRec.MobilityRemark, &healthRec.SpeechRemark,
+		&healthRec.GeneralHealthRemark, &healthRec.ConsultedProfessional,
 		&healthRec.ConsultationReason, &healthRec.DateStarted,
 		&healthRec.NumberOfSessions, &healthRec.DateConcluded,
 	)
@@ -287,30 +407,129 @@ func (r *Repository) GetHealthRecord(
 	return healthRec, nil
 }
 
+// Add to repository.go
+func (r *Repository) GetFinance(ctx context.Context, studentRecordID int) (*StudentFinance, error) {
+	finance := &StudentFinance{}
+	query := `
+		SELECT
+			finance_id, student_record_id,
+			is_employed, supports_studies,
+			supports_family, financial_support_type_id,
+			weekly_allowance
+		FROM student_finances
+		WHERE student_record_id = ?
+	`
+	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
+		&finance.ID, &finance.StudentRecordID,
+		&finance.IsEmployed, &finance.SupportsStudies,
+		&finance.SupportsFamily, &finance.FinancialSupportTypeID,
+		&finance.WeeklyAllowance,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return finance, nil
+}
+
+func (r *Repository) GetTotalStudentsCount(
+	ctx context.Context,
+	course string, yearLevel int, genderID int,
+) (int, error) {
+	query := `
+        SELECT COUNT(*)
+        FROM student_records sr
+        JOIN users u ON sr.user_id = u.user_id
+        JOIN student_profiles sp ON sr.student_record_id = sp.student_record_id
+        WHERE (? = '' OR sp.course = ?)
+        AND (? = 0 OR sp.year_level = ?)
+        AND (? = 0 OR sp.gender_id = ?)
+    `
+
+	var total int
+	err := r.db.QueryRowContext(
+		ctx, query,
+		course, course,
+		yearLevel, yearLevel,
+		genderID, genderID,
+	).Scan(&total)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to get total students count: %w", err)
+	}
+
+	return total, nil
+}
+
 // =====================================
 // |                                   |
 // |         UPSERT FUNCTIONS          |
 // |                                   |
 // =====================================
 
-// SaveBaseProfileInfo
-func (r *Repository) SaveBaseProfileInfo(
-	ctx context.Context, record *StudentRecord,
+// CreateStudentRecord - Creates a basic student record
+func (r *Repository) CreateStudentRecord(
+	ctx context.Context, userID int,
 ) (int, error) {
-	var studentRecordID int
+	query := `
+		INSERT INTO student_records (user_id) 
+		VALUES (?)
+	`
+
+	result, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create student record: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(id), nil
+}
+
+// SaveEnrollmentReason
+func (r *Repository) SaveEnrollmentReason(
+	ctx context.Context, studentRecordID int,
+	reasonID int, otherReasonText sql.NullString,
+) error {
+	query := `
+		INSERT INTO student_selected_reasons 
+		(student_record_id, reason_id, other_reason_text) 
+		VALUES (?, ?, ?)
+	`
+
+	_, err := r.db.ExecContext(ctx, query, studentRecordID, reasonID, otherReasonText)
+	if err != nil {
+		return fmt.Errorf("failed to save enrollment reason: %w", err)
+	}
+
+	return nil
+}
+
+// SaveStudentProfile
+func (r *Repository) SaveStudentProfile(
+	ctx context.Context, profile *StudentProfile,
+) (int, error) {
+	var studentProfileID int
 
 	err := database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		upsertQuery := `
-			INSERT INTO student_records (
-				user_id, civil_status_type_id, 
+			INSERT INTO student_profiles (
+				student_record_id, gender_id, civil_status_type_id, 
 				religion_type_id, height_cm, 
 				weight_kg, student_number, 
 				course, year_level, 
 				section, good_moral_status,
-				has_derogatory_record, gender_id,
+				has_derogatory_record,
 				place_of_birth, birth_date, mobile_no
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE
+				gender_id = VALUES(gender_id),
 				civil_status_type_id = VALUES(civil_status_type_id),
 				religion_type_id = VALUES(religion_type_id),
 				height_cm = VALUES(height_cm), weight_kg = VALUES(weight_kg),
@@ -318,46 +537,50 @@ func (r *Repository) SaveBaseProfileInfo(
 				section = VALUES(section),
 				good_moral_status = VALUES(good_moral_status),
 				has_derogatory_record = VALUES(has_derogatory_record),
-				gender_id = VALUES(gender_id),
 				place_of_birth = VALUES(place_of_birth),
 				birth_date = VALUES(birth_date),
 				mobile_no = VALUES(mobile_no)
 		`
 
-		_, err := tx.ExecContext(
+		result, err := tx.ExecContext(
 			ctx, upsertQuery,
-			record.UserID, record.CivilStatusTypeID,
-			record.ReligionTypeID, record.HeightCm,
-			record.WeightKg, record.StudentNumber,
-			record.Course, record.YearLevel,
-			record.Section, record.GoodMoralStatus,
-			record.HasDerogatoryRecord,
-			record.GenderID,
-			record.PlaceOfBirth,
-			record.BirthDate,
-			record.MobileNo,
+			profile.StudentRecordID, profile.GenderID,
+			profile.CivilStatusTypeID, profile.ReligionTypeID,
+			profile.HeightCm, profile.WeightKg,
+			profile.StudentNumber, profile.Course,
+			profile.YearLevel, profile.Section,
+			profile.GoodMoralStatus, profile.HasDerogatoryRecord,
+			profile.PlaceOfBirth, profile.BirthDate,
+			profile.MobileNo,
 		)
 		if err != nil {
 			return err
 		}
 
-		getRecIDQuery := `
-			SELECT student_record_id FROM student_records 
-			WHERE user_id = ?
-		`
-		err = tx.QueryRowContext(
-			ctx, getRecIDQuery,
-			record.UserID,
-		).Scan(&studentRecordID)
+		// Get the student profile ID
+		id, err := result.LastInsertId()
+		if err != nil {
+			// If no last insert id (in case of update), get the existing ID
+			getIDQuery := `
+				SELECT student_profile_id FROM student_profiles 
+				WHERE student_record_id = ?
+			`
+			err = tx.QueryRowContext(
+				ctx, getIDQuery,
+				profile.StudentRecordID,
+			).Scan(&studentProfileID)
+			return err
+		}
 
-		return err
+		studentProfileID = int(id)
+		return nil
 	})
 
 	if err != nil {
 		return 0, err
 	}
 
-	return studentRecordID, nil
+	return studentProfileID, nil
 }
 
 // SaveFamilyInfo
@@ -436,7 +659,6 @@ func (r *Repository) SaveGuardiansInfo(
 				return err
 			}
 
-			// 4. Create the link in student_guardians
 			_, err = tx.ExecContext(ctx, linkQuery,
 				studentRecordID,
 				guardianID,
@@ -505,7 +727,7 @@ func (r *Repository) SaveAddressInfo(
 
 		query := `
 			INSERT INTO student_addresses (
-				student_record_id, address_type_id,
+				student_record_id, address_type,
 				region_name, province_name,
 				city_name, barangay_name,
 				street_lot_blk, unit_no,
@@ -514,7 +736,7 @@ func (r *Repository) SaveAddressInfo(
 		`
 		for _, addr := range addresses {
 			_, err = tx.ExecContext(ctx, query,
-				studentRecordID, addr.AddressTypeID,
+				studentRecordID, addr.AddressType,
 				addr.RegionName, addr.ProvinceName,
 				addr.CityName, addr.BarangayName,
 				addr.StreetLotBlk, addr.UnitNo,
@@ -536,18 +758,18 @@ func (r *Repository) SaveHealthRecord(
 	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		query := `
 			INSERT INTO student_health_records (
-				student_record_id, vision_remark_id,
-				hearing_remark_id, mobility_remark_id,
-				speech_remark_id, general_health_remark_id,
+				student_record_id, vision_remark,
+				hearing_remark, mobility_remark,
+				speech_remark, general_health_remark,
 				consulted_professional, consultation_reason,
 				date_started, num_sessions, date_concluded
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE
-				vision_remark_id = VALUES(vision_remark_id),
-				hearing_remark_id = VALUES(hearing_remark_id),
-				mobility_remark_id = VALUES(mobility_remark_id),
-				speech_remark_id = VALUES(speech_remark_id),
-				general_health_remark_id = VALUES(general_health_remark_id),
+				vision_remark = VALUES(vision_remark),
+				hearing_remark = VALUES(hearing_remark),
+				mobility_remark = VALUES(mobility_remark),
+				speech_remark = VALUES(speech_remark),
+				general_health_remark = VALUES(general_health_remark),
 				consulted_professional = VALUES(consulted_professional),
 				consultation_reason = VALUES(consultation_reason),
 				date_started = VALUES(date_started),
@@ -556,9 +778,9 @@ func (r *Repository) SaveHealthRecord(
 		`
 
 		_, err := tx.ExecContext(ctx, query,
-			health.StudentRecordID, health.VisionRemarkID,
-			health.HearingRemarkID, health.MobilityRemarkID,
-			health.SpeechRemarkID, health.GeneralHealthRemarkID,
+			health.StudentRecordID, health.VisionRemark,
+			health.HearingRemark, health.MobilityRemark,
+			health.SpeechRemark, health.GeneralHealthRemark,
 			health.ConsultedProfessional, health.ConsultationReason,
 			health.DateStarted, health.NumberOfSessions,
 			health.DateConcluded,
@@ -566,4 +788,67 @@ func (r *Repository) SaveHealthRecord(
 
 		return err
 	})
+}
+
+// SaveFinanceInfo
+func (r *Repository) SaveFinanceInfo(
+	ctx context.Context, finance *StudentFinance,
+) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
+		query := `
+			INSERT INTO student_finances (
+				student_record_id, is_employed,
+				supports_studies, supports_family,
+				financial_support_type_id, weekly_allowance
+			) VALUES (?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				is_employed = VALUES(is_employed),
+				supports_studies = VALUES(supports_studies),
+				supports_family = VALUES(supports_family),
+				financial_support_type_id = VALUES(financial_support_type_id),
+				weekly_allowance = VALUES(weekly_allowance)
+		`
+
+		_, err := tx.ExecContext(ctx, query,
+			finance.StudentRecordID, finance.IsEmployed,
+			finance.SupportsStudies, finance.SupportsFamily,
+			finance.FinancialSupportTypeID, finance.WeeklyAllowance,
+		)
+
+		return err
+	})
+}
+
+// =====================================
+// |                                   |
+// |        DELETE FUNCTIONS          |
+// |                                   |
+// =====================================
+
+// DeleteEnrollmentReasons
+func (r *Repository) DeleteEnrollmentReasons(
+	ctx context.Context, studentRecordID int,
+) error {
+	query := `DELETE FROM student_selected_reasons WHERE student_record_id = ?`
+
+	_, err := r.db.ExecContext(ctx, query, studentRecordID)
+	if err != nil {
+		return fmt.Errorf("failed to delete enrollment reasons: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteFinance
+func (r *Repository) DeleteFinance(
+	ctx context.Context, studentRecordID int,
+) error {
+	query := `DELETE FROM student_finances WHERE student_record_id = ?`
+
+	_, err := r.db.ExecContext(ctx, query, studentRecordID)
+	if err != nil {
+		return fmt.Errorf("failed to delete finance info: %w", err)
+	}
+
+	return nil
 }

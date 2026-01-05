@@ -25,32 +25,53 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	{
 		// Retrieve Routes
 		sharedAccessGroup.GET(
-			"/profile/base/:userID",
+			"/records",
+			h.HandleListStudents,
+		)
+
+		sharedAccessGroup.GET(
+			"/record/id/:userID",
 			userLookup,
-			h.HandleGetBaseProfile,
+			h.HandleGetStudentRecordID,
+		)
+
+		sharedAccessGroup.GET(
+			"/:userID",
+			userLookup,
+			h.HandleGetStudent,
 		)
 
 		studentRecordGroup := sharedAccessGroup.Group("/")
 		studentRecordGroup.Use(studentRecordLookup)
 		{
 			studentRecordGroup.GET(
-				"/profile/family/:studentRecordID", h.HandleGetFamilyInfo,
+				"/record/enrollment-reasons/:studentRecordID",
+				h.HandleGetStudentEnrollmentReasons,
 			)
 			studentRecordGroup.GET(
-				"/profile/guardians/:studentRecordID", h.HandleGetGuardiansInfo,
+				"/record/base/:studentRecordID", h.HandleGetBaseProfile,
 			)
 			studentRecordGroup.GET(
-				"/profile/guardians/primary/:studentRecordID",
+				"/record/family/:studentRecordID", h.HandleGetFamilyInfo,
+			)
+			studentRecordGroup.GET(
+				"/record/guardians/:studentRecordID", h.HandleGetGuardiansInfo,
+			)
+			studentRecordGroup.GET(
+				"/record/guardians/primary/:studentRecordID",
 				h.HandleGetPrimaryGuardianInfo,
 			)
 			studentRecordGroup.GET(
-				"/profile/education/:studentRecordID", h.HandleGetEducationInfo,
+				"/record/education/:studentRecordID", h.HandleGetEducationInfo,
 			)
 			studentRecordGroup.GET(
-				"/profile/address/:studentRecordID", h.HandleGetAddressInfo,
+				"/record/address/:studentRecordID", h.HandleGetAddressInfo,
 			)
 			studentRecordGroup.GET(
-				"/profile/health/:studentRecordID", h.HandleGetHealthInfo,
+				"/record/health/:studentRecordID", h.HandleGetHealthInfo,
+			)
+			studentRecordGroup.GET(
+				"/record/finance/:studentRecordID", h.HandleGetFinanceInfo,
 			)
 		}
 	}
@@ -62,14 +83,24 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	))
 	{
 		studentOnly.POST(
-			"/onboarding/base/:userID",
+			"/onboarding/:userID",
 			userLookup,
-			h.HandleSaveBaseProfile,
+			h.HandleCreateStudentRecord,
 		)
 
 		studentRecordGroup := studentOnly.Group("/")
 		studentRecordGroup.Use(studentRecordLookup)
 		{
+			studentRecordGroup.PUT(
+				"/onboarding/enrollment-reasons/:studentRecordID",
+				h.HandleSaveEnrollmentReasons,
+			)
+
+			studentRecordGroup.PUT(
+				"/onboarding/base/:studentRecordID",
+				h.HandleSaveBaseProfile,
+			)
+
 			studentRecordGroup.PUT(
 				"/onboarding/family/:studentRecordID",
 				h.HandleSaveFamilyInfo,
@@ -88,6 +119,11 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 			studentRecordGroup.PUT(
 				"/onboarding/health/:studentRecordID",
 				h.HandleSaveHealthInfo,
+			)
+
+			studentRecordGroup.PUT(
+				"/onboarding/finance/:studentRecordID",
+				h.HandleSaveFinanceInfo,
 			)
 		}
 	}
