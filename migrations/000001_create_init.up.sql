@@ -3,19 +3,19 @@ CREATE TABLE roles(
     role_name VARCHAR(50) UNIQUE NOT NULL 
 );
 
-CREATE TABLE educational_levels (
-    educational_level_id INT PRIMARY KEY,
-    level_name VARCHAR(100) UNIQUE NOT NULL -- ex: 'High School', 'Bachelor's Degree', 'Master's Degree'
-);
-
-CREATE TABLE enrollment_reasons (
-    reason_id INT AUTO_INCREMENT PRIMARY KEY,
-    reason_text VARCHAR(100) UNIQUE NOT NULL
-);
-
 CREATE TABLE genders(
     gender_id INT  PRIMARY KEY,
     gender_name VARCHAR(50) UNIQUE NOT NULL 
+);
+
+CREATE TABLE educational_levels(
+    educational_level_id INT PRIMARY KEY,
+    level_name VARCHAR(100) UNIQUE NOT NULL -- ex 'College', 'Vocational'
+);
+
+CREATE TABLE address_types(
+    address_type_id INT PRIMARY KEY,
+    type_name VARCHAR(50) UNIQUE NOT NULL -- ex 'Residential', 'Permanent'
 );
 
 CREATE TABLE civil_status_types (
@@ -69,13 +69,7 @@ CREATE TABLE users(
 
 CREATE TABLE student_records(
     student_record_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
-
-CREATE TABLE student_profiles(
-    student_profile_id INT AUTO_INCREMENT PRIMARY KEY,
-    student_record_id INT UNIQUE NOT NULL,   
+    user_id INT UNIQUE NOT NULL,       
     gender_id INT, 
     civil_status_type_id INT NOT NULL,
     religion_type_id INT NOT NULL,
@@ -92,19 +86,10 @@ CREATE TABLE student_profiles(
     mobile_no VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id) ON DELETE CASCADE,
     FOREIGN KEY (gender_id) REFERENCES genders(gender_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (civil_status_type_id) REFERENCES civil_status_types(civil_status_type_id) ON DELETE CASCADE,
     FOREIGN KEY (religion_type_id) REFERENCES religion_types(religion_type_id) ON DELETE CASCADE
-);
-
-CREATE TABLE student_selected_reasons (
-    student_record_id INT NOT NULL,
-    reason_id INT NOT NULL,
-    other_reason_text VARCHAR(255) DEFAULT NULL, -- To handle the "Others: Please specify" field
-    PRIMARY KEY (student_record_id, reason_id),
-    FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id) ON DELETE CASCADE,
-    FOREIGN KEY (reason_id) REFERENCES enrollment_reasons(reason_id) ON DELETE CASCADE
 );
 
 CREATE TABLE excuse_slips (
@@ -162,7 +147,7 @@ CREATE TABLE family_backgrounds(
 CREATE TABLE student_addresses(
     student_address_id INT AUTO_INCREMENT PRIMARY KEY,
     student_record_id INT NOT NULL, 
-    address_type ENUM('Residential', 'Provincial') NOT NULL,
+    address_type_id INT NOT NULL,   
     region_name VARCHAR(100),
     province_name VARCHAR(100),
     city_name VARCHAR(100),
@@ -172,7 +157,8 @@ CREATE TABLE student_addresses(
     building_name VARCHAR(100),  
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id) ON DELETE CASCADE
+    FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id) ON DELETE CASCADE,
+    FOREIGN KEY (address_type_id) REFERENCES address_types(address_type_id)
 );
 
 CREATE TABLE educational_backgrounds(
@@ -208,7 +194,7 @@ CREATE TABLE appointments (
     scheduled_date DATE NOT NULL,
     scheduled_time TIME NOT NULL,
     concern_category VARCHAR(100), -- ex 'Academic', 'Personal', 'Career'
-    `status` ENUM('Pending', 'Approved', 'Completed', 'Cancelled', 'Rescheduled') DEFAULT 'Pending',
+    status ENUM('Pending', 'Approved', 'Completed', 'Cancelled', 'Rescheduled') DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id) ON DELETE CASCADE,
@@ -243,11 +229,11 @@ CREATE TABLE student_finances (
 CREATE TABLE student_health_records (
     health_id INT NOT NULL AUTO_INCREMENT,
     student_record_id INT UNIQUE NOT NULL,
-    vision_remark ENUM('No Problem', 'Issues'),
-    hearing_remark ENUM('No Problem', 'Issues'),
-    mobility_remark ENUM('No Problem', 'Issues'),
-    speech_remark ENUM('No Problem', 'Issues'),
-    general_health_remark ENUM('No Problem', 'Issues'),
+    vision_remark_id INT NOT NULL,
+    hearing_remark_id INT NOT NULL,
+    mobility_remark_id INT NOT NULL,
+    speech_remark_id INT NOT NULL,
+    general_health_remark_id INT NOT NULL,
     consulted_professional VARCHAR(255),
     consultation_reason TEXT,
     date_started DATE,
@@ -255,16 +241,27 @@ CREATE TABLE student_health_records (
     date_concluded DATE,
     PRIMARY KEY (health_id),
     FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (vision_remark_id) REFERENCES health_remark_types(health_remark_type_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (hearing_remark_id) REFERENCES health_remark_types(health_remark_type_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (mobility_remark_id) REFERENCES health_remark_types(health_remark_type_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (speech_remark_id) REFERENCES health_remark_types(health_remark_type_id)
+        ON DELETE CASCADE,
+    FOREIGN KEY (general_health_remark_id) REFERENCES health_remark_types(health_remark_type_id)
         ON DELETE CASCADE
 );
 
 CREATE TABLE psychological_assessments (
-    assessment_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    assessment_id INT NOT NULL AUTO_INCREMENT,
     student_record_id INT NOT NULL,
     test_date DATE,
     test_name VARCHAR(255),
     raw_score VARCHAR(50), -- (RS)
     remarks TEXT,
+    PRIMARY KEY (assessment_id),
     FOREIGN KEY (student_record_id) REFERENCES student_records(student_record_id)
         ON DELETE CASCADE
 );

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 )
 
 type Service struct {
@@ -20,82 +21,16 @@ func NewService(repo *Repository) *Service {
 // |                                      |
 // ========================================
 
-// ListStudents
-func (s *Service) ListStudents(
-	ctx context.Context, req ListStudentsRequest,
-) (*ListStudentsResponse, error) {
-	students, err := s.repo.ListStudents(
-		ctx,
-		req.GetOffset(),
-		req.PageSize,
-		req.Course,
-		req.YearLevel,
-		req.GenderID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list students: %w", err)
-	}
-
-	// Get total count for pagination (you need to add this method to repository)
-	total, err := s.repo.GetTotalStudentsCount(ctx, req.Course, req.YearLevel, req.GenderID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get total students count: %w", err)
-	}
-
-	totalPages := (total + req.PageSize - 1) / req.PageSize
-	if totalPages == 0 {
-		totalPages = 1
-	}
-
-	return &ListStudentsResponse{
-		Students:   students,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: totalPages,
-	}, nil
-}
-
-// GetStudentRecordByStudentID
-func (s *Service) GetStudentRecordByStudentID(
-	ctx context.Context, userID int,
-) (int, error) {
-	studentRecord, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get student record: %w", err)
-	}
-
-	if studentRecord == nil {
-		return 0, nil
-	}
-
-	return studentRecord.ID, nil
-}
-
-// GetStudentEnrollmentReasons
-func (s *Service) GetStudentEnrollmentReasons(
-	ctx context.Context, studentRecordID int,
-) ([]StudentSelectedReason, error) {
-	reasons, err := s.repo.GetStudentEnrollmentReasons(ctx, studentRecordID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student enrollment reasons: %w", err)
-	}
-
-	return reasons, nil
-}
-
-// GetBaseProfile - Combines StudentRecord and StudentProfile
+// GetBaseProfile
 func (s *Service) GetBaseProfile(
-	ctx context.Context, studentRecordID int,
-) (*StudentProfile, error) {
-	studentProfile, err := s.repo.GetStudentProfileByStudentRecordID(
-		ctx, studentRecordID,
-	)
+	ctx context.Context, userID int,
+) (*StudentRecord, error) {
+	studentRecordInfo, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get student profile: %w", err)
+		return nil, fmt.Errorf("failed to get student record: %w", err)
 	}
 
-	return studentProfile, nil
+	return studentRecordInfo, nil
 }
 
 // GetFamilyInfo
@@ -113,7 +48,7 @@ func (s *Service) GetFamilyInfo(
 // GetGuardiansInfo
 func (s *Service) GetGuardiansInfo(
 	ctx context.Context, studentRecordID int,
-) ([]GuardianInfoView, error) {
+) ([]Guardian, error) {
 	guardianInfo, err := s.repo.GetGuardians(ctx, studentRecordID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get guardian info: %w", err)
@@ -172,105 +107,32 @@ func (s *Service) GetHealthInfo(
 	return healthInfo, nil
 }
 
-// GetFinanceInfo
-func (s *Service) GetFinanceInfo(
-	ctx context.Context, studentRecordID int,
-) (*StudentFinance, error) {
-	finance, err := s.repo.GetFinance(ctx, studentRecordID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get finance info: %w", err)
-	}
-
-	return finance, nil
-}
-
 // ========================================
 // |                                      |
 // |       SAVE SERVICE FUNCTIONS         |
 // |                                      |
 // ========================================
 
-func (s *Service) CreateStudentRecord(
-	ctx context.Context, userID int,
-) (int, error) {
-	// Check if student record already exists
-	existingRecord, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to check existing student record: %w", err)
-	}
-
-	if existingRecord != nil {
-		return existingRecord.ID, nil
-	}
-
-	// Create a new student record
-	studentRecordID, err := s.repo.CreateStudentRecord(ctx, userID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create student record: %w", err)
-	}
-
-	return studentRecordID, nil
-}
-
-// SaveEnrollmentReasons
-func (s *Service) SaveEnrollmentReasons(
-	ctx context.Context, studentRecordID int, req UpdateEnrollmentReasonsRequest,
-) error {
-	// Delete existing enrollment reasons for this student
-	if err := s.repo.DeleteEnrollmentReasons(ctx, studentRecordID); err != nil {
-		return fmt.Errorf("failed to delete existing enrollment reasons: %w", err)
-	}
-
-	// Insert new enrollment reasons
-	if len(req.EnrollmentReasonIDs) > 0 {
-		for _, reasonID := range req.EnrollmentReasonIDs {
-			var otherReasonText sql.NullString
-			if reasonID == 11 && req.OtherReasonText != "" {
-				otherReasonText = sql.NullString{
-					String: req.OtherReasonText, Valid: true,
-				}
-			}
-
-			if err := s.repo.SaveEnrollmentReason(
-				ctx, studentRecordID, reasonID, otherReasonText,
-			); err != nil {
-				return fmt.Errorf("failed to save enrollment reason: %w", err)
-			}
-		}
-	}
-
-	return nil
-}
-
+// SaveBaseProfile
 func (s *Service) SaveBaseProfile(
-	ctx context.Context, studentRecordID int, req CreateStudentRecordRequest,
-) error {
-	// Create student profile
-	profile := &StudentProfile{
-		StudentRecordID:     studentRecordID,
+	ctx context.Context, userID int, req CreateStudentRecordRequest,
+) (int, error) {
+	record := &StudentRecord{
+		UserID:              userID,
 		GenderID:            req.GenderID,
 		CivilStatusTypeID:   req.CivilStatusTypeID,
 		ReligionTypeID:      req.ReligionTypeID,
-		HeightCm:            &req.HeightCm,
-		WeightKg:            &req.WeightKg,
+		HeightCm:            sql.NullFloat64{Float64: req.HeightCm, Valid: true},
+		WeightKg:            sql.NullFloat64{Float64: req.WeightKg, Valid: true},
 		StudentNumber:       req.StudentNumber,
 		Course:              req.Course,
 		YearLevel:           req.YearLevel,
-		Section:             &req.Section,
+		Section:             sql.NullString{String: req.Section, Valid: req.Section != ""},
 		GoodMoralStatus:     req.GoodMoralStatus,
 		HasDerogatoryRecord: req.HasDerogatoryRecord,
-		PlaceOfBirth:        &req.PlaceOfBirth,
-		BirthDate:           &req.BirthDate,
-		MobileNo:            &req.MobileNo,
 	}
 
-	// Save the profile
-	_, err := s.repo.SaveStudentProfile(ctx, profile)
-	if err != nil {
-		return fmt.Errorf("failed to save student profile: %w", err)
-	}
-
-	return nil
+	return s.repo.SaveBaseProfileInfo(ctx, record)
 }
 
 // SaveFamilyInfo
@@ -281,10 +143,10 @@ func (s *Service) SaveFamilyInfo(
 	family := &FamilyBackground{
 		StudentRecordID:       studentRecordID,
 		ParentalStatusID:      req.ParentalStatusID,
-		ParentalStatusDetails: &req.ParentalStatusDetails,
-		SiblingsBrothers:      *req.SiblingsBrothers,
-		SiblingSisters:        *req.SiblingSisters,
-		MonthlyFamilyIncome:   &req.MonthlyFamilyIncome,
+		ParentalStatusDetails: sql.NullString{String: req.ParentalStatusDetails, Valid: req.ParentalStatusDetails != ""},
+		SiblingsBrothers:      req.SiblingsBrothers,
+		SiblingSisters:        req.SiblingSisters,
+		MonthlyFamilyIncome:   sql.NullFloat64{Float64: req.MonthlyFamilyIncome, Valid: true},
 	}
 
 	if err := s.repo.SaveFamilyInfo(ctx, family); err != nil {
@@ -310,16 +172,34 @@ func (s *Service) SaveFamilyInfo(
 func (s *Service) convertGuardianDTOToModel(
 	dto GuardianDTO, relationshipTypeID int, isPrimaryContact bool,
 ) (Guardian, StudentGuardian) {
+	// Parse birth date
+	var birthDate sql.NullTime
+	if dto.BirthDate != "" {
+		// "2006-01-02" is the reference layout for parsing dates
+		t, err := time.Parse("2006-01-02", dto.BirthDate)
+		if err == nil {
+			birthDate = sql.NullTime{Time: t, Valid: true}
+		}
+	}
+
+	// Create contact number
+	var contactNumber sql.NullString
+	if dto.ContactNumber != "" {
+		contactNumber = sql.NullString{String: dto.ContactNumber, Valid: true}
+	}
+
 	guardian := Guardian{
 		EducationalLevelID: dto.EducationalLevelID,
-		BirthDate:          &dto.BirthDate,
+		BirthDate:          birthDate,
 		LastName:           dto.LastName,
 		FirstName:          dto.FirstName,
-		MiddleName:         &dto.MiddleName,
-		Occupation:         &dto.Occupation,
-		MaidenName:         &dto.MaidenName,
-		CompanyName:        &dto.CompanyName,
-		ContactNumber:      &dto.ContactNumber,
+		MiddleName:         sql.NullString{String: dto.MiddleName, Valid: dto.MiddleName != ""},
+		Occupation:         sql.NullString{String: dto.Occupation, Valid: dto.Occupation != ""},
+		MaidenName:         sql.NullString{String: dto.MaidenName, Valid: dto.MaidenName != ""},
+		CompanyName:        sql.NullString{String: dto.CompanyName, Valid: dto.CompanyName != ""},
+		ContactNumber:      contactNumber,
+		RelationshipTypeID: relationshipTypeID,
+		IsPrimaryContact:   isPrimaryContact,
 	}
 
 	link := StudentGuardian{
@@ -342,10 +222,10 @@ func (s *Service) SaveEducationInfo(
 			StudentRecordID:    studentRecordID,
 			EducationalLevelID: e.EducationalLevelID,
 			SchoolName:         e.SchoolName,
-			Location:           &e.Location,
+			Location:           sql.NullString{String: e.Location, Valid: e.Location != ""},
 			SchoolType:         e.SchoolType,
 			YearCompleted:      e.YearCompleted,
-			Awards:             &e.Awards,
+			Awards:             sql.NullString{String: e.Awards, Valid: e.Awards != ""},
 		})
 	}
 
@@ -360,91 +240,73 @@ func (s *Service) SaveAddressInfo(
 	for _, a := range req.Addresses {
 		addresses = append(addresses, StudentAddress{
 			StudentRecordID: studentRecordID,
-			AddressType:     getAddressTypeFromID(a.AddressTypeID), // Convert ID to enum value
-			RegionName:      &a.RegionName,
-			ProvinceName:    &a.ProvinceName,
-			CityName:        &a.CityName,
-			BarangayName:    &a.BarangayName,
-			StreetLotBlk:    &a.StreetLotBlk,
-			UnitNo:          &a.UnitNo,
-			BuildingName:    &a.BuildingName,
+			AddressTypeID:   a.AddressTypeID,
+			RegionName:      sql.NullString{String: a.RegionName, Valid: a.RegionName != ""},
+			ProvinceName:    sql.NullString{String: a.ProvinceName, Valid: a.ProvinceName != ""},
+			CityName:        sql.NullString{String: a.CityName, Valid: a.CityName != ""},
+			BarangayName:    sql.NullString{String: a.BarangayName, Valid: a.BarangayName != ""},
+			StreetLotBlk:    sql.NullString{String: a.StreetLotBlk, Valid: a.StreetLotBlk != ""},
+			UnitNo:          sql.NullString{String: a.UnitNo, Valid: a.UnitNo != ""},
+			BuildingName:    sql.NullString{String: a.BuildingName, Valid: a.BuildingName != ""},
 		})
 	}
 
 	return s.repo.SaveAddressInfo(ctx, studentRecordID, addresses)
 }
 
-// Helper function to convert address type ID to enum value
-func getAddressTypeFromID(id int) string {
-	switch id {
-	case 1:
-		return "Residential"
-	case 2:
-		return "Provincial"
-	default:
-		return "Residential"
-	}
-}
-
 func (s *Service) SaveHealthRecord(
 	ctx context.Context, studentRecordID int, req UpdateHealthRecordRequest,
 ) error {
-	// Convert IDs to enum values
-	visionRemark := getHealthRemarkFromID(req.VisionRemarkID)
-	hearingRemark := getHealthRemarkFromID(req.HearingRemarkID)
-	mobilityRemark := getHealthRemarkFromID(req.MobilityRemarkID)
-	speechRemark := getHealthRemarkFromID(req.SpeechRemarkID)
-	generalHealthRemark := getHealthRemarkFromID(req.GeneralHealthRemarkID)
-
 	healthRecord := &StudentHealthRecord{
 		StudentRecordID:       studentRecordID,
-		VisionRemark:          visionRemark,
-		HearingRemark:         hearingRemark,
-		MobilityRemark:        mobilityRemark,
-		SpeechRemark:          speechRemark,
-		GeneralHealthRemark:   generalHealthRemark,
-		ConsultedProfessional: req.ConsultedProfessional,
-		ConsultationReason:    req.ConsultationReason,
-		DateStarted:           req.DateStarted,
-		NumberOfSessions:      req.NumberOfSessions,
-		DateConcluded:         req.DateConcluded,
+		VisionRemarkID:        req.VisionRemarkID,
+		HearingRemarkID:       req.HearingRemarkID,
+		MobilityRemarkID:      req.MobilityRemarkID,
+		SpeechRemarkID:        req.SpeechRemarkID,
+		GeneralHealthRemarkID: req.GeneralHealthRemarkID,
+		ConsultedProfessional: sql.NullString{String: "", Valid: false},
+		ConsultationReason:    sql.NullString{String: "", Valid: false},
+		DateStarted:           sql.NullString{String: "", Valid: false},
+		NumberOfSessions:      sql.NullInt64{Int64: 0, Valid: false},
+		DateConcluded:         sql.NullString{String: "", Valid: false},
+	}
+
+	if req.ConsultedProfessional != nil {
+		healthRecord.ConsultedProfessional = sql.NullString{
+			String: *req.ConsultedProfessional,
+			Valid:  true,
+		}
+	}
+
+	if req.ConsultationReason != nil {
+		healthRecord.ConsultationReason = sql.NullString{
+			String: *req.ConsultationReason,
+			Valid:  true,
+		}
+	}
+
+	if req.DateStarted != nil {
+		healthRecord.DateStarted = sql.NullString{
+			String: *req.DateStarted,
+			Valid:  true,
+		}
+	}
+
+	if req.NumberOfSessions != nil {
+		healthRecord.NumberOfSessions = sql.NullInt64{
+			Int64: int64(*req.NumberOfSessions),
+			Valid: true,
+		}
+	}
+
+	if req.DateConcluded != nil {
+		healthRecord.DateConcluded = sql.NullString{
+			String: *req.DateConcluded,
+			Valid:  true,
+		}
 	}
 
 	return s.repo.SaveHealthRecord(ctx, healthRecord)
-}
-
-// Helper function to convert health remark ID to enum value
-func getHealthRemarkFromID(id int) string {
-	switch id {
-	case 1:
-		return "No Problem"
-	case 2:
-		return "Issues"
-	default:
-		return "No Problem"
-	}
-}
-
-func (s *Service) SaveFinanceInfo(
-	ctx context.Context, studentRecordID int, req UpdateFinanceRequest,
-) error {
-	// Create finance record
-	finance := &StudentFinance{
-		StudentRecordID:        studentRecordID,
-		IsEmployed:             &req.IsEmployed,
-		SupportsStudies:        &req.SupportsStudies,
-		SupportsFamily:         &req.SupportsFamily,
-		FinancialSupportTypeID: req.FinancialSupportTypeID,
-		WeeklyAllowance:        &req.WeeklyAllowance,
-	}
-
-	// Save the finance info
-	err := s.repo.SaveFinanceInfo(ctx, finance)
-	if err != nil {
-		return fmt.Errorf("failed to save finance info: %w", err)
-	}
-
-	return nil
 }
 
 // =====================================

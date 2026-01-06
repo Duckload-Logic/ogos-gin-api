@@ -1,4 +1,14 @@
 -- ======================================================
+-- DUMMY DATA SEEDER FOR GUIDANCE SYSTEM
+-- ======================================================
+-- This seeder creates:
+-- 1. 1 Guidance Counselor
+-- 2. 1 Frontdesk Staff
+-- 3. 1 Student with complete PDS filled up
+-- 4. 1 Student with fresh user creation (no PDS filled up)
+-- ======================================================
+
+-- ======================================================
 -- 1. CREATE GUIDANCE COUNSELOR
 -- ======================================================
 INSERT INTO users (
@@ -9,7 +19,7 @@ INSERT INTO users (
     'Liwanag',
     NULL,
     'Maliksi',
-    'counselor@university.edu',
+    'liwanag.maliksi@university.edu',
     '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
@@ -37,7 +47,7 @@ INSERT INTO users (
     'Anna',
     'Marie',
     'Cruz',
-    'frontdesk@university.edu',
+    'anna.cruz@university.edu',
     '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
@@ -56,30 +66,22 @@ INSERT INTO users (
     'Juan',
     'Santos',
     'Dela Cruz',
-    'student1@university.edu',
+    'juan.delacruz@university.edu',
     '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
 
 SET @complete_student_user_id = LAST_INSERT_ID();
 
--- Create student record (basic record only)
+-- Create student record
 INSERT INTO student_records (
-    user_id
+    user_id, civil_status_type_id, religion_type_id, 
+    height_cm, weight_kg, student_number, 
+    course, year_level, section, 
+    good_moral_status, has_derogatory_record,
+    gender_id, place_of_birth, birth_date, mobile_no
 ) VALUES (
-    @complete_student_user_id
-);
-
-SET @complete_student_record_id = LAST_INSERT_ID();
-
--- Create student profile with all personal details
-INSERT INTO student_profiles (
-    student_record_id, gender_id, civil_status_type_id, religion_type_id,
-    height_cm, weight_kg, student_number, course, year_level, section,
-    good_moral_status, has_derogatory_record, place_of_birth, birth_date, mobile_no
-) VALUES (
-    @complete_student_record_id,
-    (SELECT gender_id FROM genders WHERE gender_name = 'Male'),
+    @complete_student_user_id,
     (SELECT civil_status_type_id FROM civil_status_types WHERE status_name = 'Single'),
     (SELECT religion_type_id FROM religion_types WHERE religion_name = 'Roman Catholicism'),
     175.5, -- height_cm
@@ -90,10 +92,13 @@ INSERT INTO student_profiles (
     'CS-3A',
     TRUE,  -- good_moral_status
     FALSE,  -- has_derogatory_record
+    (SELECT gender_id FROM genders WHERE gender_name = 'Male'),
     'Manila',
     '2000-05-15',
     '09171234567'
 );
+
+SET @complete_student_record_id = LAST_INSERT_ID();
 
 -- ======================================================
 -- CREATE GUARDIANS FOR COMPLETE STUDENT
@@ -210,12 +215,12 @@ INSERT INTO educational_backgrounds (
 -- ======================================================
 -- Provincial Address
 INSERT INTO student_addresses (
-    student_record_id, address_type, region_name,
+    student_record_id, address_type_id, region_name,
     province_name, city_name, barangay_name,
     street_lot_blk, unit_no, building_name
 ) VALUES (
     @complete_student_record_id,
-    'Provincial',
+    (SELECT address_type_id FROM address_types WHERE type_name = 'Provincial'),
     'Region IV-A',
     'Laguna',
     'Calamba',
@@ -227,12 +232,12 @@ INSERT INTO student_addresses (
 
 -- Residential Address
 INSERT INTO student_addresses (
-    student_record_id, address_type, region_name,
+    student_record_id, address_type_id, region_name,
     province_name, city_name, barangay_name,
     street_lot_blk, unit_no, building_name
 ) VALUES (
     @complete_student_record_id,
-    'Residential',
+    (SELECT address_type_id FROM address_types WHERE type_name = 'Residential'),
     'NCR',
     'Metro Manila',
     'Quezon City',
@@ -261,17 +266,17 @@ INSERT INTO student_finances (
 -- CREATE HEALTH RECORD FOR COMPLETE STUDENT
 -- ======================================================
 INSERT INTO student_health_records (
-    student_record_id, vision_remark, hearing_remark,
-    mobility_remark, speech_remark, general_health_remark,
+    student_record_id, vision_remark_id, hearing_remark_id,
+    mobility_remark_id, speech_remark_id, general_health_remark_id,
     consulted_professional, consultation_reason, date_started,
     num_sessions, date_concluded
 ) VALUES (
     @complete_student_record_id,
-    'No Problem',
-    'No Problem',
-    'No Problem',
-    'No Problem',
-    'No Problem',
+    (SELECT health_remark_type_id FROM health_remark_types WHERE remark_name = 'No problem'),
+    (SELECT health_remark_type_id FROM health_remark_types WHERE remark_name = 'No problem'),
+    (SELECT health_remark_type_id FROM health_remark_types WHERE remark_name = 'No problem'),
+    (SELECT health_remark_type_id FROM health_remark_types WHERE remark_name = 'No problem'),
+    (SELECT health_remark_type_id FROM health_remark_types WHERE remark_name = 'No problem'),
     'Dr. Maria Santos',
     'Annual check-up',
     '2024-01-15',
@@ -293,7 +298,7 @@ INSERT INTO psychological_assessments (
 );
 
 -- ======================================================
--- CREATE APPOINTMENT FOR COMPLETE STUDENT
+-- CREATE APPOINTMENT FOR COMPLETE STUDENT (Optional)
 -- ======================================================
 INSERT INTO appointments (
     student_record_id, counselor_user_id, appointment_type_id,
@@ -330,45 +335,9 @@ INSERT INTO users (
     'Maria',
     'Clara',
     'Santos',
-    'student2@university.edu',
+    'maria.santos@university.edu',
     '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
     TRUE
 );
 
-SET @fresh_student_user_id = LAST_INSERT_ID();
-
--- Create only the basic student record (no profile or PDS data)
-INSERT INTO student_records (
-    user_id
-) VALUES (
-    @fresh_student_user_id
-);
-
--- ======================================================
--- ADD SOME ENROLLMENT REASONS FOR TESTING
--- ======================================================
-INSERT IGNORE INTO enrollment_reasons (reason_text) VALUES
-('Career Advancement'),
-('Personal Development'),
-('Better Job Opportunities'),
-('Family Expectation'),
-('Others');
-
--- Optionally, you can link some reasons to the complete student
-INSERT INTO student_selected_reasons (student_record_id, reason_id)
-SELECT @complete_student_record_id, reason_id 
-FROM enrollment_reasons 
-WHERE reason_text IN ('Career Advancement', 'Better Job Opportunities');
-
--- ======================================================
--- CREATE AN EXCUSE SLIP FOR TESTING
--- ======================================================
-INSERT INTO excuse_slips (
-    student_record_id, reason, date_of_absence, file_path, excuse_slip_status
-) VALUES (
-    @complete_student_record_id,
-    'Medical appointment with doctor',
-    '2024-03-15',
-    '/uploads/excuse_slips/slip_2024001.pdf',
-    'Approved'
-);
+-- Note: This student only has a user account, no student_record or PDS data
