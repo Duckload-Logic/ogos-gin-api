@@ -17,7 +17,7 @@ func NewTokenService() *TokenService {
 }
 
 func (s *TokenService) GenerateToken(
-	userID, roleID int, expireMinutes int,
+	userID, roleID int, roleName string, expireMinutes int,
 ) (string, error) {
 	// Create the JWT claims
 	claims := &middleware.Claims{

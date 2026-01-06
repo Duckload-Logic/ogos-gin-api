@@ -14,10 +14,6 @@ func NewService(repo *Repository) *Service {
     return &Service{repo: repo}
 }
 
-// ==========================================
-//              CREATE
-// ==========================================
-
 func (s *Service) CreateAppointment(ctx context.Context, req CreateAppointmentRequest) (*Appointment, error) {
     // Parse string date to time.Time
     parsedTime, err := time.Parse("2006-01-02 15:04:05", req.ScheduledAt)

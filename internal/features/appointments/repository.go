@@ -58,11 +58,11 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 func (r *Repository) GetByID(ctx context.Context, id int) (*Appointment, error) {
     query := `
         SELECT 
-            id, student_record_id, counselor_user_id, appointment_type_id, 
+            appointment_id, student_record_id, counselor_user_id, appointment_type_id, 
             scheduled_date, scheduled_time, concern_category, 
             status, created_at, updated_at
         FROM appointments
-        WHERE id = ?
+        WHERE appointment_id = ?
     `
 
     var appt Appointment
@@ -199,11 +199,13 @@ func (r *Repository) GetByStudentID(ctx context.Context, studentID int) ([]Appoi
 }
 
 func (r *Repository) UpdateStatus(ctx context.Context, id int, status string) error {
-    query := `UPDATE appointments SET status = ?, updated_at = NOW() WHERE appointment_id = ?`
+    query := `UPDATE appointments SET status = ? WHERE appointment_id = ?`
+    
     result, err := r.db.ExecContext(ctx, query, status, id)
     if err != nil {
         return err
     }
+    
     rows, err := result.RowsAffected()
     if err != nil {
         return err

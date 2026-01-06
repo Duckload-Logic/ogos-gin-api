@@ -8,16 +8,34 @@ import (
 
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
     appointmentRoutes := rg.Group("/appointments")
-    appointmentRoutes.PATCH("/:id/status", h.HandleUpdateStatus)
-    appointmentRoutes.Use(middleware.RoleMiddleware(
+    
+    appointmentRoutes.Use(middleware.AuthMiddleware())
+
+    appointmentRoutes.POST("", middleware.RoleMiddleware(
         int(constants.StudentRoleID),
+        int(constants.FrontDeskRoleID), 
+    ), h.Create)
+
+    appointmentRoutes.GET("", middleware.RoleMiddleware(
+        int(constants.StudentRoleID), 
+        int(constants.CounselorRoleID), 
+        int(constants.FrontDeskRoleID),
+    ), h.HandleListAppointments)
+
+    appointmentRoutes.GET("/:id", middleware.RoleMiddleware(
+        int(constants.StudentRoleID), 
+        int(constants.CounselorRoleID), 
+        int(constants.FrontDeskRoleID),
+    ), h.HandleGetAppointment)
+
+    appointmentRoutes.GET("/student/:studentID", middleware.RoleMiddleware(
+        int(constants.StudentRoleID), 
+        int(constants.CounselorRoleID), 
+        int(constants.FrontDeskRoleID),
+    ), h.HandleGetStudentAppointments)
+
+    appointmentRoutes.PATCH("/:id/status", middleware.RoleMiddleware(
         int(constants.CounselorRoleID),
         int(constants.FrontDeskRoleID),
-    ))
-    {
-        appointmentRoutes.POST("", h.Create)
-        appointmentRoutes.GET("", h.HandleListAppointments)
-        appointmentRoutes.GET("/:id", h.HandleGetAppointment)
-        appointmentRoutes.GET("/student/:studentID", h.HandleGetStudentAppointments)
-    }
+    ), h.HandleUpdateStatus)
 }

@@ -36,13 +36,14 @@ func (s *Service) AuthenticateUser(
 		return "", "", errors.New("invalid credentials")
 	}
 
-	// Generate the token
-	token, err := s.tokenService.GenerateToken(user.ID, user.RoleID, 30)
+	// Generate the token 
+	token, err := s.tokenService.GenerateToken(user.ID, user.RoleID, "access", 30)
 	if err != nil {
 		return "", "", errors.New("failed to generate session")
 	}
 
-	refreshToken, err := s.tokenService.GenerateToken(user.ID, user.RoleID, 1440)
+	// Generate refresh token 
+	refreshToken, err := s.tokenService.GenerateToken(user.ID, user.RoleID, "refresh", 1440)
 	if err != nil {
 		return "", "", errors.New("failed to generate refresh token")
 	}
@@ -56,18 +57,20 @@ func (s *Service) RefreshToken(
 	claims, err := s.tokenService.ValidateToken(refreshToken)
 
 	if err != nil {
-		return "", "", errors.New("Invalid  refresh token")
+		return "", "", errors.New("Invalid refresh token")
 	}
 
 	userID := claims.UserID
 	roleID := claims.RoleID
 
-	newToken, err := s.tokenService.GenerateToken(userID, roleID, 30)
+	// Generate new token 
+	newToken, err := s.tokenService.GenerateToken(userID, roleID, "access", 30)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new token")
 	}
 
-	newRefreshToken, err := s.tokenService.GenerateToken(userID, roleID, 1440)
+	// Generate new refresh token
+	newRefreshToken, err := s.tokenService.GenerateToken(userID, roleID, "refresh", 1440)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new refresh token")
 	}
