@@ -1,20 +1,16 @@
 package appointments
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
-    "database/sql"
 
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	service *Service
-}
-
-type UpdateStatusRequest struct {
-    Status string `json:"status" binding:"required"`
 }
 
 func NewHandler(service *Service) *Handler {
@@ -33,24 +29,30 @@ func NewHandler(service *Service) *Handler {
 // @Failure      500     {object}  map[string]string          "Internal Server Error"
 // @Router       /appointments [post]
 func (h *Handler) Create(c *gin.Context) {
-    var req CreateAppointmentRequest
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	var req CreateAppointmentRequest
 
-    appt, err := h.service.CreateAppointment(c.Request.Context(), req)
-    if err != nil {
-        fmt.Println("Error creating an appointment:", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create an appointment"})
-        return
-    }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    c.JSON(http.StatusCreated, gin.H{
-        "message": "Appointment created successfully",
-        "data":    appt,
-    })
+	appt, err := h.service.CreateAppointment(c.Request.Context(), userID.(int), req)
+	if err != nil {
+		fmt.Println("Error creating an appointment:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create an appointment"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Appointment created successfully",
+		"data":    appt,
+	})
 }
 
 // ========================================
@@ -72,27 +74,27 @@ func (h *Handler) Create(c *gin.Context) {
 // @Failure      500  {object}  map[string]string "Internal Server Error"
 // @Router       /appointments/{id} [get]
 func (h *Handler) HandleGetAppointment(c *gin.Context) {
-    id, err := strconv.Atoi(c.Param("id"))
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid appointment ID"})
-        return
-    }
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid appointment ID"})
+		return
+	}
 
-    appt, err := h.service.GetAppointmentByID(c.Request.Context(), id)
-    if err != nil {
-        // FIX: Check specifically for "no rows" and return 404
-        if err == sql.ErrNoRows {
-            c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
-            return
-        }
-        
-        // Print the real error to the console for debugging
-        fmt.Println("Error retrieving appointment:", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve appointment"})
-        return
-    }
+	appt, err := h.service.GetAppointmentByID(c.Request.Context(), id)
+	if err != nil {
+		// FIX: Check specifically for "no rows" and return 404
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
+			return
+		}
 
-    c.JSON(http.StatusOK, appt)
+		// Print the real error to the console for debugging
+		fmt.Println("Error retrieving appointment:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve appointment"})
+		return
+	}
+
+	c.JSON(http.StatusOK, appt)
 }
 
 // HandleListAppointments godoc
@@ -107,75 +109,101 @@ func (h *Handler) HandleGetAppointment(c *gin.Context) {
 // @Failure      500     {object}  map[string]string "Internal Server Error"
 // @Router       /appointments [get]
 func (h *Handler) HandleListAppointments(c *gin.Context) {
-    // Basic query params binding (optional)
-    status := c.Query("status")
-    date := c.Query("date")
+	// Basic query params binding (optional)
+	status := c.Query("status")
+	date := c.Query("date")
 
-    // Assuming your service has a List method that accepts simple filters
-    appts, err := h.service.ListAppointments(c.Request.Context(), status, date)
-    if err != nil {
-        fmt.Println("Error listing appointments:", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list appointments"})
-        return
-    }
+	// Assuming your service has a List method that accepts simple filters
+	appts, err := h.service.ListAppointments(c.Request.Context(), status, date)
+	if err != nil {
+		fmt.Println("Error listing appointments:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list appointments"})
+		return
+	}
 
-    c.JSON(http.StatusOK, appts)
+	c.JSON(http.StatusOK, appts)
 }
 
-// HandleGetStudentAppointments godoc
-// @Summary      Get Student's Appointments
-// @Description  Retrieves all appointments for a specific student ID.
-// @Tags         Appointments
-// @Accept       json
-// @Produce      json
-// @Param        studentID  path      int  true  "Student ID"
-// @Success      200        {array}   Appointment
-// @Failure      400        {object}  map[string]string "Invalid Student ID"
-// @Failure      500        {object}  map[string]string "Internal Server Error"
-// @Router       /appointments/student/{studentID} [get]
-func (h *Handler) HandleGetStudentAppointments(c *gin.Context) {
-    studentID, err := strconv.Atoi(c.Param("studentID"))
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid student ID"})
-        return
-    }
+func (h *Handler) HandleGetAvailableTimeSlots(c *gin.Context) {
+	date := c.Query("date")
+	slots, err := h.service.GetAvailableTimeSlots(c.Request.Context(), date)
+	fmt.Println(slots)
+	if err != nil {
+		fmt.Println("Error retrieving available time slots:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve available time slots"})
+		return
+	}
 
-    appts, err := h.service.GetAppointmentsByStudentID(c.Request.Context(), studentID)
-    if err != nil {
-        fmt.Println("Error retrieving student appointments:", err)
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve student appointments"})
-        return
-    }
+	c.JSON(http.StatusOK, slots)
+}
 
-    c.JSON(http.StatusOK, appts)
+// GetAppointments gets all appointments for the current user
+func (h *Handler) GetAppointments(c *gin.Context) {
+	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	appointments, err := h.service.GetAppointmentsByUserID(c.Request.Context(), userID.(int))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch appointments"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": appointments})
+}
+
+// GetAppointmentByID gets a specific appointment
+func (h *Handler) GetAppointmentByID(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid appointment ID"})
+		return
+	}
+
+	// userID, exists := c.Get("userID")
+	// if !exists {
+	// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+	// 	return
+	// }
+
+	appointment, err := h.service.GetAppointmentByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Appointment not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": appointment})
 }
 
 func (h *Handler) HandleUpdateStatus(c *gin.Context) {
-    // 1. Validate the ID first (don't ignore the error with _)
-    id, err := strconv.Atoi(c.Param("id"))
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid appointment ID"})
-        return
-    }
+	// 1. Validate the ID first (don't ignore the error with _)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid appointment ID"})
+		return
+	}
 
-    // 2. Bind the JSON body
-    var req UpdateStatusRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-        return
-    }
+	// 2. Bind the JSON body
+	var req UpdateStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    // 3. Call the service and handle the specific "No Rows" error
-    if err := h.service.UpdateAppointmentStatus(c.Request.Context(), id, req.Status); err != nil {
-        if err == sql.ErrNoRows {
-            // This is the fix: Return 404 instead of 500
-            c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
-            return
-        }
-        // Return 500 for actual server crashes
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
+	// 3. Call the service and handle the specific "No Rows" error
+	if err := h.service.UpdateAppointmentStatus(c.Request.Context(), id, req.Status); err != nil {
+		if err == sql.ErrNoRows {
+			// This is the fix: Return 404 instead of 500
+			c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
+			return
+		}
+		// Return 500 for actual server crashes
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{"message": "Appointment status updated."})
+	c.JSON(http.StatusOK, gin.H{"message": "Appointment status updated."})
 }

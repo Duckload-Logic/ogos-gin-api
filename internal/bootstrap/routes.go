@@ -25,13 +25,14 @@ func SetupRoutes(db *sql.DB, handlers *Handlers) *gin.Engine {
 	corsConfig.AllowOrigins = []string{
 		"http://localhost:8080",
 		"http://127.0.0.1:8080",
+		"http://localhost:5173", // Address for Vite dev server
 	}
 	corsConfig.AllowCredentials = true
 	corsConfig.AddAllowHeaders("Authorization")
 
-	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
 	g.Use(cors.New(corsConfig))
+
+	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	apiV1Routes := g.Group("/api/v1")
 

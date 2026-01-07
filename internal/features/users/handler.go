@@ -22,6 +22,47 @@ func NewHandler(service *Service) *Handler {
 // |                                      |
 // ========================================
 
+// HandleGetCurrentUser godoc
+// @Summary      Get current user
+// @Description  Retrieves information about the currently authenticated user.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Success      200      {object}  GetUserResponse        "Returns current user details"
+// @Failure      500      {object}  map[string]string     "Failed to get current user"
+// @Router       /users/me [get]
+func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": "Failed to get current user"},
+		)
+		return
+	}
+
+	userID, ok := userIDInterface.(int)
+	if !ok {
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": "Failed to get current user"},
+		)
+		return
+	}
+
+	resp, err := h.service.GetUserByID(c.Request.Context(), userID)
+	if err != nil {
+		fmt.Println("Error getting current user:", err)
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": "Failed to get current user"},
+		)
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 // HandleGetUserByID godoc
 // @Summary      Get user by ID
 // @Description  Retrieves user information based on the provided user ID.

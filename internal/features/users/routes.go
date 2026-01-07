@@ -16,6 +16,7 @@ func RegisterRoutes(db *sql.DB, rg *gin.RouterGroup, h *Handler) {
 		int(constants.FrontDeskRoleID),
 		int(constants.StudentRoleID),
 	))
+	userRoutes.GET("/me", h.HandleGetCurrentUser)
 	userRoutes.Use(middleware.OwnershipMiddleware(db, "userID"))
 	{
 		userRoutes.GET("/id/:userID", h.HandleGetUserByID)

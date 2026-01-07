@@ -1,41 +1,46 @@
 package appointments
 
 import (
-    "github.com/gin-gonic/gin"
-    "github.com/olazo-johnalbert/duckload-api/internal/core/constants"
-    "github.com/olazo-johnalbert/duckload-api/internal/middleware"
+	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
-    appointmentRoutes := rg.Group("/appointments")
-    
-    appointmentRoutes.Use(middleware.AuthMiddleware())
+	appointmentRoutes := rg.Group("/appointments")
 
-    appointmentRoutes.POST("", middleware.RoleMiddleware(
-        int(constants.StudentRoleID),
-        int(constants.FrontDeskRoleID), 
-    ), h.Create)
+	appointmentRoutes.Use(middleware.AuthMiddleware())
 
-    appointmentRoutes.GET("", middleware.RoleMiddleware(
-        int(constants.StudentRoleID), 
-        int(constants.CounselorRoleID), 
-        int(constants.FrontDeskRoleID),
-    ), h.HandleListAppointments)
+	appointmentRoutes.POST("", middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+		int(constants.FrontDeskRoleID),
+	), h.Create)
 
-    appointmentRoutes.GET("/:id", middleware.RoleMiddleware(
-        int(constants.StudentRoleID), 
-        int(constants.CounselorRoleID), 
-        int(constants.FrontDeskRoleID),
-    ), h.HandleGetAppointment)
+	appointmentRoutes.GET("", middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+		int(constants.CounselorRoleID),
+		int(constants.FrontDeskRoleID),
+	), h.GetAppointments)
 
-    appointmentRoutes.GET("/student/:studentID", middleware.RoleMiddleware(
-        int(constants.StudentRoleID), 
-        int(constants.CounselorRoleID), 
-        int(constants.FrontDeskRoleID),
-    ), h.HandleGetStudentAppointments)
+	appointmentRoutes.GET("/:id", middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+		int(constants.CounselorRoleID),
+		int(constants.FrontDeskRoleID),
+	), h.HandleGetAppointment)
 
-    appointmentRoutes.PATCH("/:id/status", middleware.RoleMiddleware(
-        int(constants.CounselorRoleID),
-        int(constants.FrontDeskRoleID),
-    ), h.HandleUpdateStatus)
+	appointmentRoutes.GET("/student/:studentID", middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+		int(constants.CounselorRoleID),
+		int(constants.FrontDeskRoleID),
+	), h.HandleGetAppointment)
+
+	appointmentRoutes.PUT("/:id/status", middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+		int(constants.CounselorRoleID),
+		int(constants.FrontDeskRoleID),
+	), h.HandleUpdateStatus)
+
+	appointmentRoutes.GET("/slots", middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+	), h.HandleGetAvailableTimeSlots)
 }

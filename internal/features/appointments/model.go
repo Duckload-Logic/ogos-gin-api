@@ -1,24 +1,26 @@
 package appointments
 
-import (
-	"time"
-)
+import "time"
 
 type Appointment struct {
-	ID                int       `json:"id" db:"id"`
-	StudentRecordID   int       `json:"studentRecordId" db:"student_record_id"`
-	CounselorUserID   *int      `json:"counselorUserId" db:"counselor_user_id"`
-	AppointmentTypeID int       `json:"appointmentTypeId" db:"appointment_type_id"`
-	ConcernCategory   string    `json:"concernCategory" db:"concern_category"`
-	Status            string    `json:"status" db:"status"`
-	ScheduledAt       time.Time `json:"scheduledAt" db:"scheduled_at"`
-	CreatedAt         time.Time `json:"createdAt" db:"created_at"`
-	UpdatedAt         time.Time `json:"updatedAt" db:"updated_at"`
+	ID              int       `json:"id"`
+	UserID          *int      `json:"userId,omitempty"`
+	Reason          string    `json:"reason"`
+	ScheduledDate   string    `json:"scheduledDate"`
+	ScheduledTime   string    `json:"scheduledTime"`
+	ConcernCategory string    `json:"concernCategory"`
+	Status          string    `json:"status"`
+	CreatedAt       time.Time `json:"createdAt"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 type CreateAppointmentRequest struct {
-	StudentRecordID   int    `json:"studentRecordId" binding:"required"`
-	AppointmentTypeID int    `json:"appointmentTypeId" binding:"required"`
-	ScheduledAt       string `json:"scheduledAt" binding:"required"`
-	ConcernCategory   string `json:"concernCategory" binding:"required"`
+	Reason          string `json:"reason" binding:"required"`
+	ScheduledDate   string `json:"scheduledDate" binding:"required"`
+	ScheduledTime   string `json:"scheduledTime" binding:"required"`
+	ConcernCategory string `json:"concernCategory,omitempty"`
+}
+
+type UpdateStatusRequest struct {
+	Status string `json:"status" binding:"required"`
 }

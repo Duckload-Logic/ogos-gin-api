@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 )
 
 type Repository struct {
@@ -17,13 +16,10 @@ func NewRepository(db *sql.DB) *Repository {
 
 func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 
-	dateStr := appt.ScheduledAt.Format("2006-01-02")
-	timeStr := appt.ScheduledAt.Format("15:04:05")
-
 	query := `
 		INSERT INTO appointments (
-			student_record_id, 
-			appointment_type_id, 
+			user_id, 
+			reason, 
 			scheduled_date, 
 			scheduled_time, 
 			concern_category, 
@@ -35,10 +31,10 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 	`
 
 	result, err := r.db.ExecContext(ctx, query,
-		appt.StudentRecordID,
-		appt.AppointmentTypeID,
-		dateStr, // scheduled_date
-		timeStr, // scheduled_time
+		appt.UserID,
+		appt.Reason,
+		appt.ScheduledDate, // scheduled_date
+		appt.ScheduledTime, // scheduled_time
 		appt.ConcernCategory,
 		appt.Status,
 	)
@@ -56,162 +52,182 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 }
 
 func (r *Repository) GetByID(ctx context.Context, id int) (*Appointment, error) {
-    query := `
+	query := `
         SELECT 
-            appointment_id, student_record_id, counselor_user_id, appointment_type_id, 
+            appointment_id, user_id, reason, 
             scheduled_date, scheduled_time, concern_category, 
             status, created_at, updated_at
         FROM appointments
         WHERE appointment_id = ?
     `
 
-    var appt Appointment
-    var dateStr, timeStr string
+	var appt Appointment
 
-    err := r.db.QueryRowContext(ctx, query, id).Scan(
-        &appt.ID,
-        &appt.StudentRecordID,
-        &appt.CounselorUserID,
-        &appt.AppointmentTypeID,
-        &dateStr, 
-        &timeStr,
-        &appt.ConcernCategory,
-        &appt.Status,
-        &appt.CreatedAt,
-        &appt.UpdatedAt,
-    )
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&appt.ID,
+		&appt.UserID,
+		&appt.Reason,
+		&appt.ScheduledDate,
+		&appt.ScheduledTime,
+		&appt.ConcernCategory,
+		&appt.Status,
+		&appt.CreatedAt,
+		&appt.UpdatedAt,
+	)
 
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return nil, nil 
-        }
-        return nil, fmt.Errorf("failed to get appointment: %w", err)
-    }
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get appointment: %w", err)
+	}
 
-    fullTimeStr := dateStr + " " + timeStr
-    parsedTime, _ := time.Parse("2006-01-02 15:04:05", fullTimeStr)
-    appt.ScheduledAt = parsedTime
-
-    return &appt, nil
+	return &appt, nil
 }
 
 func (r *Repository) List(ctx context.Context, status string, date string) ([]Appointment, error) {
-    query := `
+	query := `
         SELECT 
-            id, student_record_id, counselor_user_id, appointment_type_id, 
+            appointment_id, user_id, reason, 
             scheduled_date, scheduled_time, concern_category, 
             status, created_at, updated_at
         FROM appointments
         WHERE 1=1
     `
-    var args []interface{}
+	var args []interface{}
 
-    if status != "" {
-        query += " AND status = ?"
-        args = append(args, status)
-    }
-    if date != "" {
-        query += " AND scheduled_date = ?"
-        args = append(args, date)
-    }
+	if status != "" {
+		query += " AND status = ?"
+		args = append(args, status)
+	}
+	if date != "" {
+		query += " AND scheduled_date = ?"
+		args = append(args, date)
+	}
 
-    rows, err := r.db.QueryContext(ctx, query, args...)
-    if err != nil {
-        return nil, fmt.Errorf("failed to list appointments: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list appointments: %w", err)
+	}
+	defer rows.Close()
 
-    var appts []Appointment
-    for rows.Next() {
-        var appt Appointment
-        var dateStr, timeStr string
+	var appts []Appointment
+	for rows.Next() {
+		var appt Appointment
+		if err := rows.Scan(
+			&appt.ID,
+			&appt.UserID,
+			&appt.Reason,
+			&appt.ScheduledDate,
+			&appt.ScheduledTime,
+			&appt.ConcernCategory,
+			&appt.Status,
+			&appt.CreatedAt,
+			&appt.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
 
-        if err := rows.Scan(
-            &appt.ID,
-            &appt.StudentRecordID,
-            &appt.CounselorUserID,
-            &appt.AppointmentTypeID,
-            &dateStr,
-            &timeStr,
-            &appt.ConcernCategory,
-            &appt.Status,
-            &appt.CreatedAt,
-            &appt.UpdatedAt,
-        ); err != nil {
-            return nil, err
-        }
+		appts = append(appts, appt)
+	}
 
-        // Combine date and time
-        fullTimeStr := dateStr + " " + timeStr
-        parsedTime, _ := time.Parse("2006-01-02 15:04:05", fullTimeStr)
-        appt.ScheduledAt = parsedTime
-
-        appts = append(appts, appt)
-    }
-
-    return appts, nil
+	return appts, nil
 }
 
-func (r *Repository) GetByStudentID(ctx context.Context, studentID int) ([]Appointment, error) {
-    query := `
+func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]Appointment, error) {
+	query := `
+		SELECT
+			appointment_id, user_id, reason,
+			scheduled_date, scheduled_time, concern_category,
+			status, created_at, updated_at
+		FROM appointments
+		WHERE scheduled_date = ? AND status = 'Approved' OR status = 'Pending'
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, date)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get available time slots: %w", err)
+	}
+	defer rows.Close()
+
+	var appts []Appointment
+	for rows.Next() {
+		var appt Appointment
+
+		if err := rows.Scan(
+			&appt.ID,
+			&appt.UserID,
+			&appt.Reason,
+			&appt.ScheduledDate,
+			&appt.ScheduledTime,
+			&appt.ConcernCategory,
+			&appt.Status,
+			&appt.CreatedAt,
+			&appt.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		appts = append(appts, appt)
+	}
+
+	return appts, nil
+}
+
+func (r *Repository) GetByUserID(ctx context.Context, userID int) ([]Appointment, error) {
+	query := `
         SELECT 
-            id, student_record_id, counselor_user_id, appointment_type_id, 
+            appointment_id, user_id, reason, 
             scheduled_date, scheduled_time, concern_category, 
             status, created_at, updated_at
         FROM appointments
-        WHERE student_record_id = ?
+        WHERE user_id = ?
     `
 
-    rows, err := r.db.QueryContext(ctx, query, studentID)
-    if err != nil {
-        return nil, fmt.Errorf("failed to get student appointments: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student appointments: %w", err)
+	}
+	defer rows.Close()
 
-    var appts []Appointment
-    for rows.Next() {
-        var appt Appointment
-        var dateStr, timeStr string
+	var appts []Appointment
+	for rows.Next() {
+		var appt Appointment
 
-        if err := rows.Scan(
-            &appt.ID,
-            &appt.StudentRecordID,
-            &appt.CounselorUserID,
-            &appt.AppointmentTypeID,
-            &dateStr,
-            &timeStr,
-            &appt.ConcernCategory,
-            &appt.Status,
-            &appt.CreatedAt,
-            &appt.UpdatedAt,
-        ); err != nil {
-            return nil, err
-        }
+		if err := rows.Scan(
+			&appt.ID,
+			&appt.UserID,
+			&appt.Reason,
+			&appt.ScheduledDate,
+			&appt.ScheduledTime,
+			&appt.ConcernCategory,
+			&appt.Status,
+			&appt.CreatedAt,
+			&appt.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
 
-        fullTimeStr := dateStr + " " + timeStr
-        parsedTime, _ := time.Parse("2006-01-02 15:04:05", fullTimeStr)
-        appt.ScheduledAt = parsedTime
+		appts = append(appts, appt)
+	}
 
-        appts = append(appts, appt)
-    }
-
-    return appts, nil
+	return appts, nil
 }
 
 func (r *Repository) UpdateStatus(ctx context.Context, id int, status string) error {
-    query := `UPDATE appointments SET status = ? WHERE appointment_id = ?`
-    
-    result, err := r.db.ExecContext(ctx, query, status, id)
-    if err != nil {
-        return err
-    }
-    
-    rows, err := result.RowsAffected()
-    if err != nil {
-        return err
-    }
-    if rows == 0 {
-        return sql.ErrNoRows
-    }
-    return nil
+	query := `UPDATE appointments SET status = ? WHERE appointment_id = ?`
+
+	result, err := r.db.ExecContext(ctx, query, status, id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
