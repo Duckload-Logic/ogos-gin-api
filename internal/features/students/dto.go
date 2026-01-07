@@ -64,11 +64,6 @@ type UpdateEmergencyContactRequest struct {
 	EmergencyContactRelationship string `json:"emergencyContactRelationship" binding:"required"`
 }
 
-type UpdateEnrollmentReasonsRequest struct {
-	EnrollmentReasonIDs []int  `json:"enrollmentReasonIds"`
-	OtherReasonText     string `json:"otherReasonText,omitempty"`
-}
-
 type UpdateFamilyRequest struct {
 	// Family Background fields
 	ParentalStatusID      int    `json:"parentalStatusId" binding:"required"`
@@ -132,7 +127,7 @@ type UpdateHealthRecordRequest struct {
 	ConsultedProfessional *string `json:"consultedProfessional,omitempty"`
 	ConsultationReason    *string `json:"consultationReason,omitempty"`
 	DateStarted           *string `json:"dateStarted,omitempty"`
-	NumberOfSessions      *int64  `json:"numberOfSessions,omitempty"`
+	NumberOfSessions      *int    `json:"numberOfSessions,omitempty"`
 	DateConcluded         *string `json:"dateConcluded,omitempty"`
 }
 

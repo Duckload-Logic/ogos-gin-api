@@ -291,18 +291,18 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        userID   path      int  true  "User ID"
-// @Success      200      {object}  StudentProfileResponse
+// @Success      200      {object}  StudentRecord
 // @Failure      400      {object}  map[string]string "Invalid user ID"
 // @Failure      500      {object}  map[string]string "Failed to get base profile"
 // @Router       /students/profile/base/{userID} [get]
 func (h *Handler) HandleGetBaseProfile(c *gin.Context) {
-	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
+	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	profile, err := h.service.GetBaseProfile(c.Request.Context(), studentRecordID)
+	resp, err := h.service.GetBaseProfile(c.Request.Context(), userID)
 	if err != nil {
 		fmt.Println("Error getting base profile:", err)
 		c.JSON(
@@ -535,116 +535,9 @@ func (h *Handler) HandleGetHealthInfo(c *gin.Context) {
 
 // ========================================
 // |                                      |
-// |      FINANCE RETRIEVE HANDLERS       |
-// |                                      |
-// ========================================
-
-// HandleGetFinanceInfo godoc
-// @Summary      Get Finance Information
-// @Description  Retrieves the financial details for a student.
-// @Tags         Students
-// @Accept       json
-// @Produce      json
-// @Param        studentRecordID path      int  true  "Student Record ID"
-// @Success      200             {object}  StudentFinance
-// @Failure      400             {object}  map[string]string "Invalid student record ID"
-// @Failure      500             {object}  map[string]string "Failed to get finance info"
-// @Router       /students/profile/finance/{studentRecordID} [get]
-func (h *Handler) HandleGetFinanceInfo(c *gin.Context) {
-	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
-	if err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid student record ID"},
-		)
-		return
-	}
-
-	resp, err := h.service.GetFinanceInfo(c.Request.Context(), studentRecordID)
-	if err != nil {
-		fmt.Println("Error getting finance info:", err)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to get finance info"},
-		)
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
-
-// ========================================
-// |                                      |
 // |       UPSERT HANDLER FUNCTIONS       |
 // |                                      |
 // ========================================
-
-// HandleCreateStudentRecord godoc
-// @Summary      Create Student Record (First Step)
-// @Description  Creates a student record for a user (first step in onboarding)
-// @Tags         Students
-// @Accept       json
-// @Produce      json
-// @Param        userID  path      int  true  "User ID"
-// @Success      200     {object}  map[string]interface{}  "Returns {student_record_id: <id>}"
-// @Failure      400     {object}  map[string]string       "Invalid user ID"
-// @Failure      500     {object}  map[string]string       "Internal Server Error"
-// @Router       /students/onboarding/{userID} [post]
-func (h *Handler) HandleCreateStudentRecord(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("userID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	studentRecordID, err := h.service.CreateStudentRecord(c.Request.Context(), userID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"student_record_id": studentRecordID,
-		"message":           "Student record created successfully",
-	})
-}
-
-// HandleSaveEnrollmentReasons godoc
-// @Summary      Save Enrollment Reasons
-// @Description  Saves or updates the enrollment reasons for a student.
-// @Tags         Students
-// @Accept       json
-// @Produce      json
-// @Param        studentRecordID path      int                             true "Student Record ID"
-// @Param        request         body      UpdateEnrollmentReasonsRequest  true "Enrollment Reasons Data"
-// @Success      200             {object}  map[string]string               "Message: Enrollment reasons saved successfully"
-// @Failure      400             {object}  map[string]string               "Invalid input or ID"
-// @Failure      500             {object}  map[string]string               "Internal Server Error"
-// @Router       /students/onboarding/enrollment-reasons/{studentRecordID} [put]
-func (h *Handler) HandleSaveEnrollmentReasons(c *gin.Context) {
-	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
-	if err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid student record ID"},
-		)
-		return
-	}
-
-	var req UpdateEnrollmentReasonsRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err = h.service.SaveEnrollmentReasons(c.Request.Context(), studentRecordID, req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Enrollment reasons saved successfully"})
-}
 
 // HandleSaveBaseProfile godoc
 // @Summary      Create or Update Base Profile
@@ -652,18 +545,13 @@ func (h *Handler) HandleSaveEnrollmentReasons(c *gin.Context) {
 // @Tags         Students
 // @Accept       json
 // @Produce      json
-// @Param        userID   path      int                           true  "User ID"
-// @Param        request  body      CreateStudentRecordRequest    true  "Base Profile Data"
-// @Success      200      {object}  map[string]interface{}        "Returns {student_record_id: <id>}"
-// @Failure      400      {object}  map[string]string             "Invalid input"
-// @Failure      500      {object}  map[string]string             "Internal Server Error"
-// @Router       /students/onboarding/base/{userID} [post]
+// @Param        request body      CreateStudentRecordRequest true "Base Profile Data"
+// @Success      200     {object}  map[string]interface{}     "Returns {student_record_id: <id>}"
+// @Failure      400     {object}  map[string]string          "Invalid input"
+// @Failure      500     {object}  map[string]string          "Internal Server Error"
+// @Router       /students/onboarding/base [post]
 func (h *Handler) HandleSaveBaseProfile(c *gin.Context) {
-	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid student record ID"})
-		return
-	}
+	userID := c.MustGet("userID")
 
 	var req CreateStudentRecordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -671,7 +559,7 @@ func (h *Handler) HandleSaveBaseProfile(c *gin.Context) {
 		return
 	}
 
-	err = h.service.SaveBaseProfile(c.Request.Context(), studentRecordID, req)
+	id, err := h.service.SaveBaseProfile(c.Request.Context(), userID.(int), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
