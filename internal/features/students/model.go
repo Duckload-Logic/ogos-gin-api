@@ -1,7 +1,5 @@
 package students
 
-import "database/sql"
-
 type StudentProfileView struct {
 	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
 	FirstName       string `db:"first_name" json:"firstName"`
@@ -11,7 +9,7 @@ type StudentProfileView struct {
 	Course          string `db:"course" json:"course"`
 }
 
-// StudentRecord model
+// StudentRecord model - matches the student_records table
 type StudentRecord struct {
 	ID          int    `db:"student_record_id" json:"id"`
 	UserID      int    `db:"user_id" json:"userId"`
@@ -110,20 +108,21 @@ type EducationalBackground struct {
 	Awards           *string `db:"awards" json:"awards"`
 }
 
-// StudentAddress model
+// StudentAddress model - Fixed to match schema
 type StudentAddress struct {
-	ID              int            `db:"student_address_id" json:"id"`
-	StudentRecordID int            `db:"student_record_id" json:"studentRecordId"`
-	AddressTypeID   int            `db:"address_type_id" json:"addressTypeId"`
-	RegionName      sql.NullString `db:"region_name" json:"regionName"`
-	ProvinceName    sql.NullString `db:"province_name" json:"provinceName"`
-	CityName        sql.NullString `db:"city_name" json:"cityName"`
-	BarangayName    sql.NullString `db:"barangay_name" json:"barangayName"`
-	StreetLotBlk    sql.NullString `db:"street_lot_blk" json:"streetLotBlk"`
-	UnitNo          sql.NullString `db:"unit_no" json:"unitNo"`
-	BuildingName    sql.NullString `db:"building_name" json:"buildingName"`
+	ID              int     `db:"student_address_id" json:"id"`
+	StudentRecordID int     `db:"student_record_id" json:"studentRecordId"`
+	AddressType     string  `db:"address_type" json:"addressType"` // Changed from AddressTypeID
+	RegionName      *string `db:"region_name" json:"regionName"`
+	ProvinceName    *string `db:"province_name" json:"provinceName"`
+	CityName        *string `db:"city_name" json:"cityName"`
+	BarangayName    *string `db:"barangay_name" json:"barangayName"`
+	StreetLotBlk    *string `db:"street_lot_blk" json:"streetLotBlk"`
+	UnitNo          *string `db:"unit_no" json:"unitNo"`
+	BuildingName    *string `db:"building_name" json:"buildingName"`
 }
 
+// StudentHealthRecord model - Fixed to use enums directly
 type StudentHealthRecord struct {
 	ID                    int     `db:"health_id" json:"id"`
 	StudentRecordID       int     `db:"student_record_id" json:"studentRecordId"`

@@ -141,7 +141,8 @@ func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]Appointme
 			scheduled_date, scheduled_time, concern_category,
 			status, created_at, updated_at
 		FROM appointments
-		WHERE scheduled_date = ? AND status = 'Approved' OR status = 'Pending'
+		WHERE scheduled_date = ?
+		AND (status = 'Approved' OR status = 'Pending');
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, date)

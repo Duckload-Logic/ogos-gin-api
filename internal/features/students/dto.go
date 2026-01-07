@@ -47,7 +47,7 @@ type CreateStudentRecordRequest struct {
 	Religion          string                         `json:"religion" binding:"required"`
 	HeightFt          float64                        `json:"heightFt" binding:"required"`
 	WeightKg          float64                        `json:"weightKg" binding:"required"`
-	StudentNumber     string                         `json:"studentNumber" binding:"required"`
+	StudentNumber     string                         `json:"studentNumber,omitempty" `
 	Course            string                         `json:"course" binding:"required"`
 	HighSchoolGWA     float64                        `json:"highSchoolGWA" binding:"required"`
 	PlaceOfBirth      string                         `json:"placeOfBirth" binding:"required"`
@@ -62,6 +62,11 @@ type UpdateEmergencyContactRequest struct {
 	EmergencyContactName         string `json:"emergencyContactName" binding:"required"`
 	EmergencyContactPhone        string `json:"emergencyContactPhone" binding:"required"`
 	EmergencyContactRelationship string `json:"emergencyContactRelationship" binding:"required"`
+}
+
+type UpdateEnrollmentReasonsRequest struct {
+	EnrollmentReasonIDs []int  `json:"enrollmentReasonIds"`
+	OtherReasonText     string `json:"otherReasonText,omitempty"`
 }
 
 type UpdateFamilyRequest struct {
@@ -127,7 +132,7 @@ type UpdateHealthRecordRequest struct {
 	ConsultedProfessional *string `json:"consultedProfessional,omitempty"`
 	ConsultationReason    *string `json:"consultationReason,omitempty"`
 	DateStarted           *string `json:"dateStarted,omitempty"`
-	NumberOfSessions      *int    `json:"numberOfSessions,omitempty"`
+	NumberOfSessions      *int64  `json:"numberOfSessions,omitempty"`
 	DateConcluded         *string `json:"dateConcluded,omitempty"`
 }
 

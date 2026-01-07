@@ -2,6 +2,7 @@ package students
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 )
 
@@ -170,13 +171,76 @@ func (s *Service) GetHealthInfo(
 	return healthInfo, nil
 }
 
+// GetFinanceInfo
+func (s *Service) GetFinanceInfo(
+	ctx context.Context, studentRecordID int,
+) (*StudentFinance, error) {
+	finance, err := s.repo.GetFinance(ctx, studentRecordID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get finance info: %w", err)
+	}
+
+	return finance, nil
+}
+
 // ========================================
 // |                                      |
 // |       SAVE SERVICE FUNCTIONS         |
 // |                                      |
 // ========================================
 
-// SaveBaseProfile
+func (s *Service) CreateStudentRecord(
+	ctx context.Context, userID int,
+) (int, error) {
+	// Check if student record already exists
+	existingRecord, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check existing student record: %w", err)
+	}
+
+	if existingRecord != nil {
+		return existingRecord.ID, nil
+	}
+
+	// Create a new student record
+	studentRecordID, err := s.repo.CreateStudentRecord(ctx, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create student record: %w", err)
+	}
+
+	return studentRecordID, nil
+}
+
+// SaveEnrollmentReasons
+func (s *Service) SaveEnrollmentReasons(
+	ctx context.Context, studentRecordID int, req UpdateEnrollmentReasonsRequest,
+) error {
+	// Delete existing enrollment reasons for this student
+	if err := s.repo.DeleteEnrollmentReasons(ctx, studentRecordID); err != nil {
+		return fmt.Errorf("failed to delete existing enrollment reasons: %w", err)
+	}
+
+	// Insert new enrollment reasons
+	if len(req.EnrollmentReasonIDs) > 0 {
+		for _, reasonID := range req.EnrollmentReasonIDs {
+			var otherReasonText sql.NullString
+			if reasonID == 11 && req.OtherReasonText != "" {
+				otherReasonText = sql.NullString{
+					String: req.OtherReasonText, Valid: true,
+				}
+			}
+
+			if err := s.repo.SaveEnrollmentReason(
+				ctx, studentRecordID, reasonID, otherReasonText,
+			); err != nil {
+				return fmt.Errorf("failed to save enrollment reason: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) SaveBaseProfile(
 	ctx context.Context, studentRecordID int, req CreateStudentRecordRequest,
 ) error {

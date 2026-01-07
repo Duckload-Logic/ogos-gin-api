@@ -331,7 +331,7 @@ func (r *Repository) GetAddresses(
 	query := `
 		SELECT
 			student_address_id, student_record_id,
-			address_type_id, region_name,
+			address_type, region_name,
 			province_name, city_name,
 			barangay_name, street_lot_blk,
 			unit_no, building_name
@@ -350,7 +350,7 @@ func (r *Repository) GetAddresses(
 		var addr StudentAddress
 		err := rows.Scan(
 			&addr.ID, &addr.StudentRecordID,
-			&addr.AddressTypeID, &addr.RegionName,
+			&addr.AddressType, &addr.RegionName,
 			&addr.ProvinceName, &addr.CityName,
 			&addr.BarangayName, &addr.StreetLotBlk,
 			&addr.UnitNo, &addr.BuildingName,
@@ -373,9 +373,9 @@ func (r *Repository) GetHealthRecord(
 	query := `
 		SELECT
 			health_id, student_record_id,
-			vision_remark_id, hearing_remark_id, 
-			mobility_remark_id, speech_remark_id,
-			general_health_remark_id, consulted_professional,
+			vision_remark, hearing_remark, 
+			mobility_remark, speech_remark,
+			general_health_remark, consulted_professional,
 			consultation_reason, date_started, 
 			num_sessions, date_concluded
 		FROM student_health_records
@@ -383,9 +383,9 @@ func (r *Repository) GetHealthRecord(
 	`
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
 		&healthRec.ID, &healthRec.StudentRecordID,
-		&healthRec.VisionRemarkID, &healthRec.HearingRemarkID,
-		&healthRec.MobilityRemarkID, &healthRec.SpeechRemarkID,
-		&healthRec.GeneralHealthRemarkID, &healthRec.ConsultedProfessional,
+		&healthRec.VisionRemark, &healthRec.HearingRemark,
+		&healthRec.MobilityRemark, &healthRec.SpeechRemark,
+		&healthRec.GeneralHealthRemark, &healthRec.ConsultedProfessional,
 		&healthRec.ConsultationReason, &healthRec.DateStarted,
 		&healthRec.NumberOfSessions, &healthRec.DateConcluded,
 	)
@@ -460,11 +460,52 @@ func (r *Repository) GetTotalStudentsCount(
 // |                                   |
 // =====================================
 
-// SaveBaseProfileInfo
-func (r *Repository) SaveBaseProfileInfo(
-	ctx context.Context, record *StudentRecord,
+// CreateStudentRecord - Creates a basic student record
+func (r *Repository) CreateStudentRecord(
+	ctx context.Context, userID int,
 ) (int, error) {
-	var studentRecordID int
+	query := `
+		INSERT INTO student_records (user_id) 
+		VALUES (?)
+	`
+
+	result, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create student record: %w", err)
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(id), nil
+}
+
+// SaveEnrollmentReason
+func (r *Repository) SaveEnrollmentReason(
+	ctx context.Context, studentRecordID int,
+	reasonID int, otherReasonText sql.NullString,
+) error {
+	query := `
+		INSERT INTO student_selected_reasons 
+		(student_record_id, reason_id, other_reason_text) 
+		VALUES (?, ?, ?)
+	`
+
+	_, err := r.db.ExecContext(ctx, query, studentRecordID, reasonID, otherReasonText)
+	if err != nil {
+		return fmt.Errorf("failed to save enrollment reason: %w", err)
+	}
+
+	return nil
+}
+
+// SaveStudentProfile
+func (r *Repository) SaveStudentProfile(
+	ctx context.Context, profile *StudentProfile,
+) (int, error) {
+	var studentProfileID int
 
 	err := database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		upsertQuery := `
@@ -476,6 +517,7 @@ func (r *Repository) SaveBaseProfileInfo(
 				place_of_birth, birth_date, contact_no
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE
+				gender_id = VALUES(gender_id),
 				civil_status_type_id = VALUES(civil_status_type_id),
 				religion = VALUES(religion),
 				height_ft = VALUES(height_ft), weight_kg = VALUES(weight_kg),
@@ -485,7 +527,7 @@ func (r *Repository) SaveBaseProfileInfo(
 				contact_no = VALUES(contact_no)
 		`
 
-		_, err := tx.ExecContext(
+		result, err := tx.ExecContext(
 			ctx, upsertQuery,
 			profile.StudentRecordID, profile.GenderID,
 			profile.CivilStatusTypeID, profile.Religion,
@@ -498,16 +540,23 @@ func (r *Repository) SaveBaseProfileInfo(
 			return err
 		}
 
-		getRecIDQuery := `
-			SELECT student_record_id FROM student_records 
-			WHERE user_id = ?
-		`
-		err = tx.QueryRowContext(
-			ctx, getRecIDQuery,
-			record.UserID,
-		).Scan(&studentRecordID)
+		// Get the student profile ID
+		id, err := result.LastInsertId()
+		if err != nil {
+			// If no last insert id (in case of update), get the existing ID
+			getIDQuery := `
+				SELECT student_profile_id FROM student_profiles 
+				WHERE student_record_id = ?
+			`
+			err = tx.QueryRowContext(
+				ctx, getIDQuery,
+				profile.StudentRecordID,
+			).Scan(&studentProfileID)
+			return err
+		}
 
-		return err
+		studentProfileID = int(id)
+		return nil
 	})
 
 	if err != nil {
@@ -626,7 +675,6 @@ func (r *Repository) SaveParentsInfo(
 				return err
 			}
 
-			// 4. Create the link in student_guardians
 			_, err = tx.ExecContext(ctx, linkQuery,
 				studentRecordID,
 				parentID,
@@ -694,7 +742,7 @@ func (r *Repository) SaveAddressInfo(
 
 		query := `
 			INSERT INTO student_addresses (
-				student_record_id, address_type_id,
+				student_record_id, address_type,
 				region_name, province_name,
 				city_name, barangay_name,
 				street_lot_blk, unit_no,
@@ -703,7 +751,7 @@ func (r *Repository) SaveAddressInfo(
 		`
 		for _, addr := range addresses {
 			_, err = tx.ExecContext(ctx, query,
-				studentRecordID, addr.AddressTypeID,
+				studentRecordID, addr.AddressType,
 				addr.RegionName, addr.ProvinceName,
 				addr.CityName, addr.BarangayName,
 				addr.StreetLotBlk, addr.UnitNo,
@@ -725,18 +773,18 @@ func (r *Repository) SaveHealthRecord(
 	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		query := `
 			INSERT INTO student_health_records (
-				student_record_id, vision_remark_id,
-				hearing_remark_id, mobility_remark_id,
-				speech_remark_id, general_health_remark_id,
+				student_record_id, vision_remark,
+				hearing_remark, mobility_remark,
+				speech_remark, general_health_remark,
 				consulted_professional, consultation_reason,
 				date_started, num_sessions, date_concluded
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE
-				vision_remark_id = VALUES(vision_remark_id),
-				hearing_remark_id = VALUES(hearing_remark_id),
-				mobility_remark_id = VALUES(mobility_remark_id),
-				speech_remark_id = VALUES(speech_remark_id),
-				general_health_remark_id = VALUES(general_health_remark_id),
+				vision_remark = VALUES(vision_remark),
+				hearing_remark = VALUES(hearing_remark),
+				mobility_remark = VALUES(mobility_remark),
+				speech_remark = VALUES(speech_remark),
+				general_health_remark = VALUES(general_health_remark),
 				consulted_professional = VALUES(consulted_professional),
 				consultation_reason = VALUES(consultation_reason),
 				date_started = VALUES(date_started),
@@ -745,9 +793,9 @@ func (r *Repository) SaveHealthRecord(
 		`
 
 		_, err := tx.ExecContext(ctx, query,
-			health.StudentRecordID, health.VisionRemarkID,
-			health.HearingRemarkID, health.MobilityRemarkID,
-			health.SpeechRemarkID, health.GeneralHealthRemarkID,
+			health.StudentRecordID, health.VisionRemark,
+			health.HearingRemark, health.MobilityRemark,
+			health.SpeechRemark, health.GeneralHealthRemark,
 			health.ConsultedProfessional, health.ConsultationReason,
 			health.DateStarted, health.NumberOfSessions,
 			health.DateConcluded,
