@@ -85,7 +85,9 @@ func (r *Repository) GetByID(ctx context.Context, id int) (*Appointment, error) 
 	return &appt, nil
 }
 
-func (r *Repository) List(ctx context.Context, status string, date string) ([]Appointment, error) {
+func (r *Repository) List(
+	ctx context.Context, status string, startDate string, endDate string,
+) ([]Appointment, error) {
 	query := `
         SELECT 
             appointment_id, user_id, reason, 
@@ -98,11 +100,18 @@ func (r *Repository) List(ctx context.Context, status string, date string) ([]Ap
 
 	if status != "" {
 		query += " AND status = ?"
+		if status == "Approved" {
+			query += " OR status = 'Rescheduled'"
+		}
 		args = append(args, status)
 	}
-	if date != "" {
-		query += " AND scheduled_date = ?"
-		args = append(args, date)
+	if startDate != "" {
+		query += " AND scheduled_date >= ?"
+		args = append(args, startDate)
+	}
+	if endDate != "" {
+		query += " AND scheduled_date <= ?"
+		args = append(args, endDate)
 	}
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
@@ -130,6 +139,8 @@ func (r *Repository) List(ctx context.Context, status string, date string) ([]Ap
 
 		appts = append(appts, appt)
 	}
+
+	fmt.Println(appts)
 
 	return appts, nil
 }
@@ -216,9 +227,84 @@ func (r *Repository) GetByUserID(ctx context.Context, userID int) ([]Appointment
 }
 
 func (r *Repository) UpdateStatus(ctx context.Context, id int, status string) error {
-	query := `UPDATE appointments SET status = ? WHERE appointment_id = ?`
+	query := `UPDATE appointments SET status = ?, updated_at = NOW() WHERE appointment_id = ?`
 
 	result, err := r.db.ExecContext(ctx, query, status, id)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (r *Repository) UpdateAppointment(ctx context.Context, id int, req UpdateStatusRequest) error {
+	query := `UPDATE appointments SET `
+	var args []interface{}
+	first := true
+
+	// Only update fields that are provided (non-empty)
+	if req.Status != "" {
+		if !first {
+			query += ", "
+		}
+		query += "status = ?"
+		args = append(args, req.Status)
+		first = false
+	}
+
+	if req.Reason != "" {
+		if !first {
+			query += ", "
+		}
+		query += "reason = ?"
+		args = append(args, req.Reason)
+		first = false
+	}
+
+	if req.ScheduledDate != "" {
+		if !first {
+			query += ", "
+		}
+		query += "scheduled_date = ?"
+		args = append(args, req.ScheduledDate)
+		first = false
+	}
+
+	if req.ScheduledTime != "" {
+		if !first {
+			query += ", "
+		}
+		query += "scheduled_time = ?"
+		args = append(args, req.ScheduledTime)
+		first = false
+	}
+
+	if req.ConcernCategory != "" {
+		if !first {
+			query += ", "
+		}
+		query += "concern_category = ?"
+		args = append(args, req.ConcernCategory)
+		first = false
+	}
+
+	// Always update the updated_at timestamp
+	if !first {
+		query += ", "
+	}
+	query += "updated_at = NOW()"
+
+	query += " WHERE appointment_id = ?"
+	args = append(args, id)
+
+	result, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}

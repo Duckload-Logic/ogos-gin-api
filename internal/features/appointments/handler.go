@@ -111,10 +111,12 @@ func (h *Handler) HandleGetAppointment(c *gin.Context) {
 func (h *Handler) HandleListAppointments(c *gin.Context) {
 	// Basic query params binding (optional)
 	status := c.Query("status")
-	date := c.Query("date")
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
 
 	// Assuming your service has a List method that accepts simple filters
-	appts, err := h.service.ListAppointments(c.Request.Context(), status, date)
+	appts, err := h.service.ListAppointments(c.Request.Context(), status, startDate, endDate)
+	fmt.Println(appts == nil)
 	if err != nil {
 		fmt.Println("Error listing appointments:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list appointments"})
@@ -194,7 +196,7 @@ func (h *Handler) HandleUpdateStatus(c *gin.Context) {
 	}
 
 	// 3. Call the service and handle the specific "No Rows" error
-	if err := h.service.UpdateAppointmentStatus(c.Request.Context(), id, req.Status); err != nil {
+	if err := h.service.UpdateAppointmentStatus(c.Request.Context(), id, req); err != nil {
 		if err == sql.ErrNoRows {
 			// This is the fix: Return 404 instead of 500
 			c.JSON(http.StatusNotFound, gin.H{"error": "Appointment not found"})
@@ -205,5 +207,5 @@ func (h *Handler) HandleUpdateStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Appointment status updated."})
+	c.JSON(http.StatusOK, gin.H{"message": "Appointment updated successfully."})
 }

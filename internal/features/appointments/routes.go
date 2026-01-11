@@ -16,6 +16,12 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 		int(constants.FrontDeskRoleID),
 	), h.Create)
 
+	appointmentRoutes.GET("/all",
+		middleware.RoleMiddleware(
+			int(constants.CounselorRoleID),
+			int(constants.FrontDeskRoleID),
+		), h.HandleListAppointments)
+
 	appointmentRoutes.GET("", middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 		int(constants.CounselorRoleID),
@@ -34,7 +40,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 		int(constants.FrontDeskRoleID),
 	), h.HandleGetAppointment)
 
-	appointmentRoutes.PUT("/:id/status", middleware.RoleMiddleware(
+	appointmentRoutes.PUT("/:id", middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 		int(constants.CounselorRoleID),
 		int(constants.FrontDeskRoleID),
@@ -42,5 +48,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 
 	appointmentRoutes.GET("/slots", middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
+		int(constants.CounselorRoleID),
+		int(constants.FrontDeskRoleID),
 	), h.HandleGetAvailableTimeSlots)
 }

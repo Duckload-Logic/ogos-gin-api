@@ -33,8 +33,8 @@ func (s *Service) GetAppointmentByID(ctx context.Context, id int) (*Appointment,
 	return s.repo.GetByID(ctx, id)
 }
 
-func (s *Service) ListAppointments(ctx context.Context, status string, date string) ([]Appointment, error) {
-	return s.repo.List(ctx, status, date)
+func (s *Service) ListAppointments(ctx context.Context, status string, startDate string, endDate string) ([]Appointment, error) {
+	return s.repo.List(ctx, status, startDate, endDate)
 }
 
 func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int) ([]Appointment, error) {
@@ -45,14 +45,14 @@ func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) (map[s
 	return s.getAvailableSlots(ctx, date)
 }
 
-func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, status string) error {
+func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req UpdateStatusRequest) error {
 	validStatuses := map[string]bool{
 		"Pending": true, "Approved": true, "Rejected": true, "Completed": true, "Cancelled": true, "Rescheduled": true,
 	}
-	if !validStatuses[status] {
+	if !validStatuses[req.Status] {
 		return fmt.Errorf("invalid status")
 	}
-	return s.repo.UpdateStatus(ctx, id, status)
+	return s.repo.UpdateAppointment(ctx, id, req)
 }
 
 func (s *Service) getAvailableSlots(ctx context.Context, date string) (map[string]bool, error) {

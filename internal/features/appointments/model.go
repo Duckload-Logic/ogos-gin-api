@@ -22,5 +22,9 @@ type CreateAppointmentRequest struct {
 }
 
 type UpdateStatusRequest struct {
-	Status string `json:"status" binding:"required"`
+	Status          string `json:"status" binding:"required"`
+	Reason          string `json:"reason,omitempty"`
+	ScheduledDate   string `json:"scheduledDate,omitempty"`
+	ScheduledTime   string `json:"scheduledTime,omitempty"`
+	ConcernCategory string `json:"concernCategory,omitempty"`
 }

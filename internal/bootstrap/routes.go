@@ -11,6 +11,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -33,6 +34,9 @@ func SetupRoutes(db *sql.DB, handlers *Handlers) *gin.Engine {
 	g.Use(cors.New(corsConfig))
 
 	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	limiter := middleware.NewIPRateLimiter(5, 30)
+	g.Use(middleware.RateLimitMiddleware(limiter))
 
 	apiV1Routes := g.Group("/api/v1")
 
