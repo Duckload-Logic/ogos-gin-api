@@ -24,6 +24,14 @@ func NewService(repo *Repository) *Service {
 func (s *Service) ListStudents(
 	ctx context.Context, req ListStudentsRequest,
 ) (*ListStudentsResponse, error) {
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+
+	if req.PageSize <= 0 {
+		req.PageSize = 20
+	}
+
 	students, err := s.repo.ListStudents(
 		ctx,
 		req.GetOffset(),

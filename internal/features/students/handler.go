@@ -903,7 +903,7 @@ func (h *Handler) HandleCompleteOnboarding(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        userID   path      int  true  "User ID"
-// @Success      200      {object}  StudentRecordProgressResponse
+// @Success      200      {object}  map[string]interface{}
 // @Failure      400      {object}  map[string]string "Invalid user ID"
 // @Failure      500      {object}  map[string]string "Failed to get student record progress"
 // @Router       /students/record/progress/{userID} [get]

@@ -22,54 +22,60 @@ func NewRepository(db *sql.DB) *Repository {
 // |                                   |
 // =====================================
 
-// ListStudents
 func (r *Repository) ListStudents(
 	ctx context.Context, offset int, limit int,
 	course string, genderID int,
 ) ([]StudentProfileView, error) {
 	query := `
-		SELECT 
-			sr.student_record_id,
-			u.first_name,
-			u.middle_name,
-			u.last_name,       
-			u.email,
-			sp.course,
-		FROM student_records sr
-		JOIN users u ON sr.user_id = u.user_id
-		JOIN student_profiles sp ON sr.student_record_id = sp.student_record_id
-		WHERE (? = '' OR sp.course = ?)
-		AND (? = 0 OR sp.gender_id = ?)
-		AND (sr.is_submitted = TRUE)
-		ORDER BY sr.student_record_id DESC
-		LIMIT ? OFFSET ?
-	`
+        SELECT 
+            sr.student_record_id,
+            u.first_name,
+            u.middle_name,
+            u.last_name,       
+            u.email,
+            sp.course
+        FROM student_records sr
+        JOIN users u ON sr.user_id = u.user_id
+        JOIN student_profiles sp ON sr.student_record_id = sp.student_record_id
+        WHERE sr.is_submitted = TRUE
+    `
 
-	rows, err := r.db.QueryContext(
-		ctx, query,
-		course, course,
-		genderID, genderID,
-		limit, offset,
-	)
+	var args []interface{}
+
+	if course != "" {
+		query += " AND sp.course = ?"
+		args = append(args, course)
+	}
+
+	if genderID != 0 {
+		query += " AND sp.gender_id = ?"
+		args = append(args, genderID)
+	}
+
+	query += `
+        ORDER BY sr.student_record_id DESC
+        LIMIT ? OFFSET ?
+    `
+	args = append(args, limit, offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list students: %w", err)
 	}
-
 	defer rows.Close()
 
 	var students []StudentProfileView
 	for rows.Next() {
 		var student StudentProfileView
-		err := rows.Scan(
+		if err := rows.Scan(
 			&student.StudentRecordID,
 			&student.FirstName,
 			&student.MiddleName,
 			&student.LastName,
 			&student.Email,
 			&student.Course,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan student record: %w", err)
+		); err != nil {
+			return nil, err
 		}
 		students = append(students, student)
 	}
