@@ -23,11 +23,6 @@ CREATE TABLE parental_status_types (
     status_name VARCHAR(50) UNIQUE NOT NULL
 );
 
-CREATE TABLE health_remark_types (
-    health_remark_type_id INT PRIMARY KEY,
-    remark_name VARCHAR(100) UNIQUE NOT NULL
-);
-
 CREATE TABLE users(
     user_id INT AUTO_INCREMENT PRIMARY KEY,
     role_id INT NOT NULL,
