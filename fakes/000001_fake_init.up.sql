@@ -139,10 +139,12 @@ INSERT INTO student_parents (
 -- CREATE EMERGENCY CONTACT FOR COMPLETE STUDENT
 -- ======================================================
 INSERT INTO student_emergency_contacts (
-    student_record_id, emergency_contact_name, emergency_contact_relationship, emergency_contact_phone
+    student_record_id, emergency_contact_first_name, emergency_contact_middle_name, emergency_contact_last_name, emergency_contact_relationship, emergency_contact_phone
 ) VALUES (
     @complete_student_record_id,
-    'Luis Santos',
+    'Luis',
+    '',
+    'Santos',
     'Uncle',
     '09179876543'
 );
@@ -152,7 +154,7 @@ INSERT INTO student_emergency_contacts (
 -- ======================================================
 INSERT INTO family_backgrounds (
     student_record_id, parental_status_id, parental_status_details,
-    siblings_brothers, sibling_sisters, monthly_family_income, guardian_name,
+    siblings_brothers, sibling_sisters, monthly_family_income, guardian_first_name, guardian_middle_name, guardian_last_name,
     guardian_address
 ) VALUES (
     @complete_student_record_id,
@@ -161,7 +163,9 @@ INSERT INTO family_backgrounds (
     1, -- siblings_brothers
     2, -- sibling_sisters
     65000.50,
-    'Luis Santos',
+    'Luis',
+    '',
+    'Santos',
     '123 Poblacion Road, Calamba, Laguna'
 );
 

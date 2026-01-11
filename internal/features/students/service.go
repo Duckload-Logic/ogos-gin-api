@@ -285,7 +285,9 @@ func (s *Service) SaveEmergencyContactInfo(
 	emergencyContact := &StudentEmergencyContact{
 		StudentRecordID:              studentRecordID,
 		ParentID:                     req.ParentID,
-		EmergencyContactName:         req.EmergencyContactName,
+		EmergencyContactFirstName:    req.EmergencyContactFirstName,
+		EmergencyContactMiddleName:   req.EmergencyContactMiddleName,
+		EmergencyContactLastName:     req.EmergencyContactLastName,
 		EmergencyContactPhone:        req.EmergencyContactPhone,
 		EmergencyContactRelationship: req.EmergencyContactRelationship,
 	}
@@ -311,7 +313,9 @@ func (s *Service) SaveFamilyInfo(
 		SiblingsBrothers:      *req.SiblingsBrothers,
 		SiblingSisters:        *req.SiblingSisters,
 		MonthlyFamilyIncome:   req.MonthlyFamilyIncome,
-		GuardianName:          req.GuardianName,
+		GuardianFirstName:     req.GuardianFirstName,
+		GuardianLastName:      req.GuardianLastName,
+		GuardianMiddleName:    req.GuardianMiddleName,
 		GuardianAddress:       req.GuardianAddress,
 	}
 

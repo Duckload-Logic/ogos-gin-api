@@ -113,7 +113,9 @@ CREATE TABLE student_emergency_contacts (
     emergency_contact_id INT AUTO_INCREMENT PRIMARY KEY,
     student_record_id INT UNIQUE NOT NULL,
     parent_id INT, -- Can be NULL if emergency contact is not a guardian
-    emergency_contact_name VARCHAR(255) NOT NULL,
+    emergency_contact_first_name VARCHAR(255) NOT NULL,
+    emergency_contact_middle_name VARCHAR(255),
+    emergency_contact_last_name VARCHAR(255) NOT NULL,
     emergency_contact_phone VARCHAR(20) NOT NULL,
     emergency_contact_relationship VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -131,7 +133,9 @@ CREATE TABLE family_backgrounds(
     siblings_brothers INT NOT NULL,
     sibling_sisters INT NOT NULL,
     monthly_family_income VARCHAR(50) NOT NULL,  -- e.g. '45000-50000'
-    guardian_name VARCHAR(255) NOT NULL,
+    guardian_first_name VARCHAR(255) NOT NULL,
+    guardian_last_name VARCHAR(255) NOT NULL,
+    guardian_middle_name VARCHAR(255),
     guardian_address VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

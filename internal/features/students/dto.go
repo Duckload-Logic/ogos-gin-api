@@ -58,10 +58,12 @@ type CreateStudentRecordRequest struct {
 }
 
 type UpdateEmergencyContactRequest struct {
-	ParentID                     *int   `json:"parentId,omitempty"`
-	EmergencyContactName         string `json:"emergencyContactName" binding:"required"`
-	EmergencyContactPhone        string `json:"emergencyContactPhone" binding:"required"`
-	EmergencyContactRelationship string `json:"emergencyContactRelationship" binding:"required"`
+	ParentID                     *int    `json:"parentId,omitempty"`
+	EmergencyContactFirstName    string  `json:"emergencyContactFirstName" binding:"required"`
+	EmergencyContactMiddleName   *string `json:"emergencyContactMiddleName,omitempty"`
+	EmergencyContactLastName     string  `json:"emergencyContactLastName" binding:"required"`
+	EmergencyContactPhone        string  `json:"emergencyContactPhone" binding:"required"`
+	EmergencyContactRelationship string  `json:"emergencyContactRelationship" binding:"required"`
 }
 
 type UpdateEnrollmentReasonsRequest struct {
@@ -71,13 +73,16 @@ type UpdateEnrollmentReasonsRequest struct {
 
 type UpdateFamilyRequest struct {
 	// Family Background fields
-	ParentalStatusID      int    `json:"parentalStatusId" binding:"required"`
-	ParentalStatusDetails string `json:"parentalStatusDetails,omitempty"`
-	SiblingsBrothers      *int   `json:"siblingsBrothers" binding:"required"`
-	SiblingSisters        *int   `json:"siblingSisters" binding:"required"`
-	MonthlyFamilyIncome   string `json:"monthlyFamilyIncome" binding:"required"`
-	GuardianName          string `json:"guardianName" binding:"required"`
-	GuardianAddress       string `json:"guardianAddress" binding:"required"`
+	ParentalStatusID      int     `json:"parentalStatusId" binding:"required"`
+	ParentalStatusDetails string  `json:"parentalStatusDetails,omitempty"`
+	SiblingsBrothers      *int    `json:"siblingsBrothers" binding:"required"`
+	SiblingSisters        *int    `json:"siblingSisters" binding:"required"`
+	MonthlyFamilyIncome   string  `json:"monthlyFamilyIncome" binding:"required"`
+	GuardianFirstName     string  `json:"guardianFirstName" binding:"required"`
+	GuardianLastName      string  `json:"guardianLastName" binding:"required"`
+	GuardianMiddleName    *string `json:"guardianMiddleName,omitempty"`
+
+	GuardianAddress string `json:"guardianAddress" binding:"required"`
 
 	UpdateFinanceRequest
 	// Parent Data
