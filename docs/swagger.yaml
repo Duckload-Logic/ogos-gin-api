@@ -1,20 +1,40 @@
 basePath: /api/v1
 definitions:
-  appointments.CreateAppointmentRequest:
+  appointments.Appointment:
     properties:
-      appointmentTypeId:
-        type: integer
       concernCategory:
         type: string
-      scheduledAt:
+      createdAt:
         type: string
-      studentRecordId:
+      id:
         type: integer
+      reason:
+        type: string
+      scheduledDate:
+        type: string
+      scheduledTime:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  appointments.CreateAppointmentRequest:
+    properties:
+      concernCategory:
+        type: string
+      reason:
+        type: string
+      scheduledDate:
+        type: string
+      scheduledTime:
+        type: string
     required:
-    - appointmentTypeId
-    - concernCategory
-    - scheduledAt
-    - studentRecordId
+    - reason
+    - scheduledDate
+    - scheduledTime
     type: object
   auth.LoginRequest:
     properties:
@@ -40,91 +60,64 @@ definitions:
       token:
         type: string
     type: object
-  sql.NullFloat64:
+  excuseslips.UpdateStatusRequest:
     properties:
-      float64:
-        format: float64
-        type: number
-      valid:
-        description: Valid is true if Float64 is not NULL
-        type: boolean
-    type: object
-  sql.NullInt64:
-    properties:
-      int64:
-        format: int64
-        type: integer
-      valid:
-        description: Valid is true if Int64 is not NULL
-        type: boolean
-    type: object
-  sql.NullString:
-    properties:
-      string:
+      status:
         type: string
-      valid:
-        description: Valid is true if String is not NULL
-        type: boolean
-    type: object
-  sql.NullTime:
-    properties:
-      time:
-        type: string
-      valid:
-        description: Valid is true if Time is not NULL
-        type: boolean
+    required:
+    - status
     type: object
   students.CreateStudentRecordRequest:
     properties:
+      addresses:
+        items:
+          $ref: '#/definitions/students.StudentAddressDTO'
+        minItems: 1
+        type: array
       birthDate:
         type: string
       civilStatusTypeId:
         type: integer
+      contactNo:
+        type: string
       course:
         type: string
+      emergencyContact:
+        $ref: '#/definitions/students.UpdateEmergencyContactRequest'
       genderId:
         type: integer
-      goodMoralStatus:
-        description: Booleans default to false if missing
-        type: boolean
-      hasDerogatoryRecord:
-        type: boolean
-      heightCm:
+      heightFt:
         type: number
-      mobileNo:
-        type: string
+      highSchoolGWA:
+        type: number
       placeOfBirth:
         type: string
-      religionTypeId:
-        type: integer
-      section:
-        description: Optional
+      religion:
         type: string
       studentNumber:
         type: string
       weightKg:
         type: number
-      yearLevel:
-        type: integer
     required:
+    - addresses
     - birthDate
     - civilStatusTypeId
+    - contactNo
     - course
+    - emergencyContact
     - genderId
-    - heightCm
-    - mobileNo
+    - heightFt
+    - highSchoolGWA
     - placeOfBirth
-    - religionTypeId
-    - studentNumber
+    - religion
     - weightKg
-    - yearLevel
     type: object
   students.EducationalBGDTO:
     properties:
       awards:
         type: string
-      educationalLevelId:
-        type: integer
+      educationalLevel:
+        type: string
       location:
         type: string
       schoolName:
@@ -137,7 +130,7 @@ definitions:
       yearCompleted:
         type: string
     required:
-    - educationalLevelId
+    - educationalLevel
     - schoolName
     - schoolType
     - yearCompleted
@@ -145,13 +138,13 @@ definitions:
   students.EducationalBackground:
     properties:
       awards:
-        $ref: '#/definitions/sql.NullString'
-      educationalLevelId:
-        type: integer
+        type: string
+      educationalLevel:
+        type: string
       id:
         type: integer
       location:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       schoolName:
         type: string
       schoolType:
@@ -163,12 +156,16 @@ definitions:
     type: object
   students.FamilyBackground:
     properties:
+      guardianAddress:
+        type: string
+      guardianName:
+        type: string
       id:
         type: integer
       monthlyFamilyIncome:
-        $ref: '#/definitions/sql.NullFloat64'
+        type: string
       parentalStatusDetails:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       parentalStatusId:
         type: integer
       siblingSisters:
@@ -178,93 +175,100 @@ definitions:
       studentRecordId:
         type: integer
     type: object
-  students.Guardian:
+  students.GetEmergencyContactResponse:
+    properties:
+      emergencyContact:
+        $ref: '#/definitions/students.StudentEmergencyContact'
+    type: object
+  students.ListStudentsResponse:
+    properties:
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      students:
+        items:
+          $ref: '#/definitions/students.StudentProfileView'
+        type: array
+      total:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  students.Parent:
     properties:
       birthDate:
-        $ref: '#/definitions/sql.NullTime'
+        type: string
       companyName:
-        $ref: '#/definitions/sql.NullString'
-      contactNumber:
-        $ref: '#/definitions/sql.NullString'
-      educationalLevelId:
-        type: integer
+        type: string
+      educationalLevel:
+        type: string
       firstName:
         type: string
       id:
         type: integer
-      isPrimaryContact:
-        type: boolean
       lastName:
         type: string
-      maidenName:
-        $ref: '#/definitions/sql.NullString'
       middleName:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       occupation:
-        $ref: '#/definitions/sql.NullString'
-      relationshipTypeId:
-        type: integer
+        type: string
     type: object
-  students.GuardianDTO:
+  students.ParentDTO:
     properties:
       birthDate:
         description: 'Format: YYYY-MM-DD'
         type: string
       companyName:
         type: string
-      contactNumber:
+      educationalLevel:
         type: string
-      educationalLevelId:
-        type: integer
       firstName:
         type: string
-      isPrimary:
-        description: Indicates if this guardian is the primary contact
-        type: boolean
       lastName:
-        type: string
-      maidenName:
         type: string
       middleName:
         type: string
       occupation:
         type: string
-      relationshipTypeId:
+      relationship:
         type: integer
     required:
     - birthDate
-    - educationalLevelId
+    - educationalLevel
     - firstName
     - lastName
     - occupation
+    - relationship
     type: object
   students.StudentAddress:
     properties:
-      addressTypeId:
-        type: integer
+      addressType:
+        description: Changed from AddressTypeID
+        type: string
       barangayName:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       buildingName:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       cityName:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       id:
         type: integer
       provinceName:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       regionName:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       streetLotBlk:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       studentRecordId:
         type: integer
       unitNo:
-        $ref: '#/definitions/sql.NullString'
+        type: string
     type: object
   students.StudentAddressDTO:
     properties:
-      addressTypeId:
-        type: integer
+      addressType:
+        type: string
       barangayName:
         type: string
       buildingName:
@@ -280,72 +284,134 @@ definitions:
       unitNo:
         type: string
     required:
-    - addressTypeId
+    - addressType
     - barangayName
     - cityName
-    - provinceName
     - regionName
+    type: object
+  students.StudentEmergencyContact:
+    properties:
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      emergencyContactRelationship:
+        type: string
+      id:
+        type: integer
+      parentId:
+        description: Can be NULL
+        type: integer
+      studentRecordId:
+        type: integer
+    type: object
+  students.StudentFinance:
+    properties:
+      employedFamilyMembersCount:
+        type: integer
+      financialSupport:
+        type: string
+      id:
+        type: integer
+      studentRecordId:
+        type: integer
+      supportsFamilyCount:
+        type: integer
+      supportsStudiesCount:
+        type: integer
+      weeklyAllowance:
+        type: number
     type: object
   students.StudentHealthRecord:
     properties:
       consultationReason:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       consultedProfessional:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       dateConcluded:
-        $ref: '#/definitions/sql.NullString'
+        description: Changed from string to sql.NullTime
+        type: string
       dateStarted:
-        $ref: '#/definitions/sql.NullString'
-      generalHealthId:
-        type: integer
-      hearingRemarkId:
-        type: integer
+        description: Changed from string to sql.NullTime
+        type: string
+      generalHealthRemark:
+        description: Changed from ID
+        type: string
+      hearingRemark:
+        description: Changed from ID
+        type: string
       id:
         type: integer
-      mobilityRemarkId:
-        type: integer
+      mobilityRemark:
+        description: Changed from ID
+        type: string
       numberOfSessions:
-        $ref: '#/definitions/sql.NullInt64'
-      speechRemarkId:
         type: integer
+      speechRemark:
+        description: Changed from ID
+        type: string
       studentRecordId:
         type: integer
-      visionRemarkId:
-        type: integer
+      visionRemark:
+        description: Changed from ID
+        type: string
     type: object
-  students.StudentRecord:
+  students.StudentProfile:
     properties:
-      birth_date:
-        $ref: '#/definitions/sql.NullTime'
+      birthDate:
+        type: string
       civilStatusTypeId:
         type: integer
+      contactNo:
+        type: string
       course:
         type: string
-      gender_id:
+      genderId:
         type: integer
-      goodMoralStatus:
-        type: boolean
-      hasDerogatoryRecord:
-        type: boolean
-      heightCm:
-        $ref: '#/definitions/sql.NullFloat64'
+      heightFt:
+        type: number
+      highSchoolGWA:
+        type: number
       id:
         type: integer
-      mobile_no:
-        $ref: '#/definitions/sql.NullString'
-      place_of_birth:
-        $ref: '#/definitions/sql.NullString'
-      religionTypeId:
-        type: integer
-      section:
-        $ref: '#/definitions/sql.NullString'
+      placeOfBirth:
+        type: string
+      religion:
+        type: string
       studentNumber:
         type: string
-      userId:
+      studentRecordId:
         type: integer
       weightKg:
-        $ref: '#/definitions/sql.NullFloat64'
-      yearLevel:
+        type: number
+    type: object
+  students.StudentProfileResponse:
+    properties:
+      studentProfile:
+        $ref: '#/definitions/students.StudentProfile'
+    type: object
+  students.StudentProfileView:
+    properties:
+      course:
+        type: string
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      middleName:
+        type: string
+      studentRecordId:
+        type: integer
+    type: object
+  students.StudentSelectedReason:
+    properties:
+      otherReasonText:
+        type: string
+      reasonId:
+        type: integer
+      studentRecordId:
         type: integer
     type: object
   students.UpdateAddressRequest:
@@ -366,30 +432,90 @@ definitions:
     required:
     - educationalBackgrounds
     type: object
+  students.UpdateEmergencyContactRequest:
+    properties:
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      emergencyContactRelationship:
+        type: string
+      parentId:
+        type: integer
+    required:
+    - emergencyContactName
+    - emergencyContactPhone
+    - emergencyContactRelationship
+    type: object
+  students.UpdateEnrollmentReasonsRequest:
+    properties:
+      enrollmentReasonIds:
+        items:
+          type: integer
+        type: array
+      otherReasonText:
+        type: string
+    type: object
   students.UpdateFamilyRequest:
     properties:
-      guardians:
-        description: Guardian Data
-        items:
-          $ref: '#/definitions/students.GuardianDTO'
-        type: array
+      employedFamilyMembersCount:
+        type: integer
+      financialSupport:
+        type: string
+      guardianAddress:
+        type: string
+      guardianName:
+        type: string
       monthlyFamilyIncome:
-        type: number
+        type: string
       parentalStatusDetails:
         type: string
       parentalStatusId:
         description: Family Background fields
         type: integer
+      parents:
+        description: Parent Data
+        items:
+          $ref: '#/definitions/students.ParentDTO'
+        type: array
       siblingSisters:
         type: integer
       siblingsBrothers:
         type: integer
+      supportsFamilyCount:
+        type: integer
+      supportsStudiesCount:
+        type: integer
+      weeklyAllowance:
+        type: number
     required:
-    - guardians
+    - employedFamilyMembersCount
+    - financialSupport
+    - guardianAddress
+    - guardianName
     - monthlyFamilyIncome
     - parentalStatusId
+    - parents
     - siblingSisters
     - siblingsBrothers
+    - weeklyAllowance
+    type: object
+  students.UpdateFinanceRequest:
+    properties:
+      employedFamilyMembersCount:
+        type: integer
+      financialSupport:
+        type: string
+      supportsFamilyCount:
+        type: integer
+      supportsStudiesCount:
+        type: integer
+      weeklyAllowance:
+        type: number
+    required:
+    - employedFamilyMembersCount
+    - financialSupport
+    - weeklyAllowance
     type: object
   students.UpdateHealthRecordRequest:
     properties:
@@ -401,42 +527,42 @@ definitions:
         type: string
       dateStarted:
         type: string
-      generalHealthRemarkId:
-        type: integer
-      hearingRemarkId:
-        type: integer
-      mobilityRemarkId:
-        type: integer
+      generalHealthRemark:
+        type: string
+      hearingRemark:
+        type: string
+      mobilityRemark:
+        type: string
       numberOfSessions:
         type: integer
-      speechRemarkId:
-        type: integer
-      visionRemarkId:
-        type: integer
+      speechRemark:
+        type: string
+      visionRemark:
+        type: string
     required:
-    - generalHealthRemarkId
-    - hearingRemarkId
-    - mobilityRemarkId
-    - speechRemarkId
-    - visionRemarkId
+    - generalHealthRemark
+    - hearingRemark
+    - mobilityRemark
+    - speechRemark
+    - visionRemark
     type: object
   users.GetUserResponse:
     properties:
-      created_at:
+      createdAt:
         type: string
       email:
         type: string
-      first_name:
+      firstName:
         type: string
       id:
         type: integer
-      last_name:
+      lastName:
         type: string
-      middle_name:
+      middleName:
         type: string
-      role_id:
+      roleId:
         type: integer
-      updated_at:
+      updatedAt:
         type: string
     type: object
 host: localhost:8080
@@ -446,6 +572,38 @@ info:
   version: "1.0"
 paths:
   /appointments:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all appointments. Optionally filter by status
+        or date via query params.
+      parameters:
+      - description: Filter by status (e.g., Pending, Confirmed)
+        in: query
+        name: status
+        type: string
+      - description: Filter by date (YYYY-MM-DD)
+        in: query
+        name: date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/appointments.Appointment'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List All Appointments
+      tags:
+      - Appointments
     post:
       consumes:
       - application/json
@@ -478,6 +636,45 @@ paths:
               type: string
             type: object
       summary: Book a new appointment
+      tags:
+      - Appointments
+  /appointments/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the details of a specific appointment by its ID.
+      parameters:
+      - description: Appointment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/appointments.Appointment'
+        "400":
+          description: Invalid ID format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Appointment not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Appointment Details
       tags:
       - Appointments
   /auth/login:
@@ -549,6 +746,25 @@ paths:
       tags:
       - Auth
   /excuseslips:
+    get:
+      description: Retrieves a list of all submitted excuse slips.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Returns {data: []ExcuseSlip}'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all excuse slips
+      tags:
+      - ExcuseSlips
     post:
       consumes:
       - multipart/form-data
@@ -598,6 +814,199 @@ paths:
       summary: Submit an excuse slip
       tags:
       - ExcuseSlips
+  /excuseslips/{id}:
+    delete:
+      description: Removes the excuse slip record and the uploaded file.
+      parameters:
+      - description: Excuse Slip ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Message
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete an excuse slip
+      tags:
+      - ExcuseSlips
+    get:
+      description: Retrieves details of a specific excuse slip.
+      parameters:
+      - description: Excuse Slip ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Returns {data: ExcuseSlip}'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid ID format
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Excuse slip not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get an excuse slip by ID
+      tags:
+      - ExcuseSlips
+  /excuseslips/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Approve or Reject an excuse slip.
+      parameters:
+      - description: Excuse Slip ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New Status
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/excuseslips.UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Status updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Record not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update excuse slip status
+      tags:
+      - ExcuseSlips
+  /students:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated list of students with optional filters.
+      parameters:
+      - description: Filter by course
+        in: query
+        name: course
+        type: string
+      - description: Filter by year level
+        in: query
+        name: year_level
+        type: integer
+      - description: Filter by gender ID
+        in: query
+        name: gender_id
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Number of records per page
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/students.ListStudentsResponse'
+        "500":
+          description: Failed to list students
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List Students
+      tags:
+      - Students
+  /students/onboarding/{userID}:
+    post:
+      consumes:
+      - application/json
+      description: Creates a student record for a user (first step in onboarding)
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Returns {student_record_id: <id>}'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create Student Record (First Step)
+      tags:
+      - Students
   /students/onboarding/address/{studentRecordID}:
     put:
       consumes:
@@ -640,12 +1049,17 @@ paths:
       summary: Save Address Information
       tags:
       - Students
-  /students/onboarding/base:
+  /students/onboarding/base/{userID}:
     post:
       consumes:
       - application/json
       description: Creates a new student record or updates the basic profile information.
       parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
       - description: Base Profile Data
         in: body
         name: request
@@ -716,11 +1130,52 @@ paths:
       summary: Save Education Information
       tags:
       - Students
+  /students/onboarding/enrollment-reasons/{studentRecordID}:
+    put:
+      consumes:
+      - application/json
+      description: Saves or updates the enrollment reasons for a student.
+      parameters:
+      - description: Student Record ID
+        in: path
+        name: studentRecordID
+        required: true
+        type: integer
+      - description: Enrollment Reasons Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/students.UpdateEnrollmentReasonsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Message: Enrollment reasons saved successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input or ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save Enrollment Reasons
+      tags:
+      - Students
   /students/onboarding/family/{studentRecordID}:
     put:
       consumes:
       - application/json
-      description: Updates the family information (including parents and guardians)
+      description: Updates the family information (including parents and parents)
         for a student.
       parameters:
       - description: Student Record ID
@@ -756,6 +1211,47 @@ paths:
               type: string
             type: object
       summary: Save Family Information
+      tags:
+      - Students
+  /students/onboarding/finance/{studentRecordID}:
+    put:
+      consumes:
+      - application/json
+      description: Updates the financial information for a student.
+      parameters:
+      - description: Student Record ID
+        in: path
+        name: studentRecordID
+        required: true
+        type: integer
+      - description: Finance Info Data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/students.UpdateFinanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: 'Message: Finance information saved successfully'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input or ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save Finance Information
       tags:
       - Students
   /students/onboarding/health/{studentRecordID}:
@@ -852,7 +1348,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/students.StudentRecord'
+            $ref: '#/definitions/students.StudentProfileResponse'
         "400":
           description: Invalid user ID
           schema:
@@ -903,6 +1399,74 @@ paths:
       summary: Get Education Information
       tags:
       - Students
+  /students/profile/emergency-contact/{studentRecordID}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the emergency contact details for a student.
+      parameters:
+      - description: Student Record ID
+        in: path
+        name: studentRecordID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/students.GetEmergencyContactResponse'
+        "400":
+          description: Invalid student record ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to get emergency contact info
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Emergency Contact Information
+      tags:
+      - Students
+  /students/profile/enrollment-reasons/{studentRecordID}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the enrollment reasons selected by a specific student.
+      parameters:
+      - description: Student Record ID
+        in: path
+        name: studentRecordID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/students.StudentSelectedReason'
+            type: array
+        "400":
+          description: Invalid student record ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to get enrollment reasons
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Student Enrollment Reasons
+      tags:
+      - Students
   /students/profile/family/{studentRecordID}:
     get:
       consumes:
@@ -936,11 +1500,11 @@ paths:
       summary: Get Family Information
       tags:
       - Students
-  /students/profile/guardians/{studentRecordID}:
+  /students/profile/finance/{studentRecordID}:
     get:
       consumes:
       - application/json
-      description: Retrieves a list of guardians linked to the student record.
+      description: Retrieves the financial details for a student.
       parameters:
       - description: Student Record ID
         in: path
@@ -953,9 +1517,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/students.Guardian'
-            type: array
+            $ref: '#/definitions/students.StudentFinance'
         "400":
           description: Invalid student record ID
           schema:
@@ -963,45 +1525,12 @@ paths:
               type: string
             type: object
         "500":
-          description: Failed to get guardians info
+          description: Failed to get finance info
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: Get Guardians Information
-      tags:
-      - Students
-  /students/profile/guardians/primary/{studentRecordID}:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves details of the primary guardian for the student.
-      parameters:
-      - description: Student Record ID
-        in: path
-        name: studentRecordID
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/students.Guardian'
-        "400":
-          description: Invalid student record ID
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Failed to get primary guardian info
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Get Primary Guardian Information
+      summary: Get Finance Information
       tags:
       - Students
   /students/profile/health/{studentRecordID}:
@@ -1037,6 +1566,134 @@ paths:
       summary: Get Health Information
       tags:
       - Students
+  /students/profile/parents/{studentRecordID}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of parents linked to the student record.
+      parameters:
+      - description: Student Record ID
+        in: path
+        name: studentRecordID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/students.Parent'
+            type: array
+        "400":
+          description: Invalid student record ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to get parents info
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Parents Information
+      tags:
+      - Students
+  /students/record/{userID}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the complete profile information for a student using
+        their User ID.
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      - description: Include emergency contact information
+        in: query
+        name: include_emergency_contact
+        type: boolean
+      - description: Include family information
+        in: query
+        name: include_family
+        type: boolean
+      - description: Include health information
+        in: query
+        name: include_health
+        type: boolean
+      - description: Include educational background
+        in: query
+        name: include_education
+        type: boolean
+      - description: Include address information
+        in: query
+        name: include_address
+        type: boolean
+      - description: Include financial information
+        in: query
+        name: include_finance
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/students.StudentProfileResponse'
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to get student profile
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Student Profile
+      tags:
+      - Students
+  /students/record/progress/{userID}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the completion progress of various sections in a student's
+        record.
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to get student record progress
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Student Record Progress
+      tags:
+      - Students
   /users/{userID}:
     get:
       consumes:
@@ -1068,6 +1725,27 @@ paths:
               type: string
             type: object
       summary: Get user by ID
+      tags:
+      - Users
+  /users/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves information about the currently authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns current user details
+          schema:
+            $ref: '#/definitions/users.GetUserResponse'
+        "500":
+          description: Failed to get current user
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get current user
       tags:
       - Users
 swagger: "2.0"

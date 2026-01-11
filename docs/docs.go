@@ -16,6 +16,53 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/appointments": {
+            "get": {
+                "description": "Retrieves a list of all appointments. Optionally filter by status or date via query params.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Appointments"
+                ],
+                "summary": "List All Appointments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by status (e.g., Pending, Confirmed)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by date (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/appointments.Appointment"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Schedules a new appointment for a student.",
                 "consumes": [
@@ -49,6 +96,65 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/appointments/{id}": {
+            "get": {
+                "description": "Retrieves the details of a specific appointment by its ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Appointments"
+                ],
+                "summary": "Get Appointment Details",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Appointment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appointments.Appointment"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID format",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Appointment not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -173,6 +279,34 @@ const docTemplate = `{
             }
         },
         "/excuseslips": {
+            "get": {
+                "description": "Retrieves a list of all submitted excuse slips.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ExcuseSlips"
+                ],
+                "summary": "Get all excuse slips",
+                "responses": {
+                    "200": {
+                        "description": "Returns {data: []ExcuseSlip}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Allows a student to submit an excuse slip with a supporting document (file upload).",
                 "consumes": [
@@ -234,6 +368,245 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/excuseslips/{id}": {
+            "get": {
+                "description": "Retrieves details of a specific excuse slip.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ExcuseSlips"
+                ],
+                "summary": "Get an excuse slip by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Excuse Slip ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns {data: ExcuseSlip}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid ID format",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Excuse slip not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Removes the excuse slip record and the uploaded file.",
+                "tags": [
+                    "ExcuseSlips"
+                ],
+                "summary": "Delete an excuse slip",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Excuse Slip ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/excuseslips/{id}/status": {
+            "patch": {
+                "description": "Approve or Reject an excuse slip.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ExcuseSlips"
+                ],
+                "summary": "Update excuse slip status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Excuse Slip ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New Status",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/excuseslips.UpdateStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Record not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students": {
+            "get": {
+                "description": "Retrieves a paginated list of students with optional filters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "List Students",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by course",
+                        "name": "course",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by year level",
+                        "name": "year_level",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Filter by gender ID",
+                        "name": "gender_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of records per page",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/students.ListStudentsResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to list students",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -306,7 +679,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/students/onboarding/base": {
+        "/students/onboarding/base/{userID}": {
             "post": {
                 "description": "Creates a new student record or updates the basic profile information.",
                 "consumes": [
@@ -320,6 +693,13 @@ const docTemplate = `{
                 ],
                 "summary": "Create or Update Base Profile",
                 "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "description": "Base Profile Data",
                         "name": "request",
@@ -421,9 +801,71 @@ const docTemplate = `{
                 }
             }
         },
+        "/students/onboarding/enrollment-reasons/{studentRecordID}": {
+            "put": {
+                "description": "Saves or updates the enrollment reasons for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Save Enrollment Reasons",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Enrollment Reasons Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/students.UpdateEnrollmentReasonsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message: Enrollment reasons saved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/students/onboarding/family/{studentRecordID}": {
             "put": {
-                "description": "Updates the family information (including parents and guardians) for a student.",
+                "description": "Updates the family information (including parents and parents) for a student.",
                 "consumes": [
                     "application/json"
                 ],
@@ -455,6 +897,68 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Message: Family information saved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/onboarding/finance/{studentRecordID}": {
+            "put": {
+                "description": "Updates the financial information for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Save Finance Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Finance Info Data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/students.UpdateFinanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message: Finance information saved successfully",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -526,6 +1030,57 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid input or ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/onboarding/{userID}": {
+            "post": {
+                "description": "Creates a student record for a user (first step in onboarding)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Create Student Record (First Step)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns {student_record_id: \u003cid\u003e}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -624,7 +1179,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/students.StudentRecord"
+                            "$ref": "#/definitions/students.StudentProfileResponse"
                         }
                     },
                     "400": {
@@ -701,6 +1256,109 @@ const docTemplate = `{
                 }
             }
         },
+        "/students/profile/emergency-contact/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves the emergency contact details for a student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Emergency Contact Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/students.GetEmergencyContactResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get emergency contact info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/enrollment-reasons/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves the enrollment reasons selected by a specific student.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Student Enrollment Reasons",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/students.StudentSelectedReason"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get enrollment reasons",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/students/profile/family/{studentRecordID}": {
             "get": {
                 "description": "Retrieves family details associated with a specific student record.",
@@ -751,9 +1409,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/students/profile/guardians/primary/{studentRecordID}": {
+        "/students/profile/finance/{studentRecordID}": {
             "get": {
-                "description": "Retrieves details of the primary guardian for the student.",
+                "description": "Retrieves the financial details for a student.",
                 "consumes": [
                     "application/json"
                 ],
@@ -763,7 +1421,7 @@ const docTemplate = `{
                 "tags": [
                     "Students"
                 ],
-                "summary": "Get Primary Guardian Information",
+                "summary": "Get Finance Information",
                 "parameters": [
                     {
                         "type": "integer",
@@ -777,7 +1435,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/students.Guardian"
+                            "$ref": "#/definitions/students.StudentFinance"
                         }
                     },
                     "400": {
@@ -790,60 +1448,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Failed to get primary guardian info",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/students/profile/guardians/{studentRecordID}": {
-            "get": {
-                "description": "Retrieves a list of guardians linked to the student record.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Students"
-                ],
-                "summary": "Get Guardians Information",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Student Record ID",
-                        "name": "studentRecordID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/students.Guardian"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid student record ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to get guardians info",
+                        "description": "Failed to get finance info",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -894,6 +1499,228 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to get health info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/profile/parents/{studentRecordID}": {
+            "get": {
+                "description": "Retrieves a list of parents linked to the student record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Parents Information",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Student Record ID",
+                        "name": "studentRecordID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/students.Parent"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid student record ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get parents info",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/record/progress/{userID}": {
+            "get": {
+                "description": "Retrieves the completion progress of various sections in a student's record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Student Record Progress",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get student record progress",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/record/{userID}": {
+            "get": {
+                "description": "Retrieves the complete profile information for a student using their User ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Students"
+                ],
+                "summary": "Get Student Profile",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include emergency contact information",
+                        "name": "include_emergency_contact",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include family information",
+                        "name": "include_family",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include health information",
+                        "name": "include_health",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include educational background",
+                        "name": "include_education",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include address information",
+                        "name": "include_address",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include financial information",
+                        "name": "include_finance",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/students.StudentProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get student profile",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "description": "Retrieves information about the currently authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Get current user",
+                "responses": {
+                    "200": {
+                        "description": "Returns current user details",
+                        "schema": {
+                            "$ref": "#/definitions/users.GetUserResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to get current user",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -956,26 +1783,57 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "appointments.CreateAppointmentRequest": {
+        "appointments.Appointment": {
             "type": "object",
-            "required": [
-                "appointmentTypeId",
-                "concernCategory",
-                "scheduledAt",
-                "studentRecordId"
-            ],
             "properties": {
-                "appointmentTypeId": {
-                    "type": "integer"
-                },
                 "concernCategory": {
                     "type": "string"
                 },
-                "scheduledAt": {
+                "createdAt": {
                     "type": "string"
                 },
-                "studentRecordId": {
+                "id": {
                     "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "scheduledDate": {
+                    "type": "string"
+                },
+                "scheduledTime": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "appointments.CreateAppointmentRequest": {
+            "type": "object",
+            "required": [
+                "reason",
+                "scheduledDate",
+                "scheduledTime"
+            ],
+            "properties": {
+                "concernCategory": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "scheduledDate": {
+                    "type": "string"
+                },
+                "scheduledTime": {
+                    "type": "string"
                 }
             }
         },
@@ -1016,105 +1874,69 @@ const docTemplate = `{
                 }
             }
         },
-        "sql.NullFloat64": {
+        "excuseslips.UpdateStatusRequest": {
             "type": "object",
+            "required": [
+                "status"
+            ],
             "properties": {
-                "float64": {
-                    "type": "number",
-                    "format": "float64"
-                },
-                "valid": {
-                    "description": "Valid is true if Float64 is not NULL",
-                    "type": "boolean"
-                }
-            }
-        },
-        "sql.NullInt64": {
-            "type": "object",
-            "properties": {
-                "int64": {
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "valid": {
-                    "description": "Valid is true if Int64 is not NULL",
-                    "type": "boolean"
-                }
-            }
-        },
-        "sql.NullString": {
-            "type": "object",
-            "properties": {
-                "string": {
+                "status": {
                     "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if String is not NULL",
-                    "type": "boolean"
-                }
-            }
-        },
-        "sql.NullTime": {
-            "type": "object",
-            "properties": {
-                "time": {
-                    "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if Time is not NULL",
-                    "type": "boolean"
                 }
             }
         },
         "students.CreateStudentRecordRequest": {
             "type": "object",
             "required": [
+                "addresses",
                 "birthDate",
                 "civilStatusTypeId",
+                "contactNo",
                 "course",
+                "emergencyContact",
                 "genderId",
-                "heightCm",
-                "mobileNo",
+                "heightFt",
+                "highSchoolGWA",
                 "placeOfBirth",
-                "religionTypeId",
-                "studentNumber",
-                "weightKg",
-                "yearLevel"
+                "religion",
+                "weightKg"
             ],
             "properties": {
+                "addresses": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/students.StudentAddressDTO"
+                    }
+                },
                 "birthDate": {
                     "type": "string"
                 },
                 "civilStatusTypeId": {
                     "type": "integer"
                 },
+                "contactNo": {
+                    "type": "string"
+                },
                 "course": {
                     "type": "string"
+                },
+                "emergencyContact": {
+                    "$ref": "#/definitions/students.UpdateEmergencyContactRequest"
                 },
                 "genderId": {
                     "type": "integer"
                 },
-                "goodMoralStatus": {
-                    "description": "Booleans default to false if missing",
-                    "type": "boolean"
-                },
-                "hasDerogatoryRecord": {
-                    "type": "boolean"
-                },
-                "heightCm": {
+                "heightFt": {
                     "type": "number"
                 },
-                "mobileNo": {
-                    "type": "string"
+                "highSchoolGWA": {
+                    "type": "number"
                 },
                 "placeOfBirth": {
                     "type": "string"
                 },
-                "religionTypeId": {
-                    "type": "integer"
-                },
-                "section": {
-                    "description": "Optional",
+                "religion": {
                     "type": "string"
                 },
                 "studentNumber": {
@@ -1122,16 +1944,13 @@ const docTemplate = `{
                 },
                 "weightKg": {
                     "type": "number"
-                },
-                "yearLevel": {
-                    "type": "integer"
                 }
             }
         },
         "students.EducationalBGDTO": {
             "type": "object",
             "required": [
-                "educationalLevelId",
+                "educationalLevel",
                 "schoolName",
                 "schoolType",
                 "yearCompleted"
@@ -1140,8 +1959,8 @@ const docTemplate = `{
                 "awards": {
                     "type": "string"
                 },
-                "educationalLevelId": {
-                    "type": "integer"
+                "educationalLevel": {
+                    "type": "string"
                 },
                 "location": {
                     "type": "string"
@@ -1165,16 +1984,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "awards": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
-                "educationalLevelId": {
-                    "type": "integer"
+                "educationalLevel": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "location": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "schoolName": {
                     "type": "string"
@@ -1193,14 +2012,20 @@ const docTemplate = `{
         "students.FamilyBackground": {
             "type": "object",
             "properties": {
+                "guardianAddress": {
+                    "type": "string"
+                },
+                "guardianName": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "integer"
                 },
                 "monthlyFamilyIncome": {
-                    "$ref": "#/definitions/sql.NullFloat64"
+                    "type": "string"
                 },
                 "parentalStatusDetails": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "parentalStatusId": {
                     "type": "integer"
@@ -1216,20 +2041,48 @@ const docTemplate = `{
                 }
             }
         },
-        "students.Guardian": {
+        "students.GetEmergencyContactResponse": {
+            "type": "object",
+            "properties": {
+                "emergencyContact": {
+                    "$ref": "#/definitions/students.StudentEmergencyContact"
+                }
+            }
+        },
+        "students.ListStudentsResponse": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "students": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/students.StudentProfileView"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.Parent": {
             "type": "object",
             "properties": {
                 "birthDate": {
-                    "$ref": "#/definitions/sql.NullTime"
+                    "type": "string"
                 },
                 "companyName": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
-                "contactNumber": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "educationalLevelId": {
-                    "type": "integer"
+                "educationalLevel": {
+                    "type": "string"
                 },
                 "firstName": {
                     "type": "string"
@@ -1237,34 +2090,26 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "isPrimaryContact": {
-                    "type": "boolean"
-                },
                 "lastName": {
                     "type": "string"
                 },
-                "maidenName": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
                 "middleName": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "occupation": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "relationshipTypeId": {
-                    "type": "integer"
+                    "type": "string"
                 }
             }
         },
-        "students.GuardianDTO": {
+        "students.ParentDTO": {
             "type": "object",
             "required": [
                 "birthDate",
-                "educationalLevelId",
+                "educationalLevel",
                 "firstName",
                 "lastName",
-                "occupation"
+                "occupation",
+                "relationship"
             ],
             "properties": {
                 "birthDate": {
@@ -1274,23 +2119,13 @@ const docTemplate = `{
                 "companyName": {
                     "type": "string"
                 },
-                "contactNumber": {
+                "educationalLevel": {
                     "type": "string"
-                },
-                "educationalLevelId": {
-                    "type": "integer"
                 },
                 "firstName": {
                     "type": "string"
                 },
-                "isPrimary": {
-                    "description": "Indicates if this guardian is the primary contact",
-                    "type": "boolean"
-                },
                 "lastName": {
-                    "type": "string"
-                },
-                "maidenName": {
                     "type": "string"
                 },
                 "middleName": {
@@ -1299,7 +2134,7 @@ const docTemplate = `{
                 "occupation": {
                     "type": "string"
                 },
-                "relationshipTypeId": {
+                "relationship": {
                     "type": "integer"
                 }
             }
@@ -1307,50 +2142,50 @@ const docTemplate = `{
         "students.StudentAddress": {
             "type": "object",
             "properties": {
-                "addressTypeId": {
-                    "type": "integer"
+                "addressType": {
+                    "description": "Changed from AddressTypeID",
+                    "type": "string"
                 },
                 "barangayName": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "buildingName": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "cityName": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "provinceName": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "regionName": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "streetLotBlk": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "studentRecordId": {
                     "type": "integer"
                 },
                 "unitNo": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 }
             }
         },
         "students.StudentAddressDTO": {
             "type": "object",
             "required": [
-                "addressTypeId",
+                "addressType",
                 "barangayName",
                 "cityName",
-                "provinceName",
                 "regionName"
             ],
             "properties": {
-                "addressTypeId": {
-                    "type": "integer"
+                "addressType": {
+                    "type": "string"
                 },
                 "barangayName": {
                     "type": "string"
@@ -1372,6 +2207,56 @@ const docTemplate = `{
                 },
                 "unitNo": {
                     "type": "string"
+                }
+            }
+        },
+        "students.StudentEmergencyContact": {
+            "type": "object",
+            "properties": {
+                "emergencyContactName": {
+                    "type": "string"
+                },
+                "emergencyContactPhone": {
+                    "type": "string"
+                },
+                "emergencyContactRelationship": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "parentId": {
+                    "description": "Can be NULL",
+                    "type": "integer"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.StudentFinance": {
+            "type": "object",
+            "properties": {
+                "employedFamilyMembersCount": {
+                    "type": "integer"
+                },
+                "financialSupport": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                },
+                "supportsFamilyCount": {
+                    "type": "integer"
+                },
+                "supportsStudiesCount": {
+                    "type": "integer"
+                },
+                "weeklyAllowance": {
+                    "type": "number"
                 }
             }
         },
@@ -1379,92 +2264,135 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "consultationReason": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "consultedProfessional": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "dateConcluded": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "description": "Changed from string to sql.NullTime",
+                    "type": "string"
                 },
                 "dateStarted": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "description": "Changed from string to sql.NullTime",
+                    "type": "string"
                 },
-                "generalHealthId": {
-                    "type": "integer"
+                "generalHealthRemark": {
+                    "description": "Changed from ID",
+                    "type": "string"
                 },
-                "hearingRemarkId": {
-                    "type": "integer"
+                "hearingRemark": {
+                    "description": "Changed from ID",
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "mobilityRemarkId": {
-                    "type": "integer"
+                "mobilityRemark": {
+                    "description": "Changed from ID",
+                    "type": "string"
                 },
                 "numberOfSessions": {
-                    "$ref": "#/definitions/sql.NullInt64"
-                },
-                "speechRemarkId": {
                     "type": "integer"
+                },
+                "speechRemark": {
+                    "description": "Changed from ID",
+                    "type": "string"
                 },
                 "studentRecordId": {
                     "type": "integer"
                 },
-                "visionRemarkId": {
-                    "type": "integer"
+                "visionRemark": {
+                    "description": "Changed from ID",
+                    "type": "string"
                 }
             }
         },
-        "students.StudentRecord": {
+        "students.StudentProfile": {
             "type": "object",
             "properties": {
-                "birth_date": {
-                    "$ref": "#/definitions/sql.NullTime"
+                "birthDate": {
+                    "type": "string"
                 },
                 "civilStatusTypeId": {
                     "type": "integer"
                 },
+                "contactNo": {
+                    "type": "string"
+                },
                 "course": {
                     "type": "string"
                 },
-                "gender_id": {
+                "genderId": {
                     "type": "integer"
                 },
-                "goodMoralStatus": {
-                    "type": "boolean"
+                "heightFt": {
+                    "type": "number"
                 },
-                "hasDerogatoryRecord": {
-                    "type": "boolean"
-                },
-                "heightCm": {
-                    "$ref": "#/definitions/sql.NullFloat64"
+                "highSchoolGWA": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "mobile_no": {
-                    "$ref": "#/definitions/sql.NullString"
+                "placeOfBirth": {
+                    "type": "string"
                 },
-                "place_of_birth": {
-                    "$ref": "#/definitions/sql.NullString"
-                },
-                "religionTypeId": {
-                    "type": "integer"
-                },
-                "section": {
-                    "$ref": "#/definitions/sql.NullString"
+                "religion": {
+                    "type": "string"
                 },
                 "studentNumber": {
                     "type": "string"
                 },
-                "userId": {
+                "studentRecordId": {
                     "type": "integer"
                 },
                 "weightKg": {
-                    "$ref": "#/definitions/sql.NullFloat64"
+                    "type": "number"
+                }
+            }
+        },
+        "students.StudentProfileResponse": {
+            "type": "object",
+            "properties": {
+                "studentProfile": {
+                    "$ref": "#/definitions/students.StudentProfile"
+                }
+            }
+        },
+        "students.StudentProfileView": {
+            "type": "object",
+            "properties": {
+                "course": {
+                    "type": "string"
                 },
-                "yearLevel": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "middleName": {
+                    "type": "string"
+                },
+                "studentRecordId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.StudentSelectedReason": {
+            "type": "object",
+            "properties": {
+                "otherReasonText": {
+                    "type": "string"
+                },
+                "reasonId": {
+                    "type": "integer"
+                },
+                "studentRecordId": {
                     "type": "integer"
                 }
             }
@@ -1497,25 +2425,71 @@ const docTemplate = `{
                 }
             }
         },
+        "students.UpdateEmergencyContactRequest": {
+            "type": "object",
+            "required": [
+                "emergencyContactName",
+                "emergencyContactPhone",
+                "emergencyContactRelationship"
+            ],
+            "properties": {
+                "emergencyContactName": {
+                    "type": "string"
+                },
+                "emergencyContactPhone": {
+                    "type": "string"
+                },
+                "emergencyContactRelationship": {
+                    "type": "string"
+                },
+                "parentId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "students.UpdateEnrollmentReasonsRequest": {
+            "type": "object",
+            "properties": {
+                "enrollmentReasonIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "otherReasonText": {
+                    "type": "string"
+                }
+            }
+        },
         "students.UpdateFamilyRequest": {
             "type": "object",
             "required": [
-                "guardians",
+                "employedFamilyMembersCount",
+                "financialSupport",
+                "guardianAddress",
+                "guardianName",
                 "monthlyFamilyIncome",
                 "parentalStatusId",
+                "parents",
                 "siblingSisters",
-                "siblingsBrothers"
+                "siblingsBrothers",
+                "weeklyAllowance"
             ],
             "properties": {
-                "guardians": {
-                    "description": "Guardian Data",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/students.GuardianDTO"
-                    }
+                "employedFamilyMembersCount": {
+                    "type": "integer"
+                },
+                "financialSupport": {
+                    "type": "string"
+                },
+                "guardianAddress": {
+                    "type": "string"
+                },
+                "guardianName": {
+                    "type": "string"
                 },
                 "monthlyFamilyIncome": {
-                    "type": "number"
+                    "type": "string"
                 },
                 "parentalStatusDetails": {
                     "type": "string"
@@ -1524,22 +2498,63 @@ const docTemplate = `{
                     "description": "Family Background fields",
                     "type": "integer"
                 },
+                "parents": {
+                    "description": "Parent Data",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/students.ParentDTO"
+                    }
+                },
                 "siblingSisters": {
                     "type": "integer"
                 },
                 "siblingsBrothers": {
                     "type": "integer"
+                },
+                "supportsFamilyCount": {
+                    "type": "integer"
+                },
+                "supportsStudiesCount": {
+                    "type": "integer"
+                },
+                "weeklyAllowance": {
+                    "type": "number"
+                }
+            }
+        },
+        "students.UpdateFinanceRequest": {
+            "type": "object",
+            "required": [
+                "employedFamilyMembersCount",
+                "financialSupport",
+                "weeklyAllowance"
+            ],
+            "properties": {
+                "employedFamilyMembersCount": {
+                    "type": "integer"
+                },
+                "financialSupport": {
+                    "type": "string"
+                },
+                "supportsFamilyCount": {
+                    "type": "integer"
+                },
+                "supportsStudiesCount": {
+                    "type": "integer"
+                },
+                "weeklyAllowance": {
+                    "type": "number"
                 }
             }
         },
         "students.UpdateHealthRecordRequest": {
             "type": "object",
             "required": [
-                "generalHealthRemarkId",
-                "hearingRemarkId",
-                "mobilityRemarkId",
-                "speechRemarkId",
-                "visionRemarkId"
+                "generalHealthRemark",
+                "hearingRemark",
+                "mobilityRemark",
+                "speechRemark",
+                "visionRemark"
             ],
             "properties": {
                 "consultationReason": {
@@ -1554,51 +2569,51 @@ const docTemplate = `{
                 "dateStarted": {
                     "type": "string"
                 },
-                "generalHealthRemarkId": {
-                    "type": "integer"
+                "generalHealthRemark": {
+                    "type": "string"
                 },
-                "hearingRemarkId": {
-                    "type": "integer"
+                "hearingRemark": {
+                    "type": "string"
                 },
-                "mobilityRemarkId": {
-                    "type": "integer"
+                "mobilityRemark": {
+                    "type": "string"
                 },
                 "numberOfSessions": {
                     "type": "integer"
                 },
-                "speechRemarkId": {
-                    "type": "integer"
+                "speechRemark": {
+                    "type": "string"
                 },
-                "visionRemarkId": {
-                    "type": "integer"
+                "visionRemark": {
+                    "type": "string"
                 }
             }
         },
         "users.GetUserResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
                 "email": {
                     "type": "string"
                 },
-                "first_name": {
+                "firstName": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "last_name": {
+                "lastName": {
                     "type": "string"
                 },
-                "middle_name": {
+                "middleName": {
                     "type": "string"
                 },
-                "role_id": {
+                "roleId": {
                     "type": "integer"
                 },
-                "updated_at": {
+                "updatedAt": {
                     "type": "string"
                 }
             }
