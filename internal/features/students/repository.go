@@ -904,3 +904,41 @@ func (r *Repository) DeleteFinance(
 
 	return nil
 }
+
+func (r *Repository) DeleteStudentRecord(
+	ctx context.Context, studentRecordID int,
+) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
+		// Delete related data first due to foreign key constraints
+		tables := []string{
+			"student_selected_reasons",
+			"student_finances",
+			"student_health_records",
+			"student_addresses",
+			"educational_backgrounds",
+			"student_parents",
+			"family_backgrounds",
+			"student_emergency_contacts",
+			"student_profiles",
+		}
+
+		for _, table := range tables {
+			delQuery := fmt.Sprintf(
+				"DELETE FROM %s WHERE student_record_id = ?", table,
+			)
+			if _, err := tx.ExecContext(ctx, delQuery, studentRecordID); err != nil {
+				return fmt.Errorf("failed to delete from %s: %w", table, err)
+			}
+		}
+
+		// Finally, delete the student record
+		delRecordQuery := `
+			DELETE FROM student_records WHERE student_record_id = ?
+		`
+		if _, err := tx.ExecContext(ctx, delRecordQuery, studentRecordID); err != nil {
+			return fmt.Errorf("failed to delete student record: %w", err)
+		}
+
+		return nil
+	})
+}

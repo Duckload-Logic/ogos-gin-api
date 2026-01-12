@@ -496,3 +496,14 @@ func (s *Service) VerifyStudentRecordOwnership(
 
 	return studentRecord.ID == resourceID, nil
 }
+
+func (s *Service) DeleteStudentRecord(
+	ctx context.Context, studentRecordID int,
+) error {
+	err := s.repo.DeleteStudentRecord(ctx, studentRecordID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student record: %w", err)
+	}
+
+	return nil
+}
