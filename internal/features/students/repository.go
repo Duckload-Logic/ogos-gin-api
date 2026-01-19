@@ -191,7 +191,8 @@ func (r *Repository) GetEmergencyContact(
 	query := `
 		SELECT
 			emergency_contact_id, student_record_id,
-			parent_id, emergency_contact_name,
+			parent_id, emergency_contact_first_name,
+			emergency_contact_middle_name, emergency_contact_last_name,
 			emergency_contact_phone, emergency_contact_relationship
 		FROM student_emergency_contacts
 		WHERE student_record_id = ?
@@ -200,7 +201,9 @@ func (r *Repository) GetEmergencyContact(
 		&emergencyContact.ID,
 		&emergencyContact.StudentRecordID,
 		&emergencyContact.ParentID,
-		&emergencyContact.EmergencyContactName,
+		&emergencyContact.EmergencyContactFirstName,
+		&emergencyContact.EmergencyContactMiddleName,
+		&emergencyContact.EmergencyContactLastName,
 		&emergencyContact.EmergencyContactPhone,
 		&emergencyContact.EmergencyContactRelationship,
 	)
@@ -269,7 +272,8 @@ func (r *Repository) GetFamily(
 			family_background_id, student_record_id,
 			parental_status_id, parental_status_details,
 			siblings_brothers, sibling_sisters,
-			monthly_family_income, guardian_name,
+			monthly_family_income, guardian_first_name,
+			guardian_middle_name, guardian_last_name,
 			guardian_address
 		FROM family_backgrounds
 		WHERE student_record_id = ?
@@ -278,7 +282,8 @@ func (r *Repository) GetFamily(
 		&familyBg.ID, &familyBg.StudentRecordID,
 		&familyBg.ParentalStatusID, &familyBg.ParentalStatusDetails,
 		&familyBg.SiblingsBrothers, &familyBg.SiblingSisters,
-		&familyBg.MonthlyFamilyIncome, &familyBg.GuardianName,
+		&familyBg.MonthlyFamilyIncome, &familyBg.GuardianFirstName,
+		&familyBg.GuardianMiddleName, &familyBg.GuardianLastName,
 		&familyBg.GuardianAddress,
 	)
 	if err != nil {
@@ -580,12 +585,15 @@ func (r *Repository) SaveEmergencyContact(
 		query := `
 			INSERT INTO student_emergency_contacts (
 				student_record_id, parent_id,
-				emergency_contact_name, emergency_contact_phone,
+				emergency_contact_first_name, emergency_contact_middle_name, 
+				emergency_contact_last_name, emergency_contact_phone,
 				emergency_contact_relationship
-			) VALUES (?, ?, ?, ?, ?)
+			) VALUES (?, ?, ?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE
 				parent_id = VALUES(parent_id),
-				emergency_contact_name = VALUES(emergency_contact_name),
+				emergency_contact_first_name = VALUES(emergency_contact_first_name),
+				emergency_contact_middle_name = VALUES(emergency_contact_middle_name),
+				emergency_contact_last_name = VALUES(emergency_contact_last_name),
 				emergency_contact_phone = VALUES(emergency_contact_phone),
 				emergency_contact_relationship = VALUES(emergency_contact_relationship)
 		`
@@ -593,7 +601,9 @@ func (r *Repository) SaveEmergencyContact(
 		_, err := tx.ExecContext(ctx, query,
 			emergencyContact.StudentRecordID,
 			emergencyContact.ParentID,
-			emergencyContact.EmergencyContactName,
+			emergencyContact.EmergencyContactFirstName,
+			emergencyContact.EmergencyContactMiddleName,
+			emergencyContact.EmergencyContactLastName,
 			emergencyContact.EmergencyContactPhone,
 			emergencyContact.EmergencyContactRelationship,
 		)
@@ -612,15 +622,18 @@ func (r *Repository) SaveFamilyInfo(
 			student_record_id, parental_status_id,
 			parental_status_details, siblings_brothers,
 			sibling_sisters, monthly_family_income,
-			guardian_name, guardian_address
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+			guardian_first_name, guardian_middle_name, 
+			guardian_last_name, guardian_address
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			parental_status_id = VALUES(parental_status_id),
 			parental_status_details = VALUES(parental_status_details),
 			siblings_brothers = VALUES(siblings_brothers),
 			sibling_sisters = VALUES(sibling_sisters),
 			monthly_family_income = VALUES(monthly_family_income),
-			guardian_name = VALUES(guardian_name),
+			guardian_first_name = VALUES(guardian_first_name),
+			guardian_middle_name = VALUES(guardian_middle_name),
+			guardian_last_name = VALUES(guardian_last_name),
 			guardian_address = VALUES(guardian_address)
 		
 	`
@@ -629,7 +642,8 @@ func (r *Repository) SaveFamilyInfo(
 			family.StudentRecordID, family.ParentalStatusID,
 			family.ParentalStatusDetails, family.SiblingsBrothers,
 			family.SiblingSisters, family.MonthlyFamilyIncome,
-			family.GuardianName, family.GuardianAddress,
+			family.GuardianFirstName, family.GuardianMiddleName,
+			family.GuardianLastName, family.GuardianAddress,
 		)
 
 		return err
@@ -889,4 +903,42 @@ func (r *Repository) DeleteFinance(
 	}
 
 	return nil
+}
+
+func (r *Repository) DeleteStudentRecord(
+	ctx context.Context, studentRecordID int,
+) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
+		// Delete related data first due to foreign key constraints
+		tables := []string{
+			"student_selected_reasons",
+			"student_finances",
+			"student_health_records",
+			"student_addresses",
+			"educational_backgrounds",
+			"student_parents",
+			"family_backgrounds",
+			"student_emergency_contacts",
+			"student_profiles",
+		}
+
+		for _, table := range tables {
+			delQuery := fmt.Sprintf(
+				"DELETE FROM %s WHERE student_record_id = ?", table,
+			)
+			if _, err := tx.ExecContext(ctx, delQuery, studentRecordID); err != nil {
+				return fmt.Errorf("failed to delete from %s: %w", table, err)
+			}
+		}
+
+		// Finally, delete the student record
+		delRecordQuery := `
+			DELETE FROM student_records WHERE student_record_id = ?
+		`
+		if _, err := tx.ExecContext(ctx, delRecordQuery, studentRecordID); err != nil {
+			return fmt.Errorf("failed to delete student record: %w", err)
+		}
+
+		return nil
+	})
 }

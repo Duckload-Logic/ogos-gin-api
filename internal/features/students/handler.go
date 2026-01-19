@@ -1059,3 +1059,20 @@ func (h *Handler) getHealthInfoSafe(ctx context.Context, studentRecordID int) (i
 	}
 	return data, nil
 }
+
+// HandleDeleteStudentRecord godoc
+func (h *Handler) HandleDeleteStudentRecord(c *gin.Context) {
+	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid student record ID"})
+		return
+	}
+
+	err = h.service.DeleteStudentRecord(c.Request.Context(), studentRecordID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Student record deleted successfully"})
+}

@@ -37,12 +37,14 @@ type StudentProfile struct {
 
 // StudentEmergencyContact model
 type StudentEmergencyContact struct {
-	ID                           int    `db:"emergency_contact_id" json:"id"`
-	StudentRecordID              int    `db:"student_record_id" json:"studentRecordId"`
-	ParentID                     *int   `db:"parent_id" json:"parentId"` // Can be NULL
-	EmergencyContactName         string `db:"emergency_contact_name" json:"emergencyContactName"`
-	EmergencyContactPhone        string `db:"emergency_contact_phone" json:"emergencyContactPhone"`
-	EmergencyContactRelationship string `db:"emergency_contact_relationship" json:"emergencyContactRelationship"`
+	ID                           int     `db:"emergency_contact_id" json:"id"`
+	StudentRecordID              int     `db:"student_record_id" json:"studentRecordId"`
+	ParentID                     *int    `db:"parent_id" json:"parentId"` // Can be NULL
+	EmergencyContactFirstName    string  `db:"emergency_contact_first_name" json:"emergencyContactFirstName"`
+	EmergencyContactMiddleName   *string `db:"emergency_contact_middle_name" json:"emergencyContactMiddleName"`
+	EmergencyContactLastName     string  `db:"emergency_contact_last_name" json:"emergencyContactLastName"`
+	EmergencyContactPhone        string  `db:"emergency_contact_phone" json:"emergencyContactPhone"`
+	EmergencyContactRelationship string  `db:"emergency_contact_relationship" json:"emergencyContactRelationship"`
 }
 
 // EnrollmentReason
@@ -92,7 +94,9 @@ type FamilyBackground struct {
 	SiblingsBrothers      int     `db:"siblings_brothers" json:"siblingsBrothers"`
 	SiblingSisters        int     `db:"sibling_sisters" json:"siblingSisters"`
 	MonthlyFamilyIncome   string  `db:"monthly_family_income" json:"monthlyFamilyIncome"`
-	GuardianName          string  `db:"guardian_name" json:"guardianName"`
+	GuardianFirstName     string  `db:"guardian_first_name" json:"guardianFirstName"`
+	GuardianLastName      string  `db:"guardian_last_name" json:"guardianLastName"`
+	GuardianMiddleName    *string `db:"guardian_middle_name" json:"guardianMiddleName"`
 	GuardianAddress       string  `db:"guardian_address" json:"guardianAddress"`
 }
 

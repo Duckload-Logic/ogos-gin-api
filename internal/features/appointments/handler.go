@@ -129,7 +129,7 @@ func (h *Handler) HandleListAppointments(c *gin.Context) {
 func (h *Handler) HandleGetAvailableTimeSlots(c *gin.Context) {
 	date := c.Query("date")
 	slots, err := h.service.GetAvailableTimeSlots(c.Request.Context(), date)
-	fmt.Println(slots)
+
 	if err != nil {
 		fmt.Println("Error retrieving available time slots:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve available time slots"})

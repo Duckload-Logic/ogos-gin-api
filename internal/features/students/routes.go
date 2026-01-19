@@ -15,6 +15,18 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	userLookup := middleware.OwnershipMiddleware(db, "userID")
 	studentRecordLookup := middleware.OwnershipMiddleware(db, "studentRecordID")
 
+	adminOnly := studentRoutes.Group("/")
+	adminOnly.Use(middleware.RoleMiddleware(
+		int(constants.CounselorRoleID),
+	))
+	{
+		// Admin-only Routes
+		adminOnly.DELETE(
+			"/:studentRecordID",
+			studentRecordLookup,
+			h.HandleDeleteStudentRecord,
+		)
+	}
 	// Shared access routes for Counselors, Front Desk, and Students
 	sharedAccessGroup := studentRoutes.Group("/")
 	sharedAccessGroup.Use(middleware.RoleMiddleware(
