@@ -29,6 +29,7 @@ func (r *Repository) ListStudents(
 	query := `
         SELECT 
             sr.student_record_id,
+			u.user_id,
             u.first_name,
             u.middle_name,
             u.last_name,       
@@ -69,6 +70,7 @@ func (r *Repository) ListStudents(
 		var student StudentProfileView
 		if err := rows.Scan(
 			&student.StudentRecordID,
+			&student.UserID,
 			&student.FirstName,
 			&student.MiddleName,
 			&student.LastName,
