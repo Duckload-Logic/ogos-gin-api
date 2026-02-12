@@ -21,7 +21,7 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 		int(constants.CounselorRoleID),
 	))
 	{
-		adminOnly.DELETE("/:studentRecordID", studentRecordLookup, h.HandleDeleteStudentRecord)
+		adminOnly.DELETE("/record/:studentRecordID", studentRecordLookup, h.HandleDeleteStudentRecord)
 	}
 
 	// Shared access (Counselors, Front Desk, Students) - Retrieve only
