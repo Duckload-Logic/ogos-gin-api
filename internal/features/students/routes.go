@@ -15,135 +15,65 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	userLookup := middleware.OwnershipMiddleware(db, "userID")
 	studentRecordLookup := middleware.OwnershipMiddleware(db, "studentRecordID")
 
+	// Admin-only access
 	adminOnly := studentRoutes.Group("/")
 	adminOnly.Use(middleware.RoleMiddleware(
 		int(constants.CounselorRoleID),
 	))
 	{
-		// Admin-only Routes
-		adminOnly.DELETE(
-			"/:studentRecordID",
-			studentRecordLookup,
-			h.HandleDeleteStudentRecord,
-		)
+		adminOnly.DELETE("/:studentRecordID", studentRecordLookup, h.HandleDeleteStudentRecord)
 	}
-	// Shared access routes for Counselors, Front Desk, and Students
-	sharedAccessGroup := studentRoutes.Group("/")
-	sharedAccessGroup.Use(middleware.RoleMiddleware(
+
+	// Shared access (Counselors, Front Desk, Students) - Retrieve only
+	sharedRetrieve := studentRoutes.Group("/")
+	sharedRetrieve.Use(middleware.RoleMiddleware(
 		int(constants.CounselorRoleID),
 		int(constants.FrontDeskRoleID),
 		int(constants.StudentRoleID),
 	))
 	{
-		// Retrieve Routes
-		sharedAccessGroup.GET(
-			"/records",
-			h.HandleListStudents,
-		)
+		// List and basic retrieval
+		sharedRetrieve.GET("/records", h.HandleListStudents)
+		sharedRetrieve.GET("/record/:userID", userLookup, h.HandleGetStudentRecord)
+		sharedRetrieve.GET("/record/progress/:userID", userLookup, h.HandleGetStudentRecordProgress)
+		sharedRetrieve.GET("/:userID", userLookup, h.HandleGetStudent)
 
-		sharedAccessGroup.GET(
-			"/record/:userID",
-			userLookup,
-			h.HandleGetStudentRecord,
-		)
-
-		sharedAccessGroup.GET(
-			"/record/progress/:userID",
-			userLookup,
-			h.HandleGetStudentRecordProgress,
-		)
-
-		sharedAccessGroup.GET(
-			"/:userID",
-			userLookup,
-			h.HandleGetStudent,
-		)
-
-		studentRecordGroup := sharedAccessGroup.Group("/")
-		studentRecordGroup.Use(studentRecordLookup)
+		// Student record detail retrieval
+		recordDetails := sharedRetrieve.Group("/")
+		recordDetails.Use(studentRecordLookup)
 		{
-			studentRecordGroup.GET(
-				"/record/enrollment-reasons/:studentRecordID",
-				h.HandleGetStudentEnrollmentReasons,
-			)
-			studentRecordGroup.GET(
-				"/record/base/:studentRecordID", h.HandleGetBaseProfile,
-			)
-			studentRecordGroup.GET(
-				"/record/family/:studentRecordID", h.HandleGetFamilyInfo,
-			)
-			studentRecordGroup.GET(
-				"/record/parents/:studentRecordID", h.HandleGetParentsInfo,
-			)
-			studentRecordGroup.GET(
-				"/record/education/:studentRecordID", h.HandleGetEducationInfo,
-			)
-			studentRecordGroup.GET(
-				"/record/address/:studentRecordID", h.HandleGetAddressInfo,
-			)
-			studentRecordGroup.GET(
-				"/record/health/:studentRecordID", h.HandleGetHealthInfo,
-			)
-			studentRecordGroup.GET(
-				"/record/finance/:studentRecordID", h.HandleGetFinanceInfo,
-			)
+			recordDetails.GET("/record/enrollment-reasons/:studentRecordID", h.HandleGetStudentEnrollmentReasons)
+			recordDetails.GET("/record/base/:studentRecordID", h.HandleGetBaseProfile)
+			recordDetails.GET("/record/family/:studentRecordID", h.HandleGetFamilyInfo)
+			recordDetails.GET("/record/parents/:studentRecordID", h.HandleGetParentsInfo)
+			recordDetails.GET("/record/education/:studentRecordID", h.HandleGetEducationInfo)
+			recordDetails.GET("/record/address/:studentRecordID", h.HandleGetAddressInfo)
+			recordDetails.GET("/record/health/:studentRecordID", h.HandleGetHealthInfo)
+			recordDetails.GET("/record/finance/:studentRecordID", h.HandleGetFinanceInfo)
 		}
 	}
 
-	// Student-only access routes
-	studentOnly := studentRoutes.Group("/")
-	studentOnly.Use(middleware.RoleMiddleware(
+	// Student-only access - Onboarding (Create/Update)
+	studentOnboarding := studentRoutes.Group("/")
+	studentOnboarding.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 	))
 	{
-		studentOnly.POST(
-			"/onboarding/:userID",
-			userLookup,
-			h.HandleCreateStudentRecord,
-		)
+		// Initialize student record
+		studentOnboarding.POST("/onboarding/:userID", userLookup, h.HandleCreateStudentRecord)
 
-		studentRecordGroup := studentOnly.Group("/")
-		studentRecordGroup.Use(studentRecordLookup)
+		// Update student information
+		onboardingSteps := studentOnboarding.Group("/")
+		onboardingSteps.Use(studentRecordLookup)
 		{
-			studentRecordGroup.PUT(
-				"/onboarding/enrollment-reasons/:studentRecordID",
-				h.HandleSaveEnrollmentReasons,
-			)
-
-			studentRecordGroup.PUT(
-				"/onboarding/base/:studentRecordID",
-				h.HandleSaveBaseProfile,
-			)
-
-			studentRecordGroup.PUT(
-				"/onboarding/family/:studentRecordID",
-				h.HandleSaveFamilyInfo,
-			)
-
-			studentRecordGroup.PUT(
-				"/onboarding/education/:studentRecordID",
-				h.HandleSaveEducationInfo,
-			)
-
-			studentRecordGroup.PUT(
-				"/onboarding/address/:studentRecordID",
-				h.HandleSaveAddressInfo,
-			)
-
-			studentRecordGroup.PUT(
-				"/onboarding/health/:studentRecordID",
-				h.HandleSaveHealthInfo,
-			)
-
-			studentRecordGroup.PUT(
-				"/onboarding/finance/:studentRecordID",
-				h.HandleSaveFinanceInfo,
-			)
-
-			studentRecordGroup.POST(
-				"/onboarding/complete/:studentRecordID",
-				h.HandleCompleteOnboarding,
-			)
+			onboardingSteps.PUT("/onboarding/enrollment-reasons/:studentRecordID", h.HandleSaveEnrollmentReasons)
+			onboardingSteps.PUT("/onboarding/base/:studentRecordID", h.HandleSaveBaseProfile)
+			onboardingSteps.PUT("/onboarding/family/:studentRecordID", h.HandleSaveFamilyInfo)
+			onboardingSteps.PUT("/onboarding/education/:studentRecordID", h.HandleSaveEducationInfo)
+			onboardingSteps.PUT("/onboarding/address/:studentRecordID", h.HandleSaveAddressInfo)
+			onboardingSteps.PUT("/onboarding/health/:studentRecordID", h.HandleSaveHealthInfo)
+			onboardingSteps.PUT("/onboarding/finance/:studentRecordID", h.HandleSaveFinanceInfo)
+			onboardingSteps.POST("/onboarding/complete/:studentRecordID", h.HandleCompleteOnboarding)
 		}
 	}
 }
