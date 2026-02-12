@@ -2,6 +2,7 @@ package students
 
 import "github.com/olazo-johnalbert/duckload-api/internal/core/request"
 
+// List Students
 type ListStudentsRequest struct {
 	request.PaginationParams
 	Course   string `form:"course,omitempty"`
@@ -16,6 +17,17 @@ type ListStudentsResponse struct {
 	TotalPages int                  `json:"totalPages"`
 }
 
+type StudentProfileView struct {
+	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
+	UserID          int    `db:"user_id" json:"userId"`
+	FirstName       string `db:"first_name" json:"firstName"`
+	MiddleName      string `db:"middle_name" json:"middleName"`
+	LastName        string `db:"last_name" json:"lastName"`
+	Email           string `db:"email" json:"email"`
+	Course          string `db:"course" json:"course"`
+}
+
+// Get Student
 type GetStudentRequest struct {
 	IncludeParams
 }
@@ -32,15 +44,15 @@ type ComprehensiveProfileResponse struct {
 	Finance           *StudentFinance          `json:"finance,omitempty"`
 }
 
-type GetEmergencyContactResponse struct {
-	EmergencyContact *StudentEmergencyContact `json:"emergencyContact"`
-}
-
-// Combined response for student profile
 type StudentProfileResponse struct {
 	StudentProfile *StudentProfile `json:"studentProfile"`
 }
 
+type GetEmergencyContactResponse struct {
+	EmergencyContact *StudentEmergencyContact `json:"emergencyContact"`
+}
+
+// Create Student
 type CreateStudentRecordRequest struct {
 	GenderID          int                            `json:"genderId" binding:"required"`
 	CivilStatusTypeID int                            `json:"civilStatusTypeId" binding:"required"`
@@ -57,6 +69,7 @@ type CreateStudentRecordRequest struct {
 	Addresses         []StudentAddressDTO            `json:"addresses" binding:"required,min=1"`
 }
 
+// Update Emergency Contact
 type UpdateEmergencyContactRequest struct {
 	ParentID                     *int    `json:"parentId,omitempty"`
 	EmergencyContactFirstName    string  `json:"emergencyContactFirstName" binding:"required"`
@@ -66,13 +79,14 @@ type UpdateEmergencyContactRequest struct {
 	EmergencyContactRelationship string  `json:"emergencyContactRelationship" binding:"required"`
 }
 
+// Update Enrollment Reasons
 type UpdateEnrollmentReasonsRequest struct {
 	EnrollmentReasonIDs []int  `json:"enrollmentReasonIds"`
 	OtherReasonText     string `json:"otherReasonText,omitempty"`
 }
 
+// Update Family and Parents
 type UpdateFamilyRequest struct {
-	// Family Background fields
 	ParentalStatusID      int     `json:"parentalStatusId" binding:"required"`
 	ParentalStatusDetails string  `json:"parentalStatusDetails,omitempty"`
 	SiblingsBrothers      *int    `json:"siblingsBrothers" binding:"required"`
@@ -81,11 +95,8 @@ type UpdateFamilyRequest struct {
 	GuardianFirstName     string  `json:"guardianFirstName" binding:"required"`
 	GuardianLastName      string  `json:"guardianLastName" binding:"required"`
 	GuardianMiddleName    *string `json:"guardianMiddleName,omitempty"`
-
-	GuardianAddress string `json:"guardianAddress" binding:"required"`
-
+	GuardianAddress       string  `json:"guardianAddress" binding:"required"`
 	UpdateFinanceRequest
-	// Parent Data
 	Parents []ParentDTO `json:"parents" binding:"required,dive"`
 }
 
@@ -94,12 +105,18 @@ type ParentDTO struct {
 	LastName         string `json:"lastName" binding:"required"`
 	MiddleName       string `json:"middleName,omitempty"`
 	EducationalLevel string `json:"educationalLevel" binding:"required"`
-	BirthDate        string `json:"birthDate" binding:"required"` // Format: YYYY-MM-DD
+	BirthDate        string `json:"birthDate" binding:"required"`
 	Occupation       string `json:"occupation" binding:"required"`
 	CompanyName      string `json:"companyName,omitempty"`
 	Relationship     int    `json:"relationship" binding:"required"`
 }
 
+type ParentInfoView struct {
+	Parent
+	Relationship string `db:"relationship" json:"relationship"`
+}
+
+// Update Education
 type UpdateEducationRequest struct {
 	EducationalBGs []EducationalBGDTO `json:"educationalBackgrounds" binding:"required,dive"`
 }
@@ -113,6 +130,7 @@ type EducationalBGDTO struct {
 	Awards           string `json:"awards,omitempty"`
 }
 
+// Update Address
 type UpdateAddressRequest struct {
 	Addresses []StudentAddressDTO `json:"addresses" binding:"required,dive"`
 }
@@ -128,6 +146,7 @@ type StudentAddressDTO struct {
 	BuildingName string `json:"buildingName,omitempty"`
 }
 
+// Update Health
 type UpdateHealthRecordRequest struct {
 	VisionRemark          string  `json:"visionRemark" binding:"required"`
 	HearingRemark         string  `json:"hearingRemark" binding:"required"`
@@ -141,6 +160,7 @@ type UpdateHealthRecordRequest struct {
 	DateConcluded         *string `json:"dateConcluded,omitempty"`
 }
 
+// Update Finance
 type UpdateFinanceRequest struct {
 	EmployedFamilyMembersCount int     `json:"employedFamilyMembersCount" binding:"required"`
 	SupportsStudiesCount       int     `json:"supportsStudiesCount"`
