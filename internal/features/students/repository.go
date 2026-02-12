@@ -16,12 +16,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-// ======================================
-// |                                   |
-// |         RETRIEVE FUNCTIONS        |
-// |                                   |
-// =====================================
-
+// Retrieve - List
 func (r *Repository) ListStudents(
 	ctx context.Context, offset int, limit int,
 	course string, genderID int,
@@ -85,7 +80,71 @@ func (r *Repository) ListStudents(
 	return students, nil
 }
 
-// GetStudentEnrollmentReasons
+// Retrieve - Student Records
+func (r *Repository) GetStudentRecordByStudentID(
+	ctx context.Context, userID int,
+) (*StudentRecord, error) {
+	studentRec := &StudentRecord{}
+	query := `
+		SELECT 
+			student_record_id, user_id, 
+			is_submitted, created_at, updated_at
+		FROM student_records
+		WHERE user_id = ?
+	`
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&studentRec.ID,
+		&studentRec.UserID,
+		&studentRec.IsSubmitted,
+		&studentRec.CreatedAt,
+		&studentRec.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("failed to get student record: %w", err)
+	}
+
+	return studentRec, nil
+}
+
+// Retrieve - Student Profile
+func (r *Repository) GetStudentProfileByStudentRecordID(
+	ctx context.Context, studentRecordID int,
+) (*StudentProfile, error) {
+	profile := &StudentProfile{}
+	query := `
+		SELECT 
+			student_profile_id, student_record_id,
+			gender_id, civil_status_type_id,
+			religion, height_ft, weight_kg,
+			student_number, course, high_school_gwa,
+			place_of_birth, birth_date, contact_no
+		FROM student_profiles
+		WHERE student_record_id = ?
+	`
+	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
+		&profile.ID, &profile.StudentRecordID,
+		&profile.GenderID, &profile.CivilStatusTypeID,
+		&profile.Religion,
+		&profile.HeightFt, &profile.WeightKg,
+		&profile.StudentNumber, &profile.Course, &profile.HighSchoolGWA,
+		&profile.PlaceOfBirth, &profile.BirthDate,
+		&profile.ContactNo,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get student profile: %w", err)
+	}
+
+	return profile, nil
+}
+
+// Retrieve - Enrollment Reasons
 func (r *Repository) GetStudentEnrollmentReasons(
 	ctx context.Context, studentRecordID int,
 ) ([]StudentSelectedReason, error) {
@@ -121,71 +180,7 @@ func (r *Repository) GetStudentEnrollmentReasons(
 	return reasons, nil
 }
 
-// GetStudentRecordByStudentID
-func (r *Repository) GetStudentRecordByStudentID(
-	ctx context.Context, userID int,
-) (*StudentRecord, error) {
-	studentRec := &StudentRecord{}
-	query := `
-		SELECT 
-			student_record_id, user_id, 
-			is_submitted, created_at, updated_at
-		FROM student_records
-		WHERE user_id = ?
-	`
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&studentRec.ID,
-		&studentRec.UserID,
-		&studentRec.IsSubmitted,
-		&studentRec.CreatedAt,
-		&studentRec.UpdatedAt,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("failed to get student record: %w", err)
-	}
-
-	return studentRec, nil
-}
-
-// GetStudentProfileByStudentRecordID
-func (r *Repository) GetStudentProfileByStudentRecordID(
-	ctx context.Context, studentRecordID int,
-) (*StudentProfile, error) {
-	profile := &StudentProfile{}
-	query := `
-		SELECT 
-			student_profile_id, student_record_id,
-			gender_id, civil_status_type_id,
-			religion, height_ft, weight_kg,
-			student_number, course, high_school_gwa,
-			place_of_birth, birth_date, contact_no
-		FROM student_profiles
-		WHERE student_record_id = ?
-	`
-	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
-		&profile.ID, &profile.StudentRecordID,
-		&profile.GenderID, &profile.CivilStatusTypeID,
-		&profile.Religion,
-		&profile.HeightFt, &profile.WeightKg,
-		&profile.StudentNumber, &profile.Course, &profile.HighSchoolGWA,
-		&profile.PlaceOfBirth, &profile.BirthDate,
-		&profile.ContactNo,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to get student profile: %w", err)
-	}
-
-	return profile, nil
-}
-
-// GetEmergencyContact
+// Retrieve - Emergency Contact
 func (r *Repository) GetEmergencyContact(
 	ctx context.Context, studentRecordID int,
 ) (*StudentEmergencyContact, error) {
@@ -219,7 +214,7 @@ func (r *Repository) GetEmergencyContact(
 	return emergencyContact, nil
 }
 
-// GetParents
+// Retrieve - Parents
 func (r *Repository) GetParents(
 	ctx context.Context, studentRecordID int,
 ) ([]ParentInfoView, error) {
@@ -264,7 +259,7 @@ func (r *Repository) GetParents(
 	return parents, nil
 }
 
-// GetFamily
+// Retrieve - Family Background
 func (r *Repository) GetFamily(
 	ctx context.Context, studentRecordID int,
 ) (*FamilyBackground, error) {
@@ -299,7 +294,7 @@ func (r *Repository) GetFamily(
 	return familyBg, nil
 }
 
-// GetEducationalBackgrounds
+// Retrieve - Education
 func (r *Repository) GetEducationalBackgrounds(
 	ctx context.Context, studentRecordID int,
 ) ([]EducationalBackground, error) {
@@ -337,7 +332,7 @@ func (r *Repository) GetEducationalBackgrounds(
 	return backgrounds, nil
 }
 
-// GetAddresses
+// Retrieve - Addresses
 func (r *Repository) GetAddresses(
 	ctx context.Context, studentRecordID int,
 ) ([]StudentAddress, error) {
@@ -378,7 +373,7 @@ func (r *Repository) GetAddresses(
 	return addresses, nil
 }
 
-// GetHealthRecord
+// Retrieve - Health
 func (r *Repository) GetHealthRecord(
 	ctx context.Context, studentRecordID int,
 ) (*StudentHealthRecord, error) {
@@ -412,7 +407,7 @@ func (r *Repository) GetHealthRecord(
 	return healthRec, nil
 }
 
-// Add to repository.go
+// Retrieve - Finance
 func (r *Repository) GetFinance(ctx context.Context, studentRecordID int) (*StudentFinance, error) {
 	finance := &StudentFinance{}
 	query := `
@@ -440,6 +435,7 @@ func (r *Repository) GetFinance(ctx context.Context, studentRecordID int) (*Stud
 	return finance, nil
 }
 
+// Retrieve - Count
 func (r *Repository) GetTotalStudentsCount(
 	ctx context.Context,
 	course string, genderID int,
@@ -467,13 +463,7 @@ func (r *Repository) GetTotalStudentsCount(
 	return total, nil
 }
 
-// =====================================
-// |                                   |
-// |         UPSERT FUNCTIONS          |
-// |                                   |
-// =====================================
-
-// CreateStudentRecord - Creates a basic student record
+// Create - Student Record
 func (r *Repository) CreateStudentRecord(
 	ctx context.Context, userID int,
 ) (int, error) {
@@ -495,7 +485,7 @@ func (r *Repository) CreateStudentRecord(
 	return int(id), nil
 }
 
-// SaveEnrollmentReason
+// Create - Enrollment Reasons
 func (r *Repository) SaveEnrollmentReason(
 	ctx context.Context, studentRecordID int,
 	reasonID int, otherReasonText sql.NullString,
@@ -514,7 +504,7 @@ func (r *Repository) SaveEnrollmentReason(
 	return nil
 }
 
-// SaveStudentProfile
+// Create/Update - Student Profile
 func (r *Repository) SaveStudentProfile(
 	ctx context.Context, profile *StudentProfile,
 ) (int, error) {
@@ -579,7 +569,7 @@ func (r *Repository) SaveStudentProfile(
 	return studentProfileID, nil
 }
 
-// SaveEmergencyContact
+// Create/Update - Emergency Contact
 func (r *Repository) SaveEmergencyContact(
 	ctx context.Context, emergencyContact *StudentEmergencyContact,
 ) error {
@@ -614,7 +604,7 @@ func (r *Repository) SaveEmergencyContact(
 	})
 }
 
-// SaveFamilyInfo
+// Create/Update - Family Info
 func (r *Repository) SaveFamilyInfo(
 	ctx context.Context, family *FamilyBackground,
 ) error {
@@ -652,7 +642,7 @@ func (r *Repository) SaveFamilyInfo(
 	})
 }
 
-// SaveParentsInfo
+// Create - Parents Info
 func (r *Repository) SaveParentsInfo(
 	ctx context.Context, studentRecordID int,
 	parents []Parent,
@@ -710,7 +700,7 @@ func (r *Repository) SaveParentsInfo(
 	})
 }
 
-// SaveEducationInfo
+// Create - Education Info
 func (r *Repository) SaveEducationInfo(
 	ctx context.Context, studentRecordID int,
 	educations []EducationalBackground,
@@ -748,7 +738,7 @@ func (r *Repository) SaveEducationInfo(
 	})
 }
 
-// SaveAddressInfo
+// Create - Address Info
 func (r *Repository) SaveAddressInfo(
 	ctx context.Context, studentRecordID int,
 	addresses []StudentAddress,
@@ -788,7 +778,7 @@ func (r *Repository) SaveAddressInfo(
 	})
 }
 
-// SaveHealthRecord
+// Create/Update - Health Record
 func (r *Repository) SaveHealthRecord(
 	ctx context.Context, health *StudentHealthRecord,
 ) error {
@@ -827,7 +817,7 @@ func (r *Repository) SaveHealthRecord(
 	})
 }
 
-// SaveFinanceInfo
+// Create/Update - Finance Info
 func (r *Repository) SaveFinanceInfo(
 	ctx context.Context, finance *StudentFinance,
 ) error {
@@ -856,6 +846,7 @@ func (r *Repository) SaveFinanceInfo(
 	})
 }
 
+// Update - Mark Onboarding Complete
 func (r *Repository) MarkOnboardingComplete(
 	ctx context.Context, studentRecordID int,
 ) error {
@@ -873,13 +864,7 @@ func (r *Repository) MarkOnboardingComplete(
 	return nil
 }
 
-// =====================================
-// |                                   |
-// |        DELETE FUNCTIONS          |
-// |                                   |
-// =====================================
-
-// DeleteEnrollmentReasons
+// Delete - Enrollment Reasons
 func (r *Repository) DeleteEnrollmentReasons(
 	ctx context.Context, studentRecordID int,
 ) error {
@@ -893,7 +878,7 @@ func (r *Repository) DeleteEnrollmentReasons(
 	return nil
 }
 
-// DeleteFinance
+// Delete - Finance
 func (r *Repository) DeleteFinance(
 	ctx context.Context, studentRecordID int,
 ) error {
@@ -907,6 +892,7 @@ func (r *Repository) DeleteFinance(
 	return nil
 }
 
+// Delete - Student Record
 func (r *Repository) DeleteStudentRecord(
 	ctx context.Context, studentRecordID int,
 ) error {
