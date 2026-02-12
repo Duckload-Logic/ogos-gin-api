@@ -1037,6 +1037,16 @@ func (h *Handler) getHealthInfoSafe(ctx context.Context, studentRecordID int) (i
 }
 
 // HandleDeleteStudentRecord godoc
+// @Summary      Delete Student Record
+// @Description  Deletes a student record and all associated information from the system.
+// @Tags         Students
+// @Accept       json
+// @Produce      json
+// @Param        studentRecordID path      int  true  "Student Record ID"
+// @Success      200             {object}  map[string]string "Message: Student record deleted successfully"
+// @Failure      400             {object}  map[string]string "Invalid student record ID"
+// @Failure      500             {object}  map[string]string "Internal Server Error"
+// @Router       /students/record/{studentRecordID} [delete]
 func (h *Handler) HandleDeleteStudentRecord(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
