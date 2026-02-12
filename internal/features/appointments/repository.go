@@ -18,14 +18,8 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 
 	query := `
 		INSERT INTO appointments (
-			user_id, 
-			reason, 
-			scheduled_date, 
-			scheduled_time, 
-			concern_category, 
-			status, 
-			created_at, 
-			updated_at
+			user_id, reason, scheduled_date, scheduled_time, 
+			concern_category, status, created_at, updated_at
 		)
 		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
 	`
@@ -33,8 +27,8 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 	result, err := r.db.ExecContext(ctx, query,
 		appt.UserID,
 		appt.Reason,
-		appt.ScheduledDate, // scheduled_date
-		appt.ScheduledTime, // scheduled_time
+		appt.ScheduledDate,
+		appt.ScheduledTime,
 		appt.ConcernCategory,
 		appt.Status,
 	)
@@ -54,12 +48,10 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 func (r *Repository) GetByID(ctx context.Context, id int) (*Appointment, error) {
 	query := `
         SELECT 
-            appointment_id, user_id, reason, 
-            scheduled_date, scheduled_time, concern_category, 
-            status, created_at, updated_at
+            appointment_id, user_id, reason, scheduled_date, 
+			scheduled_time, concern_category, status, created_at, updated_at
         FROM appointments
-        WHERE appointment_id = ?
-    `
+        WHERE appointment_id = ?`
 
 	var appt Appointment
 
@@ -90,12 +82,11 @@ func (r *Repository) List(
 ) ([]Appointment, error) {
 	query := `
         SELECT 
-            appointment_id, user_id, reason, 
-            scheduled_date, scheduled_time, concern_category, 
-            status, created_at, updated_at
+            appointment_id, user_id, reason, scheduled_date, 
+			scheduled_time, concern_category, status, created_at, updated_at
         FROM appointments
-        WHERE 1=1
-    `
+        WHERE 1=1`
+
 	var args []interface{}
 
 	if status != "" {
@@ -140,21 +131,17 @@ func (r *Repository) List(
 		appts = append(appts, appt)
 	}
 
-	fmt.Println(appts)
-
 	return appts, nil
 }
 
 func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]Appointment, error) {
 	query := `
 		SELECT
-			appointment_id, user_id, reason,
-			scheduled_date, scheduled_time, concern_category,
-			status, created_at, updated_at
+			appointment_id, user_id, reason, scheduled_date, 
+			scheduled_time, concern_category,status, created_at, updated_at
 		FROM appointments
 		WHERE scheduled_date = ?
-		AND (status = 'Approved' OR status = 'Rescheduled');
-	`
+		AND (status = 'Approved' OR status = 'Rescheduled');`
 
 	rows, err := r.db.QueryContext(ctx, query, date)
 	if err != nil {
@@ -189,12 +176,10 @@ func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]Appointme
 func (r *Repository) GetByUserID(ctx context.Context, userID int) ([]Appointment, error) {
 	query := `
         SELECT 
-            appointment_id, user_id, reason, 
-            scheduled_date, scheduled_time, concern_category, 
-            status, created_at, updated_at
+            appointment_id, user_id, reason, scheduled_date, 
+			scheduled_time, concern_category, status, created_at, updated_at
         FROM appointments
-        WHERE user_id = ?
-    `
+        WHERE user_id = ?`
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
@@ -249,7 +234,6 @@ func (r *Repository) UpdateAppointment(ctx context.Context, id int, req UpdateSt
 	var args []interface{}
 	first := true
 
-	// Only update fields that are provided (non-empty)
 	if req.Status != "" {
 		if !first {
 			query += ", "
