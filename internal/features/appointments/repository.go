@@ -130,7 +130,7 @@ func (r *Repository) List(
 
 		appts = append(appts, appt)
 	}
-
+	
 	return appts, nil
 }
 
