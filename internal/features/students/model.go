@@ -1,15 +1,6 @@
 package students
 
-type StudentProfileView struct {
-	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
-	FirstName       string `db:"first_name" json:"firstName"`
-	MiddleName      string `db:"middle_name" json:"middleName"`
-	LastName        string `db:"last_name" json:"lastName"`
-	Email           string `db:"email" json:"email"`
-	Course          string `db:"course" json:"course"`
-}
-
-// StudentRecord model - matches the student_records table
+// Core Student Records
 type StudentRecord struct {
 	ID          int    `db:"student_record_id" json:"id"`
 	UserID      int    `db:"user_id" json:"userId"`
@@ -18,7 +9,6 @@ type StudentRecord struct {
 	UpdatedAt   string `db:"updated_at" json:"updatedAt"`
 }
 
-// StudentProfile model - matches the student_profiles table
 type StudentProfile struct {
 	ID                int      `db:"student_profile_id" json:"id"`
 	StudentRecordID   int      `db:"student_record_id" json:"studentRecordId"`
@@ -35,32 +25,19 @@ type StudentProfile struct {
 	ContactNo         *string  `db:"contact_no" json:"contactNo"`
 }
 
-// StudentEmergencyContact model
-type StudentEmergencyContact struct {
-	ID                           int     `db:"emergency_contact_id" json:"id"`
-	StudentRecordID              int     `db:"student_record_id" json:"studentRecordId"`
-	ParentID                     *int    `db:"parent_id" json:"parentId"` // Can be NULL
-	EmergencyContactFirstName    string  `db:"emergency_contact_first_name" json:"emergencyContactFirstName"`
-	EmergencyContactMiddleName   *string `db:"emergency_contact_middle_name" json:"emergencyContactMiddleName"`
-	EmergencyContactLastName     string  `db:"emergency_contact_last_name" json:"emergencyContactLastName"`
-	EmergencyContactPhone        string  `db:"emergency_contact_phone" json:"emergencyContactPhone"`
-	EmergencyContactRelationship string  `db:"emergency_contact_relationship" json:"emergencyContactRelationship"`
-}
-
-// EnrollmentReason
+// Enrollment and Reasons
 type EnrollmentReason struct {
 	ID   int    `db:"reason_id" json:"id"`
 	Text string `db:"reason_text" json:"text"`
 }
 
-// StudentSelectedReason (Junction Table)
 type StudentSelectedReason struct {
 	StudentRecordID int     `db:"student_record_id" json:"studentRecordId"`
 	ReasonID        int     `db:"reason_id" json:"reasonId"`
 	OtherReasonText *string `db:"other_reason_text" json:"otherReasonText"`
 }
 
-// Parent model
+// Family and Parents
 type Parent struct {
 	ID               int     `db:"parent_id" json:"id"`
 	EducationalLevel string  `db:"educational_level" json:"educationalLevel"`
@@ -72,12 +49,6 @@ type Parent struct {
 	CompanyName      *string `db:"company_name" json:"companyName"`
 }
 
-type ParentInfoView struct {
-	Parent
-	Relationship string `db:"relationship" json:"relationship"`
-}
-
-// StudentParent model for the junction table
 type StudentParent struct {
 	StudentRecordID  int  `db:"student_record_id" json:"studentRecordId"`
 	ParentID         int  `db:"parent_id" json:"parentId"`
@@ -85,7 +56,17 @@ type StudentParent struct {
 	IsPrimaryContact bool `db:"is_primary_contact" json:"isPrimaryContact"`
 }
 
-// FamilyBackground model
+type StudentEmergencyContact struct {
+	ID                           int     `db:"emergency_contact_id" json:"id"`
+	StudentRecordID              int     `db:"student_record_id" json:"studentRecordId"`
+	ParentID                     *int    `db:"parent_id" json:"parentId"`
+	EmergencyContactFirstName    string  `db:"emergency_contact_first_name" json:"emergencyContactFirstName"`
+	EmergencyContactMiddleName   *string `db:"emergency_contact_middle_name" json:"emergencyContactMiddleName"`
+	EmergencyContactLastName     string  `db:"emergency_contact_last_name" json:"emergencyContactLastName"`
+	EmergencyContactPhone        string  `db:"emergency_contact_phone" json:"emergencyContactPhone"`
+	EmergencyContactRelationship string  `db:"emergency_contact_relationship" json:"emergencyContactRelationship"`
+}
+
 type FamilyBackground struct {
 	ID                    int     `db:"family_background_id" json:"id"`
 	StudentRecordID       int     `db:"student_record_id" json:"studentRecordId"`
@@ -100,7 +81,7 @@ type FamilyBackground struct {
 	GuardianAddress       string  `db:"guardian_address" json:"guardianAddress"`
 }
 
-// EducationalBackground model
+// Education and Background
 type EducationalBackground struct {
 	ID               int     `db:"educational_background_id" json:"id"`
 	StudentRecordID  int     `db:"student_record_id" json:"studentRecordId"`
@@ -112,11 +93,11 @@ type EducationalBackground struct {
 	Awards           *string `db:"awards" json:"awards"`
 }
 
-// StudentAddress model - Fixed to match schema
+// Location and Address
 type StudentAddress struct {
 	ID              int     `db:"student_address_id" json:"id"`
 	StudentRecordID int     `db:"student_record_id" json:"studentRecordId"`
-	AddressType     string  `db:"address_type" json:"addressType"` // Changed from AddressTypeID
+	AddressType     string  `db:"address_type" json:"addressType"`
 	RegionName      *string `db:"region_name" json:"regionName"`
 	ProvinceName    *string `db:"province_name" json:"provinceName"`
 	CityName        *string `db:"city_name" json:"cityName"`
@@ -126,23 +107,23 @@ type StudentAddress struct {
 	BuildingName    *string `db:"building_name" json:"buildingName"`
 }
 
-// StudentHealthRecord model - Fixed to use enums directly
+// Health and Wellness
 type StudentHealthRecord struct {
 	ID                    int     `db:"health_id" json:"id"`
 	StudentRecordID       int     `db:"student_record_id" json:"studentRecordId"`
-	VisionRemark          string  `db:"vision_remark" json:"visionRemark"`                // Changed from ID
-	HearingRemark         string  `db:"hearing_remark" json:"hearingRemark"`              // Changed from ID
-	MobilityRemark        string  `db:"mobility_remark" json:"mobilityRemark"`            // Changed from ID
-	SpeechRemark          string  `db:"speech_remark" json:"speechRemark"`                // Changed from ID
-	GeneralHealthRemark   string  `db:"general_health_remark" json:"generalHealthRemark"` // Changed from ID
+	VisionRemark          string  `db:"vision_remark" json:"visionRemark"`
+	HearingRemark         string  `db:"hearing_remark" json:"hearingRemark"`
+	MobilityRemark        string  `db:"mobility_remark" json:"mobilityRemark"`
+	SpeechRemark          string  `db:"speech_remark" json:"speechRemark"`
+	GeneralHealthRemark   string  `db:"general_health_remark" json:"generalHealthRemark"`
 	ConsultedProfessional *string `db:"consulted_professional" json:"consultedProfessional"`
 	ConsultationReason    *string `db:"consultation_reason" json:"consultationReason"`
-	DateStarted           *string `db:"date_started" json:"dateStarted"` // Changed from string to sql.NullTime
+	DateStarted           *string `db:"date_started" json:"dateStarted"`
 	NumberOfSessions      *int64  `db:"num_sessions" json:"numberOfSessions"`
-	DateConcluded         *string `db:"date_concluded" json:"dateConcluded"` // Changed from string to sql.NullTime
+	DateConcluded         *string `db:"date_concluded" json:"dateConcluded"`
 }
 
-// Add to model.go
+// Financial Support
 type StudentFinance struct {
 	ID                         int      `db:"finance_id" json:"id"`
 	StudentRecordID            int      `db:"student_record_id" json:"studentRecordId"`

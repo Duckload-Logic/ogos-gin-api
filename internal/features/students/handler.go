@@ -17,12 +17,6 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// ========================================
-// |                                      |
-// |      RETRIEVE HANDLER FUNCTIONS      |
-// |                                      |
-// ========================================
-
 // HandleListStudents godoc
 // @Summary      List Students
 // @Description  Retrieves a paginated list of students with optional filters.
@@ -64,7 +58,7 @@ func (h *Handler) HandleListStudents(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        userID   path      int  true  "User ID"
-// @Success      200      {object}  map[string]int "Returns {studentRecordID: <id>}"
+// @Success      200      {object}  map[string]interface{}
 // @Failure      400      {object}  map[string]string "Invalid user ID"
 // @Failure      500      {object}  map[string]string "Failed to get student record ID"
 // @Router       /students/record/{userID} [get]
@@ -148,10 +142,8 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 		return
 	}
 
-	// Bind query parameters
 	var includeReq GetStudentRequest
 	if err := c.ShouldBindQuery(&includeReq); err != nil {
-		// If no query params, that's OK - we'll just return base profile
 		fmt.Println("No include params or error:", err)
 	}
 
@@ -169,7 +161,6 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 
 	studentRecordID := studentRecord.ID
 
-	// Get base profile
 	profile, err := h.service.GetBaseProfile(c.Request.Context(), studentRecordID)
 	if err != nil {
 		fmt.Println("Error getting base profile:", err)
@@ -185,12 +176,10 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 		return
 	}
 
-	// Create response
 	response := StudentProfileResponse{
 		StudentProfile: profile,
 	}
 
-	// If include params are requested, fetch additional data
 	if includeReq.IncludeFamily || includeReq.IncludeHealth ||
 		includeReq.IncludeEducation || includeReq.IncludeAddress ||
 		includeReq.IncludeFinance || includeReq.IncludeEmergencyContact ||
@@ -533,12 +522,6 @@ func (h *Handler) HandleGetHealthInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// ========================================
-// |                                      |
-// |      FINANCE RETRIEVE HANDLERS       |
-// |                                      |
-// ========================================
-
 // HandleGetFinanceInfo godoc
 // @Summary      Get Finance Information
 // @Description  Retrieves the financial details for a student.
@@ -572,12 +555,6 @@ func (h *Handler) HandleGetFinanceInfo(c *gin.Context) {
 
 	c.JSON(http.StatusOK, resp)
 }
-
-// ========================================
-// |                                      |
-// |       UPSERT HANDLER FUNCTIONS       |
-// |                                      |
-// ========================================
 
 // HandleCreateStudentRecord godoc
 // @Summary      Create Student Record (First Step)
@@ -874,6 +851,17 @@ func (h *Handler) HandleSaveFinanceInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Finance information saved successfully"})
 }
 
+// HandleCompleteOnboarding godoc
+// @Summary      Complete Student Onboarding
+// @Description  Marks a student record as submitted, completing the onboarding process.
+// @Tags         Students
+// @Accept       json
+// @Produce      json
+// @Param        studentRecordID path      int  true  "Student Record ID"
+// @Success      200             {object}  map[string]string "Message: Student onboarding completed successfully"
+// @Failure      400             {object}  map[string]string "Invalid student record ID"
+// @Failure      500             {object}  map[string]string "Internal Server Error"
+// @Router       /students/onboarding/complete/{studentRecordID} [post]
 func (h *Handler) HandleCompleteOnboarding(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
@@ -889,12 +877,6 @@ func (h *Handler) HandleCompleteOnboarding(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Student onboarding completed successfully"})
 }
-
-// ========================================
-// |                                      |
-// |       ADDITIONAL HANDLER FUNCS       |
-// |                                      |
-// ========================================
 
 // HandleGetStudentRecordProgress godoc
 // @Summary      Get Student Record Progress
@@ -981,7 +963,6 @@ func (h *Handler) getEnrollmentReasonsSafe(ctx context.Context, studentRecordID 
 func (h *Handler) getPersonalInformationSafe(ctx context.Context, studentRecordID int) (map[string]interface{}, error) {
 	personalData := make(map[string]interface{})
 
-	// Get Student Profile
 	profile, err := h.service.GetBaseProfile(ctx, studentRecordID)
 	if err != nil {
 		fmt.Println("Error getting student profile:", err)
@@ -989,7 +970,6 @@ func (h *Handler) getPersonalInformationSafe(ctx context.Context, studentRecordI
 	}
 	personalData["profile"] = profile
 
-	// Get Address Info
 	addresses, err := h.service.GetAddressInfo(ctx, studentRecordID)
 	if err != nil {
 		fmt.Println("Error getting addresses info:", err)
@@ -998,7 +978,6 @@ func (h *Handler) getPersonalInformationSafe(ctx context.Context, studentRecordI
 	personalData["addresses"] = addresses
 	fmt.Println(addresses)
 
-	// Get Emergency Contact Info
 	emergencyContact, err := h.service.GetEmergencyContactInfo(ctx, studentRecordID)
 	if err != nil {
 		fmt.Println("Error getting emergency contact info:", err)
@@ -1023,7 +1002,6 @@ func (h *Handler) getEducationInfoSafe(ctx context.Context, studentRecordID int)
 func (h *Handler) getFamilyInformationSafe(ctx context.Context, studentRecordID int) (map[string]interface{}, error) {
 	familyData := make(map[string]interface{})
 
-	// Get Family Background
 	family, err := h.service.GetFamilyInfo(ctx, studentRecordID)
 	if err != nil {
 		fmt.Println("Error getting family background:", err)
@@ -1031,7 +1009,6 @@ func (h *Handler) getFamilyInformationSafe(ctx context.Context, studentRecordID 
 	}
 	familyData["background"] = family
 
-	// Get Parents Info
 	parents, err := h.service.GetParentsInfo(ctx, studentRecordID)
 	if err != nil {
 		fmt.Println("Error getting parents info:", err)
@@ -1039,7 +1016,6 @@ func (h *Handler) getFamilyInformationSafe(ctx context.Context, studentRecordID 
 	}
 	familyData["parents"] = parents
 
-	// Get Finance Info
 	finance, err := h.service.GetFinanceInfo(ctx, studentRecordID)
 	if err != nil {
 		fmt.Println("Error getting finance info:", err)
@@ -1061,6 +1037,16 @@ func (h *Handler) getHealthInfoSafe(ctx context.Context, studentRecordID int) (i
 }
 
 // HandleDeleteStudentRecord godoc
+// @Summary      Delete Student Record
+// @Description  Deletes a student record and all associated information from the system.
+// @Tags         Students
+// @Accept       json
+// @Produce      json
+// @Param        studentRecordID path      int  true  "Student Record ID"
+// @Success      200             {object}  map[string]string "Message: Student record deleted successfully"
+// @Failure      400             {object}  map[string]string "Invalid student record ID"
+// @Failure      500             {object}  map[string]string "Internal Server Error"
+// @Router       /students/record/{studentRecordID} [delete]
 func (h *Handler) HandleDeleteStudentRecord(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {

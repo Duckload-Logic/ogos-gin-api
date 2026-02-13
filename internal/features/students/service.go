@@ -14,13 +14,7 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-// ========================================
-// |                                      |
-// |      RETRIEVE SERVICE FUNCTIONS      |
-// |                                      |
-// ========================================
-
-// ListStudents
+// Retrieve - List
 func (s *Service) ListStudents(
 	ctx context.Context, req ListStudentsRequest,
 ) (*ListStudentsResponse, error) {
@@ -63,7 +57,7 @@ func (s *Service) ListStudents(
 	}, nil
 }
 
-// GetStudentRecordByStudentID
+// Retrieve - Student Records
 func (s *Service) GetStudentRecordByStudentID(
 	ctx context.Context, userID int,
 ) (*StudentRecord, error) {
@@ -79,7 +73,7 @@ func (s *Service) GetStudentRecordByStudentID(
 	return studentRecord, nil
 }
 
-// GetStudentEnrollmentReasons
+// Retrieve - Enrollment Reasons
 func (s *Service) GetStudentEnrollmentReasons(
 	ctx context.Context, studentRecordID int,
 ) ([]StudentSelectedReason, error) {
@@ -91,7 +85,7 @@ func (s *Service) GetStudentEnrollmentReasons(
 	return reasons, nil
 }
 
-// GetBaseProfile - Combines StudentRecord and StudentProfile
+// Retrieve - Base Profile
 func (s *Service) GetBaseProfile(
 	ctx context.Context, studentRecordID int,
 ) (*StudentProfile, error) {
@@ -105,7 +99,7 @@ func (s *Service) GetBaseProfile(
 	return studentProfile, nil
 }
 
-// GetEmergencyContactInfo
+// Retrieve - Emergency Contact
 func (s *Service) GetEmergencyContactInfo(
 	ctx context.Context, studentRecordID int,
 ) (*StudentEmergencyContact, error) {
@@ -117,7 +111,7 @@ func (s *Service) GetEmergencyContactInfo(
 	return emergencyContact, nil
 }
 
-// GetFamilyInfo
+// Retrieve - Family Info
 func (s *Service) GetFamilyInfo(
 	ctx context.Context, studentRecordID int,
 ) (*FamilyBackground, error) {
@@ -129,7 +123,7 @@ func (s *Service) GetFamilyInfo(
 	return familyInfo, nil
 }
 
-// GetParentsInfo
+// Retrieve - Parents Info
 func (s *Service) GetParentsInfo(
 	ctx context.Context, studentRecordID int,
 ) ([]ParentInfoView, error) {
@@ -141,7 +135,7 @@ func (s *Service) GetParentsInfo(
 	return ParentInfo, nil
 }
 
-// GetEducationInfo
+// Retrieve - Education Info
 func (s *Service) GetEducationInfo(
 	ctx context.Context, studentRecordID int,
 ) ([]EducationalBackground, error) {
@@ -155,7 +149,7 @@ func (s *Service) GetEducationInfo(
 	return educationInfo, nil
 }
 
-// GetAddressInfo
+// Retrieve - Address Info
 func (s *Service) GetAddressInfo(
 	ctx context.Context, studentRecordID int,
 ) ([]StudentAddress, error) {
@@ -167,7 +161,7 @@ func (s *Service) GetAddressInfo(
 	return addressInfo, nil
 }
 
-// GetHealthInfo
+// Retrieve - Health Info
 func (s *Service) GetHealthInfo(
 	ctx context.Context, studentRecordID int,
 ) (*StudentHealthRecord, error) {
@@ -179,7 +173,7 @@ func (s *Service) GetHealthInfo(
 	return healthInfo, nil
 }
 
-// GetFinanceInfo
+// Retrieve - Finance Info
 func (s *Service) GetFinanceInfo(
 	ctx context.Context, studentRecordID int,
 ) (*StudentFinance, error) {
@@ -191,12 +185,7 @@ func (s *Service) GetFinanceInfo(
 	return finance, nil
 }
 
-// ========================================
-// |                                      |
-// |       SAVE SERVICE FUNCTIONS         |
-// |                                      |
-// ========================================
-
+// Create - Student Record
 func (s *Service) CreateStudentRecord(
 	ctx context.Context, userID int,
 ) (int, error) {
@@ -219,7 +208,7 @@ func (s *Service) CreateStudentRecord(
 	return studentRecordID, nil
 }
 
-// SaveEnrollmentReasons
+// Create/Update - Enrollment Reasons
 func (s *Service) SaveEnrollmentReasons(
 	ctx context.Context, studentRecordID int, req UpdateEnrollmentReasonsRequest,
 ) error {
@@ -249,6 +238,7 @@ func (s *Service) SaveEnrollmentReasons(
 	return nil
 }
 
+// Create/Update - Base Profile
 func (s *Service) SaveBaseProfile(
 	ctx context.Context, studentRecordID int, req CreateStudentRecordRequest,
 ) error {
@@ -277,7 +267,7 @@ func (s *Service) SaveBaseProfile(
 	return nil
 }
 
-// SaveEmergencyContactInfo
+// Create/Update - Emergency Contact
 func (s *Service) SaveEmergencyContactInfo(
 	ctx context.Context, studentRecordID int, req UpdateEmergencyContactRequest,
 ) error {
@@ -301,7 +291,7 @@ func (s *Service) SaveEmergencyContactInfo(
 	return nil
 }
 
-// SaveFamilyInfo
+// Create/Update - Family Info
 func (s *Service) SaveFamilyInfo(
 	ctx context.Context, studentRecordID int, req UpdateFamilyRequest,
 ) error {
@@ -338,6 +328,7 @@ func (s *Service) SaveFamilyInfo(
 	return s.repo.SaveParentsInfo(ctx, studentRecordID, Parents, links)
 }
 
+// Helper - Convert Parent DTO
 func (s *Service) convertParentDTOToModel(
 	dto ParentDTO, relationship int,
 ) (Parent, StudentParent) {
@@ -360,6 +351,7 @@ func (s *Service) convertParentDTOToModel(
 	return Parent, link
 }
 
+// Create/Update - Education Info
 func (s *Service) SaveEducationInfo(
 	ctx context.Context, studentRecordID int, req UpdateEducationRequest,
 ) error {
@@ -380,6 +372,7 @@ func (s *Service) SaveEducationInfo(
 	return s.repo.SaveEducationInfo(ctx, studentRecordID, educations)
 }
 
+// Create/Update - Address Info
 func (s *Service) SaveAddressInfo(
 	ctx context.Context, studentRecordID int, input interface{},
 ) error {
@@ -422,6 +415,7 @@ func (s *Service) SaveAddressInfo(
 	return s.repo.SaveAddressInfo(ctx, studentRecordID, addresses)
 }
 
+// Create/Update - Health Record
 func (s *Service) SaveHealthRecord(
 	ctx context.Context, studentRecordID int, req UpdateHealthRecordRequest,
 ) error {
@@ -443,6 +437,7 @@ func (s *Service) SaveHealthRecord(
 	return s.repo.SaveHealthRecord(ctx, healthRecord)
 }
 
+// Create/Update - Finance Info
 func (s *Service) SaveFinanceInfo(
 	ctx context.Context, studentRecordID int, req UpdateFinanceRequest,
 ) error {
@@ -465,6 +460,7 @@ func (s *Service) SaveFinanceInfo(
 	return nil
 }
 
+// Update - Complete Onboarding
 func (s *Service) CompleteOnboarding(
 	ctx context.Context, studentRecordID int,
 ) error {
@@ -476,12 +472,7 @@ func (s *Service) CompleteOnboarding(
 	return nil
 }
 
-// =====================================
-// |                                   |
-// |      OWNERSHIP VERIFICATIONS      |
-// |                                   |
-// =====================================
-
+// Verify - Student Record Ownership
 func (s *Service) VerifyStudentRecordOwnership(
 	ctx context.Context, userID int, resourceID int,
 ) (bool, error) {
@@ -497,6 +488,7 @@ func (s *Service) VerifyStudentRecordOwnership(
 	return studentRecord.ID == resourceID, nil
 }
 
+// Delete - Student Record
 func (s *Service) DeleteStudentRecord(
 	ctx context.Context, studentRecordID int,
 ) error {
