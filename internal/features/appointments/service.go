@@ -14,9 +14,9 @@ func NewService(repo *Repository) *Service {
 }
 
 func (s *Service) CreateAppointment(ctx context.Context, userID int, req CreateAppointmentRequest) (*Appointment, error) {
-	// Construct the model from the DTO
+
 	appt := &Appointment{
-		UserID:          &userID, // taking the address since your model uses *int
+		UserID:          &userID,
 		Reason:          req.Reason,
 		ScheduledTime:   req.ScheduledTime,
 		ScheduledDate:   req.ScheduledDate,
@@ -43,7 +43,7 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int) ([]Ap
 	return s.repo.GetByUserID(ctx, userID)
 }
 
-// GetAvailableTimeSlots calculates which slots are free for a specific date
+// calculates which slots are free for a specific date
 func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) (map[string]bool, error) {
 	// Define the standard schedule
 	allSlots := []string{
@@ -57,7 +57,7 @@ func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) (map[s
 		return nil, err
 	}
 
-	// Initialize map: Assume all slots are TRUE (available)
+	// Assume all slots are TRUE (available)
 	availableSlots := make(map[string]bool)
 	for _, slot := range allSlots {
 		availableSlots[slot] = true
@@ -65,7 +65,7 @@ func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) (map[s
 
 	// Mark booked slots as FALSE (unavailable)
 	for _, appt := range bookedAppts {
-		// Ensure strict matching of time strings
+		
 		if _, exists := availableSlots[appt.ScheduledTime]; exists {
 			availableSlots[appt.ScheduledTime] = false
 		}
@@ -74,7 +74,7 @@ func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) (map[s
 	return availableSlots, nil
 }
 
-// UpdateAppointmentStatus handles Status updates AND Rescheduling
+// handles Status updates AND Rescheduling
 func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req UpdateStatusRequest) error {
 	// Validate Status
 	validStatuses := map[string]bool{
@@ -90,6 +90,6 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Updat
 		return fmt.Errorf("invalid status provided: %s", req.Status)
 	}
 
-	// Call Repo (uses UpdateAppointment to handle potential date/time changes too)
+	// Call Repo to update the appointment
 	return s.repo.UpdateAppointment(ctx, id, req)
 }
