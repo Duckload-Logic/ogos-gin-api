@@ -1,6 +1,9 @@
 package students
 
-import "github.com/olazo-johnalbert/duckload-api/internal/core/request"
+import (
+	"github.com/olazo-johnalbert/duckload-api/internal/core/request"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+)
 
 // List Students
 type ListStudentsRequest struct {
@@ -18,13 +21,7 @@ type ListStudentsResponse struct {
 }
 
 type StudentProfileView struct {
-	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
-	UserID          int    `db:"user_id" json:"userId"`
-	FirstName       string `db:"first_name" json:"firstName"`
-	MiddleName      string `db:"middle_name" json:"middleName"`
-	LastName        string `db:"last_name" json:"lastName"`
-	Email           string `db:"email" json:"email"`
-	Course          string `db:"course" json:"course"`
+	users.User
 }
 
 // Get Student
@@ -32,46 +29,53 @@ type GetStudentRequest struct {
 	IncludeParams
 }
 
+type StudentProfileDTO = StudentProfile
+type FamilyBackgroundDTO = FamilyBackground
+type StudentHealthRecordDTO = StudentHealthRecord
+type EducationalBackgroundDTO = EducationalBackground
+type StudentAddressResponseDTO = StudentAddress
+type StudentFinanceDTO = StudentFinance
+
 type ComprehensiveProfileResponse struct {
-	EnrollmentReasons []StudentSelectedReason  `json:"enrollmentReasons,omitempty"`
-	StudentProfile    *StudentProfile          `json:"studentProfile"`
-	EmergencyContact  *StudentEmergencyContact `json:"emergencyContact,omitempty"`
-	Family            *FamilyBackground        `json:"family,omitempty"`
-	Parents           []ParentInfoView         `json:"parents,omitempty"`
-	Health            *StudentHealthRecord     `json:"health,omitempty"`
-	Education         []EducationalBackground  `json:"education,omitempty"`
-	Addresses         []StudentAddress         `json:"addresses,omitempty"`
-	Finance           *StudentFinance          `json:"finance,omitempty"`
+	QuickProfile      StudentProfileDTO           `json:"quick,omitempty"`
+	EnrollmentReasons []StudentSelectedReason     `json:"enrollment,omitempty"`
+	StudentProfile    *StudentProfileDTO          `json:"profile,omitempty"`
+	Family            *FamilyBackgroundDTO        `json:"family,omitempty"`
+	RelatedPersons    []RelatedPersonInfoView     `json:"relatedPersons,omitempty"`
+	Health            *StudentHealthRecordDTO     `json:"health,omitempty"`
+	Education         []EducationalBackgroundDTO  `json:"education,omitempty"`
+	Addresses         []StudentAddressResponseDTO `json:"addresses,omitempty"`
+	Finance           *StudentFinanceDTO          `json:"finance,omitempty"`
 }
 
 type StudentProfileResponse struct {
-	StudentProfile *StudentProfile `json:"studentProfile"`
+	StudentProfile *StudentProfileDTO `json:"studentProfile"`
 }
 
-type GetEmergencyContactResponse struct {
-	EmergencyContact *StudentEmergencyContact `json:"emergencyContact"`
+type StudentProfilePayload struct {
+	GenderID          int     `json:"genderId" binding:"required"`
+	CivilStatusTypeID int     `json:"civilStatusTypeId" binding:"required"`
+	Religion          string  `json:"religion" binding:"required"`
+	HeightFt          float64 `json:"heightFt" binding:"required"`
+	WeightKg          float64 `json:"weightKg" binding:"required"`
+	StudentNumber     string  `json:"studentNumber,omitempty"`
+	Course            string  `json:"course" binding:"required"`
+	HighSchoolGWA     float64 `json:"highSchoolGWA" binding:"required"`
+	PlaceOfBirth      string  `json:"placeOfBirth" binding:"required"`
+	DateOfBirth       string  `json:"dateOfBirth" binding:"required"`
+	ContactNumber     string  `json:"contactNumber" binding:"required"`
 }
 
 // Create Student
 type CreateStudentRecordRequest struct {
-	GenderID          int                            `json:"genderId" binding:"required"`
-	CivilStatusTypeID int                            `json:"civilStatusTypeId" binding:"required"`
-	Religion          string                         `json:"religion" binding:"required"`
-	HeightFt          float64                        `json:"heightFt" binding:"required"`
-	WeightKg          float64                        `json:"weightKg" binding:"required"`
-	StudentNumber     string                         `json:"studentNumber,omitempty" `
-	Course            string                         `json:"course" binding:"required"`
-	HighSchoolGWA     float64                        `json:"highSchoolGWA" binding:"required"`
-	PlaceOfBirth      string                         `json:"placeOfBirth" binding:"required"`
-	BirthDate         string                         `json:"birthDate" binding:"required"`
-	ContactNo         string                         `json:"contactNo" binding:"required"`
-	EmergencyContact  *UpdateEmergencyContactRequest `json:"emergencyContact" binding:"required"`
-	Addresses         []StudentAddressDTO            `json:"addresses" binding:"required,min=1"`
+	StudentProfilePayload
+	EmergencyContact *UpdateEmergencyContactRequest `json:"emergencyContact" binding:"required"`
+	Addresses        []StudentAddressDTO            `json:"addresses" binding:"required,min=1"`
 }
 
 // Update Emergency Contact
 type UpdateEmergencyContactRequest struct {
-	ParentID                     *int    `json:"parentId,omitempty"`
+	RelatedPersonID              *int    `json:"relatedPersonId,omitempty"`
 	EmergencyContactFirstName    string  `json:"emergencyContactFirstName" binding:"required"`
 	EmergencyContactMiddleName   *string `json:"emergencyContactMiddleName,omitempty"`
 	EmergencyContactLastName     string  `json:"emergencyContactLastName" binding:"required"`
@@ -85,34 +89,42 @@ type UpdateEnrollmentReasonsRequest struct {
 	OtherReasonText     string `json:"otherReasonText,omitempty"`
 }
 
-// Update Family and Parents
-type UpdateFamilyRequest struct {
+type FamilyBackgroundPayload struct {
 	ParentalStatusID      int     `json:"parentalStatusId" binding:"required"`
 	ParentalStatusDetails string  `json:"parentalStatusDetails,omitempty"`
-	SiblingsBrothers      *int    `json:"siblingsBrothers" binding:"required"`
-	SiblingSisters        *int    `json:"siblingSisters" binding:"required"`
+	Brothers              *int    `json:"brothers" binding:"required"`
+	Sisters               *int    `json:"sisters" binding:"required"`
 	MonthlyFamilyIncome   string  `json:"monthlyFamilyIncome" binding:"required"`
 	GuardianFirstName     string  `json:"guardianFirstName" binding:"required"`
 	GuardianLastName      string  `json:"guardianLastName" binding:"required"`
 	GuardianMiddleName    *string `json:"guardianMiddleName,omitempty"`
 	GuardianAddress       string  `json:"guardianAddress" binding:"required"`
-	UpdateFinanceRequest
-	Parents []ParentDTO `json:"parents" binding:"required,dive"`
 }
 
-type ParentDTO struct {
+// Update Family and Related Persons
+type UpdateFamilyRequest struct {
+	FamilyBackgroundPayload
+	UpdateFinanceRequest
+	RelatedPersons []RelatedPersonDTO `json:"relatedPersons" binding:"required,dive"`
+}
+
+type RelatedPersonPayload struct {
 	FirstName        string `json:"firstName" binding:"required"`
 	LastName         string `json:"lastName" binding:"required"`
 	MiddleName       string `json:"middleName,omitempty"`
 	EducationalLevel string `json:"educationalLevel" binding:"required"`
-	BirthDate        string `json:"birthDate" binding:"required"`
+	DateOfBirth      string `json:"dateOfBirth" binding:"required"`
 	Occupation       string `json:"occupation" binding:"required"`
 	CompanyName      string `json:"companyName,omitempty"`
-	Relationship     int    `json:"relationship" binding:"required"`
 }
 
-type ParentInfoView struct {
-	Parent
+type RelatedPersonDTO struct {
+	RelatedPersonPayload
+	Relationship int `json:"relationship" binding:"required"`
+}
+
+type RelatedPersonInfoView struct {
+	RelatedPerson
 	Relationship string `db:"relationship" json:"relationship"`
 }
 

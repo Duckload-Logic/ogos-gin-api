@@ -123,16 +123,16 @@ func (s *Service) GetFamilyInfo(
 	return familyInfo, nil
 }
 
-// Retrieve - Parents Info
-func (s *Service) GetParentsInfo(
+// Retrieve - Related Persons Info
+func (s *Service) GetRelatedPersonsInfo(
 	ctx context.Context, studentRecordID int,
-) ([]ParentInfoView, error) {
-	ParentInfo, err := s.repo.GetParents(ctx, studentRecordID)
+) ([]RelatedPersonInfoView, error) {
+	relatedPersonsInfo, err := s.repo.GetRelatedPersons(ctx, studentRecordID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Parent info: %w", err)
+		return nil, fmt.Errorf("failed to get related person info: %w", err)
 	}
 
-	return ParentInfo, nil
+	return relatedPersonsInfo, nil
 }
 
 // Retrieve - Education Info
@@ -254,8 +254,8 @@ func (s *Service) SaveBaseProfile(
 		Course:            req.Course,
 		HighSchoolGWA:     &req.HighSchoolGWA,
 		PlaceOfBirth:      &req.PlaceOfBirth,
-		BirthDate:         &req.BirthDate,
-		ContactNo:         &req.ContactNo,
+		DateOfBirth:       &req.DateOfBirth,
+		ContactNumber:     &req.ContactNumber,
 	}
 
 	// Save the profile
@@ -274,7 +274,7 @@ func (s *Service) SaveEmergencyContactInfo(
 	// Create emergency contact
 	emergencyContact := &StudentEmergencyContact{
 		StudentRecordID:              studentRecordID,
-		ParentID:                     req.ParentID,
+		ParentID:                     req.RelatedPersonID,
 		EmergencyContactFirstName:    req.EmergencyContactFirstName,
 		EmergencyContactMiddleName:   req.EmergencyContactMiddleName,
 		EmergencyContactLastName:     req.EmergencyContactLastName,
@@ -300,8 +300,8 @@ func (s *Service) SaveFamilyInfo(
 		StudentRecordID:       studentRecordID,
 		ParentalStatusID:      req.ParentalStatusID,
 		ParentalStatusDetails: &req.ParentalStatusDetails,
-		SiblingsBrothers:      *req.SiblingsBrothers,
-		SiblingSisters:        *req.SiblingSisters,
+		Brothers:              *req.Brothers,
+		Sisters:               *req.Sisters,
 		MonthlyFamilyIncome:   req.MonthlyFamilyIncome,
 		GuardianFirstName:     req.GuardianFirstName,
 		GuardianLastName:      req.GuardianLastName,
@@ -313,42 +313,48 @@ func (s *Service) SaveFamilyInfo(
 		return fmt.Errorf("failed to save family info: %w", err)
 	}
 
-	var Parents []Parent
-	var links []StudentParent
+	var relatedPersons []RelatedPerson
+	var links []StudentRelatedPerson
 
-	for _, g := range req.Parents {
-		ParentModel, linkModel := s.convertParentDTOToModel(
+	for _, g := range req.RelatedPersons {
+		relatedPersonModel, linkModel := s.convertRelatedPersonDTOToModel(
 			g, g.Relationship,
 		)
 
-		Parents = append(Parents, ParentModel)
+		relatedPersons = append(relatedPersons, relatedPersonModel)
 		links = append(links, linkModel)
 	}
-	// Save Parents
-	return s.repo.SaveParentsInfo(ctx, studentRecordID, Parents, links)
+	// Save Related Persons
+	return s.repo.SaveRelatedPersonsInfo(ctx, studentRecordID, relatedPersons, links)
 }
 
-// Helper - Convert Parent DTO
-func (s *Service) convertParentDTOToModel(
-	dto ParentDTO, relationship int,
-) (Parent, StudentParent) {
-	Parent := Parent{
+// Helper - Convert Related Person DTO to Related Person
+func (s *Service) convertRelatedPersonDTOToModel(
+	dto RelatedPersonDTO, relationship int,
+) (RelatedPerson, StudentRelatedPerson) {
+	relatedPerson := RelatedPerson{
+		AddressID:        0,
 		EducationalLevel: dto.EducationalLevel,
-		BirthDate:        &dto.BirthDate,
+		DateOfBirth:      &dto.DateOfBirth,
 		LastName:         dto.LastName,
 		FirstName:        dto.FirstName,
 		MiddleName:       &dto.MiddleName,
 		Occupation:       &dto.Occupation,
-		CompanyName:      &dto.CompanyName,
+		EmployerName:     &dto.CompanyName,
+		EmployerAddress:  nil,
+		IsLiving:         true,
 	}
 
-	link := StudentParent{
-		StudentRecordID: 0, // Will be set by repository
-		ParentID:        0, // Will be set by repository
-		Relationship:    relationship,
+	link := StudentRelatedPerson{
+		StudentRecordID:    0, // Will be set by repository
+		PersonID:           0, // Will be set by repository
+		Relationship:       relationship,
+		IsParent:           true,
+		IsGuardian:         false,
+		IsEmergencyContact: false,
 	}
 
-	return Parent, link
+	return relatedPerson, link
 }
 
 // Create/Update - Education Info

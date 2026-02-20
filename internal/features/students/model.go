@@ -12,17 +12,18 @@ type StudentRecord struct {
 type StudentProfile struct {
 	ID                int      `db:"student_profile_id" json:"id"`
 	StudentRecordID   int      `db:"student_record_id" json:"studentRecordId"`
+	StudentNumber     string   `db:"student_number" json:"studentNumber"`
 	GenderID          int      `db:"gender_id" json:"genderId"`
 	CivilStatusTypeID int      `db:"civil_status_type_id" json:"civilStatusTypeId"`
 	Religion          string   `db:"religion" json:"religion"`
 	HeightFt          *float64 `db:"height_ft" json:"heightFt"`
 	WeightKg          *float64 `db:"weight_kg" json:"weightKg"`
-	StudentNumber     string   `db:"student_number" json:"studentNumber"`
+	Complexion        string   `db:"complexion" json:"complexion"`
 	HighSchoolGWA     *float64 `db:"high_school_gwa" json:"highSchoolGWA"`
 	Course            string   `db:"course" json:"course"`
 	PlaceOfBirth      *string  `db:"place_of_birth" json:"placeOfBirth"`
-	BirthDate         *string  `db:"birth_date" json:"birthDate"`
-	ContactNo         *string  `db:"contact_no" json:"contactNo"`
+	DateOfBirth       *string  `db:"birth_date" json:"dateOfBirth"`
+	ContactNumber     *string  `db:"contact_no" json:"contactNumber"`
 }
 
 // Enrollment and Reasons
@@ -37,34 +38,30 @@ type StudentSelectedReason struct {
 	OtherReasonText *string `db:"other_reason_text" json:"otherReasonText"`
 }
 
-// Family and Parents
-type Parent struct {
-	ID               int     `db:"parent_id" json:"id"`
+// Family and Related Persons
+type RelatedPerson struct {
+	ID               int     `db:"related_person_id" json:"id"`
+	AddressID        int     `db:"address_id" json:"addressId"`
 	EducationalLevel string  `db:"educational_level" json:"educationalLevel"`
-	BirthDate        *string `db:"birth_date" json:"birthDate"`
+	DateOfBirth      *string `db:"birth_date" json:"dateOfBirth"`
 	LastName         string  `db:"last_name" json:"lastName"`
 	FirstName        string  `db:"first_name" json:"firstName"`
 	MiddleName       *string `db:"middle_name" json:"middleName"`
 	Occupation       *string `db:"occupation" json:"occupation"`
-	CompanyName      *string `db:"company_name" json:"companyName"`
+	EmployerName     *string `db:"employer_name" json:"employerName"`
+	EmployerAddress  *string `db:"employer_address" json:"employerAddress"`
+	IsLiving         bool    `db:"is_living" json:"isLiving"`
 }
 
-type StudentParent struct {
-	StudentRecordID  int  `db:"student_record_id" json:"studentRecordId"`
-	ParentID         int  `db:"parent_id" json:"parentId"`
-	Relationship     int  `db:"relationship" json:"relationship"`
-	IsPrimaryContact bool `db:"is_primary_contact" json:"isPrimaryContact"`
-}
+type StudentRelatedPerson struct {
+	StudentRecordID int `db:"student_record_id" json:"studentRecordId"`
+	PersonID        int `db:"related_person_id" json:"personId"`
+	Relationship    int `db:"relationship" json:"relationship"` // "Father", "Mother", "Guardian", "Uncle", "Aunt", "Sibling", "Other"
 
-type StudentEmergencyContact struct {
-	ID                           int     `db:"emergency_contact_id" json:"id"`
-	StudentRecordID              int     `db:"student_record_id" json:"studentRecordId"`
-	ParentID                     *int    `db:"parent_id" json:"parentId"`
-	EmergencyContactFirstName    string  `db:"emergency_contact_first_name" json:"emergencyContactFirstName"`
-	EmergencyContactMiddleName   *string `db:"emergency_contact_middle_name" json:"emergencyContactMiddleName"`
-	EmergencyContactLastName     string  `db:"emergency_contact_last_name" json:"emergencyContactLastName"`
-	EmergencyContactPhone        string  `db:"emergency_contact_phone" json:"emergencyContactPhone"`
-	EmergencyContactRelationship string  `db:"emergency_contact_relationship" json:"emergencyContactRelationship"`
+	// Roles
+	IsParent           bool `db:"is_parent" json:"isParent"`
+	IsGuardian         bool `db:"is_guardian" json:"isGuardian"`
+	IsEmergencyContact bool `db:"is_emergency_contact" json:"isEmergencyContact"`
 }
 
 type FamilyBackground struct {
@@ -72,13 +69,9 @@ type FamilyBackground struct {
 	StudentRecordID       int     `db:"student_record_id" json:"studentRecordId"`
 	ParentalStatusID      int     `db:"parental_status_id" json:"parentalStatusId"`
 	ParentalStatusDetails *string `db:"parental_status_details" json:"parentalStatusDetails"`
-	SiblingsBrothers      int     `db:"siblings_brothers" json:"siblingsBrothers"`
-	SiblingSisters        int     `db:"sibling_sisters" json:"siblingSisters"`
+	Brothers              int     `db:"siblings_brothers" json:"brothers"`
+	Sisters               int     `db:"sibling_sisters" json:"sisters"`
 	MonthlyFamilyIncome   string  `db:"monthly_family_income" json:"monthlyFamilyIncome"`
-	GuardianFirstName     string  `db:"guardian_first_name" json:"guardianFirstName"`
-	GuardianLastName      string  `db:"guardian_last_name" json:"guardianLastName"`
-	GuardianMiddleName    *string `db:"guardian_middle_name" json:"guardianMiddleName"`
-	GuardianAddress       string  `db:"guardian_address" json:"guardianAddress"`
 }
 
 // Education and Background
@@ -94,17 +87,19 @@ type EducationalBackground struct {
 }
 
 // Location and Address
+type Address struct {
+	ID           int     `db:"address_id" json:"id"`
+	Region       string  `db:"region" json:"region"`
+	City         string  `db:"city" json:"city"`
+	Barangay     string  `db:"barangay" json:"barangay"`
+	StreetDetail *string `db:"street_detail" json:"streetDetail"` // Lot/Blk/Street
+}
+
 type StudentAddress struct {
-	ID              int     `db:"student_address_id" json:"id"`
-	StudentRecordID int     `db:"student_record_id" json:"studentRecordId"`
-	AddressType     string  `db:"address_type" json:"addressType"`
-	RegionName      *string `db:"region_name" json:"regionName"`
-	ProvinceName    *string `db:"province_name" json:"provinceName"`
-	CityName        *string `db:"city_name" json:"cityName"`
-	BarangayName    *string `db:"barangay_name" json:"barangayName"`
-	StreetLotBlk    *string `db:"street_lot_blk" json:"streetLotBlk"`
-	UnitNo          *string `db:"unit_no" json:"unitNo"`
-	BuildingName    *string `db:"building_name" json:"buildingName"`
+	ID              int    `db:"student_address_id" json:"id"`
+	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
+	AddressID       int    `db:"address_id" json:"addressId"`
+	AddressType     string `db:"address_type" json:"addressType"`
 }
 
 // Health and Wellness
@@ -132,4 +127,25 @@ type StudentFinance struct {
 	SupportsFamilyCount        *int     `db:"supports_family_count" json:"supportsFamilyCount"`
 	FinancialSupport           string   `db:"financial_support" json:"financialSupport"`
 	WeeklyAllowance            *float64 `db:"weekly_allowance" json:"weeklyAllowance"`
+}
+
+// NEW: Section V - Interests and Hobbies
+type StudentInterest struct {
+	ID              int    `db:"interest_id" json:"id"`
+	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
+	Type            string `db:"interest_type" json:"type"` // e.g., "Academic", "Extra-Curricular"
+	Name            string `db:"interest_name" json:"name"` // e.g., "Math Club", "Chess"
+	IsFavorite      bool   `db:"is_favorite" json:"isFavorite"`
+	Rank            int    `db:"rank" json:"rank"` // For the 1, 2, 3, 4 ranking
+}
+
+// NEW: Section VI & VII - For Guidance Use
+type TestResult struct {
+	ID              int    `db:"test_result_id" json:"id"`
+	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
+	TestDate        string `db:"test_date" json:"testDate"`
+	TestName        string `db:"test_name" json:"testName"`
+	RawScore        string `db:"raw_score" json:"rawScore"`
+	Percentile      string `db:"percentile" json:"percentile"`
+	Description     string `db:"description" json:"description"`
 }

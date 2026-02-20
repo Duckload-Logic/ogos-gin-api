@@ -183,7 +183,7 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 	if includeReq.IncludeFamily || includeReq.IncludeHealth ||
 		includeReq.IncludeEducation || includeReq.IncludeAddress ||
 		includeReq.IncludeFinance || includeReq.IncludeEmergencyContact ||
-		includeReq.IncludeReasons || includeReq.IncludeParents {
+		includeReq.IncludeReasons || includeReq.IncludeRelatedPersons {
 
 		compResponse := ComprehensiveProfileResponse{
 			StudentProfile: profile,
@@ -216,15 +216,15 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 			}
 		}
 
-		if includeReq.IncludeParents {
-			parents, err := h.service.GetParentsInfo(
+		if includeReq.IncludeRelatedPersons {
+			relatedPersons, err := h.service.GetRelatedPersonsInfo(
 				c.Request.Context(), studentRecordID,
 			)
 
-			fmt.Println("Error getting parents info:", err)
+			fmt.Println("Error getting related persons info:", err)
 
-			if err == nil && parents != nil {
-				compResponse.Parents = parents
+			if err == nil && relatedPersons != nil {
+				compResponse.RelatedPersons = relatedPersons
 			}
 		}
 
@@ -381,18 +381,18 @@ func (h *Handler) HandleGetFamilyInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleGetParentsInfo godoc
-// @Summary      Get Parents Information
-// @Description  Retrieves a list of parents linked to the student record.
+// HandleGetRelatedPersonsInfo godoc
+// @Summary      Get Related Persons Information
+// @Description  Retrieves a list of related persons linked to the student record.
 // @Tags         Students
 // @Accept       json
 // @Produce      json
 // @Param        studentRecordID path      int  true  "Student Record ID"
-// @Success      200             {array}   Parent
+// @Success      200             {array}   RelatedPerson
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
-// @Failure      500             {object}  map[string]string "Failed to get parents info"
-// @Router       /students/profile/parents/{studentRecordID} [get]
-func (h *Handler) HandleGetParentsInfo(c *gin.Context) {
+// @Failure      500             {object}  map[string]string "Failed to get related persons info"
+// @Router       /students/profile/related-persons/{studentRecordID} [get]
+func (h *Handler) HandleGetRelatedPersonsInfo(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
 		c.JSON(
@@ -402,15 +402,15 @@ func (h *Handler) HandleGetParentsInfo(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.GetParentsInfo(
+	resp, err := h.service.GetRelatedPersonsInfo(
 		c.Request.Context(),
 		studentRecordID,
 	)
 	if err != nil {
-		fmt.Println("Error getting parents info:", err)
+		fmt.Println("Error getting related persons info:", err)
 		c.JSON(
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to get parents info"},
+			gin.H{"error": "Failed to get related persons info"},
 		)
 		return
 	}
@@ -671,7 +671,7 @@ func (h *Handler) HandleSaveBaseProfile(c *gin.Context) {
 
 // HandleSaveFamilyInfo godoc
 // @Summary      Save Family Information
-// @Description  Updates the family information (including parents and parents) for a student.
+// @Description  Updates the family information (including related persons) for a student.
 // @Tags         Students
 // @Accept       json
 // @Produce      json
@@ -924,7 +924,7 @@ func (h *Handler) HandleGetStudentRecordProgress(c *gin.Context) {
 		return // Error already handled and response sent
 	}
 
-	// Step 4: Family Background (Family, Parents, Finance)
+	// Step 4: Family Background (Family, Related Persons, Finance)
 	familyData, err := h.getFamilyInformationSafe(ctx, studentRecordID)
 	if err != nil {
 		return // Error already handled and response sent
@@ -998,7 +998,7 @@ func (h *Handler) getEducationInfoSafe(ctx context.Context, studentRecordID int)
 	return data, nil
 }
 
-// getFamilyInformationSafe fetches family-related info (family, parents, finance)
+// getFamilyInformationSafe fetches family-related info (family, related persons, finance)
 func (h *Handler) getFamilyInformationSafe(ctx context.Context, studentRecordID int) (map[string]interface{}, error) {
 	familyData := make(map[string]interface{})
 
@@ -1009,12 +1009,12 @@ func (h *Handler) getFamilyInformationSafe(ctx context.Context, studentRecordID 
 	}
 	familyData["background"] = family
 
-	parents, err := h.service.GetParentsInfo(ctx, studentRecordID)
+	relatedPersons, err := h.service.GetRelatedPersonsInfo(ctx, studentRecordID)
 	if err != nil {
-		fmt.Println("Error getting parents info:", err)
+		fmt.Println("Error getting related persons info:", err)
 		return nil, err
 	}
-	familyData["parents"] = parents
+	familyData["relatedPersons"] = relatedPersons
 
 	finance, err := h.service.GetFinanceInfo(ctx, studentRecordID)
 	if err != nil {

@@ -45,7 +45,7 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 			recordDetails.GET("/record/enrollment-reasons/:studentRecordID", h.HandleGetStudentEnrollmentReasons)
 			recordDetails.GET("/record/base/:studentRecordID", h.HandleGetBaseProfile)
 			recordDetails.GET("/record/family/:studentRecordID", h.HandleGetFamilyInfo)
-			recordDetails.GET("/record/parents/:studentRecordID", h.HandleGetParentsInfo)
+			recordDetails.GET("/record/related-persons/:studentRecordID", h.HandleGetRelatedPersonsInfo)
 			recordDetails.GET("/record/education/:studentRecordID", h.HandleGetEducationInfo)
 			recordDetails.GET("/record/address/:studentRecordID", h.HandleGetAddressInfo)
 			recordDetails.GET("/record/health/:studentRecordID", h.HandleGetHealthInfo)

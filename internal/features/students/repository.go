@@ -22,12 +22,12 @@ func (r *Repository) ListStudents(
 	course string, genderID int,
 ) ([]StudentProfileView, error) {
 	query := `
-        SELECT 
+        SELECT
             sr.student_record_id,
 			u.user_id,
             u.first_name,
             u.middle_name,
-            u.last_name,       
+            u.last_name,
             u.email,
             sp.course
         FROM student_records sr
@@ -86,8 +86,8 @@ func (r *Repository) GetStudentRecordByStudentID(
 ) (*StudentRecord, error) {
 	studentRec := &StudentRecord{}
 	query := `
-		SELECT 
-			student_record_id, user_id, 
+		SELECT
+			student_record_id, user_id,
 			is_submitted, created_at, updated_at
 		FROM student_records
 		WHERE user_id = ?
@@ -116,7 +116,7 @@ func (r *Repository) GetStudentProfileByStudentRecordID(
 ) (*StudentProfile, error) {
 	profile := &StudentProfile{}
 	query := `
-		SELECT 
+		SELECT
 			student_profile_id, student_record_id,
 			gender_id, civil_status_type_id,
 			religion, height_ft, weight_kg,
@@ -131,8 +131,8 @@ func (r *Repository) GetStudentProfileByStudentRecordID(
 		&profile.Religion,
 		&profile.HeightFt, &profile.WeightKg,
 		&profile.StudentNumber, &profile.Course, &profile.HighSchoolGWA,
-		&profile.PlaceOfBirth, &profile.BirthDate,
-		&profile.ContactNo,
+		&profile.PlaceOfBirth, &profile.DateOfBirth,
+		&profile.ContactNumber,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -214,10 +214,10 @@ func (r *Repository) GetEmergencyContact(
 	return emergencyContact, nil
 }
 
-// Retrieve - Parents
-func (r *Repository) GetParents(
+// Retrieve - Related Persons
+func (r *Repository) GetRelatedPersons(
 	ctx context.Context, studentRecordID int,
-) ([]ParentInfoView, error) {
+) ([]RelatedPersonInfoView, error) {
 	query := `
 		SELECT
 			g.parent_id, g.educational_level,
@@ -238,25 +238,25 @@ func (r *Repository) GetParents(
 	}
 	defer rows.Close()
 
-	var parents []ParentInfoView
+	var relatedPersons []RelatedPersonInfoView
 	for rows.Next() {
-		var g ParentInfoView
+		var g RelatedPersonInfoView
 		err := rows.Scan(
 			&g.ID, &g.EducationalLevel,
-			&g.BirthDate, &g.LastName,
+			&g.DateOfBirth, &g.LastName,
 			&g.FirstName, &g.MiddleName,
 			&g.Occupation,
-			&g.CompanyName,
+			&g.EmployerName,
 			&g.Relationship,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		parents = append(parents, g)
+		relatedPersons = append(relatedPersons, g)
 	}
 
-	return parents, nil
+	return relatedPersons, nil
 }
 
 // Retrieve - Family Background
@@ -265,7 +265,7 @@ func (r *Repository) GetFamily(
 ) (*FamilyBackground, error) {
 	familyBg := &FamilyBackground{}
 	query := `
-		SELECT 
+		SELECT
 			family_background_id, student_record_id,
 			parental_status_id, parental_status_details,
 			siblings_brothers, sibling_sisters,
@@ -278,7 +278,7 @@ func (r *Repository) GetFamily(
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
 		&familyBg.ID, &familyBg.StudentRecordID,
 		&familyBg.ParentalStatusID, &familyBg.ParentalStatusDetails,
-		&familyBg.SiblingsBrothers, &familyBg.SiblingSisters,
+		&familyBg.Brothers, &familyBg.Sisters,
 		&familyBg.MonthlyFamilyIncome, &familyBg.GuardianFirstName,
 		&familyBg.GuardianMiddleName, &familyBg.GuardianLastName,
 		&familyBg.GuardianAddress,
@@ -381,10 +381,10 @@ func (r *Repository) GetHealthRecord(
 	query := `
 		SELECT
 			health_id, student_record_id,
-			vision_remark, hearing_remark, 
+			vision_remark, hearing_remark,
 			mobility_remark, speech_remark,
 			general_health_remark, consulted_professional,
-			consultation_reason, date_started, 
+			consultation_reason, date_started,
 			num_sessions, date_concluded
 		FROM student_health_records
 		WHERE student_record_id = ?
@@ -468,7 +468,7 @@ func (r *Repository) CreateStudentRecord(
 	ctx context.Context, userID int,
 ) (int, error) {
 	query := `
-		INSERT INTO student_records (user_id) 
+		INSERT INTO student_records (user_id)
 		VALUES (?)
 	`
 
@@ -491,8 +491,8 @@ func (r *Repository) SaveEnrollmentReason(
 	reasonID int, otherReasonText sql.NullString,
 ) error {
 	query := `
-		INSERT INTO student_selected_reasons 
-		(student_record_id, reason_id, other_reason_text) 
+		INSERT INTO student_selected_reasons
+		(student_record_id, reason_id, other_reason_text)
 		VALUES (?, ?, ?)
 	`
 
@@ -513,9 +513,9 @@ func (r *Repository) SaveStudentProfile(
 	err := database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		upsertQuery := `
 			INSERT INTO student_profiles (
-				student_record_id, gender_id, civil_status_type_id, 
-				religion, height_ft, 
-				weight_kg, student_number, 
+				student_record_id, gender_id, civil_status_type_id,
+				religion, height_ft,
+				weight_kg, student_number,
 				course, high_school_gwa,
 				place_of_birth, birth_date, contact_no
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -524,7 +524,7 @@ func (r *Repository) SaveStudentProfile(
 				civil_status_type_id = VALUES(civil_status_type_id),
 				religion = VALUES(religion),
 				height_ft = VALUES(height_ft), weight_kg = VALUES(weight_kg),
-				course = VALUES(course), 
+				course = VALUES(course),
 				place_of_birth = VALUES(place_of_birth),
 				birth_date = VALUES(birth_date),
 				contact_no = VALUES(contact_no)
@@ -536,8 +536,8 @@ func (r *Repository) SaveStudentProfile(
 			profile.CivilStatusTypeID, profile.Religion,
 			profile.HeightFt, profile.WeightKg,
 			profile.StudentNumber, profile.Course, profile.HighSchoolGWA,
-			profile.PlaceOfBirth, profile.BirthDate,
-			profile.ContactNo,
+			profile.PlaceOfBirth, profile.DateOfBirth,
+			profile.ContactNumber,
 		)
 		if err != nil {
 			return err
@@ -548,7 +548,7 @@ func (r *Repository) SaveStudentProfile(
 		if err != nil {
 			// If no last insert id (in case of update), get the existing ID
 			getIDQuery := `
-				SELECT student_profile_id FROM student_profiles 
+				SELECT student_profile_id FROM student_profiles
 				WHERE student_record_id = ?
 			`
 			err = tx.QueryRowContext(
@@ -577,7 +577,7 @@ func (r *Repository) SaveEmergencyContact(
 		query := `
 			INSERT INTO student_emergency_contacts (
 				student_record_id, parent_id,
-				emergency_contact_first_name, emergency_contact_middle_name, 
+				emergency_contact_first_name, emergency_contact_middle_name,
 				emergency_contact_last_name, emergency_contact_phone,
 				emergency_contact_relationship
 			) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -614,7 +614,7 @@ func (r *Repository) SaveFamilyInfo(
 			student_record_id, parental_status_id,
 			parental_status_details, siblings_brothers,
 			sibling_sisters, monthly_family_income,
-			guardian_first_name, guardian_middle_name, 
+			guardian_first_name, guardian_middle_name,
 			guardian_last_name, guardian_address
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
@@ -627,13 +627,13 @@ func (r *Repository) SaveFamilyInfo(
 			guardian_middle_name = VALUES(guardian_middle_name),
 			guardian_last_name = VALUES(guardian_last_name),
 			guardian_address = VALUES(guardian_address)
-		
+
 	`
 
 		_, err := tx.ExecContext(ctx, query,
 			family.StudentRecordID, family.ParentalStatusID,
-			family.ParentalStatusDetails, family.SiblingsBrothers,
-			family.SiblingSisters, family.MonthlyFamilyIncome,
+			family.ParentalStatusDetails, family.Brothers,
+			family.Sisters, family.MonthlyFamilyIncome,
 			family.GuardianFirstName, family.GuardianMiddleName,
 			family.GuardianLastName, family.GuardianAddress,
 		)
@@ -642,11 +642,11 @@ func (r *Repository) SaveFamilyInfo(
 	})
 }
 
-// Create - Parents Info
-func (r *Repository) SaveParentsInfo(
+// Create - Related Persons Info
+func (r *Repository) SaveRelatedPersonsInfo(
 	ctx context.Context, studentRecordID int,
-	parents []Parent,
-	links []StudentParent,
+	relatedPersons []RelatedPerson,
+	links []StudentRelatedPerson,
 ) error {
 	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		// Cleanup old links for this student
@@ -660,7 +660,7 @@ func (r *Repository) SaveParentsInfo(
 		}
 
 		// Prepare Queries
-		parentQuery := `
+		relatedPersonQuery := `
             INSERT INTO parents (
                 educational_level, birth_date, last_name, first_name,
                 middle_name, occupation, company_name
@@ -668,32 +668,32 @@ func (r *Repository) SaveParentsInfo(
 
 		linkQuery := `
             INSERT INTO student_parents (
-                student_record_id, parent_id, 
+                student_record_id, parent_id,
                 relationship
             ) VALUES (?, ?, ?)`
 
-		// Loop through and process each parent
-		for i, g := range parents {
-			result, err := tx.ExecContext(ctx, parentQuery,
-				g.EducationalLevel, g.BirthDate, g.LastName, g.FirstName,
-				g.MiddleName, g.Occupation, g.CompanyName,
+		// Loop through and process each related person
+		for i, g := range relatedPersons {
+			result, err := tx.ExecContext(ctx, relatedPersonQuery,
+				g.EducationalLevel, g.DateOfBirth, g.LastName, g.FirstName,
+				g.MiddleName, g.Occupation, g.EmployerName,
 			)
 			if err != nil {
-				return fmt.Errorf("failed to insert parent: %w", err)
+				return fmt.Errorf("failed to insert related person: %w", err)
 			}
 
-			parentID, err := result.LastInsertId()
+			relatedPersonID, err := result.LastInsertId()
 			if err != nil {
 				return err
 			}
 
 			_, err = tx.ExecContext(ctx, linkQuery,
 				studentRecordID,
-				parentID,
+				relatedPersonID,
 				links[i].Relationship,
 			)
 			if err != nil {
-				return fmt.Errorf("failed to link parent to student: %w", err)
+				return fmt.Errorf("failed to link related person to student: %w", err)
 			}
 		}
 		return nil
@@ -716,9 +716,9 @@ func (r *Repository) SaveEducationInfo(
 
 		query := `
 			INSERT INTO educational_backgrounds (
-				student_record_id, educational_level, 
-				school_name, location, 
-				school_type, year_completed, 
+				student_record_id, educational_level,
+				school_name, location,
+				school_type, year_completed,
 				awards
 			) VALUES (?, ?, ?, ?, ?, ?, ?)
 		`
