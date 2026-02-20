@@ -7,10 +7,9 @@ VALUES
 INSERT IGNORE INTO roles (role_id, role_name)
 VALUES
     (1, 'STUDENT'),
-    (2, 'COUNSELOR'),
-    (3, 'FRONTDESK');
+    (2, 'COUNSELOR');
 
-INSERT INTO enrollment_reasons (id, reason_text) VALUES
+INSERT INTO enrollment_reasons (er_id, reason_text) VALUES
     (1, 'Lower tuition fee'),
     (2, 'Safety of the place'),
     (3, 'Spacious Campus'),
@@ -22,19 +21,25 @@ INSERT INTO enrollment_reasons (id, reason_text) VALUES
     (9, 'Closer Student-Faculty Relations'),
     (10, 'Expecting Scholarship Offer');
 
-INSERT INTO civil_status_types (civil_status_type_id, status_name)
-VALUES
-    (1, 'Single'), (2, 'Married'),
-    (3, 'Widowed'), (4, 'Divorced');
+INSERT INTO student_support_types (support_type_name) VALUES
+    ('Parents'),
+    ('Brother/Sister'),
+    ('Spouse'),
+    ('Scholarship'),
+    ('Relatives'),
+    ('Self-supporting/working student');
 
-INSERT INTO parental_status_types (parental_status_id, status_name)
-VALUES
-    (1, 'Married and Living Together'),
-    (2, 'Married but Living Separately'),
-    (3, 'Father/Mother working Abroad'),
-    (4, 'Divorced or Annulled'),
-    (5, 'Separated'),
-    (6, 'Other');
+INSERT INTO income_ranges (ir_id, range_text) VALUES
+    (1, 'Below Php 5,000'),
+    (2, 'Php 5,001 - Php 10,000'),
+    (3, 'Php 10,001 - Php 15,000'),
+    (4, 'Php 15,001 - Php 20,000'),
+    (5, 'Php 20,001 - Php 30,000'),
+    (6, 'Php 30,001 - Php 35,000'),
+    (7, 'Php 35,001 - Php 40,000'),
+    (8, 'Php 40,001 - Php 45,000'),
+    (9, 'Php 45,001 - Php 50,000'),
+    (10, 'Above Php 50,001');
 
 -- INSERT INTO appointment_types (appointment_type_id, appointment_type_name)
 -- VALUES
