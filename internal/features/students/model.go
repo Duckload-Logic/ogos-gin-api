@@ -24,7 +24,7 @@ type StudentProfile struct {
 	YearLevel         string   `db:"year_level" json:"yearLevel"`
 	Section           string   `db:"section" json:"section"`
 	PlaceOfBirth      *string  `db:"place_of_birth" json:"placeOfBirth"`
-	DateOfBirth       *string  `db:"birth_date" json:"dateOfBirth"`
+	DateOfBirth       *string  `db:"date_of_birth" json:"dateOfBirth"`
 	ContactNumber     *string  `db:"contact_no" json:"contactNumber"`
 }
 
@@ -45,7 +45,7 @@ type RelatedPerson struct {
 	ID               int     `db:"id" json:"id"`
 	AddressID        int     `db:"address_id" json:"addressId"`
 	EducationalLevel string  `db:"educational_level" json:"educationalLevel"`
-	DateOfBirth      *string `db:"birth_date" json:"dateOfBirth"`
+	DateOfBirth      *string `db:"date_of_birth" json:"dateOfBirth"`
 	LastName         string  `db:"last_name" json:"lastName"`
 	FirstName        string  `db:"first_name" json:"firstName"`
 	MiddleName       *string `db:"middle_name" json:"middleName"`
