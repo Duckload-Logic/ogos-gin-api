@@ -99,18 +99,6 @@ func (s *Service) GetBaseProfile(
 	return studentProfile, nil
 }
 
-// Retrieve - Emergency Contact
-func (s *Service) GetEmergencyContactInfo(
-	ctx context.Context, studentRecordID int,
-) (*StudentEmergencyContact, error) {
-	emergencyContact, err := s.repo.GetEmergencyContact(ctx, studentRecordID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get emergency contact info: %w", err)
-	}
-
-	return emergencyContact, nil
-}
-
 // Retrieve - Family Info
 func (s *Service) GetFamilyInfo(
 	ctx context.Context, studentRecordID int,
@@ -267,30 +255,6 @@ func (s *Service) SaveBaseProfile(
 	return nil
 }
 
-// Create/Update - Emergency Contact
-func (s *Service) SaveEmergencyContactInfo(
-	ctx context.Context, studentRecordID int, req UpdateEmergencyContactRequest,
-) error {
-	// Create emergency contact
-	emergencyContact := &StudentEmergencyContact{
-		InventoryRecordID:            studentRecordID,
-		ParentID:                     req.RelatedPersonID,
-		EmergencyContactFirstName:    req.EmergencyContactFirstName,
-		EmergencyContactMiddleName:   req.EmergencyContactMiddleName,
-		EmergencyContactLastName:     req.EmergencyContactLastName,
-		EmergencyContactPhone:        req.EmergencyContactPhone,
-		EmergencyContactRelationship: req.EmergencyContactRelationship,
-	}
-
-	// Save the emergency contact
-	err := s.repo.SaveEmergencyContact(ctx, emergencyContact)
-	if err != nil {
-		return fmt.Errorf("failed to save emergency contact: %w", err)
-	}
-
-	return nil
-}
-
 // Create/Update - Family Info
 func (s *Service) SaveFamilyInfo(
 	ctx context.Context, studentRecordID int, req UpdateFamilyRequest,
@@ -303,10 +267,6 @@ func (s *Service) SaveFamilyInfo(
 		Brothers:              *req.Brothers,
 		Sisters:               *req.Sisters,
 		MonthlyFamilyIncome:   req.MonthlyFamilyIncome,
-		GuardianFirstName:     req.GuardianFirstName,
-		GuardianLastName:      req.GuardianLastName,
-		GuardianMiddleName:    req.GuardianMiddleName,
-		GuardianAddress:       req.GuardianAddress,
 	}
 
 	if err := s.repo.SaveFamilyInfo(ctx, family); err != nil {
@@ -397,24 +357,17 @@ func (s *Service) SaveAddressInfo(
 	var addresses []StudentAddress
 
 	for _, a := range dtoList {
-		region := a.RegionName
-		province := a.ProvinceName
-		city := a.CityName
-		brgy := a.BarangayName
-		street := a.StreetLotBlk
-		unit := a.UnitNo
-		building := a.BuildingName
+		address := Address{
+			Region:       a.RegionName,
+			City:         a.CityName,
+			Barangay:     a.BarangayName,
+			StreetDetail: &a.StreetLotBlk,
+		}
 
 		addresses = append(addresses, StudentAddress{
 			InventoryRecordID: studentRecordID,
 			AddressType:       a.AddressType,
-			RegionName:        &region,
-			ProvinceName:      &province,
-			CityName:          &city,
-			BarangayName:      &brgy,
-			StreetLotBlk:      &street,
-			UnitNo:            &unit,
-			BuildingName:      &building,
+			Address:           address,
 		})
 	}
 
