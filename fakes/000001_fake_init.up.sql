@@ -2,7 +2,7 @@
 -- 1. CREATE GUIDANCE COUNSELOR
 -- ======================================================
 INSERT INTO users (
-    role_id, first_name, middle_name, last_name, 
+    role_id, first_name, middle_name, last_name,
     email, password_hash, is_active
 ) VALUES (
     (SELECT role_id FROM roles WHERE role_name = 'COUNSELOR'),
@@ -10,13 +10,12 @@ INSERT INTO users (
     NULL,
     'Maliksi',
     'counselor@university.edu',
-    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
+    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq',
     TRUE
 );
 
 SET @counselor_user_id = LAST_INSERT_ID();
 
--- Create counselor profile
 INSERT INTO counselor_profiles (
     user_id, license_number, specialization, is_available
 ) VALUES (
@@ -27,29 +26,10 @@ INSERT INTO counselor_profiles (
 );
 
 -- ======================================================
--- 2. CREATE FRONTDESK STAFF
+-- 2. STUDENT WITH COMPLETE PDS
 -- ======================================================
 INSERT INTO users (
-    role_id, first_name, middle_name, last_name, 
-    email, password_hash, is_active
-) VALUES (
-    (SELECT role_id FROM roles WHERE role_name = 'FRONTDESK'),
-    'Anna',
-    'Marie',
-    'Cruz',
-    'frontdesk@university.edu',
-    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
-    TRUE
-);
-
-SET @frontdesk_user_id = LAST_INSERT_ID();
-
--- ======================================================
--- 3. STUDENT WITH COMPLETE PDS FILLED UP
--- ======================================================
--- Create the student user
-INSERT INTO users (
-    role_id, first_name, middle_name, last_name, 
+    role_id, first_name, middle_name, last_name,
     email, password_hash, is_active
 ) VALUES (
     (SELECT role_id FROM roles WHERE role_name = 'STUDENT'),
@@ -57,268 +37,248 @@ INSERT INTO users (
     'Santos',
     'Dela Cruz',
     'student1@university.edu',
-    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
+    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq',
     TRUE
 );
 
 SET @complete_student_user_id = LAST_INSERT_ID();
 
--- Create student record (basic record only)
-INSERT INTO student_records (
+INSERT INTO iir_records (
     user_id, is_submitted
 ) VALUES (
-    @complete_student_user_id
-    , TRUE
+    @complete_student_user_id,
+    TRUE
 );
 
-SET @complete_student_record_id = LAST_INSERT_ID();
+SET @complete_iir_id = LAST_INSERT_ID();
 
--- Create student profile with all personal details
 INSERT INTO student_profiles (
-    student_record_id, gender_id, civil_status_type_id, religion,
+    iir_id, gender_id, civil_status, religion,
     height_ft, weight_kg, student_number, course, high_school_gwa,
-    place_of_birth, birth_date, contact_no
+    place_of_birth, date_of_birth, is_employed, employer_name, employer_address, contact_no
 ) VALUES (
-    @complete_student_record_id,
+    @complete_iir_id,
     (SELECT gender_id FROM genders WHERE gender_name = 'Male'),
-    (SELECT civil_status_type_id FROM civil_status_types WHERE status_name = 'Single'),
+    'Single',
     'Roman Catholic',
-    5.8, -- height_ft
-    68.2,  -- weight_kg
-    '2023-00123', -- student_number
+    5.80,
+    68.20,
+    '2023-00123-TG-0',
     'BSIT',
-    '92.5',
+    92.50,
     'Manila',
     '2000-05-15',
+    FALSE,
+    NULL,
+    NULL,
     '09171234567'
 );
 
 -- ======================================================
--- CREATE GUARDIANS FOR COMPLETE STUDENT
+-- 3. ADDRESSES (STUDENT + RELATED PERSONS)
 -- ======================================================
--- Father
-INSERT INTO parents (
-    educational_level, birth_date, last_name, first_name,
-    middle_name, occupation, company_name
+INSERT INTO addresses (region, city, barangay, street_detail)
+VALUES
+    ('Region IV-A', 'Calamba', 'Barangay 5', '123 Poblacion Road'),
+    ('NCR', 'Quezon City', 'Batasan Hills', '456 Main Street, Unit 5B, Sunrise Towers'),
+    ('NCR', 'Manila', 'Sampaloc', '12 Parent Street'),
+    ('NCR', 'Manila', 'Sampaloc', '14 Parent Street'),
+    ('Region IV-A', 'Calamba', 'Barangay 5', '125 Poblacion Road');
+
+SET @provincial_address_id = (
+    SELECT address_id FROM addresses WHERE street_detail = '123 Poblacion Road' ORDER BY address_id DESC LIMIT 1
+);
+SET @residential_address_id = (
+    SELECT address_id FROM addresses WHERE street_detail = '456 Main Street, Unit 5B, Sunrise Towers' ORDER BY address_id DESC LIMIT 1
+);
+SET @father_address_id = (
+    SELECT address_id FROM addresses WHERE street_detail = '12 Parent Street' ORDER BY address_id DESC LIMIT 1
+);
+SET @mother_address_id = (
+    SELECT address_id FROM addresses WHERE street_detail = '14 Parent Street' ORDER BY address_id DESC LIMIT 1
+);
+SET @uncle_address_id = (
+    SELECT address_id FROM addresses WHERE street_detail = '125 Poblacion Road' ORDER BY address_id DESC LIMIT 1
+);
+
+INSERT INTO student_addresses (
+    iir_id, address_id, address_type
+) VALUES
+    (@complete_iir_id, @provincial_address_id, 'Provincial'),
+    (@complete_iir_id, @residential_address_id, 'Residential');
+
+-- ======================================================
+-- 4. RELATED PERSONS (FATHER/MOTHER/EMERGENCY CONTACT)
+-- ======================================================
+INSERT INTO related_persons (
+    address_id, educational_level, date_of_birth, last_name, first_name,
+    middle_name, occupation, employer_name, employer_address
 ) VALUES (
+    @father_address_id,
     'College',
     '1975-03-15',
     'Dela Cruz',
     'Pedro',
     'Santos',
     'Software Engineer',
-    'Tech Solutions Inc.'
+    'Tech Solutions Inc.',
+    'BGC, Taguig City'
 );
 
-SET @father_parent_id = LAST_INSERT_ID();
+SET @father_related_person_id = LAST_INSERT_ID();
 
--- Mother
-INSERT INTO parents (
-    educational_level, birth_date, last_name, first_name,
-    middle_name, occupation, company_name
+INSERT INTO related_persons (
+    address_id, educational_level, date_of_birth, last_name, first_name,
+    middle_name, occupation, employer_name, employer_address
 ) VALUES (
+    @mother_address_id,
     'College',
     '1978-07-22',
     'Dela Cruz',
     'Maria',
     'Reyes',
     'Teacher',
-    'St. Marys High School'
+    'St. Marys High School',
+    'Manila City'
 );
 
-SET @mother_parent_id = LAST_INSERT_ID();
+SET @mother_related_person_id = LAST_INSERT_ID();
 
--- Link parents to student
-INSERT INTO student_parents (
-    student_record_id, parent_id, relationship
-) VALUES 
-    (@complete_student_record_id, @father_parent_id, 'Father'),
-    (@complete_student_record_id, @mother_parent_id, 'Mother');
-
--- ======================================================
--- CREATE EMERGENCY CONTACT FOR COMPLETE STUDENT
--- ======================================================
-INSERT INTO student_emergency_contacts (
-    student_record_id, emergency_contact_first_name, emergency_contact_middle_name, emergency_contact_last_name, emergency_contact_relationship, emergency_contact_phone
+INSERT INTO related_persons (
+    address_id, educational_level, date_of_birth, last_name, first_name,
+    middle_name, occupation, employer_name, employer_address
 ) VALUES (
-    @complete_student_record_id,
-    'Luis',
-    '',
+    @uncle_address_id,
+    'College',
+    '1982-09-10',
     'Santos',
-    'Uncle',
-    '09179876543'
+    'Luis',
+    NULL,
+    'Business Owner',
+    'Santos Trading',
+    'Calamba, Laguna'
 );
 
+SET @uncle_related_person_id = LAST_INSERT_ID();
+
+INSERT INTO student_related_persons (
+    iir_id, related_person_id, relationship,
+    is_parent, is_guardian, is_living, is_emergency_contact
+) VALUES
+    (@complete_iir_id, @father_related_person_id, 'Father', TRUE, FALSE, TRUE, FALSE),
+    (@complete_iir_id, @mother_related_person_id, 'Mother', TRUE, FALSE, TRUE, FALSE),
+    (@complete_iir_id, @uncle_related_person_id, 'Uncle', FALSE, TRUE, TRUE, TRUE);
+
 -- ======================================================
--- CREATE FAMILY BACKGROUND FOR COMPLETE STUDENT
+-- 5. FAMILY BACKGROUND
 -- ======================================================
 INSERT INTO family_backgrounds (
-    student_record_id, parental_status_id, parental_status_details,
-    siblings_brothers, sibling_sisters, monthly_family_income, guardian_first_name, guardian_middle_name, guardian_last_name,
-    guardian_address
+    iir_id, parental_status, parental_status_details,
+    brothers, sisters, employed_siblings, ordinal_position,
+    have_quiet_place_to_study, is_sharing_room, room_sharing_details,
+    nature_of_residence
 ) VALUES (
-    @complete_student_record_id,
-    (SELECT parental_status_id FROM parental_status_types WHERE status_name = 'Married and Living Together'),
+    @complete_iir_id,
+    'Married and staying together',
     'Both parents are working professionals',
-    1, -- siblings_brothers
-    2, -- sibling_sisters
-    65000.50,
-    'Luis',
-    '',
-    'Santos',
-    '123 Poblacion Road, Calamba, Laguna'
+    1,
+    2,
+    1,
+    2,
+    TRUE,
+    TRUE,
+    'Shares room with one sibling',
+    'Family home'
 );
 
 -- ======================================================
--- CREATE EDUCATIONAL BACKGROUNDS FOR COMPLETE STUDENT
+-- 6. EDUCATIONAL BACKGROUND + SCHOOL DETAILS
 -- ======================================================
--- Elementary
 INSERT INTO educational_backgrounds (
-    student_record_id, educational_level, school_name,
-    location, school_type, year_completed, awards
+    iir_id, nature_of_schooling, interrupted_details
 ) VALUES (
-    @complete_student_record_id,
-    'Elementary',
-    'St. Marys Elementary School',
-    'Manila',
-    'Private',
-    '2014',
-    'Valedictorian'
+    @complete_iir_id,
+    'Continuous',
+    NULL
 );
 
--- Junior High School
-INSERT INTO educational_backgrounds (
-    student_record_id, educational_level, school_name,
-    location, school_type, year_completed, awards
-) VALUES (
-    @complete_student_record_id,
-    'Junior High School',
-    'Manila Science High School',
-    'Manila',
-    'Public',
-    '2018',
-    'With Honors'
-);
+SET @educational_background_id = LAST_INSERT_ID();
 
--- Senior High School
-INSERT INTO educational_backgrounds (
-    student_record_id, educational_level, school_name,
-    location, school_type, year_completed, awards
-) VALUES (
-    @complete_student_record_id,
-    'Senior High School',
-    'Manila Science High School',
-    'Manila',
-    'Public',
-    '2020',
-    'With High Honors'
-);
+INSERT INTO school_details (
+    eb_id, educational_level, school_name, school_address,
+    school_type, year_started, year_completed, awards
+) VALUES
+    (@educational_background_id, 'Elementary', 'St. Marys Elementary School', 'Manila', 'Private', 2008, 2014, 'Valedictorian'),
+    (@educational_background_id, 'High School', 'Manila Science High School', 'Manila', 'Public', 2014, 2020, 'With High Honors'),
+    (@educational_background_id, 'College', 'PUP Taguig', 'Taguig City', 'Public', 2023, 2027, NULL);
 
 -- ======================================================
--- CREATE ADDRESSES FOR COMPLETE STUDENT
--- ======================================================
--- Provincial Address
-INSERT INTO student_addresses (
-    student_record_id, address_type, region_name,
-    province_name, city_name, barangay_name,
-    street_lot_blk, unit_no, building_name
-) VALUES (
-    @complete_student_record_id,
-    'Provincial',
-    'Region IV-A',
-    'Laguna',
-    'Calamba',
-    'Barangay 5',
-    '123 Poblacion Road',
-    '',
-    ''
-);
-
--- Residential Address
-INSERT INTO student_addresses (
-    student_record_id, address_type, region_name,
-    province_name, city_name, barangay_name,
-    street_lot_blk, unit_no, building_name
-) VALUES (
-    @complete_student_record_id,
-    'Residential',
-    'NCR',
-    'Metro Manila',
-    'Quezon City',
-    'Batasan Hills',
-    '456 Main Street',
-    'Unit 5B',
-    'Sunrise Towers'
-);
-
--- ======================================================
--- CREATE FINANCE INFO FOR COMPLETE STUDENT
+-- 7. FINANCIAL SUPPORT
 -- ======================================================
 INSERT INTO student_finances (
-    student_record_id, employed_family_members_count, supports_studies_count,
-    supports_family_count, financial_support, weekly_allowance
+    iir_id, monthly_family_income_range_id, other_income_details,
+    financial_support_type_id, weekly_allowance
 ) VALUES (
-    @complete_student_record_id,
-    1, -- employed_family_members (true)
-    1, -- supports_studies (true, parents support studies)
-    0, -- supports_family (false)
-    'Parental Support',
-    600.00 -- weekly_allowance
+    @complete_iir_id,
+    (SELECT ir_id FROM income_ranges WHERE range_text = 'Above Php 50,001' LIMIT 1),
+    NULL,
+    (SELECT sst_id FROM student_support_types WHERE support_type_name = 'Parents' LIMIT 1),
+    600.00
 );
 
 -- ======================================================
--- CREATE HEALTH RECORD FOR COMPLETE STUDENT
+-- 8. HEALTH + CONSULTATION + TEST RESULTS
 -- ======================================================
 INSERT INTO student_health_records (
-    student_record_id, vision_remark, hearing_remark,
-    mobility_remark, speech_remark, general_health_remark,
-    consulted_professional, consultation_reason, date_started,
-    num_sessions, date_concluded
+    student_record_id, vision_has_problem, vision_details,
+    hearing_has_problem, hearing_details,
+    speech_has_problem, speech_details,
+    general_health_has_problem, general_health_details
 ) VALUES (
-    @complete_student_record_id,
-    'No Problem',
-    'No Problem',
-    'No Problem',
-    'No Problem',
-    'No Problem',
-    'Dr. Maria Santos',
-    'Annual check-up',
-    '2024-01-15',
-    1,
-    '2024-01-15'
+    @complete_iir_id,
+    FALSE, NULL,
+    FALSE, NULL,
+    FALSE, NULL,
+    FALSE, 'No active medical concern'
 );
 
--- ======================================================
--- CREATE PSYCHOLOGICAL ASSESSMENT FOR COMPLETE STUDENT
--- ======================================================
-INSERT INTO psychological_assessments (
-    student_record_id, test_date, test_name, raw_score, remarks
+INSERT INTO psychological_consultations (
+    student_record_id, professional_type, has_consulted, when_date, for_what
 ) VALUES (
-    @complete_student_record_id,
+    @complete_iir_id,
+    'Counselor',
+    TRUE,
+    '2024-01-15',
+    'Annual wellness check'
+);
+
+INSERT INTO test_results (
+    iir_id, test_date, test_name, raw_score, percentile, description
+) VALUES (
+    @complete_iir_id,
     '2024-02-01',
     'Personality Test',
     '75',
+    '80',
     'Well-adjusted student with good social skills'
 );
 
 -- ======================================================
--- CREATE APPOINTMENT FOR COMPLETE STUDENT
+-- 9. APPOINTMENT + SESSION NOTE
 -- ======================================================
 INSERT INTO appointments (
-    user_id, reason,
-    scheduled_date, scheduled_time, concern_category, status
+    user_id, reason, scheduled_date, scheduled_time, concern_category, status
 ) VALUES (
     @complete_student_user_id,
     'Career Guidance',
     '2026-01-20',
     '14:00:00',
-    '',
+    'Career',
     'Approved'
 );
 
 SET @appointment_id = LAST_INSERT_ID();
 
--- Create session note for the appointment
 INSERT INTO session_notes (
     appointment_id, notes, recommendation
 ) VALUES (
@@ -328,10 +288,10 @@ INSERT INTO session_notes (
 );
 
 -- ======================================================
--- 4. STUDENT WITH FRESH USER CREATION (NO PDS FILLED UP)
+-- 10. STUDENT WITH FRESH USER CREATION (NO PDS)
 -- ======================================================
 INSERT INTO users (
-    role_id, first_name, middle_name, last_name, 
+    role_id, first_name, middle_name, last_name,
     email, password_hash, is_active
 ) VALUES (
     (SELECT role_id FROM roles WHERE role_name = 'STUDENT'),
@@ -339,32 +299,31 @@ INSERT INTO users (
     'Clara',
     'Santos',
     'student2@university.edu',
-    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq', -- password
+    '$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq',
     TRUE
 );
 
 SET @fresh_student_user_id = LAST_INSERT_ID();
 
--- Create only the basic student record (no profile or PDS data)
-INSERT INTO student_records (
+INSERT INTO iir_records (
     user_id
 ) VALUES (
     @fresh_student_user_id
 );
 
--- Optionally, you can link some reasons to the complete student
-INSERT INTO student_selected_reasons (student_record_id, reason_id)
-SELECT @complete_student_record_id, reason_id 
-FROM enrollment_reasons 
+-- Link reasons to complete student
+INSERT INTO student_selected_reasons (iir_id, reason_id)
+SELECT @complete_iir_id, er_id
+FROM enrollment_reasons
 WHERE reason_text IN ('Lower tuition fee', 'Nearness of home to school');
 
 -- ======================================================
--- CREATE AN EXCUSE SLIP FOR TESTING
+-- 11. ADMISSION SLIP FOR TESTING
 -- ======================================================
-INSERT INTO excuse_slips (
-    student_record_id, reason, date_of_absence, file_path, excuse_slip_status
+INSERT INTO admission_slips (
+    iir_id, reason, date_of_absence, file_path, excuse_slip_status
 ) VALUES (
-    @complete_student_record_id,
+    @complete_iir_id,
     'Medical appointment with doctor',
     '2024-03-15',
     '/uploads/excuse_slips/slip_2024001.pdf',
