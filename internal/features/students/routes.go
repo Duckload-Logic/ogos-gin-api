@@ -13,7 +13,7 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	studentRoutes.Use(middleware.AuthMiddleware())
 
 	userLookup := middleware.OwnershipMiddleware(db, "userID")
-	studentRecordLookup := middleware.OwnershipMiddleware(db, "studentRecordID")
+	inventoryRecordLookup := middleware.OwnershipMiddleware(db, "inventoryRecordID")
 
 	// Admin-only access
 	adminOnly := studentRoutes.Group("/")
@@ -21,7 +21,7 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 		int(constants.CounselorRoleID),
 	))
 	{
-		adminOnly.DELETE("/record/:studentRecordID", studentRecordLookup, h.HandleDeleteStudentRecord)
+		adminOnly.DELETE("/inventory/:inventoryRecordID", inventoryRecordLookup, h.HandleDeleteInventoryRecord)
 	}
 
 	// Shared access (Counselors, Front Desk, Students) - Retrieve only
@@ -33,23 +33,23 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	))
 	{
 		// List and basic retrieval
-		sharedRetrieve.GET("/records", h.HandleListStudents)
-		sharedRetrieve.GET("/record/:userID", userLookup, h.HandleGetStudentRecord)
-		sharedRetrieve.GET("/record/progress/:userID", userLookup, h.HandleGetStudentRecordProgress)
+		sharedRetrieve.GET("/inventory", h.HandleListStudents)
+		sharedRetrieve.GET("/inventory/:inventoryRecordID", userLookup, h.HandleGetInventoryRecord)
+		sharedRetrieve.GET("/inventory/:inventoryRecordID/progress", userLookup, h.HandleGetInventoryRecordProgress)
 		sharedRetrieve.GET("/:userID", userLookup, h.HandleGetStudent)
 
 		// Student record detail retrieval
 		recordDetails := sharedRetrieve.Group("/")
-		recordDetails.Use(studentRecordLookup)
+		recordDetails.Use(inventoryRecordLookup)
 		{
-			recordDetails.GET("/record/enrollment-reasons/:studentRecordID", h.HandleGetStudentEnrollmentReasons)
-			recordDetails.GET("/record/base/:studentRecordID", h.HandleGetBaseProfile)
-			recordDetails.GET("/record/family/:studentRecordID", h.HandleGetFamilyInfo)
-			recordDetails.GET("/record/related-persons/:studentRecordID", h.HandleGetRelatedPersonsInfo)
-			recordDetails.GET("/record/education/:studentRecordID", h.HandleGetEducationInfo)
-			recordDetails.GET("/record/address/:studentRecordID", h.HandleGetAddressInfo)
-			recordDetails.GET("/record/health/:studentRecordID", h.HandleGetHealthInfo)
-			recordDetails.GET("/record/finance/:studentRecordID", h.HandleGetFinanceInfo)
+			recordDetails.GET("/inventory/enrollment/:inventoryRecordID", h.HandleGetStudentEnrollmentReasons)
+			recordDetails.GET("/inventory/base/:inventoryRecordID", h.HandleGetBaseProfile)
+			recordDetails.GET("/inventory/family/:inventoryRecordID", h.HandleGetFamilyInfo)
+			recordDetails.GET("/inventory/related-persons/:inventoryRecordID", h.HandleGetRelatedPersonsInfo)
+			recordDetails.GET("/inventory/education/:inventoryRecordID", h.HandleGetEducationInfo)
+			recordDetails.GET("/inventory/address/:inventoryRecordID", h.HandleGetAddressInfo)
+			recordDetails.GET("/inventory/health/:inventoryRecordID", h.HandleGetHealthInfo)
+			recordDetails.GET("/inventory/finance/:inventoryRecordID", h.HandleGetFinanceInfo)
 		}
 	}
 
@@ -60,20 +60,20 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	))
 	{
 		// Initialize student record
-		studentOnboarding.POST("/onboarding/:userID", userLookup, h.HandleCreateStudentRecord)
+		studentOnboarding.POST("/onboarding/:userID", userLookup, h.HandleCreateInventoryRecord)
 
 		// Update student information
 		onboardingSteps := studentOnboarding.Group("/")
-		onboardingSteps.Use(studentRecordLookup)
+		onboardingSteps.Use(inventoryRecordLookup)
 		{
-			onboardingSteps.PUT("/onboarding/enrollment-reasons/:studentRecordID", h.HandleSaveEnrollmentReasons)
-			onboardingSteps.PUT("/onboarding/base/:studentRecordID", h.HandleSaveBaseProfile)
-			onboardingSteps.PUT("/onboarding/family/:studentRecordID", h.HandleSaveFamilyInfo)
-			onboardingSteps.PUT("/onboarding/education/:studentRecordID", h.HandleSaveEducationInfo)
-			onboardingSteps.PUT("/onboarding/address/:studentRecordID", h.HandleSaveAddressInfo)
-			onboardingSteps.PUT("/onboarding/health/:studentRecordID", h.HandleSaveHealthInfo)
-			onboardingSteps.PUT("/onboarding/finance/:studentRecordID", h.HandleSaveFinanceInfo)
-			onboardingSteps.POST("/onboarding/complete/:studentRecordID", h.HandleCompleteOnboarding)
+			onboardingSteps.PUT("/onboarding/enrollment-reasons/:inventoryRecordID", h.HandleSaveEnrollmentReasons)
+			onboardingSteps.PUT("/onboarding/base/:inventoryRecordID", h.HandleSaveBaseProfile)
+			onboardingSteps.PUT("/onboarding/family/:inventoryRecordID", h.HandleSaveFamilyInfo)
+			onboardingSteps.PUT("/onboarding/education/:inventoryRecordID", h.HandleSaveEducationInfo)
+			onboardingSteps.PUT("/onboarding/address/:inventoryRecordID", h.HandleSaveAddressInfo)
+			onboardingSteps.PUT("/onboarding/health/:inventoryRecordID", h.HandleSaveHealthInfo)
+			onboardingSteps.PUT("/onboarding/finance/:inventoryRecordID", h.HandleSaveFinanceInfo)
+			onboardingSteps.POST("/onboarding/complete/:inventoryRecordID", h.HandleCompleteOnboarding)
 		}
 	}
 }

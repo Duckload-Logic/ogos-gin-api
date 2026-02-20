@@ -67,7 +67,7 @@ type StudentProfilePayload struct {
 }
 
 // Create Student
-type CreateStudentRecordRequest struct {
+type CreateInventoryRecordRequest struct {
 	StudentProfilePayload
 	EmergencyContact *UpdateEmergencyContactRequest `json:"emergencyContact" binding:"required"`
 	Addresses        []StudentAddressDTO            `json:"addresses" binding:"required,min=1"`

@@ -58,10 +58,10 @@ func (s *Service) ListStudents(
 }
 
 // Retrieve - Student Records
-func (s *Service) GetStudentRecordByStudentID(
+func (s *Service) GetInventoryRecordByStudentID(
 	ctx context.Context, userID int,
-) (*StudentRecord, error) {
-	studentRecord, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
+) (*InventoryRecord, error) {
+	studentRecord, err := s.repo.GetInventoryRecordByStudentID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student record: %w", err)
 	}
@@ -89,7 +89,7 @@ func (s *Service) GetStudentEnrollmentReasons(
 func (s *Service) GetBaseProfile(
 	ctx context.Context, studentRecordID int,
 ) (*StudentProfile, error) {
-	studentProfile, err := s.repo.GetStudentProfileByStudentRecordID(
+	studentProfile, err := s.repo.GetStudentProfileByInventoryRecordID(
 		ctx, studentRecordID,
 	)
 	if err != nil {
@@ -186,11 +186,11 @@ func (s *Service) GetFinanceInfo(
 }
 
 // Create - Student Record
-func (s *Service) CreateStudentRecord(
+func (s *Service) CreateInventoryRecord(
 	ctx context.Context, userID int,
 ) (int, error) {
 	// Check if student record already exists
-	existingRecord, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
+	existingRecord, err := s.repo.GetInventoryRecordByStudentID(ctx, userID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to check existing student record: %w", err)
 	}
@@ -200,7 +200,7 @@ func (s *Service) CreateStudentRecord(
 	}
 
 	// Create a new student record
-	studentRecordID, err := s.repo.CreateStudentRecord(ctx, userID)
+	studentRecordID, err := s.repo.CreateInventoryRecord(ctx, userID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create student record: %w", err)
 	}
@@ -240,11 +240,11 @@ func (s *Service) SaveEnrollmentReasons(
 
 // Create/Update - Base Profile
 func (s *Service) SaveBaseProfile(
-	ctx context.Context, studentRecordID int, req CreateStudentRecordRequest,
+	ctx context.Context, studentRecordID int, req CreateInventoryRecordRequest,
 ) error {
 	// Create student profile
 	profile := &StudentProfile{
-		StudentRecordID:   studentRecordID,
+		InventoryRecordID: studentRecordID,
 		GenderID:          req.GenderID,
 		CivilStatusTypeID: req.CivilStatusTypeID,
 		Religion:          req.Religion,
@@ -273,7 +273,7 @@ func (s *Service) SaveEmergencyContactInfo(
 ) error {
 	// Create emergency contact
 	emergencyContact := &StudentEmergencyContact{
-		StudentRecordID:              studentRecordID,
+		InventoryRecordID:            studentRecordID,
 		ParentID:                     req.RelatedPersonID,
 		EmergencyContactFirstName:    req.EmergencyContactFirstName,
 		EmergencyContactMiddleName:   req.EmergencyContactMiddleName,
@@ -297,7 +297,7 @@ func (s *Service) SaveFamilyInfo(
 ) error {
 	// Save family background
 	family := &FamilyBackground{
-		StudentRecordID:       studentRecordID,
+		InventoryRecordID:     studentRecordID,
 		ParentalStatusID:      req.ParentalStatusID,
 		ParentalStatusDetails: &req.ParentalStatusDetails,
 		Brothers:              *req.Brothers,
@@ -346,7 +346,7 @@ func (s *Service) convertRelatedPersonDTOToModel(
 	}
 
 	link := StudentRelatedPerson{
-		StudentRecordID:    0, // Will be set by repository
+		InventoryRecordID:  0, // Will be set by repository
 		PersonID:           0, // Will be set by repository
 		Relationship:       relationship,
 		IsParent:           true,
@@ -365,13 +365,13 @@ func (s *Service) SaveEducationInfo(
 
 	for _, e := range req.EducationalBGs {
 		educations = append(educations, EducationalBackground{
-			StudentRecordID:  studentRecordID,
-			EducationalLevel: e.EducationalLevel,
-			SchoolName:       e.SchoolName,
-			Location:         &e.Location,
-			SchoolType:       e.SchoolType,
-			YearCompleted:    e.YearCompleted,
-			Awards:           &e.Awards,
+			InventoryRecordID: studentRecordID,
+			EducationalLevel:  e.EducationalLevel,
+			SchoolName:        e.SchoolName,
+			Location:          &e.Location,
+			SchoolType:        e.SchoolType,
+			YearCompleted:     e.YearCompleted,
+			Awards:            &e.Awards,
 		})
 	}
 
@@ -406,15 +406,15 @@ func (s *Service) SaveAddressInfo(
 		building := a.BuildingName
 
 		addresses = append(addresses, StudentAddress{
-			StudentRecordID: studentRecordID,
-			AddressType:     a.AddressType,
-			RegionName:      &region,
-			ProvinceName:    &province,
-			CityName:        &city,
-			BarangayName:    &brgy,
-			StreetLotBlk:    &street,
-			UnitNo:          &unit,
-			BuildingName:    &building,
+			InventoryRecordID: studentRecordID,
+			AddressType:       a.AddressType,
+			RegionName:        &region,
+			ProvinceName:      &province,
+			CityName:          &city,
+			BarangayName:      &brgy,
+			StreetLotBlk:      &street,
+			UnitNo:            &unit,
+			BuildingName:      &building,
 		})
 	}
 
@@ -427,7 +427,7 @@ func (s *Service) SaveHealthRecord(
 ) error {
 	fmt.Println(req)
 	healthRecord := &StudentHealthRecord{
-		StudentRecordID:       studentRecordID,
+		InventoryRecordID:     studentRecordID,
 		VisionRemark:          req.VisionRemark,
 		HearingRemark:         req.HearingRemark,
 		MobilityRemark:        req.MobilityRemark,
@@ -449,7 +449,7 @@ func (s *Service) SaveFinanceInfo(
 ) error {
 	// Create finance record
 	finance := &StudentFinance{
-		StudentRecordID:            studentRecordID,
+		InventoryRecordID:          studentRecordID,
 		EmployedFamilyMembersCount: &req.EmployedFamilyMembersCount,
 		SupportsStudiesCount:       &req.SupportsStudiesCount,
 		SupportsFamilyCount:        &req.SupportsFamilyCount,
@@ -479,10 +479,10 @@ func (s *Service) CompleteOnboarding(
 }
 
 // Verify - Student Record Ownership
-func (s *Service) VerifyStudentRecordOwnership(
+func (s *Service) VerifyInventoryRecordOwnership(
 	ctx context.Context, userID int, resourceID int,
 ) (bool, error) {
-	studentRecord, err := s.repo.GetStudentRecordByStudentID(ctx, userID)
+	studentRecord, err := s.repo.GetInventoryRecordByStudentID(ctx, userID)
 	if err != nil {
 		return false, fmt.Errorf("Failed to get student record: %w", err)
 	}
@@ -495,10 +495,10 @@ func (s *Service) VerifyStudentRecordOwnership(
 }
 
 // Delete - Student Record
-func (s *Service) DeleteStudentRecord(
+func (s *Service) DeleteInventoryRecord(
 	ctx context.Context, studentRecordID int,
 ) error {
-	err := s.repo.DeleteStudentRecord(ctx, studentRecordID)
+	err := s.repo.DeleteInventoryRecord(ctx, studentRecordID)
 	if err != nil {
 		return fmt.Errorf("failed to delete student record: %w", err)
 	}

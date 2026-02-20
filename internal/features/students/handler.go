@@ -51,7 +51,7 @@ func (h *Handler) HandleListStudents(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleGetStudentRecord godoc
+// HandleGetInventoryRecord godoc
 // @Summary      Get Student Record
 // @Description  Retrieves the student record associated with a given user ID.
 // @Tags         Students
@@ -62,14 +62,14 @@ func (h *Handler) HandleListStudents(c *gin.Context) {
 // @Failure      400      {object}  map[string]string "Invalid user ID"
 // @Failure      500      {object}  map[string]string "Failed to get student record ID"
 // @Router       /students/record/{userID} [get]
-func (h *Handler) HandleGetStudentRecord(c *gin.Context) {
+func (h *Handler) HandleGetInventoryRecord(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	studentRecord, err := h.service.GetStudentRecordByStudentID(
+	studentRecord, err := h.service.GetInventoryRecordByStudentID(
 		c.Request.Context(), userID,
 	)
 	if err != nil {
@@ -147,7 +147,7 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 		fmt.Println("No include params or error:", err)
 	}
 
-	studentRecord, err := h.service.GetStudentRecordByStudentID(
+	studentRecord, err := h.service.GetInventoryRecordByStudentID(
 		c.Request.Context(), userID,
 	)
 	if err != nil {
@@ -195,15 +195,6 @@ func (h *Handler) HandleGetStudent(c *gin.Context) {
 			)
 			if err == nil && reasons != nil {
 				compResponse.EnrollmentReasons = reasons
-			}
-		}
-
-		if includeReq.IncludeEmergencyContact {
-			emergencyContact, err := h.service.GetEmergencyContactInfo(
-				c.Request.Context(), studentRecordID,
-			)
-			if err == nil && emergencyContact != nil {
-				compResponse.EmergencyContact = emergencyContact
 			}
 		}
 
@@ -556,7 +547,7 @@ func (h *Handler) HandleGetFinanceInfo(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleCreateStudentRecord godoc
+// HandleCreateInventoryRecord godoc
 // @Summary      Create Student Record (First Step)
 // @Description  Creates a student record for a user (first step in onboarding)
 // @Tags         Students
@@ -567,14 +558,14 @@ func (h *Handler) HandleGetFinanceInfo(c *gin.Context) {
 // @Failure      400     {object}  map[string]string       "Invalid user ID"
 // @Failure      500     {object}  map[string]string       "Internal Server Error"
 // @Router       /students/onboarding/{userID} [post]
-func (h *Handler) HandleCreateStudentRecord(c *gin.Context) {
+func (h *Handler) HandleCreateInventoryRecord(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	studentRecordID, err := h.service.CreateStudentRecord(c.Request.Context(), userID)
+	studentRecordID, err := h.service.CreateInventoryRecord(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -630,7 +621,7 @@ func (h *Handler) HandleSaveEnrollmentReasons(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        userID   path      int                           true  "User ID"
-// @Param        request  body      CreateStudentRecordRequest    true  "Base Profile Data"
+// @Param        request  body      CreateInventoryRecordRequest    true  "Base Profile Data"
 // @Success      200      {object}  map[string]interface{}        "Returns {student_record_id: <id>}"
 // @Failure      400      {object}  map[string]string             "Invalid input"
 // @Failure      500      {object}  map[string]string             "Internal Server Error"
@@ -642,7 +633,7 @@ func (h *Handler) HandleSaveBaseProfile(c *gin.Context) {
 		return
 	}
 
-	var req CreateStudentRecordRequest
+	var req CreateInventoryRecordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -878,7 +869,7 @@ func (h *Handler) HandleCompleteOnboarding(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Student onboarding completed successfully"})
 }
 
-// HandleGetStudentRecordProgress godoc
+// HandleGetInventoryRecordProgress godoc
 // @Summary      Get Student Record Progress
 // @Description  Retrieves the completion progress of various sections in a student's record.
 // @Tags         Students
@@ -889,14 +880,14 @@ func (h *Handler) HandleCompleteOnboarding(c *gin.Context) {
 // @Failure      400      {object}  map[string]string "Invalid user ID"
 // @Failure      500      {object}  map[string]string "Failed to get student record progress"
 // @Router       /students/record/progress/{userID} [get]
-func (h *Handler) HandleGetStudentRecordProgress(c *gin.Context) {
+func (h *Handler) HandleGetInventoryRecordProgress(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	studentRecord, err := h.service.GetStudentRecordByStudentID(c.Request.Context(), userID)
+	studentRecord, err := h.service.GetInventoryRecordByStudentID(c.Request.Context(), userID)
 	if err != nil {
 		fmt.Println("Error getting student record ID:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student record ID"})
@@ -1036,7 +1027,7 @@ func (h *Handler) getHealthInfoSafe(ctx context.Context, studentRecordID int) (i
 	return data, nil
 }
 
-// HandleDeleteStudentRecord godoc
+// HandleDeleteInventoryRecord godoc
 // @Summary      Delete Student Record
 // @Description  Deletes a student record and all associated information from the system.
 // @Tags         Students
@@ -1047,14 +1038,14 @@ func (h *Handler) getHealthInfoSafe(ctx context.Context, studentRecordID int) (i
 // @Failure      400             {object}  map[string]string "Invalid student record ID"
 // @Failure      500             {object}  map[string]string "Internal Server Error"
 // @Router       /students/record/{studentRecordID} [delete]
-func (h *Handler) HandleDeleteStudentRecord(c *gin.Context) {
+func (h *Handler) HandleDeleteInventoryRecord(c *gin.Context) {
 	studentRecordID, err := strconv.Atoi(c.Param("studentRecordID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid student record ID"})
 		return
 	}
 
-	err = h.service.DeleteStudentRecord(c.Request.Context(), studentRecordID)
+	err = h.service.DeleteInventoryRecord(c.Request.Context(), studentRecordID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

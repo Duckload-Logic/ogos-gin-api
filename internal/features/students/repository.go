@@ -28,7 +28,7 @@ func (r *Repository) ListStudents(
             u.first_name,
             u.middle_name,
             u.last_name,
-            u.email,
+			u.email,
             sp.course
         FROM student_records sr
         JOIN users u ON sr.user_id = u.user_id
@@ -64,7 +64,7 @@ func (r *Repository) ListStudents(
 	for rows.Next() {
 		var student StudentProfileView
 		if err := rows.Scan(
-			&student.StudentRecordID,
+			&student.InventoryRecordID,
 			&student.UserID,
 			&student.FirstName,
 			&student.MiddleName,
@@ -81,10 +81,10 @@ func (r *Repository) ListStudents(
 }
 
 // Retrieve - Student Records
-func (r *Repository) GetStudentRecordByStudentID(
+func (r *Repository) GetInventoryRecordByStudentID(
 	ctx context.Context, userID int,
-) (*StudentRecord, error) {
-	studentRec := &StudentRecord{}
+) (*InventoryRecord, error) {
+	studentRec := &InventoryRecord{}
 	query := `
 		SELECT
 			student_record_id, user_id,
@@ -111,7 +111,7 @@ func (r *Repository) GetStudentRecordByStudentID(
 }
 
 // Retrieve - Student Profile
-func (r *Repository) GetStudentProfileByStudentRecordID(
+func (r *Repository) GetStudentProfileByInventoryRecordID(
 	ctx context.Context, studentRecordID int,
 ) (*StudentProfile, error) {
 	profile := &StudentProfile{}
@@ -126,7 +126,7 @@ func (r *Repository) GetStudentProfileByStudentRecordID(
 		WHERE student_record_id = ?
 	`
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
-		&profile.ID, &profile.StudentRecordID,
+		&profile.ID, &profile.InventoryRecordID,
 		&profile.GenderID, &profile.CivilStatusTypeID,
 		&profile.Religion,
 		&profile.HeightFt, &profile.WeightKg,
@@ -167,7 +167,7 @@ func (r *Repository) GetStudentEnrollmentReasons(
 	for rows.Next() {
 		var reason StudentSelectedReason
 		err := rows.Scan(
-			&reason.StudentRecordID,
+			&reason.InventoryRecordID,
 			&reason.ReasonID,
 			&reason.OtherReasonText,
 		)
@@ -196,7 +196,7 @@ func (r *Repository) GetEmergencyContact(
 	`
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
 		&emergencyContact.ID,
-		&emergencyContact.StudentRecordID,
+		&emergencyContact.InventoryRecordID,
 		&emergencyContact.ParentID,
 		&emergencyContact.EmergencyContactFirstName,
 		&emergencyContact.EmergencyContactMiddleName,
@@ -276,7 +276,7 @@ func (r *Repository) GetFamily(
 		WHERE student_record_id = ?
 	`
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
-		&familyBg.ID, &familyBg.StudentRecordID,
+		&familyBg.ID, &familyBg.InventoryRecordID,
 		&familyBg.ParentalStatusID, &familyBg.ParentalStatusDetails,
 		&familyBg.Brothers, &familyBg.Sisters,
 		&familyBg.MonthlyFamilyIncome, &familyBg.GuardianFirstName,
@@ -318,7 +318,7 @@ func (r *Repository) GetEducationalBackgrounds(
 	for rows.Next() {
 		var bg EducationalBackground
 		err := rows.Scan(
-			&bg.ID, &bg.StudentRecordID,
+			&bg.ID, &bg.InventoryRecordID,
 			&bg.EducationalLevel, &bg.SchoolName,
 			&bg.Location, &bg.SchoolType,
 			&bg.YearCompleted, &bg.Awards,
@@ -357,7 +357,7 @@ func (r *Repository) GetAddresses(
 	for rows.Next() {
 		var addr StudentAddress
 		err := rows.Scan(
-			&addr.ID, &addr.StudentRecordID,
+			&addr.ID, &addr.InventoryRecordID,
 			&addr.AddressType, &addr.RegionName,
 			&addr.ProvinceName, &addr.CityName,
 			&addr.BarangayName, &addr.StreetLotBlk,
@@ -390,7 +390,7 @@ func (r *Repository) GetHealthRecord(
 		WHERE student_record_id = ?
 	`
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
-		&healthRec.ID, &healthRec.StudentRecordID,
+		&healthRec.ID, &healthRec.InventoryRecordID,
 		&healthRec.VisionRemark, &healthRec.HearingRemark,
 		&healthRec.MobilityRemark, &healthRec.SpeechRemark,
 		&healthRec.GeneralHealthRemark, &healthRec.ConsultedProfessional,
@@ -420,7 +420,7 @@ func (r *Repository) GetFinance(ctx context.Context, studentRecordID int) (*Stud
 		WHERE student_record_id = ?
 	`
 	err := r.db.QueryRowContext(ctx, query, studentRecordID).Scan(
-		&finance.ID, &finance.StudentRecordID,
+		&finance.ID, &finance.InventoryRecordID,
 		&finance.EmployedFamilyMembersCount, &finance.SupportsStudiesCount,
 		&finance.SupportsFamilyCount, &finance.FinancialSupport,
 		&finance.WeeklyAllowance,
@@ -464,7 +464,7 @@ func (r *Repository) GetTotalStudentsCount(
 }
 
 // Create - Student Record
-func (r *Repository) CreateStudentRecord(
+func (r *Repository) CreateInventoryRecord(
 	ctx context.Context, userID int,
 ) (int, error) {
 	query := `
@@ -532,7 +532,7 @@ func (r *Repository) SaveStudentProfile(
 
 		result, err := tx.ExecContext(
 			ctx, upsertQuery,
-			profile.StudentRecordID, profile.GenderID,
+			profile.InventoryRecordID, profile.GenderID,
 			profile.CivilStatusTypeID, profile.Religion,
 			profile.HeightFt, profile.WeightKg,
 			profile.StudentNumber, profile.Course, profile.HighSchoolGWA,
@@ -553,7 +553,7 @@ func (r *Repository) SaveStudentProfile(
 			`
 			err = tx.QueryRowContext(
 				ctx, getIDQuery,
-				profile.StudentRecordID,
+				profile.InventoryRecordID,
 			).Scan(&studentProfileID)
 			return err
 		}
@@ -591,7 +591,7 @@ func (r *Repository) SaveEmergencyContact(
 		`
 
 		_, err := tx.ExecContext(ctx, query,
-			emergencyContact.StudentRecordID,
+			emergencyContact.InventoryRecordID,
 			emergencyContact.ParentID,
 			emergencyContact.EmergencyContactFirstName,
 			emergencyContact.EmergencyContactMiddleName,
@@ -631,7 +631,7 @@ func (r *Repository) SaveFamilyInfo(
 	`
 
 		_, err := tx.ExecContext(ctx, query,
-			family.StudentRecordID, family.ParentalStatusID,
+			family.InventoryRecordID, family.ParentalStatusID,
 			family.ParentalStatusDetails, family.Brothers,
 			family.Sisters, family.MonthlyFamilyIncome,
 			family.GuardianFirstName, family.GuardianMiddleName,
@@ -805,7 +805,7 @@ func (r *Repository) SaveHealthRecord(
 		`
 
 		_, err := tx.ExecContext(ctx, query,
-			health.StudentRecordID, health.VisionRemark,
+			health.InventoryRecordID, health.VisionRemark,
 			health.HearingRemark, health.MobilityRemark,
 			health.SpeechRemark, health.GeneralHealthRemark,
 			health.ConsultedProfessional, health.ConsultationReason,
@@ -837,7 +837,7 @@ func (r *Repository) SaveFinanceInfo(
 		`
 
 		_, err := tx.ExecContext(ctx, query,
-			finance.StudentRecordID, finance.EmployedFamilyMembersCount,
+			finance.InventoryRecordID, finance.EmployedFamilyMembersCount,
 			finance.SupportsStudiesCount, finance.SupportsFamilyCount,
 			finance.FinancialSupport, finance.WeeklyAllowance,
 		)
@@ -893,7 +893,7 @@ func (r *Repository) DeleteFinance(
 }
 
 // Delete - Student Record
-func (r *Repository) DeleteStudentRecord(
+func (r *Repository) DeleteInventoryRecord(
 	ctx context.Context, studentRecordID int,
 ) error {
 	return database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
