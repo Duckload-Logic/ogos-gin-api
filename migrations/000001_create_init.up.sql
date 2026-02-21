@@ -2,13 +2,13 @@
 -- AUTH & ROLES
 -- ============================================================================
 
-CREATE TABLE roles(
-    role_id INT PRIMARY KEY,
-    role_name VARCHAR(50) UNIQUE NOT NULL
+CREATE TABLE user_roles(
+    id INT PRIMARY KEY,
+    `name` VARCHAR(50) UNIQUE NOT NULL
 );
 
 CREATE TABLE users(
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     role_id INT NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100),
@@ -18,7 +18,7 @@ CREATE TABLE users(
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (role_id) REFERENCES roles(role_id)
+    FOREIGN KEY (role_id) REFERENCES user_roles(id)
 );
 
 -- ============================================================================
@@ -26,22 +26,22 @@ CREATE TABLE users(
 -- ============================================================================
 
 CREATE TABLE genders(
-    gender_id INT  PRIMARY KEY,
+    id INT  PRIMARY KEY,
     gender_name VARCHAR(50) UNIQUE NOT NULL
 );
 
 CREATE TABLE parental_status_types (
-    ps_id INT PRIMARY KEY,
+    id INT PRIMARY KEY,
     status_name VARCHAR(50) UNIQUE NOT NULL
 );
 
 CREATE TABLE enrollment_reasons (
-    er_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     reason_text VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE TABLE income_ranges (
-    ir_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     range_text VARCHAR(100) NOT NULL
 );
 
@@ -50,20 +50,20 @@ CREATE TABLE income_ranges (
 -- ============================================================================
 
 CREATE TABLE iir_records(
-    iir_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNIQUE NOT NULL,
     is_submitted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
 -- STUDENT PROFILES & ENROLLMENT
 -- ============================================================================
 
-CREATE TABLE student_profiles(
-    sp_id INT AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE student_personal_info(
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT UNIQUE NOT NULL,
     student_number VARCHAR(20) UNIQUE NOT NULL,
     gender_id INT,
@@ -83,8 +83,8 @@ CREATE TABLE student_profiles(
     contact_no VARCHAR(20),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE,
-    FOREIGN KEY (gender_id) REFERENCES genders(gender_id)
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (gender_id) REFERENCES genders(id)
 );
 
 CREATE TABLE student_selected_reasons (
@@ -92,8 +92,8 @@ CREATE TABLE student_selected_reasons (
     reason_id INT NOT NULL,
     other_reason_text VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (iir_id, reason_id),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE,
-    FOREIGN KEY (reason_id) REFERENCES enrollment_reasons(er_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (reason_id) REFERENCES enrollment_reasons(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
@@ -101,7 +101,7 @@ CREATE TABLE student_selected_reasons (
 -- ============================================================================
 
 CREATE TABLE addresses(
-    address_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     region VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
     barangay VARCHAR(100) NOT NULL,
@@ -109,14 +109,14 @@ CREATE TABLE addresses(
 );
 
 CREATE TABLE student_addresses(
-    sa_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT NOT NULL,
     address_id INT NOT NULL,
     address_type ENUM('Residential', 'Provincial') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE,
-    FOREIGN KEY (address_id) REFERENCES addresses(address_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
@@ -124,7 +124,7 @@ CREATE TABLE student_addresses(
 -- ============================================================================
 
 CREATE TABLE related_persons(
-    rp_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     address_id INT,
     educational_level VARCHAR(100) NOT NULL,
     date_of_birth DATE,
@@ -134,7 +134,7 @@ CREATE TABLE related_persons(
     occupation VARCHAR(100) DEFAULT NULL,
     employer_name VARCHAR(150) DEFAULT NULL,
     employer_address VARCHAR(255) DEFAULT NULL,
-    FOREIGN KEY (address_id) REFERENCES addresses(address_id) ON DELETE SET NULL
+    FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE SET NULL
 );
 
 CREATE TABLE student_related_persons (
@@ -155,12 +155,12 @@ CREATE TABLE student_related_persons (
     is_living BOOLEAN DEFAULT TRUE,
     is_emergency_contact BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (iir_id, related_person_id),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE,
-    FOREIGN KEY (related_person_id) REFERENCES related_persons(rp_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (related_person_id) REFERENCES related_persons(id) ON DELETE CASCADE
 );
 
 CREATE TABLE family_backgrounds(
-    fb_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT UNIQUE NOT NULL,
     parental_status ENUM(
         'Married and staying together',
@@ -188,7 +188,7 @@ CREATE TABLE family_backgrounds(
     ) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
@@ -196,18 +196,18 @@ CREATE TABLE family_backgrounds(
 -- ============================================================================
 
 CREATE TABLE educational_backgrounds(
-    eb_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT NOT NULL,
     nature_of_schooling ENUM('Continuous', 'Interrupted') NOT NULL,
     interrupted_details VARCHAR(255) DEFAULT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );
 
 
 CREATE TABLE school_details (
-	sd_id INT AUTO_INCREMENT PRIMARY KEY,
+	id INT AUTO_INCREMENT PRIMARY KEY,
     eb_id INT NOT NULL,
     educational_level ENUM(
         'Pre-Elementary',
@@ -224,7 +224,7 @@ CREATE TABLE school_details (
     awards TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (eb_id) REFERENCES educational_backgrounds(eb_id) ON DELETE CASCADE
+    FOREIGN KEY (eb_id) REFERENCES educational_backgrounds(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
@@ -232,8 +232,8 @@ CREATE TABLE school_details (
 -- ============================================================================
 
 CREATE TABLE student_health_records (
-    health_id INT NOT NULL AUTO_INCREMENT,
-    student_record_id INT UNIQUE NOT NULL,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    iir_id INT UNIQUE NOT NULL,
     vision_has_problem BOOLEAN DEFAULT FALSE,
     vision_details VARCHAR(255) DEFAULT NULL,
     hearing_has_problem BOOLEAN DEFAULT FALSE,
@@ -242,41 +242,39 @@ CREATE TABLE student_health_records (
     speech_details VARCHAR(255) DEFAULT NULL,
     general_health_has_problem BOOLEAN DEFAULT FALSE,
     general_health_details VARCHAR(255) DEFAULT NULL,
-    PRIMARY KEY (health_id),
-    FOREIGN KEY (student_record_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );
 
 CREATE TABLE psychological_consultations (
-    consultation_id INT NOT NULL AUTO_INCREMENT,
-    student_record_id INT NOT NULL,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    iir_id INT NOT NULL,
     professional_type ENUM('Psychiatrist', 'Psychologist', 'Counselor') NOT NULL,
     has_consulted BOOLEAN DEFAULT FALSE,
     when_date VARCHAR(100) DEFAULT NULL,
     for_what TEXT DEFAULT NULL,
-    PRIMARY KEY (consultation_id),
-    FOREIGN KEY (student_record_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );
 
 CREATE TABLE student_interests (
-    interest_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT NOT NULL,
     interest_type VARCHAR(100) NOT NULL,
     interest_name VARCHAR(255) NOT NULL,
     is_favorite BOOLEAN DEFAULT FALSE,
     is_least_favorite BOOLEAN DEFAULT FALSE,
     `rank` INT,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );
 
 CREATE TABLE test_results (
-    tr_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT NOT NULL,
     test_date DATE,
     test_name VARCHAR(255),
     raw_score VARCHAR(50),
     percentile VARCHAR(50),
     description VARCHAR(255),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
@@ -284,20 +282,20 @@ CREATE TABLE test_results (
 -- ============================================================================
 
 CREATE TABLE student_support_types (
-    sst_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     support_type_name VARCHAR(100) UNIQUE NOT NULL
 );
 
 CREATE TABLE student_finances (
-    sf_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT UNIQUE NOT NULL,
     monthly_family_income_range_id INT,
     other_income_details VARCHAR(50) DEFAULT NULL,
     financial_support_type_id INT DEFAULT NULL,
     weekly_allowance DECIMAL(10,2),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE,
-    FOREIGN KEY (monthly_family_income_range_id) REFERENCES income_ranges(ir_id) ON DELETE SET NULL,
-    FOREIGN KEY (financial_support_type_id) REFERENCES student_support_types(sst_id) ON DELETE SET NULL
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (monthly_family_income_range_id) REFERENCES income_ranges(id) ON DELETE SET NULL,
+    FOREIGN KEY (financial_support_type_id) REFERENCES student_support_types(id) ON DELETE SET NULL
 );
 
 
@@ -306,17 +304,17 @@ CREATE TABLE student_finances (
 -- ============================================================================
 
 CREATE TABLE counselor_profiles(
-    cp_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT UNIQUE NOT NULL,
     license_number VARCHAR(50),
     specialization VARCHAR(100),
     is_available BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE appointments (
-    appointment_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     reason VARCHAR(255),
     scheduled_date DATE NOT NULL,
@@ -331,16 +329,16 @@ CREATE TABLE appointments (
     ) DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE session_notes (
-    sn_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     appointment_id INT UNIQUE NOT NULL,
     notes TEXT,
     recommendation TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (appointment_id) REFERENCES appointments(appointment_id) ON DELETE CASCADE
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
 );
 
 -- ============================================================================
@@ -348,7 +346,7 @@ CREATE TABLE session_notes (
 -- ============================================================================
 
 CREATE TABLE admission_slips (
-    as_id INT AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     iir_id INT NOT NULL,
     reason TEXT NOT NULL,
     date_of_absence DATE NOT NULL,
@@ -356,5 +354,5 @@ CREATE TABLE admission_slips (
     excuse_slip_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(iir_id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );

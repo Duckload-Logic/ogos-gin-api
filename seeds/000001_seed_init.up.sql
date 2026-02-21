@@ -1,15 +1,15 @@
-INSERT INTO genders (gender_id, gender_name)
+INSERT INTO genders (id, gender_name)
 VALUES
     (1, 'Male'),
     (2, 'Female'),
     (3, 'Prefer not to say');
 
-INSERT IGNORE INTO roles (role_id, role_name)
+INSERT IGNORE INTO roles (id, role_name)
 VALUES
     (1, 'STUDENT'),
     (2, 'COUNSELOR');
 
-INSERT INTO enrollment_reasons (er_id, reason_text) VALUES
+INSERT INTO enrollment_reasons (id, reason_text) VALUES
     (1, 'Lower tuition fee'),
     (2, 'Safety of the place'),
     (3, 'Spacious Campus'),
@@ -29,7 +29,7 @@ INSERT INTO student_support_types (support_type_name) VALUES
     ('Relatives'),
     ('Self-supporting/working student');
 
-INSERT INTO income_ranges (ir_id, range_text) VALUES
+INSERT INTO income_ranges (id, range_text) VALUES
     (1, 'Below Php 5,000'),
     (2, 'Php 5,001 - Php 10,000'),
     (3, 'Php 10,001 - Php 15,000'),
@@ -41,7 +41,7 @@ INSERT INTO income_ranges (ir_id, range_text) VALUES
     (9, 'Php 45,001 - Php 50,000'),
     (10, 'Above Php 50,001');
 
--- INSERT INTO appointment_types (appointment_type_id, appointment_type_name)
+-- INSERT INTO appointment_types (id, appointment_type_name)
 -- VALUES
 --     (1, 'Initial Interview'),
 --     (2, 'Mental Health Consultation'),
