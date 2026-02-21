@@ -54,7 +54,7 @@ SET @complete_iir_id = LAST_INSERT_ID();
 
 INSERT INTO student_profiles (
     iir_id, gender_id, civil_status, religion,
-    height_ft, weight_kg, student_number, course, high_school_gwa,
+    height_ft, weight_kg, student_number, course, section, year_level, high_school_gwa,
     place_of_birth, date_of_birth, is_employed, employer_name, employer_address, contact_no
 ) VALUES (
     @complete_iir_id,
@@ -65,6 +65,8 @@ INSERT INTO student_profiles (
     68.20,
     '2023-00123-TG-0',
     'BSIT',
+    '4A',
+    4,
     92.50,
     'Manila',
     '2000-05-15',
