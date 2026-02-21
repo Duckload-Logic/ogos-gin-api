@@ -2,7 +2,6 @@ package students
 
 import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/request"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
 // List Students
@@ -21,7 +20,16 @@ type ListStudentsResponse struct {
 }
 
 type StudentProfileView struct {
-	users.User
+	IIRID         int     `db:"iir_id" json:"iirId"`
+	UserID        int     `db:"user_id" json:"userId"`
+	FirstName     string  `db:"first_name" json:"firstName"`
+	MiddleName    *string `db:"middle_name" json:"middleName,omitempty"`
+	LastName      string  `db:"last_name" json:"lastName"`
+	Email         string  `db:"email" json:"email"`
+	StudentNumber string  `db:"student_number" json:"studentNumber"`
+	Course        string  `db:"course" json:"course"`
+	Section       string  `db:"section" json:"section"`
+	YearLevel     string  `db:"year_level" json:"yearLevel"`
 }
 
 // Get Student
