@@ -11,7 +11,7 @@ type IIRRecord struct {
 
 type StudentProfile struct {
 	ID                int      `db:"id" json:"id"`
-	IIRID             int      `db:"student_record_id" json:"studentRecordId"`
+	IIRID             int      `db:"iir_id" json:"studentRecordId"`
 	StudentNumber     string   `db:"student_number" json:"studentNumber"`
 	GenderID          int      `db:"gender_id" json:"genderId"`
 	CivilStatusTypeID int      `db:"civil_status_type_id" json:"civilStatusTypeId"`
@@ -69,11 +69,16 @@ type StudentRelatedPerson struct {
 type FamilyBackground struct {
 	ID                    int     `db:"id" json:"id"`
 	IIRID                 int     `db:"iir_id" json:"studentRecordId"`
-	ParentalStatusID      int     `db:"parental_status_id" json:"parentalStatusId"`
+	ParentalStatus        string  `db:"parental_status" json:"parentalStatus"`
 	ParentalStatusDetails *string `db:"parental_status_details" json:"parentalStatusDetails"`
-	Brothers              int     `db:"siblings_brothers" json:"brothers"`
-	Sisters               int     `db:"sibling_sisters" json:"sisters"`
-	MonthlyFamilyIncome   string  `db:"monthly_family_income" json:"monthlyFamilyIncome"`
+	Brothers              int     `db:"brothers" json:"brothers"`
+	Sisters               int     `db:"sisters" json:"sisters"`
+	EmployedSiblings      int     `db:"employed_siblings" json:"employedSiblings"`
+	OrdinalPosition       int     `db:"ordinal_position" json:"ordinalPosition"`
+	HaveQuietPlaceToStudy bool    `db:"have_quiet_place_to_study" json:"haveQuietPlaceToStudy"`
+	IsSharingRoom         bool    `db:"is_sharing_room" json:"isSharingRoom"`
+	RoomSharingDetails    *string `db:"room_sharing_details" json:"roomSharingDetails"`
+	NatureOfResidence     string  `db:"nature_of_residence" json:"natureOfResidence"`
 }
 
 // Education and Background
@@ -106,33 +111,31 @@ type StudentAddress struct {
 
 // Health and Wellness
 type StudentHealthRecord struct {
-	ID                    int     `db:"id" json:"id"`
-	IIRID                 int     `db:"iir_id" json:"studentRecordId"`
-	VisionRemark          string  `db:"vision_remark" json:"visionRemark"`
-	HearingRemark         string  `db:"hearing_remark" json:"hearingRemark"`
-	MobilityRemark        string  `db:"mobility_remark" json:"mobilityRemark"`
-	SpeechRemark          string  `db:"speech_remark" json:"speechRemark"`
-	GeneralHealthRemark   string  `db:"general_health_remark" json:"generalHealthRemark"`
-	ConsultedProfessional *string `db:"consulted_professional" json:"consultedProfessional"`
-	ConsultationReason    *string `db:"consultation_reason" json:"consultationReason"`
-	DateStarted           *string `db:"date_started" json:"dateStarted"`
-	NumberOfSessions      *int64  `db:"num_sessions" json:"numberOfSessions"`
-	DateConcluded         *string `db:"date_concluded" json:"dateConcluded"`
+	ID                      int     `db:"id" json:"id"`
+	IIRID                   int     `db:"student_record_id" json:"studentRecordId"`
+	VisionHasProblem        bool    `db:"vision_has_problem" json:"visionHasProblem"`
+	VisionDetails           *string `db:"vision_details" json:"visionDetails"`
+	HearingHasProblem       bool    `db:"hearing_has_problem" json:"hearingHasProblem"`
+	HearingDetails          *string `db:"hearing_details" json:"hearingDetails"`
+	SpeechHasProblem        bool    `db:"speech_has_problem" json:"speechHasProblem"`
+	SpeechDetails           *string `db:"speech_details" json:"speechDetails"`
+	GeneralHealthHasProblem bool    `db:"general_health_has_problem" json:"generalHealthHasProblem"`
+	GeneralHealthDetails    *string `db:"general_health_details" json:"generalHealthDetails"`
 }
 
 // Financial Support
 type StudentFinance struct {
+	ID                         int      `db:"id" json:"id"`
 	IIRID                      int      `db:"iir_id" json:"studentRecordId"`
-	EmployedFamilyMembersCount *int     `db:"employed_family_members_count" json:"employedFamilyMembersCount"`
-	SupportsStudiesCount       *int     `db:"supports_studies_count" json:"supportsStudiesCount"`
-	SupportsFamilyCount        *int     `db:"supports_family_count" json:"supportsFamilyCount"`
-	FinancialSupport           string   `db:"financial_support" json:"financialSupport"`
+	MonthlyFamilyIncomeRangeID *int     `db:"monthly_family_income_range_id" json:"monthlyFamilyIncome RangeId"`
+	OtherIncomeDetails         *string  `db:"other_income_details" json:"otherIncomeDetails"`
+	FinancialSupportTypeID     *int     `db:"financial_support_type_id" json:"financialSupportTypeId"`
 	WeeklyAllowance            *float64 `db:"weekly_allowance" json:"weeklyAllowance"`
 }
 
 // Interests and Activities
 type StudentInterest struct {
-	ID              int    `db:"interest_id" json:"id"`
+	ID              int    `db:"id" json:"id"`
 	IIRID           int    `db:"iir_id" json:"studentRecordId"`
 	Type            string `db:"interest_type" json:"type"` // e.g., "Academic", "Extra-Curricular"
 	Name            string `db:"interest_name" json:"name"` // e.g., "Math Club", "Chess"
@@ -143,7 +146,7 @@ type StudentInterest struct {
 
 // Test Results and Assessments
 type TestResult struct {
-	ID          int    `db:"test_result_id" json:"id"`
+	ID          int    `db:"id" json:"id"`
 	IIRID       int    `db:"iir_id" json:"studentRecordId"`
 	TestDate    string `db:"test_date" json:"testDate"`
 	TestName    string `db:"test_name" json:"testName"`
