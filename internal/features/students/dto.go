@@ -94,6 +94,9 @@ type StudentPersonalInfoDTO struct {
 	Section                      int                     `json:"section" binding:"required"`
 	PlaceOfBirth                 string                  `json:"placeOfBirth" binding:"required"`
 	DateOfBirth                  string                  `json:"dateOfBirth" binding:"required"`
+	IsEmployed                   bool                    `json:"isEmployed" binding:"required"`
+	EmployerName                 *string                 `json:"employerName,omitempty"`
+	EmployerAddress              *string                 `json:"employerAddress,omitempty"`
 	MobileNumber                 string                  `json:"mobileNumber" binding:"required"`
 	TelephoneNumber              *string                 `json:"telephoneNumber,omitempty"`
 	EmergencyContactName         string                  `json:"emergencyContactName" binding:"required"`
@@ -142,11 +145,10 @@ type RelatedPersonDTO struct {
 	EmployerAddress  *string `json:"employerAddress,omitempty"`
 	ContactNumber    *string `json:"contactNumber,omitempty"`
 
-	Relationship       StudentRelationshipType `json:"relationship"`
-	IsParent           bool                    `json:"isParent"`
-	IsGuardian         bool                    `json:"isGuardian"`
-	IsEmergencyContact bool                    `json:"isEmergencyContact"`
-	IsLiving           bool                    `json:"isLiving"`
+	Relationship StudentRelationshipType `json:"relationship"`
+	IsParent     bool                    `json:"isParent"`
+	IsGuardian   bool                    `json:"isGuardian"`
+	IsLiving     bool                    `json:"isLiving"`
 
 	Address *Address `json:"address,omitempty"`
 }
