@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,27 +17,35 @@ import (
 
 var db *sql.DB
 
+var (
+	tableColumnsMu sync.RWMutex
+)
+
 // lookup slices (IDs)
 var (
-	genderIDs             []int
-	civilStatusIDs        []int
-	religionIDs           []int
-	courseIDs             []int
-	enrollmentReasonIDs   []int
-	supportTypeIDs        []int
-	incomeRangeIDs        []int
-	parentalStatusIDs     []int
-	educationalLevelIDs   []int
-	relationshipTypeIDs   map[string]int
-	natureOfResidenceIDs  []int
-	siblingSupportTypeIDs []int
-	activityOptionIDs     []int
+	genderIDs              []int
+	civilStatusIDs         []int
+	civilStatusByName      map[string]int
+	religionIDs            []int
+	courseIDs              []int
+	enrollmentReasonIDs    []int
+	supportTypeIDs         []int
+	incomeRangeIDs         []int
+	parentalStatusIDs      []int
+	educationalLevelIDs    []int
+	educationalLevelByName map[string]int
+	relationshipTypeIDs    map[string]int
+	natureOfResidenceIDs   []int
+	siblingSupportTypeIDs  []int
+	activityOptionIDs      []int
+	tableColumnsCache      map[string]map[string]bool
 )
 
 func main() {
 	// ---------- CONFIGURATION ----------
-	numStudents := 50  // number of students to generate
-	numCounselors := 1 // number of counselors (admins)
+	numStudents := 2000 // number of students to generate
+	numCounselors := 1  // number of counselors (admins)
+	numWorkers := 12    // number of concurrent student workers
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
 	// -----------------------------------
@@ -65,23 +74,25 @@ func main() {
 		createCounselor()
 	}
 
-	// create students
+	// create students (concurrently with a worker pool)
+	jobs := make(chan int, numStudents)
 	var wg sync.WaitGroup
-	errChan := make(chan error, numStudents)
-	for i := 0; i < numStudents; i++ {
+
+	for w := 0; w < numWorkers; w++ {
 		wg.Add(1)
-		go func(i int) {
+		go func() {
 			defer wg.Done()
-			createStudent(i)
-		}(i)
+			for index := range jobs {
+				createStudent(index)
+			}
+		}()
 	}
 
+	for i := 0; i < numStudents; i++ {
+		jobs <- i
+	}
+	close(jobs)
 	wg.Wait()
-
-	if len(errChan) > 0 {
-		log.Fatal("errors occurred during data generation:", <-errChan)
-		return
-	}
 
 	fmt.Println("Dummy data generation completed successfully.")
 }
@@ -103,15 +114,20 @@ func loadLookups() {
 	}
 
 	// civil status
-	rows, err = db.Query("SELECT id FROM civil_status_types")
+	civilStatusByName = make(map[string]int)
+	rows, err = db.Query("SELECT id, status_name FROM civil_status_types")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id int
-		rows.Scan(&id)
+		var statusName string
+		if err := rows.Scan(&id, &statusName); err != nil {
+			log.Fatal(err)
+		}
 		civilStatusIDs = append(civilStatusIDs, id)
+		civilStatusByName[strings.ToLower(statusName)] = id
 	}
 
 	// religions
@@ -187,15 +203,20 @@ func loadLookups() {
 	}
 
 	// educational levels
-	rows, err = db.Query("SELECT id FROM educational_levels")
+	educationalLevelByName = make(map[string]int)
+	rows, err = db.Query("SELECT id, level_name FROM educational_levels")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id int
-		rows.Scan(&id)
+		var levelName string
+		if err := rows.Scan(&id, &levelName); err != nil {
+			log.Fatal(err)
+		}
 		educationalLevelIDs = append(educationalLevelIDs, id)
+		educationalLevelByName[strings.ToLower(levelName)] = id
 	}
 
 	// relationship types (map by name for easy lookup)
@@ -311,6 +332,13 @@ func createCounselor() {
 	res, err := tx.Exec(`
 		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
 		VALUES (2, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			id = LAST_INSERT_ID(id),
+			first_name = VALUES(first_name),
+			middle_name = VALUES(middle_name),
+			last_name = VALUES(last_name),
+			password_hash = VALUES(password_hash),
+			is_active = VALUES(is_active)
 	`, firstName, randomMiddleName(), lastName, email, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
@@ -320,6 +348,10 @@ func createCounselor() {
 	_, err = tx.Exec(`
 		INSERT INTO counselor_profiles (user_id, license_number, specialization, is_available)
 		VALUES (?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			license_number = VALUES(license_number),
+			specialization = VALUES(specialization),
+			is_available = VALUES(is_available)
 	`, userID, gofakeit.Regex("[A-Z]{3}-[0-9]{6}"), gofakeit.JobTitle(), true)
 	if err != nil {
 		log.Fatal(err)
@@ -363,60 +395,58 @@ func createStudent(index int) {
 	}
 	iirID, _ := res.LastInsertId()
 
-	// 3. student_personal_info
-	insertPersonalInfo(tx, int(iirID), birthYear, dob)
-
-	// 4. selected reasons
+	// 3. selected reasons
 	insertSelectedReasons(tx, int(iirID))
 
-	// 5. addresses (residential & provincial)
+	// 4. addresses (residential & provincial)
 	resAddr1 := insertAddress(tx)
 	resAddr2 := insertAddress(tx)
 	insertStudentAddress(tx, int(iirID), resAddr1, "Residential")
 	insertStudentAddress(tx, int(iirID), resAddr2, "Provincial")
 
-	// 6. related persons (father, mother, guardian)
-	fatherID := insertRelatedPerson(tx, nil)
-	motherID := insertRelatedPerson(tx, nil)
+	// 5. related persons (father, mother, optional guardian)
+	father := insertRelatedPerson(tx, &resAddr1)
+	mother := insertRelatedPerson(tx, &resAddr1)
 
-	// Randomly decide who is the guardian: 0=father, 1=mother, 2=separate person
-	guardianChoice := rand.Intn(3)
-	var guardianID int
+	guardianScenario := pickGuardianScenario()
+	var guardian *relatedPersonSeed
 
-	switch guardianChoice {
-	case 0: // Father is guardian
-		guardianID = fatherID
-		// Update father's address to resAddr2
-		_, err = tx.Exec("UPDATE related_persons SET address_id = ? WHERE id = ?", resAddr2, fatherID)
-		if err != nil {
+	switch guardianScenario {
+	case "father_guardian":
+		father.AddressID = &resAddr2
+		if _, err = tx.Exec("UPDATE related_persons SET address_id = ? WHERE id = ?", resAddr2, father.ID); err != nil {
 			log.Fatal(err)
 		}
-	case 1: // Mother is guardian
-		guardianID = motherID
-		// Update mother's address to resAddr2
-		_, err = tx.Exec("UPDATE related_persons SET address_id = ? WHERE id = ?", resAddr2, motherID)
-		if err != nil {
+	case "mother_guardian":
+		mother.AddressID = &resAddr2
+		if _, err = tx.Exec("UPDATE related_persons SET address_id = ? WHERE id = ?", resAddr2, mother.ID); err != nil {
 			log.Fatal(err)
 		}
-	case 2: // Separate guardian
-		guardianID = insertRelatedPerson(tx, &resAddr2)
+	case "separate_guardian":
+		g := insertRelatedPerson(tx, &resAddr2)
+		guardian = &g
 	}
 
-	// 7. link related persons
-	if guardianChoice == 0 {
-		// Father is also guardian
-		linkRelatedPerson(tx, int(iirID), fatherID, "Father", true, true, true, true)
-		linkRelatedPerson(tx, int(iirID), motherID, "Mother", true, false, false, true)
-	} else if guardianChoice == 1 {
-		// Mother is also guardian
-		linkRelatedPerson(tx, int(iirID), fatherID, "Father", true, false, false, true)
-		linkRelatedPerson(tx, int(iirID), motherID, "Mother", true, true, true, true)
-	} else {
-		// Separate guardian
-		linkRelatedPerson(tx, int(iirID), fatherID, "Father", true, false, false, true)
-		linkRelatedPerson(tx, int(iirID), motherID, "Mother", true, false, false, true)
-		linkRelatedPerson(tx, int(iirID), guardianID, "Guardian", false, true, true, true)
+	// 6. link related persons
+	switch guardianScenario {
+	case "no_guardian":
+		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
+		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+	case "father_guardian":
+		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, true, true)
+		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+	case "mother_guardian":
+		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
+		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, true, true)
+	case "separate_guardian":
+		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
+		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+		linkRelatedPerson(tx, int(iirID), guardian.ID, "Guardian", false, true, true)
 	}
+
+	// 7. student_personal_info
+	emergency := deriveEmergencyContact(father, mother, guardian, guardianScenario, resAddr1, resAddr2)
+	insertPersonalInfo(tx, int(iirID), dob, index, emergency)
 
 	// 8. family background
 	familyBgID := insertFamilyBackground(tx, int(iirID))
@@ -428,7 +458,7 @@ func createStudent(index int) {
 	ebID := insertEducationalBackground(tx, int(iirID))
 
 	// 11. school details for each educational level
-	insertSchoolDetails(tx, ebID, birthYear)
+	insertSchoolDetails(tx, ebID, birthYear, index)
 
 	// 12. health records
 	insertHealthRecords(tx, int(iirID))
@@ -475,6 +505,96 @@ func createStudent(index int) {
 // INDIVIDUAL INSERT HELPERS
 // ----------------------------------------------------------------------
 
+type relatedPersonSeed struct {
+	ID            int
+	FirstName     string
+	LastName      string
+	ContactNumber sql.NullString
+	AddressID     *int
+}
+
+type emergencyContactSeed struct {
+	Name           string
+	Number         string
+	RelationshipID int
+	AddressID      int
+}
+
+func pickGuardianScenario() string {
+	r := rand.Float32()
+	if r < 0.25 {
+		return "no_guardian"
+	}
+	if r < 0.50 {
+		return "father_guardian"
+	}
+	if r < 0.75 {
+		return "mother_guardian"
+	}
+	return "separate_guardian"
+}
+
+func deriveEmergencyContact(
+	father, mother relatedPersonSeed,
+	guardian *relatedPersonSeed,
+	guardianScenario string,
+	residentialAddressID, provincialAddressID int,
+) emergencyContactSeed {
+	switch guardianScenario {
+	case "father_guardian":
+		return emergencyContactSeed{
+			Name:           father.FirstName + " " + father.LastName,
+			Number:         validContact(father.ContactNumber),
+			RelationshipID: relationshipID("Father"),
+			AddressID:      safeAddressID(father.AddressID, provincialAddressID),
+		}
+	case "mother_guardian":
+		return emergencyContactSeed{
+			Name:           mother.FirstName + " " + mother.LastName,
+			Number:         validContact(mother.ContactNumber),
+			RelationshipID: relationshipID("Mother"),
+			AddressID:      safeAddressID(mother.AddressID, provincialAddressID),
+		}
+	case "separate_guardian":
+		return emergencyContactSeed{
+			Name:           guardian.FirstName + " " + guardian.LastName,
+			Number:         validContact(guardian.ContactNumber),
+			RelationshipID: relationshipID("Guardian"),
+			AddressID:      safeAddressID(guardian.AddressID, provincialAddressID),
+		}
+	default:
+		// no guardian: choose one of the parents as emergency contact
+		if rand.Intn(2) == 0 {
+			return emergencyContactSeed{
+				Name:           father.FirstName + " " + father.LastName,
+				Number:         validContact(father.ContactNumber),
+				RelationshipID: relationshipID("Father"),
+				AddressID:      safeAddressID(father.AddressID, residentialAddressID),
+			}
+		}
+		return emergencyContactSeed{
+			Name:           mother.FirstName + " " + mother.LastName,
+			Number:         validContact(mother.ContactNumber),
+			RelationshipID: relationshipID("Mother"),
+			AddressID:      safeAddressID(mother.AddressID, residentialAddressID),
+		}
+	}
+}
+
+func safeAddressID(addrID *int, fallback int) int {
+	if addrID != nil {
+		return *addrID
+	}
+	return fallback
+}
+
+func validContact(contact sql.NullString) string {
+	if contact.Valid && strings.TrimSpace(contact.String) != "" {
+		return contact.String
+	}
+	return gofakeit.Phone()
+}
+
 func randomMiddleName() sql.NullString {
 	if gofakeit.Bool() {
 		return sql.NullString{String: gofakeit.FirstName(), Valid: true}
@@ -487,9 +607,9 @@ func fakePasswordHash() string {
 	return "$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq"
 }
 
-func insertPersonalInfo(tx *sql.Tx, iirID, birthYear int, dob time.Time) {
+func insertPersonalInfo(tx *sql.Tx, iirID int, dob time.Time, studentIndex int, emergency emergencyContactSeed) {
 	studentNumber := fmt.Sprintf("%d-%04d-TG-%d", time.Now().Year(), iirID, rand.Intn(10))
-	isEmployed := gofakeit.Bool()
+	isEmployed := studentIndex%2 == 0
 	var employerName, employerAddress sql.NullString
 	if isEmployed {
 		empName := gofakeit.Company()
@@ -498,20 +618,69 @@ func insertPersonalInfo(tx *sql.Tx, iirID, birthYear int, dob time.Time) {
 		employerAddress = sql.NullString{String: empAddr, Valid: true}
 	}
 
+	mobileNumber := gofakeit.Phone()
+	telephoneNumber := sql.NullString{Valid: false}
+	if studentIndex%3 != 0 {
+		telephoneNumber = sql.NullString{String: gofakeit.Phone(), Valid: true}
+	}
+
+	civilStatusID := chooseCivilStatusID()
+
+	if hasColumn("student_personal_info", "mobile_number") {
+		emergencyRelationshipCol := "emergency_relationship_id"
+		if !hasColumn("student_personal_info", emergencyRelationshipCol) {
+			emergencyRelationshipCol = "emergency_contact_relationship_id"
+		}
+
+		emergencyAddressCol := "emergency_address_id"
+		if !hasColumn("student_personal_info", emergencyAddressCol) {
+			emergencyAddressCol = "emergency_contact_address_id"
+		}
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_personal_info (
+				iir_id, student_number, gender_id, civil_status_id, religion_id,
+				height_ft, weight_kg, complexion, high_school_gwa, course_id,
+				year_level, section, place_of_birth, date_of_birth,
+				is_employed, employer_name, employer_address,
+				mobile_number, telephone_number,
+				emergency_contact_name, emergency_contact_number, %s, %s
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, emergencyRelationshipCol, emergencyAddressCol)
+
+		_, err := tx.Exec(query,
+			iirID, studentNumber,
+			randomChoice(genderIDs), civilStatusID, randomChoice(religionIDs),
+			gofakeit.Float64Range(4.5, 6.5), gofakeit.Float64Range(40, 100), gofakeit.Color(),
+			gofakeit.Float64Range(75, 98), randomChoice(courseIDs),
+			rand.Intn(4)+1, rand.Intn(5)+1,
+			gofakeit.City(), dob.Format("2006-01-02"),
+			isEmployed, employerName, employerAddress,
+			mobileNumber, telephoneNumber,
+			emergency.Name, emergency.Number, emergency.RelationshipID, emergency.AddressID,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	_, err := tx.Exec(`
 		INSERT INTO student_personal_info (
 			iir_id, student_number, gender_id, civil_status_id, religion_id,
 			height_ft, weight_kg, complexion, high_school_gwa, course_id,
 			year_level, section, place_of_birth, date_of_birth,
-			is_employed, employer_name, employer_address, contact_number
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			is_employed, employer_name, employer_address, mobile_number, telephone_number,
+			emergency_contact_name, emergency_contact_number, emergency_relationship_id, emergency_address_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, iirID, studentNumber,
-		randomChoice(genderIDs), randomChoice(civilStatusIDs), randomChoice(religionIDs),
+		randomChoice(genderIDs), civilStatusID, randomChoice(religionIDs),
 		gofakeit.Float64Range(4.5, 6.5), gofakeit.Float64Range(40, 100), gofakeit.Color(),
 		gofakeit.Float64Range(75, 98), randomChoice(courseIDs),
 		rand.Intn(4)+1, rand.Intn(5)+1,
 		gofakeit.City(), dob.Format("2006-01-02"),
-		isEmployed, employerName, employerAddress, gofakeit.Phone(),
+		isEmployed, employerName, employerAddress, mobileNumber, telephoneNumber,
+		emergency.Name, emergency.Number, emergency.RelationshipID, emergency.AddressID,
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -565,7 +734,7 @@ func insertStudentAddress(tx *sql.Tx, iirID, addressID int, addrType string) {
 	}
 }
 
-func insertRelatedPerson(tx *sql.Tx, addressID *int) int {
+func insertRelatedPerson(tx *sql.Tx, addressID *int) relatedPersonSeed {
 	fname := gofakeit.FirstName()
 	lname := gofakeit.LastName()
 	mname := randomMiddleName()
@@ -576,19 +745,31 @@ func insertRelatedPerson(tx *sql.Tx, addressID *int) int {
 	employerAddr := sql.NullString{String: gofakeit.Address().Address, Valid: occupation.Valid}
 	contact := sql.NullString{String: gofakeit.Phone(), Valid: gofakeit.Bool()}
 
+	var addrValue interface{}
+	if addressID != nil {
+		addrValue = *addressID
+	}
+
 	res, err := tx.Exec(`
 		INSERT INTO related_persons (
 			address_id, educational_level, date_of_birth,
 			last_name, first_name, middle_name,
 			occupation, employer_name, employer_address, contact_number
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, addressID, educ, dob, lname, fname, mname,
+	`, addrValue, educ, dob, lname, fname, mname,
 		occupation, employer, employerAddr, contact)
 	if err != nil {
 		log.Fatal(err)
 	}
 	id, _ := res.LastInsertId()
-	return int(id)
+
+	return relatedPersonSeed{
+		ID:            int(id),
+		FirstName:     fname,
+		LastName:      lname,
+		ContactNumber: contact,
+		AddressID:     addressID,
+	}
 }
 
 func randomEducationalAttainment() string {
@@ -596,14 +777,26 @@ func randomEducationalAttainment() string {
 	return levels[rand.Intn(len(levels))]
 }
 
-func linkRelatedPerson(tx *sql.Tx, iirID, personID int, relType string, isParent, isGuardian, isEmergency, isLiving bool) {
-	relID := relationshipTypeIDs[relType]
-	_, err := tx.Exec(`
-		INSERT INTO student_related_persons (
-			iir_id, related_person_id, relationship_id,
-			is_parent, is_guardian, is_emergency_contact, is_living
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, iirID, personID, relID, isParent, isGuardian, isEmergency, isLiving)
+func linkRelatedPerson(tx *sql.Tx, iirID, personID int, relType string, isParent, isGuardian, isLiving bool) {
+	relID := relationshipID(relType)
+	var err error
+
+	if hasColumn("student_related_persons", "is_emergency_contact") {
+		_, err = tx.Exec(`
+			INSERT INTO student_related_persons (
+				iir_id, related_person_id, relationship_id,
+				is_parent, is_guardian, is_living
+			) VALUES (?, ?, ?, ?, ?, ?)
+		`, iirID, personID, relID, isParent, isGuardian, isLiving)
+	} else {
+		_, err = tx.Exec(`
+			INSERT INTO student_related_persons (
+				iir_id, related_person_id, relationship_id,
+				is_parent, is_guardian, is_living
+			) VALUES (?, ?, ?, ?, ?, ?)
+		`, iirID, personID, relID, isParent, isGuardian, isLiving)
+	}
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -685,7 +878,7 @@ func insertEducationalBackground(tx *sql.Tx, iirID int) int {
 }
 
 // school details for every educational level
-func insertSchoolDetails(tx *sql.Tx, ebID, birthYear int) {
+func insertSchoolDetails(tx *sql.Tx, ebID, birthYear, studentIndex int) {
 	// typical schooling ages:
 	// pre-elementary: 4-5
 	// elementary: 6-11
@@ -703,13 +896,29 @@ func insertSchoolDetails(tx *sql.Tx, ebID, birthYear int) {
 		"College":        18,
 	}
 
-	for _, levelID := range educationalLevelIDs {
-		// get level name
-		var levelName string
-		err := db.QueryRow("SELECT level_name FROM educational_levels WHERE id = ?", levelID).Scan(&levelName)
-		if err != nil {
-			log.Fatal(err)
+	levelPath := []string{"pre-elementary", "elementary", "high school"}
+	if studentIndex%3 == 0 {
+		// scenario: pre-school up to vocational/SHS route
+		levelPath = append(levelPath, "vocational")
+	} else {
+		// scenario: pre-school up to college route
+		levelPath = append(levelPath, "college")
+	}
+
+	for _, levelKey := range levelPath {
+		levelID, ok := educationalLevelByName[levelKey]
+		if !ok {
+			continue
 		}
+
+		levelName := strings.Title(levelKey)
+		if levelKey == "pre-elementary" {
+			levelName = "Pre-Elementary"
+		}
+		if levelKey == "high school" {
+			levelName = "High School"
+		}
+
 		startAge := levelStartAge[levelName]
 		startYear := birthYear + startAge
 		// duration depends on level
@@ -732,9 +941,9 @@ func insertSchoolDetails(tx *sql.Tx, ebID, birthYear int) {
 			completedYear = nowYear + rand.Intn(3) // still in school
 		}
 		schoolType := randomChoice([]string{"Private", "Public"})
-		awards := sql.NullString{String: gofakeit.Sentence(3), Valid: gofakeit.Bool()}
+		awards := randomAwards()
 
-		_, err = tx.Exec(`
+		_, err := tx.Exec(`
 			INSERT INTO school_details (
 				eb_id, educational_level_id, school_name, school_address,
 				school_type, year_started, year_completed, awards
@@ -749,13 +958,40 @@ func insertSchoolDetails(tx *sql.Tx, ebID, birthYear int) {
 }
 
 func insertHealthRecords(tx *sql.Tx, iirID int) {
-	visionProb := gofakeit.Bool()
+	visionProb := false
+	hearingProb := false
+	speechProb := false
+	genProb := false
+
+	roll := rand.Float32()
+	if roll >= 0.35 {
+		impairments := []string{"vision", "hearing", "speech", "general"}
+		rand.Shuffle(len(impairments), func(i, j int) {
+			impairments[i], impairments[j] = impairments[j], impairments[i]
+		})
+
+		count := 1
+		if roll >= 0.75 {
+			count = 2
+		}
+
+		for _, impairment := range impairments[:count] {
+			switch impairment {
+			case "vision":
+				visionProb = true
+			case "hearing":
+				hearingProb = true
+			case "speech":
+				speechProb = true
+			case "general":
+				genProb = true
+			}
+		}
+	}
+
 	visionDet := nullStringIf(visionProb, gofakeit.Sentence(3))
-	hearingProb := gofakeit.Bool()
 	hearingDet := nullStringIf(hearingProb, gofakeit.Sentence(3))
-	speechProb := gofakeit.Bool()
 	speechDet := nullStringIf(speechProb, gofakeit.Sentence(3))
-	genProb := gofakeit.Bool()
 	genDet := nullStringIf(genProb, gofakeit.Sentence(5))
 
 	_, err := tx.Exec(`
@@ -784,16 +1020,13 @@ func nullStringIf(cond bool, val string) sql.NullString {
 }
 
 func insertConsultations(tx *sql.Tx, iirID int) {
-	if rand.Float32() < 0.4 { // 40% have at least one consultation
+	if rand.Float32() < 0.55 { // 55% have prior consultations
 		num := rand.Intn(3) + 1
 		for i := 0; i < num; i++ {
 			profType := randomChoice([]string{"Psychiatrist", "Psychologist", "Counselor"})
-			has := gofakeit.Bool()
-			var when, what sql.NullString
-			if has {
-				when = sql.NullString{String: gofakeit.Date().Format("2006-01-02"), Valid: true}
-				what = sql.NullString{String: gofakeit.Sentence(8), Valid: true}
-			}
+			has := true
+			when := sql.NullString{String: gofakeit.Date().Format("2006-01-02"), Valid: true}
+			what := sql.NullString{String: gofakeit.Sentence(8), Valid: true}
 			_, err := tx.Exec(`
 				INSERT INTO student_consultations (
 					iir_id, professional_type, has_consulted, when_date, for_what
@@ -906,15 +1139,20 @@ func insertActivities(tx *sql.Tx, iirID int) {
 }
 
 func insertSubjectPreferences(tx *sql.Tx, iirID int) {
-	num := rand.Intn(6) // 0-5 subjects
+	if rand.Float32() < 0.2 {
+		return
+	}
+
 	subjects := []string{"Math", "Science", "English", "History", "PE", "Art", "Music", "Computer"}
-	for i := 0; i < num; i++ {
-		subj := subjects[rand.Intn(len(subjects))]
-		fav := gofakeit.Bool()
+	num := rand.Intn(5) + 2 // 2-6 unique subjects
+	selected := pickUniqueStrings(subjects, num)
+	fav := gofakeit.Bool()
+
+	for _, sub := range selected {
 		_, err := tx.Exec(`
 			INSERT INTO student_subject_preferences (iir_id, subject_name, is_favorite)
 			VALUES (?, ?, ?)
-		`, iirID, subj, fav)
+		`, iirID, sub, fav)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -967,6 +1205,168 @@ func insertAppointment(tx *sql.Tx, userID int) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func chooseCivilStatusID() int {
+	if len(civilStatusByName) == 0 {
+		return randomChoice(civilStatusIDs).(int)
+	}
+
+	type weightedStatus struct {
+		id     int
+		weight int
+	}
+
+	weighted := make([]weightedStatus, 0)
+	used := make(map[int]bool)
+
+	add := func(name string, weight int) {
+		if id, ok := civilStatusByName[name]; ok {
+			weighted = append(weighted, weightedStatus{id: id, weight: weight})
+			used[id] = true
+		}
+	}
+
+	add("single", 75)
+	add("married", 8)
+	add("widowed", 2)
+	add("divorced", 2)
+	add("separated", 6)
+
+	for _, id := range civilStatusIDs {
+		if !used[id] {
+			weighted = append(weighted, weightedStatus{id: id, weight: 4})
+		}
+	}
+
+	if len(weighted) == 0 {
+		return randomChoice(civilStatusIDs).(int)
+	}
+
+	totalWeight := 0
+	for _, item := range weighted {
+		totalWeight += item.weight
+	}
+
+	roll := rand.Intn(totalWeight)
+	for _, item := range weighted {
+		roll -= item.weight
+		if roll < 0 {
+			return item.id
+		}
+	}
+
+	return weighted[len(weighted)-1].id
+}
+
+func randomAwards() sql.NullString {
+	awardPool := []string{
+		"With Honors",
+		"Best in Mathematics",
+		"Best in Conduct",
+		"Leadership Award",
+		"Academic Excellence",
+		"Science Fair Winner",
+	}
+
+	r := rand.Float32()
+	if r < 0.35 {
+		return sql.NullString{Valid: false}
+	}
+
+	if r < 0.7 {
+		return sql.NullString{String: awardPool[rand.Intn(len(awardPool))], Valid: true}
+	}
+
+	count := rand.Intn(3) + 2 // 2-4 awards
+	selected := pickUniqueStrings(awardPool, count)
+	return sql.NullString{String: strings.Join(selected, ", "), Valid: true}
+}
+
+func pickUniqueStrings(pool []string, count int) []string {
+	if count <= 0 || len(pool) == 0 {
+		return []string{}
+	}
+	if count >= len(pool) {
+		copyPool := append([]string{}, pool...)
+		rand.Shuffle(len(copyPool), func(i, j int) {
+			copyPool[i], copyPool[j] = copyPool[j], copyPool[i]
+		})
+		return copyPool
+	}
+
+	shuffled := append([]string{}, pool...)
+	rand.Shuffle(len(shuffled), func(i, j int) {
+		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+	})
+	return shuffled[:count]
+}
+
+func relationshipID(name string) int {
+	if id, ok := relationshipTypeIDs[name]; ok {
+		return id
+	}
+	for relName, id := range relationshipTypeIDs {
+		if strings.EqualFold(relName, name) {
+			return id
+		}
+	}
+	log.Fatalf("relationship type not found: %s", name)
+	return 0
+}
+
+func hasColumn(tableName, columnName string) bool {
+	tableColumnsMu.RLock()
+	if tableColumnsCache == nil {
+		tableColumnsMu.RUnlock()
+		tableColumnsMu.Lock()
+		if tableColumnsCache == nil {
+			tableColumnsCache = make(map[string]map[string]bool)
+		}
+		tableColumnsMu.Unlock()
+		tableColumnsMu.RLock()
+	}
+
+	if cols, ok := tableColumnsCache[tableName]; ok {
+		result := cols[columnName]
+		tableColumnsMu.RUnlock()
+		return result
+	}
+	tableColumnsMu.RUnlock()
+
+	tableColumnsMu.Lock()
+	defer tableColumnsMu.Unlock()
+
+	if tableColumnsCache == nil {
+		tableColumnsCache = make(map[string]map[string]bool)
+	}
+
+	if cols, ok := tableColumnsCache[tableName]; ok {
+		return cols[columnName]
+	}
+
+	rows, err := db.Query(`
+		SELECT COLUMN_NAME
+		FROM information_schema.columns
+		WHERE table_schema = DATABASE()
+		  AND table_name = ?
+	`, tableName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	colSet := make(map[string]bool)
+	for rows.Next() {
+		var col string
+		if err := rows.Scan(&col); err != nil {
+			log.Fatal(err)
+		}
+		colSet[col] = true
+	}
+
+	tableColumnsCache[tableName] = colSet
+	return colSet[columnName]
 }
 
 // helper: random choice from slice
