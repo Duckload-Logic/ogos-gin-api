@@ -11,6 +11,16 @@ CREATE TABLE iir_records(
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE addresses(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    region VARCHAR(100) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    barangay VARCHAR(100) NOT NULL,
+    street_detail VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- ============================================================================
 -- STUDENT PROFILES & ENROLLMENT
 -- ============================================================================
@@ -34,14 +44,21 @@ CREATE TABLE student_personal_info(
     is_employed BOOLEAN DEFAULT FALSE,
     employer_name VARCHAR(255) DEFAULT NULL,
     employer_address VARCHAR(255) DEFAULT NULL,
-    contact_number VARCHAR(20),
+    mobile_number VARCHAR(20),
+    telephone_number VARCHAR(20),
+    emergency_contact_name VARCHAR(255),
+    emergency_contact_number VARCHAR(20),
+    emergency_contact_relationship_id INT,
+    emergency_contact_address_id INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
     FOREIGN KEY (religion_id) REFERENCES religions(id),
     FOREIGN KEY (civil_status_id) REFERENCES civil_status_types(id),
     FOREIGN KEY (course_id) REFERENCES courses(id),
-    FOREIGN KEY (gender_id) REFERENCES genders(id)
+    FOREIGN KEY (gender_id) REFERENCES genders(id),
+    FOREIGN KEY (emergency_contact_relationship_id) REFERENCES student_relationship_types(id),
+    FOREIGN KEY (emergency_contact_address_id) REFERENCES addresses(id)
 );
 
 CREATE TABLE student_selected_reasons (
@@ -56,16 +73,6 @@ CREATE TABLE student_selected_reasons (
 -- ============================================================================
 -- LOCATIONS & ADDRESSES
 -- ============================================================================
-
-CREATE TABLE addresses(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    region VARCHAR(100) NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    barangay VARCHAR(100) NOT NULL,
-    street_detail VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
 
 CREATE TABLE student_addresses(
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -106,7 +113,6 @@ CREATE TABLE student_related_persons (
     is_parent BOOLEAN DEFAULT FALSE,
     is_guardian BOOLEAN DEFAULT FALSE,
     is_living BOOLEAN DEFAULT TRUE,
-    is_emergency_contact BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (iir_id, related_person_id),
@@ -226,7 +232,8 @@ CREATE TABLE student_subject_preferences (
     is_favorite BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
+    UNIQUE KEY (iir_id, subject_name)
 );
 
 CREATE TABLE student_hobbies (

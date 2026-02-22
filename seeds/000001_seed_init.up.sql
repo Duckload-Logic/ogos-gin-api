@@ -2,7 +2,7 @@ INSERT INTO genders (id, gender_name)
 VALUES
     (1, 'Male'),
     (2, 'Female'),
-    (3, 'Prefer not to say');
+    (3, 'Other');
 
 INSERT IGNORE INTO user_roles (id, `name`)
 VALUES
@@ -80,6 +80,8 @@ INSERT INTO student_relationship_types (relationship_name) VALUES
     ('Mother'),
     ('Guardian'),
     ('Relative'),
+    ('Friend'),
+    ('Spouse'),
     ('Other');
 
 INSERT INTO nature_of_residence_types (residence_type_name) VALUES
