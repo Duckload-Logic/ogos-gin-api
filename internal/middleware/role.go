@@ -38,7 +38,7 @@ func RoleMiddleware(allowedRoles ...int) gin.HandlerFunc {
 		if !isAuthorized {
 			c.AbortWithStatusJSON(
 				http.StatusForbidden,
-				gin.H{"error": "Forbidden: Insufficient permissions"},
+				gin.H{"error": "Access denied"},
 			)
 			return
 		}

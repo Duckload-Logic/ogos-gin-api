@@ -16,9 +16,8 @@ func OwnershipMiddleware(db *sql.DB, paramName string) gin.HandlerFunc {
 		loggedInUserID := c.MustGet("userID").(int)
 		roleID := c.MustGet("roleID").(int)
 
-		// Allow counselors and front desk to bypass
-		if roleID == int(constants.CounselorRoleID) ||
-			roleID == int(constants.FrontDeskRoleID) {
+		// Allow counselors to bypass
+		if roleID == int(constants.CounselorRoleID) {
 			c.Next()
 			return
 		}
@@ -61,18 +60,17 @@ func checkStudentOwnership(
 		// Simple check: user can only access their own userID
 		return userID == resourceID, nil
 
-	case "studentRecordID":
+	case "iirID":
 		// Check if student_record belongs to user
 		query := `
 			SELECT EXISTS(
-				SELECT 1 FROM student_records 
-				WHERE student_record_id = ? AND user_id = ?
+				SELECT 1 FROM iir_records
+				WHERE id = ? AND user_id = ?
 			)`
 		var exists bool
 		err := db.QueryRow(query, resourceID, userID).Scan(&exists)
 		return exists, err
 	default:
-		// Unknown resource type - deny by default
 		return false, nil
 	}
 }
