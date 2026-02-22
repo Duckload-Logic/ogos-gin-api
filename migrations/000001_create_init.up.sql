@@ -45,259 +45,54 @@ CREATE TABLE income_ranges (
     range_text VARCHAR(100) NOT NULL
 );
 
--- ============================================================================
--- CORE IIR RECORDS
--- ============================================================================
-
-CREATE TABLE iir_records(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL,
-    is_submitted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- ============================================================================
--- STUDENT PROFILES & ENROLLMENT
--- ============================================================================
-
-CREATE TABLE student_personal_info(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT UNIQUE NOT NULL,
-    student_number VARCHAR(20) UNIQUE NOT NULL,
-    gender_id INT,
-    civil_status ENUM('Single', 'Married', 'Widowed', 'Separated', 'Divorced') DEFAULT 'Single',
-    religion VARCHAR(100) NOT NULL,
-    height_ft DECIMAL(5,2) NOT NULL,
-    weight_kg DECIMAL(5,2) NOT NULL,
-    high_school_gwa DECIMAL(4,2) NOT NULL,
-    course VARCHAR(100) NOT NULL,
-    year_level VARCHAR(50),
-    section VARCHAR(50),
-    place_of_birth VARCHAR(255),
-    date_of_birth DATE,
-    is_employed BOOLEAN DEFAULT FALSE,
-    employer_name VARCHAR(255) DEFAULT NULL,
-    employer_address VARCHAR(255) DEFAULT NULL,
-    contact_no VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
-    FOREIGN KEY (gender_id) REFERENCES genders(id)
-);
-
-CREATE TABLE student_selected_reasons (
-    iir_id INT NOT NULL,
-    reason_id INT NOT NULL,
-    other_reason_text VARCHAR(255) DEFAULT NULL,
-    PRIMARY KEY (iir_id, reason_id),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
-    FOREIGN KEY (reason_id) REFERENCES enrollment_reasons(id) ON DELETE CASCADE
-);
-
--- ============================================================================
--- LOCATIONS & ADDRESSES
--- ============================================================================
-
-CREATE TABLE addresses(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    region VARCHAR(100) NOT NULL,
-    city VARCHAR(100) NOT NULL,
-    barangay VARCHAR(100) NOT NULL,
-    street_detail VARCHAR(255)
-);
-
-CREATE TABLE student_addresses(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
-    address_id INT NOT NULL,
-    address_type ENUM('Residential', 'Provincial') NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
-    FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE CASCADE
-);
-
--- ============================================================================
--- FAMILY & RELATED PERSONS
--- ============================================================================
-
-CREATE TABLE related_persons(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    address_id INT,
-    educational_level VARCHAR(100) NOT NULL,
-    date_of_birth DATE,
-    last_name VARCHAR(100) NOT NULL,
-    first_name VARCHAR(100) NOT NULL,
-    middle_name VARCHAR(100) DEFAULT NULL,
-    occupation VARCHAR(100) DEFAULT NULL,
-    employer_name VARCHAR(150) DEFAULT NULL,
-    employer_address VARCHAR(255) DEFAULT NULL,
-    FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE SET NULL
-);
-
-CREATE TABLE student_related_persons (
-    iir_id INT NOT NULL,
-    related_person_id INT NOT NULL,
-    relationship ENUM(
-        'Father',
-        'Mother',
-        'Guardian',
-        'Uncle',
-        'Aunt',
-        'Grandparent',
-        'Sibling',
-        'Other'
-    ),
-    is_parent BOOLEAN DEFAULT FALSE,
-    is_guardian BOOLEAN DEFAULT FALSE,
-    is_living BOOLEAN DEFAULT TRUE,
-    is_emergency_contact BOOLEAN DEFAULT FALSE,
-    PRIMARY KEY (iir_id, related_person_id),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
-    FOREIGN KEY (related_person_id) REFERENCES related_persons(id) ON DELETE CASCADE
-);
-
-CREATE TABLE family_backgrounds(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT UNIQUE NOT NULL,
-    parental_status ENUM(
-        'Married and staying together',
-        'Not Married but living together',
-        'Single Parent',
-        'Married but Separated',
-        'Other'
-    ) NOT NULL,
-    parental_status_details VARCHAR(255) DEFAULT NULL,
-    brothers INT NOT NULL,
-    sisters INT NOT NULL,
-    employed_siblings INT NOT NULL,
-    ordinal_position INT NOT NULL,
-    have_quiet_place_to_study BOOLEAN NOT NULL,
-    is_sharing_room BOOLEAN NOT NULL,
-    room_sharing_details VARCHAR(255) DEFAULT NULL,
-    nature_of_residence ENUM(
-        'Family home',
-        "Relative's house",
-        'Bed spacer',
-        'House of married brother/sister',
-        'Rented apartment/house',
-        'Dormitory',
-        'Shares apartment with friends/relatives'
-    ) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
-);
-
--- ============================================================================
--- EDUCATIONAL BACKGROUND
--- ============================================================================
-
-CREATE TABLE educational_backgrounds(
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
-    nature_of_schooling ENUM('Continuous', 'Interrupted') NOT NULL,
-    interrupted_details VARCHAR(255) DEFAULT NULL,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
-);
-
-
-CREATE TABLE school_details (
-	id INT AUTO_INCREMENT PRIMARY KEY,
-    eb_id INT NOT NULL,
-    educational_level ENUM(
-        'Pre-Elementary',
-        'Elementary',
-        'High School',
-        'Vocational',
-        'College'
-    ) NOT NULL,
-    school_name VARCHAR(255) NOT NULL,
-    school_address VARCHAR(255) NOT NULL,
-    school_type ENUM('Private', 'Public') NOT NULL,
-    year_started SMALLINT NOT NULL,
-    year_completed SMALLINT NOT NULL,
-    awards TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (eb_id) REFERENCES educational_backgrounds(id) ON DELETE CASCADE
-);
-
--- ============================================================================
--- HEALTH & WELLNESS
--- ============================================================================
-
-CREATE TABLE student_health_records (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT UNIQUE NOT NULL,
-    vision_has_problem BOOLEAN DEFAULT FALSE,
-    vision_details VARCHAR(255) DEFAULT NULL,
-    hearing_has_problem BOOLEAN DEFAULT FALSE,
-    hearing_details VARCHAR(255) DEFAULT NULL,
-    speech_has_problem BOOLEAN DEFAULT FALSE,
-    speech_details VARCHAR(255) DEFAULT NULL,
-    general_health_has_problem BOOLEAN DEFAULT FALSE,
-    general_health_details VARCHAR(255) DEFAULT NULL,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
-);
-
-CREATE TABLE psychological_consultations (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
-    professional_type ENUM('Psychiatrist', 'Psychologist', 'Counselor') NOT NULL,
-    has_consulted BOOLEAN DEFAULT FALSE,
-    when_date VARCHAR(100) DEFAULT NULL,
-    for_what TEXT DEFAULT NULL,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
-);
-
-CREATE TABLE student_interests (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
-    interest_type VARCHAR(100) NOT NULL,
-    interest_name VARCHAR(255) NOT NULL,
-    is_favorite BOOLEAN DEFAULT FALSE,
-    is_least_favorite BOOLEAN DEFAULT FALSE,
-    `rank` INT,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
-);
-
-CREATE TABLE test_results (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
-    test_date DATE,
-    test_name VARCHAR(255),
-    raw_score VARCHAR(50),
-    percentile VARCHAR(50),
-    description VARCHAR(255),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
-);
-
--- ============================================================================
--- FINANCIAL SUPPORT
--- ============================================================================
 
 CREATE TABLE student_support_types (
     id INT AUTO_INCREMENT PRIMARY KEY,
     support_type_name VARCHAR(100) UNIQUE NOT NULL
 );
 
-CREATE TABLE student_finances (
+CREATE TABLE educational_levels (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT UNIQUE NOT NULL,
-    monthly_family_income_range_id INT,
-    other_income_details VARCHAR(50) DEFAULT NULL,
-    financial_support_type_id INT DEFAULT NULL,
-    weekly_allowance DECIMAL(10,2),
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
-    FOREIGN KEY (monthly_family_income_range_id) REFERENCES income_ranges(id) ON DELETE SET NULL,
-    FOREIGN KEY (financial_support_type_id) REFERENCES student_support_types(id) ON DELETE SET NULL
+    level_name VARCHAR(50) UNIQUE NOT NULL
 );
 
+CREATE TABLE courses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL,
+    course_name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE civil_status_types (
+    id INT PRIMARY KEY,
+    status_name VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE student_relationship_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    relationship_name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE nature_of_residence_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    residence_type_name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE religions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    religion_name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE sibling_support_types (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE activity_options (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL, -- e.g., 'Math Club', 'Chess Club'
+    category ENUM('academic', 'extra_curricular') NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE -- Allows you to "retire" old clubs without deleting data
+);
 
 -- ============================================================================
 -- COUNSELING & APPOINTMENTS
@@ -330,29 +125,4 @@ CREATE TABLE appointments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE TABLE session_notes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id INT UNIQUE NOT NULL,
-    notes TEXT,
-    recommendation TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
-);
-
--- ============================================================================
--- ADMINISTRATIVE & RECORDS
--- ============================================================================
-
-CREATE TABLE admission_slips (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
-    reason TEXT NOT NULL,
-    date_of_absence DATE NOT NULL,
-    file_path VARCHAR(255) NOT NULL,
-    excuse_slip_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
 );

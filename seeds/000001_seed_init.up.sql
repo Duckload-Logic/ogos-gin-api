@@ -4,10 +4,10 @@ VALUES
     (2, 'Female'),
     (3, 'Prefer not to say');
 
-INSERT IGNORE INTO roles (id, role_name)
+INSERT IGNORE INTO user_roles (id, `name`)
 VALUES
-    (1, 'STUDENT'),
-    (2, 'COUNSELOR');
+    (1, 'Student'),
+    (2, 'Admin');
 
 INSERT INTO enrollment_reasons (id, reason_text) VALUES
     (1, 'Lower tuition fee'),
@@ -40,6 +40,84 @@ INSERT INTO income_ranges (id, range_text) VALUES
     (8, 'Php 40,001 - Php 45,000'),
     (9, 'Php 45,001 - Php 50,000'),
     (10, 'Above Php 50,001');
+
+INSERT INTO parental_status_types (id, status_name) VALUES
+    (1, 'Married and staying together'),
+    (2, 'Not Married but living together'),
+    (3, 'Single Parent'),
+    (4, 'Married but Separated'),
+    (5, 'Other');
+
+INSERT INTO educational_levels (level_name) VALUES
+    ('Pre-Elementary'),
+    ('Elementary'),
+    ('High School'),
+    ('Vocational'),
+    ('College');
+
+INSERT INTO courses (code, course_name) VALUES
+    ('BSBA-HRM', 'Bachelor of Science in Business Administration - Human Resource Management'),
+    ('BSBA-MM', 'Bachelor of Science in Business Administration - Marketing Management'),
+    ('BSED-ENGLISH', 'Bachelor of Science in Education - English'),
+    ('BSED-MATH', 'Bachelor of Science in Education - Mathematics'),
+    ('BSECE', 'Bachelor of Science in Electronics and Communications Engineering'),
+    ('BSIT', 'Bachelor of Science in Information Technology'),
+    ('BSME', 'Bachelor of Science in Mechanical Engineering'),
+    ('BSOA', 'Bachelor of Science in Office Administration'),
+    ('BSPSYCH', 'Bachelor of Science in Psychology'),
+    ('DIT', 'Diploma in Information Technology'),
+    ('DOMT', 'Diploma in Office Management Technology');
+
+INSERT INTO civil_status_types (id, status_name) VALUES
+    (1, 'Single'),
+    (2, 'Married'),
+    (3, 'Widowed'),
+    (4, 'Separated'),
+    (5, 'Divorced');
+
+INSERT INTO student_relationship_types (relationship_name) VALUES
+    ('Father'),
+    ('Mother'),
+    ('Guardian'),
+    ('Relative'),
+    ('Other');
+
+INSERT INTO nature_of_residence_types (residence_type_name) VALUES
+    ('Family home'),
+    ("Relative's house"),
+    ('Bed spacer'),
+    ('House of married brother/sister'),
+    ('Rented apartment/house'),
+    ('Dormitory'),
+    ('Shares apartment with friends/relatives');
+
+INSERT INTO religions (religion_name) VALUES
+    ('Roman Catholic'),
+    ('Islam'),
+    ('Protestant'),
+    ('Iglesia ni Cristo'),
+    ('Aglipayan'),
+    ('Buddhism'),
+    ('Hinduism'),
+    ('Judaism'),
+    ('Other');
+
+INSERT INTO sibling_support_types (`name`) VALUES
+    ('Family'),
+    ('Your studies'),
+    ('His/Her own family');
+
+INSERT INTO activity_options (`name`, category) VALUES
+    ('Math Club', 'academic'),
+    ('Science Club', 'academic'),
+    ('Debating Club', 'academic'),
+    ("Quizzer's Club", 'academic'),
+    ('Athletics', 'extra_curricular'),
+    ('Dramatics', 'extra_curricular'),
+    ('Religious Organizations', 'extra_curricular'),
+    ('Chess Club', 'extra_curricular'),
+    ('Glee Club', 'extra_curricular'),
+    ('Scouting', 'extra_curricular');
 
 -- INSERT INTO appointment_types (id, appointment_type_name)
 -- VALUES
