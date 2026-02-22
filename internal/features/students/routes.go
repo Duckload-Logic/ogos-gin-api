@@ -9,71 +9,51 @@ import (
 )
 
 func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
+	// Root group: /api/v1/students
 	studentRoutes := r.Group("/students")
 	studentRoutes.Use(middleware.AuthMiddleware())
 
-	userLookup := middleware.OwnershipMiddleware(db, "userID")
-	inventoryRecordLookup := middleware.OwnershipMiddleware(db, "inventoryRecordID")
+	// Define lookups
+	// userLookup := middleware.OwnershipMiddleware(db, "userID")
+	// inventoryRecordLookup := middleware.OwnershipMiddleware(db, "inventoryRecordID")
 
-	// Admin-only access
-	adminOnly := studentRoutes.Group("/")
-	adminOnly.Use(middleware.RoleMiddleware(
+	lookupRoutes := studentRoutes.Group("/lookups")
+	{
+		lookupRoutes.GET("/genders", h.HandleGetGenders)
+		lookupRoutes.GET("/parental-status-types", h.HandleGetParentalStatusTypes)
+		lookupRoutes.GET("/enrollment-reasons", h.HandleGetEnrollmentReasons)
+		lookupRoutes.GET("/income-ranges", h.HandleGetIncomeRanges)
+		lookupRoutes.GET("/support-types", h.HandleGetStudentSupportTypes)
+		lookupRoutes.GET("/support-types/siblings", h.HandleGetSiblingSupportTypes)
+		lookupRoutes.GET("/courses", h.HandleGetCourses)
+		lookupRoutes.GET("/civil-status-types", h.HandleGetCivilStatusTypes)
+		lookupRoutes.GET("/nature-of-residence-types", h.HandleGetNatureOfResidenceTypes)
+		lookupRoutes.GET("/student-relationship-types", h.HandleGetStudentRelationshipTypes)
+	}
+
+	inventoryRoutes := studentRoutes.Group("/inventory")
+	inventoryRoutes.Use(middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
 		int(constants.CounselorRoleID),
 	))
 	{
-		adminOnly.DELETE("/inventory/:inventoryRecordID", inventoryRecordLookup, h.HandleDeleteInventoryRecord)
-	}
-
-	// Shared access (Counselors, Front Desk, Students) - Retrieve only
-	sharedRetrieve := studentRoutes.Group("/")
-	sharedRetrieve.Use(middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
-		int(constants.FrontDeskRoleID),
-		int(constants.StudentRoleID),
-	))
-	{
-		// List and basic retrieval
-		sharedRetrieve.GET("/inventory", h.HandleListStudents)
-		sharedRetrieve.GET("/inventory/:inventoryRecordID", userLookup, h.HandleGetInventoryRecord)
-		sharedRetrieve.GET("/inventory/:inventoryRecordID/progress", userLookup, h.HandleGetInventoryRecordProgress)
-		sharedRetrieve.GET("/:userID", userLookup, h.HandleGetStudent)
-
-		// Student record detail retrieval
-		recordDetails := sharedRetrieve.Group("/")
-		recordDetails.Use(inventoryRecordLookup)
-		{
-			recordDetails.GET("/inventory/enrollment/:inventoryRecordID", h.HandleGetStudentEnrollmentReasons)
-			recordDetails.GET("/inventory/base/:inventoryRecordID", h.HandleGetBaseProfile)
-			recordDetails.GET("/inventory/family/:inventoryRecordID", h.HandleGetFamilyInfo)
-			recordDetails.GET("/inventory/related-persons/:inventoryRecordID", h.HandleGetRelatedPersonsInfo)
-			recordDetails.GET("/inventory/education/:inventoryRecordID", h.HandleGetEducationInfo)
-			recordDetails.GET("/inventory/address/:inventoryRecordID", h.HandleGetAddressInfo)
-			recordDetails.GET("/inventory/health/:inventoryRecordID", h.HandleGetHealthInfo)
-			recordDetails.GET("/inventory/finance/:inventoryRecordID", h.HandleGetFinanceInfo)
-		}
-	}
-
-	// Student-only access - Onboarding (Create/Update)
-	studentOnboarding := studentRoutes.Group("/")
-	studentOnboarding.Use(middleware.RoleMiddleware(
-		int(constants.StudentRoleID),
-	))
-	{
-		// Initialize student record
-		studentOnboarding.POST("/onboarding/:userID", userLookup, h.HandleCreateInventoryRecord)
-
-		// Update student information
-		onboardingSteps := studentOnboarding.Group("/")
-		onboardingSteps.Use(inventoryRecordLookup)
-		{
-			onboardingSteps.PUT("/onboarding/enrollment-reasons/:inventoryRecordID", h.HandleSaveEnrollmentReasons)
-			onboardingSteps.PUT("/onboarding/base/:inventoryRecordID", h.HandleSaveBaseProfile)
-			onboardingSteps.PUT("/onboarding/family/:inventoryRecordID", h.HandleSaveFamilyInfo)
-			onboardingSteps.PUT("/onboarding/education/:inventoryRecordID", h.HandleSaveEducationInfo)
-			onboardingSteps.PUT("/onboarding/address/:inventoryRecordID", h.HandleSaveAddressInfo)
-			onboardingSteps.PUT("/onboarding/health/:inventoryRecordID", h.HandleSaveHealthInfo)
-			onboardingSteps.PUT("/onboarding/finance/:inventoryRecordID", h.HandleSaveFinanceInfo)
-			onboardingSteps.POST("/onboarding/complete/:inventoryRecordID", h.HandleCompleteOnboarding)
-		}
+		inventoryRoutes.GET("/records", h.HandleListStudents)
+		inventoryRoutes.GET("/records/user/:userId", h.HandleGetStudentIIRByUserID)
+		inventoryRoutes.GET("/records/iir/:iirId", h.HandleGetStudentIIRByIIRID)
+		inventoryRoutes.GET("/records/iir/:iirId/profile", h.HandleGetStudentProfile)
+		inventoryRoutes.GET("/records/iir/:iirId/enrollment-reasons", h.HandleGetStudentEnrollmentReasons)
+		inventoryRoutes.GET("/records/iir/:iirId/personal-info", h.HandleGetStudentPersonalInfo)
+		inventoryRoutes.GET("/records/iir/:iirId/addresses", h.HandleGetStudentAddresses)
+		inventoryRoutes.GET("/records/iir/:iirId/family-background", h.HandleGetStudentFamilyBackground)
+		inventoryRoutes.GET("/records/iir/:iirId/related-persons", h.HandleGetStudentRelatedPersons)
+		inventoryRoutes.GET("/records/iir/:iirId/education", h.HandleGetEducationalBackground)
+		inventoryRoutes.GET("/records/iir/:iirId/finance", h.HandleGetStudentFinancialInfo)
+		inventoryRoutes.GET("/records/iir/:iirId/health", h.HandleGetStudentHealthRecord)
+		inventoryRoutes.GET("/records/iir/:iirId/consultations", h.HandleGetStudentConsultations)
+		inventoryRoutes.GET("/records/iir/:iirId/activities", h.HandleGetStudentActivities)
+		inventoryRoutes.GET("/records/iir/:iirId/subject-preferences", h.HandleGetStudentSubjectPreferences)
+		inventoryRoutes.GET("/records/iir/:iirId/hobbies", h.HandleGetStudentHobbies)
+		inventoryRoutes.GET("/records/iir/:iirId/test-results", h.HandleGetStudentTestResults)
+		inventoryRoutes.GET("/records/iir/:iirId/significant-notes", h.HandleGetStudentSignificantNotes)
 	}
 }
