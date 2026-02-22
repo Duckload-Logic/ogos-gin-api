@@ -29,10 +29,10 @@ func (r *Repository) GetUser(
 
 	query := `
 		SELECT
-			user_id, role_id,
+			id, role_id,
 			first_name, middle_name,
 			last_name, email,
-			password_hash, created_at, 
+			password_hash, created_at,
 			updated_at
 		FROM users
 		WHERE 1=1
@@ -41,7 +41,7 @@ func (r *Repository) GetUser(
 	var args []interface{}
 
 	if userID != nil {
-		query += " AND user_id = ?"
+		query += " AND id = ?"
 		args = append(args, *userID)
 	}
 
@@ -83,8 +83,8 @@ func (r *Repository) CreateUser(
 	err := database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
 		query := `
 			INSERT INTO users (
-				role_id, first_name, 
-				middle_name, last_name, 
+				role_id, first_name,
+				middle_name, last_name,
 				email, password_hash
 			)
 			VALUES (?,?,?,?,?,?)
