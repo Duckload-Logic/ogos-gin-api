@@ -265,27 +265,49 @@ func (r *Repository) GetNatureOfResidenceTypes(ctx context.Context) ([]NatureOfR
 
 // Retrieve - Count
 func (r *Repository) GetTotalStudentsCount(
-	ctx context.Context, orderBy string,
-	courseID int, genderID int,
+	ctx context.Context,
+	search string,
+	courseID int,
+	genderID int,
+	yearLevel int,
 ) (int, error) {
-	query := `
-        SELECT COUNT(*)
-        FROM iir_records iir
-        JOIN users u ON iir.user_id = u.id
-        JOIN student_personal_info spi ON iir.id = spi.iir_id
-        WHERE (? = 0 OR spi.course_id = ?)
-        AND (? = 0 OR spi.gender_id = ?)
-    `
+	// 1. Base query
+	sql := `SELECT COUNT(iir.id) FROM iir_records iir
+            JOIN users u ON iir.user_id = u.id
+            JOIN student_personal_info spi ON iir.id = spi.iir_id
+            WHERE iir.is_submitted = TRUE`
+
+	var args []interface{}
+
+	if courseID > 0 {
+		sql += " AND spi.course_id = ?"
+		args = append(args, courseID)
+	}
+
+	if genderID > 0 {
+		sql += " AND spi.gender_id = ?"
+		args = append(args, genderID)
+	}
+
+	if yearLevel > 0 {
+		sql += " AND spi.year_level = ?"
+		args = append(args, yearLevel)
+	}
+
+	if search != "" {
+		sql += ` AND (u.first_name LIKE ?
+                 OR u.last_name LIKE ?
+                 OR u.email LIKE ?
+                 OR spi.student_number LIKE ?)`
+
+		pattern := "%" + search + "%"
+		args = append(args, pattern, pattern, pattern, pattern)
+	}
 
 	var total int
-	err := r.db.QueryRowContext(
-		ctx, query,
-		courseID, courseID,
-		genderID, genderID,
-	).Scan(&total)
-
+	err := r.db.QueryRowContext(ctx, sql, args...).Scan(&total)
 	if err != nil {
-		return 0, fmt.Errorf("failed to get total students count: %w", err)
+		return 0, err
 	}
 
 	return total, nil
@@ -293,16 +315,17 @@ func (r *Repository) GetTotalStudentsCount(
 
 // Retrieve - List
 func (r *Repository) ListStudents(
-	ctx context.Context, offset int, limit int, orderBy string,
-	courseID int, genderID int,
+	ctx context.Context, search string, offset int, limit int, orderBy string,
+	courseID int, genderID int, yearLevel int,
 ) ([]StudentProfileView, error) {
 	query := `
         SELECT
-			iir.id,
-			usr.id,
+			iir.id as iir_id,
+			usr.id as user_id,
 			usr.first_name,
 			usr.middle_name,
 			usr.last_name,
+			spi.gender_id,
 			usr.email,
 			spi.student_number,
 			spi.course_id,
@@ -312,9 +335,11 @@ func (r *Repository) ListStudents(
 		JOIN users usr ON iir.user_id = usr.id
 		JOIN student_personal_info spi ON iir.id = spi.iir_id
 		WHERE iir.is_submitted = TRUE
+		AND (usr.first_name LIKE ? OR usr.middle_name LIKE ? OR usr.last_name LIKE ? OR spi.student_number LIKE ? OR usr.email LIKE ?)
     `
 
 	var args []interface{}
+	args = append(args, "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 
 	if courseID != 0 {
 		query += " AND spi.course_id = ?"
@@ -324,6 +349,11 @@ func (r *Repository) ListStudents(
 	if genderID != 0 {
 		query += " AND spi.gender_id = ?"
 		args = append(args, genderID)
+	}
+
+	if yearLevel != 0 {
+		query += " AND spi.year_level = ?"
+		args = append(args, yearLevel)
 	}
 
 	allowedSortColumns := map[string]string{
@@ -364,6 +394,7 @@ func (r *Repository) ListStudents(
 			&student.FirstName,
 			&student.MiddleName,
 			&student.LastName,
+			&student.GenderID,
 			&student.Email,
 			&student.StudentNumber,
 			&student.CourseID,
@@ -380,6 +411,29 @@ func (r *Repository) ListStudents(
 	}
 
 	return students, nil
+}
+
+func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentBasicInfoView, error) {
+	query := `
+		SELECT u.id, u.first_name, u.middle_name, u.last_name, u.email
+		FROM users u
+		JOIN iir_records iir ON u.id = iir.user_id
+		WHERE iir.id = ?
+	`
+
+	var info StudentBasicInfoView
+	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
+		&info.ID,
+		&info.FirstName,
+		&info.MiddleName,
+		&info.LastName,
+		&info.Email,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student basic info: %w", err)
+	}
+
+	return &info, nil
 }
 
 func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
@@ -469,7 +523,9 @@ func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID int) (*St
 			religion_id, height_ft, weight_kg, complexion,
 			high_school_gwa, course_id, year_level, section,
 			place_of_birth, date_of_birth, is_employed,
-			employer_name, employer_address, contact_number,
+			employer_name, employer_address, mobile_number, telephone_number,
+			emergency_contact_name, emergency_contact_number, emergency_contact_relationship_id,
+			emergency_contact_address_id,
 			created_at, updated_at
 		FROM student_personal_info
 		WHERE iir_id = ?
@@ -495,7 +551,12 @@ func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID int) (*St
 		&info.IsEmployed,
 		&info.EmployerName,
 		&info.EmployerAddress,
-		&info.ContactNumber,
+		&info.MobileNumber,
+		&info.TelephoneNumber,
+		&info.EmergencyContactName,
+		&info.EmergencyContactNumber,
+		&info.EmergencyContactRelationshipID,
+		&info.EmergencyContactAddressID,
 		&info.CreatedAt,
 		&info.UpdatedAt)
 	if err != nil {
@@ -684,7 +745,7 @@ func (r *Repository) GetStudentRelatedPersons(
 ) ([]StudentRelatedPerson, error) {
 	query := `
 		SELECT iir_id, related_person_id, relationship_id,
-			is_parent, is_guardian, is_emergency_contact, is_living,
+			is_parent, is_guardian, is_living,
 			created_at, updated_at
 		FROM student_related_persons
 		WHERE iir_id = ?
@@ -704,7 +765,6 @@ func (r *Repository) GetStudentRelatedPersons(
 			&srp.RelationshipID,
 			&srp.IsParent,
 			&srp.IsGuardian,
-			&srp.IsEmergencyContact,
 			&srp.IsLiving,
 			&srp.CreatedAt,
 			&srp.UpdatedAt); err != nil {
@@ -818,6 +878,46 @@ func (r *Repository) GetNatureOfResidenceByID(ctx context.Context, residenceID i
 	}
 
 	return &nr, nil
+}
+
+func (r *Repository) GetStudentSiblingSupport(ctx context.Context, fbID int) ([]StudentSiblingSupport, error) {
+	query := `
+		SELECT
+			family_background_id, support_type_id
+		FROM student_sibling_supports
+		WHERE family_background_id = ?
+	`
+	var sss []StudentSiblingSupport
+	rows, err := r.db.QueryContext(ctx, query, fbID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query student sibling supports: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var ss StudentSiblingSupport
+		err := rows.Scan(
+			&ss.FamilyBackgroundID,
+			&ss.SupportTypeID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan student sibling support: %w", err)
+		}
+		sss = append(sss, ss)
+	}
+
+	return sss, nil
+}
+
+func (r *Repository) GetSiblingSupportTypeByID(ctx context.Context, supportID int) (*SibilingSupportType, error) {
+	query := `SELECT id, name FROM sibling_support_types WHERE id = ?`
+	var sst SibilingSupportType
+	err := r.db.QueryRowContext(ctx, query, supportID).Scan(&sst.ID, &sst.SupportName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sibling support type by ID: %w", err)
+	}
+
+	return &sst, nil
 }
 
 func (r *Repository) GetStudentFinancialInfo(ctx context.Context, iirID int) (*StudentFinance, error) {

@@ -14,7 +14,8 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 	studentRoutes.Use(middleware.AuthMiddleware())
 
 	// Define lookups
-	// userLookup := middleware.OwnershipMiddleware(db, "userID")
+	userResourceLookup := middleware.OwnershipMiddleware(db, "userID")
+	iirResourceLookup := middleware.OwnershipMiddleware(db, "iirID")
 	// inventoryRecordLookup := middleware.OwnershipMiddleware(db, "inventoryRecordID")
 
 	lookupRoutes := studentRoutes.Group("/lookups")
@@ -26,34 +27,44 @@ func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
 		lookupRoutes.GET("/support-types", h.HandleGetStudentSupportTypes)
 		lookupRoutes.GET("/support-types/siblings", h.HandleGetSiblingSupportTypes)
 		lookupRoutes.GET("/courses", h.HandleGetCourses)
-		lookupRoutes.GET("/civil-status-types", h.HandleGetCivilStatusTypes)
+		lookupRoutes.GET("/civil-statuses", h.HandleGetCivilStatusTypes)
 		lookupRoutes.GET("/nature-of-residence-types", h.HandleGetNatureOfResidenceTypes)
 		lookupRoutes.GET("/student-relationship-types", h.HandleGetStudentRelationshipTypes)
 	}
 
 	inventoryRoutes := studentRoutes.Group("/inventory")
-	inventoryRoutes.Use(middleware.RoleMiddleware(
+
+	counselorRoutes := inventoryRoutes.Group("/")
+	counselorRoutes.Use(middleware.RoleMiddleware(
+		int(constants.CounselorRoleID),
+	))
+	{
+		counselorRoutes.GET("/records", h.HandleListStudents)
+	}
+
+	userRoutes := inventoryRoutes.Group("/")
+	userRoutes.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 		int(constants.CounselorRoleID),
 	))
 	{
-		inventoryRoutes.GET("/records", h.HandleListStudents)
-		inventoryRoutes.GET("/records/user/:userId", h.HandleGetStudentIIRByUserID)
-		inventoryRoutes.GET("/records/iir/:iirId", h.HandleGetStudentIIRByIIRID)
-		inventoryRoutes.GET("/records/iir/:iirId/profile", h.HandleGetStudentProfile)
-		inventoryRoutes.GET("/records/iir/:iirId/enrollment-reasons", h.HandleGetStudentEnrollmentReasons)
-		inventoryRoutes.GET("/records/iir/:iirId/personal-info", h.HandleGetStudentPersonalInfo)
-		inventoryRoutes.GET("/records/iir/:iirId/addresses", h.HandleGetStudentAddresses)
-		inventoryRoutes.GET("/records/iir/:iirId/family-background", h.HandleGetStudentFamilyBackground)
-		inventoryRoutes.GET("/records/iir/:iirId/related-persons", h.HandleGetStudentRelatedPersons)
-		inventoryRoutes.GET("/records/iir/:iirId/education", h.HandleGetEducationalBackground)
-		inventoryRoutes.GET("/records/iir/:iirId/finance", h.HandleGetStudentFinancialInfo)
-		inventoryRoutes.GET("/records/iir/:iirId/health", h.HandleGetStudentHealthRecord)
-		inventoryRoutes.GET("/records/iir/:iirId/consultations", h.HandleGetStudentConsultations)
-		inventoryRoutes.GET("/records/iir/:iirId/activities", h.HandleGetStudentActivities)
-		inventoryRoutes.GET("/records/iir/:iirId/subject-preferences", h.HandleGetStudentSubjectPreferences)
-		inventoryRoutes.GET("/records/iir/:iirId/hobbies", h.HandleGetStudentHobbies)
-		inventoryRoutes.GET("/records/iir/:iirId/test-results", h.HandleGetStudentTestResults)
-		inventoryRoutes.GET("/records/iir/:iirId/significant-notes", h.HandleGetStudentSignificantNotes)
+		userRoutes.GET("/records/user/:userID", userResourceLookup, h.HandleGetStudentIIRByUserID)
+		userRoutes.GET("/records/iir/:iirID", iirResourceLookup, h.HandleGetStudentIIRByIIRID)
+		userRoutes.GET("/records/iir/:iirID/profile", iirResourceLookup, h.HandleGetStudentProfile)
+		userRoutes.GET("/records/iir/:iirID/basic-info", iirResourceLookup, h.HandleGetStudentBasicInfo)
+		userRoutes.GET("/records/iir/:iirID/enrollment-reasons", iirResourceLookup, h.HandleGetStudentEnrollmentReasons)
+		userRoutes.GET("/records/iir/:iirID/personal-info", iirResourceLookup, h.HandleGetStudentPersonalInfo)
+		userRoutes.GET("/records/iir/:iirID/addresses", iirResourceLookup, h.HandleGetStudentAddresses)
+		userRoutes.GET("/records/iir/:iirID/family-background", iirResourceLookup, h.HandleGetStudentFamilyBackground)
+		userRoutes.GET("/records/iir/:iirID/related-persons", iirResourceLookup, h.HandleGetStudentRelatedPersons)
+		userRoutes.GET("/records/iir/:iirID/education", iirResourceLookup, h.HandleGetEducationalBackground)
+		userRoutes.GET("/records/iir/:iirID/finance", iirResourceLookup, h.HandleGetStudentFinancialInfo)
+		userRoutes.GET("/records/iir/:iirID/health", iirResourceLookup, h.HandleGetStudentHealthRecord)
+		userRoutes.GET("/records/iir/:iirID/consultations", iirResourceLookup, h.HandleGetStudentConsultations)
+		userRoutes.GET("/records/iir/:iirID/activities", iirResourceLookup, h.HandleGetStudentActivities)
+		userRoutes.GET("/records/iir/:iirID/subject-preferences", iirResourceLookup, h.HandleGetStudentSubjectPreferences)
+		userRoutes.GET("/records/iir/:iirID/hobbies", iirResourceLookup, h.HandleGetStudentHobbies)
+		userRoutes.GET("/records/iir/:iirID/test-results", iirResourceLookup, h.HandleGetStudentTestResults)
+		userRoutes.GET("/records/iir/:iirID/significant-notes", iirResourceLookup, h.HandleGetStudentSignificantNotes)
 	}
 }

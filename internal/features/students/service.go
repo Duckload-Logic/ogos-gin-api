@@ -138,11 +138,13 @@ func (s *Service) ListStudents(
 
 	students, err := s.repo.ListStudents(
 		ctx,
+		req.Search,
 		req.GetOffset(),
 		req.PageSize,
 		req.OrderBy,
 		req.CourseID,
 		req.GenderID,
+		req.YearLevel,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list students: %w", err)
@@ -165,6 +167,12 @@ func (s *Service) ListStudents(
 				return
 			}
 
+			gender, err := s.repo.GetGenderByID(ctx, st.GenderID)
+			if err != nil {
+				errChan <- fmt.Errorf("failed to get gender for student %d: %w", st.UserID, err)
+				return
+			}
+
 			// Create DTO
 			studentDTOs[i] = StudentProfileDTO{
 				IIRID:         st.IIRID,
@@ -172,6 +180,7 @@ func (s *Service) ListStudents(
 				FirstName:     st.FirstName,
 				MiddleName:    st.MiddleName,
 				LastName:      st.LastName,
+				Gender:        *gender,
 				Email:         st.Email,
 				StudentNumber: st.StudentNumber,
 				Course:        *course,
@@ -189,7 +198,12 @@ func (s *Service) ListStudents(
 	}
 
 	// Get total count for pagination
-	total, err := s.repo.GetTotalStudentsCount(ctx, req.OrderBy, req.CourseID, req.GenderID)
+	total, err := s.repo.GetTotalStudentsCount(
+		ctx,
+		req.Search,
+		req.CourseID,
+		req.GenderID,
+		req.YearLevel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total students count: %w", err)
 	}
@@ -211,6 +225,16 @@ func (s *Service) ListStudents(
 func (s *Service) GetStudentProfile(ctx context.Context, iirID int) (*ComprehensiveProfileResponse, error) {
 	profile := &ComprehensiveProfileResponse{IIRID: iirID}
 	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		basicInfo, err := s.GetStudentBasicInfo(ctx, iirID)
+		if err != nil {
+			return err
+		}
+
+		profile.Student.BasicInfo = *basicInfo
+		return nil
+	})
 
 	g.Go(func() error {
 		personalInfo, err := s.GetStudentPersonalInfo(ctx, iirID)
@@ -349,6 +373,15 @@ func (s *Service) GetStudentProfile(ctx context.Context, iirID int) (*Comprehens
 	return profile, nil
 }
 
+func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentBasicInfoView, error) {
+	info, err := s.repo.GetStudentBasicInfo(ctx, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student basic info: %w", err)
+	}
+
+	return info, nil
+}
+
 func (s *Service) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
 	iir, err := s.repo.GetStudentIIRByUserID(ctx, userID)
 	if err != nil {
@@ -415,21 +448,37 @@ func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*Stude
 		return nil, fmt.Errorf("failed to get course by ID: %w", err)
 	}
 
+	emergencyContactRelationship, err := s.repo.GetStudentRelationshipByID(ctx, personalInfo.EmergencyContactRelationshipID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get emergency contact relationship by ID: %w", err)
+	}
+
+	emergencyContactAddress, err := s.repo.GetAddressByID(ctx, personalInfo.EmergencyContactAddressID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get emergency contact address by ID: %w", err)
+	}
+
 	return &StudentPersonalInfoDTO{
-		StudentNumber: personalInfo.StudentNumber,
-		Gender:        *gender,
-		CivilStatus:   *civilStatus,
-		Religion:      *religion,
-		HeightFt:      personalInfo.HeightFt,
-		WeightKg:      personalInfo.WeightKg,
-		Complexion:    personalInfo.Complexion,
-		HighSchoolGWA: personalInfo.HighSchoolGWA,
-		Course:        *course,
-		YearLevel:     personalInfo.YearLevel,
-		Section:       personalInfo.Section,
-		PlaceOfBirth:  personalInfo.PlaceOfBirth,
-		DateOfBirth:   personalInfo.DateOfBirth,
-		ContactNumber: personalInfo.ContactNumber,
+		ID:                           personalInfo.ID,
+		StudentNumber:                personalInfo.StudentNumber,
+		Gender:                       *gender,
+		CivilStatus:                  *civilStatus,
+		Religion:                     *religion,
+		HeightFt:                     personalInfo.HeightFt,
+		WeightKg:                     personalInfo.WeightKg,
+		Complexion:                   personalInfo.Complexion,
+		HighSchoolGWA:                personalInfo.HighSchoolGWA,
+		Course:                       *course,
+		YearLevel:                    personalInfo.YearLevel,
+		Section:                      personalInfo.Section,
+		PlaceOfBirth:                 personalInfo.PlaceOfBirth,
+		DateOfBirth:                  personalInfo.DateOfBirth,
+		TelephoneNumber:              personalInfo.TelephoneNumber,
+		MobileNumber:                 personalInfo.MobileNumber,
+		EmergencyContactName:         personalInfo.EmergencyContactName,
+		EmergencyContactNumber:       personalInfo.EmergencyContactNumber,
+		EmergencyContactRelationship: *emergencyContactRelationship,
+		EmergencyContactAddress:      *emergencyContactAddress,
 	}, nil
 }
 
@@ -476,7 +525,26 @@ func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID int) (*F
 		return nil, fmt.Errorf("failed to get nature of residence by ID: %w", err)
 	}
 
+	siblingSupportTypes, err := s.repo.GetStudentSiblingSupport(ctx, studentFamily.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student sibling support: %w", err)
+	}
+
+	var supportTypes []SibilingSupportType
+	for _, sst := range siblingSupportTypes {
+		sibilingSupportType, err := s.repo.GetSiblingSupportTypeByID(ctx, sst.SupportTypeID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get sibling support type by ID: %w", err)
+		}
+
+		supportTypes = append(supportTypes, SibilingSupportType{
+			ID:          sibilingSupportType.ID,
+			SupportName: sibilingSupportType.SupportName,
+		})
+	}
+
 	family = &FamilyBackgroundDTO{
+		ID:                    studentFamily.ID,
 		ParentalStatus:        *parentalStatus,
 		ParentalStatusDetails: studentFamily.ParentalStatusDetails,
 		Brothers:              studentFamily.Brothers,
@@ -485,6 +553,7 @@ func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID int) (*F
 		OrdinalPosition:       studentFamily.OrdinalPosition,
 		HaveQuietPlaceToStudy: studentFamily.HaveQuietPlaceToStudy,
 		IsSharingRoom:         studentFamily.IsSharingRoom,
+		SiblingSupportTypes:   supportTypes,
 		RoomSharingDetails:    studentFamily.RoomSharingDetails,
 		NatureOfResidence:     *natureOfResidence,
 	}
@@ -524,43 +593,41 @@ func (s *Service) GetStudentRelatedPersons(ctx context.Context, iirID int) ([]Re
 			}
 
 			related = append(related, RelatedPersonDTO{
-				ID:                 relatedPerson.ID,
-				FirstName:          relatedPerson.FirstName,
-				LastName:           relatedPerson.LastName,
-				MiddleName:         relatedPerson.MiddleName,
-				DateOfBirth:        relatedPerson.DateOfBirth,
-				EducationalLevel:   relatedPerson.EducationalLevel,
-				Occupation:         relatedPerson.Occupation,
-				EmployerName:       relatedPerson.EmployerName,
-				EmployerAddress:    relatedPerson.EmployerAddress,
-				ContactNumber:      relatedPerson.ContactNumber,
-				Relationship:       *relationship,
-				IsParent:           srp.IsParent,
-				IsGuardian:         srp.IsGuardian,
-				IsEmergencyContact: srp.IsEmergencyContact,
-				IsLiving:           srp.IsLiving,
-				Address:            address, // Set the address field
+				ID:               relatedPerson.ID,
+				FirstName:        relatedPerson.FirstName,
+				LastName:         relatedPerson.LastName,
+				MiddleName:       relatedPerson.MiddleName,
+				DateOfBirth:      relatedPerson.DateOfBirth,
+				EducationalLevel: relatedPerson.EducationalLevel,
+				Occupation:       relatedPerson.Occupation,
+				EmployerName:     relatedPerson.EmployerName,
+				EmployerAddress:  relatedPerson.EmployerAddress,
+				ContactNumber:    relatedPerson.ContactNumber,
+				Relationship:     *relationship,
+				IsParent:         srp.IsParent,
+				IsGuardian:       srp.IsGuardian,
+				IsLiving:         srp.IsLiving,
+				Address:          address, // Set the address field
 			})
 			continue
 		}
 
 		related = append(related, RelatedPersonDTO{
-			ID:                 relatedPerson.ID,
-			FirstName:          relatedPerson.FirstName,
-			LastName:           relatedPerson.LastName,
-			MiddleName:         relatedPerson.MiddleName,
-			DateOfBirth:        relatedPerson.DateOfBirth,
-			EducationalLevel:   relatedPerson.EducationalLevel,
-			Occupation:         relatedPerson.Occupation,
-			EmployerName:       relatedPerson.EmployerName,
-			EmployerAddress:    relatedPerson.EmployerAddress,
-			ContactNumber:      relatedPerson.ContactNumber,
-			Relationship:       *relationship,
-			IsParent:           srp.IsParent,
-			IsGuardian:         srp.IsGuardian,
-			IsEmergencyContact: srp.IsEmergencyContact,
-			IsLiving:           srp.IsLiving,
-			Address:            nil,
+			ID:               relatedPerson.ID,
+			FirstName:        relatedPerson.FirstName,
+			LastName:         relatedPerson.LastName,
+			MiddleName:       relatedPerson.MiddleName,
+			DateOfBirth:      relatedPerson.DateOfBirth,
+			EducationalLevel: relatedPerson.EducationalLevel,
+			Occupation:       relatedPerson.Occupation,
+			EmployerName:     relatedPerson.EmployerName,
+			EmployerAddress:  relatedPerson.EmployerAddress,
+			ContactNumber:    relatedPerson.ContactNumber,
+			Relationship:     *relationship,
+			IsParent:         srp.IsParent,
+			IsGuardian:       srp.IsGuardian,
+			IsLiving:         srp.IsLiving,
+			Address:          nil,
 		})
 
 	}

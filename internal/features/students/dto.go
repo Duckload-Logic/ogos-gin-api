@@ -9,9 +9,11 @@ import (
 // List Students
 type ListStudentsRequest struct {
 	request.PaginationParams
-	CourseID int    `form:"course_id,omitempty"`
-	GenderID int    `form:"gender_id,omitempty"`
-	OrderBy  string `form:"order_by,omitempty" binding:"omitempty,oneof=first_name last_name student_number iir_id created_at updated_at year_level course_id"`
+	Search    string `form:"search,omitempty"`
+	CourseID  int    `form:"course_id,omitempty"`
+	GenderID  int    `form:"gender_id,omitempty"`
+	YearLevel int    `form:"year_level,omitempty"`
+	OrderBy   string `form:"order_by,omitempty" binding:"omitempty,oneof=first_name last_name student_number iir_id created_at updated_at year_level course_id"`
 }
 
 type ListStudentsResponse struct {
@@ -28,6 +30,7 @@ type StudentProfileDTO struct {
 	FirstName     string  `json:"firstName"`
 	MiddleName    *string `json:"middleName,omitempty"`
 	LastName      string  `json:"lastName"`
+	Gender        Gender  `json:"gender"`
 	Email         string  `json:"email"`
 	StudentNumber string  `json:"studentNumber"`
 	Course        Course  `json:"course"`
@@ -43,6 +46,7 @@ type GetStudentRequest struct {
 type ComprehensiveProfileResponse struct {
 	IIRID   int `json:"iirId"`
 	Student struct {
+		BasicInfo              StudentBasicInfoView `json:"basicInfo"`
 		StudentPersonalInfoDTO `json:"personalInfo"`
 		Addresses              []StudentAddressDTO `json:"addresses"`
 	} `json:"student"`
@@ -76,26 +80,32 @@ type StudentSelectedReasonDTO struct {
 }
 
 type StudentPersonalInfoDTO struct {
-	StudentNumber string          `json:"studentNumber" binding:"required"`
-	Gender        Gender          `json:"gender" binding:"required"`
-	CivilStatus   CivilStatusType `json:"civilStatus" binding:"required"`
-	Religion      Religion        `json:"religion" binding:"required"`
-	HeightFt      float64         `json:"heightFt" binding:"required"`
-	WeightKg      float64         `json:"weightKg" binding:"required"`
-	Complexion    string          `json:"complexion" binding:"required"`
-	HighSchoolGWA float64         `json:"highSchoolGWA" binding:"required"`
-	Course        Course          `json:"course" binding:"required"`
-	YearLevel     int             `json:"yearLevel" binding:"required"`
-	Section       int             `json:"section" binding:"required"`
-	PlaceOfBirth  string          `json:"placeOfBirth" binding:"required"`
-	DateOfBirth   string          `json:"dateOfBirth" binding:"required"`
-	ContactNumber string          `json:"contactNumber" binding:"required"`
+	ID                           int                     `json:"id"`
+	StudentNumber                string                  `json:"studentNumber" binding:"required"`
+	Gender                       Gender                  `json:"gender" binding:"required"`
+	CivilStatus                  CivilStatusType         `json:"civilStatus" binding:"required"`
+	Religion                     Religion                `json:"religion" binding:"required"`
+	HeightFt                     float64                 `json:"heightFt" binding:"required"`
+	WeightKg                     float64                 `json:"weightKg" binding:"required"`
+	Complexion                   string                  `json:"complexion" binding:"required"`
+	HighSchoolGWA                float64                 `json:"highSchoolGWA" binding:"required"`
+	Course                       Course                  `json:"course" binding:"required"`
+	YearLevel                    int                     `json:"yearLevel" binding:"required"`
+	Section                      int                     `json:"section" binding:"required"`
+	PlaceOfBirth                 string                  `json:"placeOfBirth" binding:"required"`
+	DateOfBirth                  string                  `json:"dateOfBirth" binding:"required"`
+	MobileNumber                 string                  `json:"mobileNumber" binding:"required"`
+	TelephoneNumber              *string                 `json:"telephoneNumber,omitempty"`
+	EmergencyContactName         string                  `json:"emergencyContactName" binding:"required"`
+	EmergencyContactNumber       string                  `json:"emergencyContactNumber" binding:"required"`
+	EmergencyContactRelationship StudentRelationshipType `json:"emergencyContactRelationship" binding:"required"`
+	EmergencyContactAddress      Address                 `json:"emergencyContactAddress" binding:"required"`
 }
 
 type StudentAddressDTO struct {
 	ID          int       `json:"id"`
 	AddressType string    `json:"addressType"`
-	Address     Address   `json:"addresses"`
+	Address     Address   `json:"address"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
@@ -142,6 +152,7 @@ type RelatedPersonDTO struct {
 }
 
 type FamilyBackgroundDTO struct {
+	ID                    int                   `json:"id"`
 	ParentalStatus        ParentalStatusType    `json:"parentalStatus"`
 	ParentalStatusDetails *string               `json:"parentalStatusDetails,omitempty"`
 	Brothers              int                   `json:"brothers"`
@@ -149,12 +160,14 @@ type FamilyBackgroundDTO struct {
 	EmployedSiblings      int                   `json:"employedSiblings"`
 	OrdinalPosition       int                   `json:"ordinalPosition"`
 	HaveQuietPlaceToStudy bool                  `json:"haveQuietPlaceToStudy"`
+	SiblingSupportTypes   []SibilingSupportType `json:"siblingSupportTypes"`
 	IsSharingRoom         bool                  `json:"isSharingRoom"`
 	RoomSharingDetails    *string               `json:"roomSharingDetails,omitempty"`
 	NatureOfResidence     NatureOfResidenceType `json:"natureOfResidence"`
 }
 
 type EducationalBGDTO struct {
+	ID               int    `json:"id"`
 	EducationalLevel string `json:"educationalLevel" binding:"required"`
 	SchoolName       string `json:"schoolName" binding:"required"`
 	Location         string `json:"location,omitempty"`

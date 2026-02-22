@@ -183,13 +183,13 @@ func (h *Handler) HandleListStudents(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentProfile(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	profile, err := h.service.GetStudentProfile(c.Request.Context(), iirId)
+	profile, err := h.service.GetStudentProfile(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student profile:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student profile"})
@@ -199,8 +199,25 @@ func (h *Handler) HandleGetStudentProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, profile)
 }
 
+func (h *Handler) HandleGetStudentBasicInfo(c *gin.Context) {
+	iirID, err := strconv.Atoi(c.Param("iirID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
+		return
+	}
+
+	basicInfo, err := h.service.GetStudentBasicInfo(c.Request.Context(), iirID)
+	if err != nil {
+		fmt.Println("Error getting student basic info:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student basic info"})
+		return
+	}
+
+	c.JSON(http.StatusOK, basicInfo)
+}
+
 func (h *Handler) HandleGetStudentIIRByUserID(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("userId"))
+	userID, err := strconv.Atoi(c.Param("userID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
@@ -217,7 +234,7 @@ func (h *Handler) HandleGetStudentIIRByUserID(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentIIRByIIRID(c *gin.Context) {
-	iirID, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
@@ -234,13 +251,13 @@ func (h *Handler) HandleGetStudentIIRByIIRID(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentEnrollmentReasons(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	reasons, err := h.service.GetStudentEnrollmentReasons(c.Request.Context(), iirId)
+	reasons, err := h.service.GetStudentEnrollmentReasons(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student enrollment reasons:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student enrollment reasons"})
@@ -251,13 +268,13 @@ func (h *Handler) HandleGetStudentEnrollmentReasons(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentPersonalInfo(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	personalInfo, err := h.service.GetStudentPersonalInfo(c.Request.Context(), iirId)
+	personalInfo, err := h.service.GetStudentPersonalInfo(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student personal info:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student personal info"})
@@ -268,13 +285,13 @@ func (h *Handler) HandleGetStudentPersonalInfo(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentAddresses(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	addresses, err := h.service.GetStudentAddresses(c.Request.Context(), iirId)
+	addresses, err := h.service.GetStudentAddresses(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student addresses:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student addresses"})
@@ -285,13 +302,13 @@ func (h *Handler) HandleGetStudentAddresses(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentFamilyBackground(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	familyBackground, err := h.service.GetStudentFamilyBackground(c.Request.Context(), iirId)
+	familyBackground, err := h.service.GetStudentFamilyBackground(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student family background:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student family background"})
@@ -302,13 +319,13 @@ func (h *Handler) HandleGetStudentFamilyBackground(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentRelatedPersons(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	relatedPersons, err := h.service.GetStudentRelatedPersons(c.Request.Context(), iirId)
+	relatedPersons, err := h.service.GetStudentRelatedPersons(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student related persons:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student related persons"})
@@ -319,13 +336,13 @@ func (h *Handler) HandleGetStudentRelatedPersons(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetEducationalBackground(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	educationalBackground, err := h.service.GetEducationalBackground(c.Request.Context(), iirId)
+	educationalBackground, err := h.service.GetEducationalBackground(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting educational background:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get educational background"})
@@ -336,13 +353,13 @@ func (h *Handler) HandleGetEducationalBackground(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentFinancialInfo(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	financialInfo, err := h.service.GetStudentFinancialInfo(c.Request.Context(), iirId)
+	financialInfo, err := h.service.GetStudentFinancialInfo(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student financial info:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student financial info"})
@@ -353,13 +370,13 @@ func (h *Handler) HandleGetStudentFinancialInfo(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentHealthRecord(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	healthRecord, err := h.service.GetStudentHealthRecord(c.Request.Context(), iirId)
+	healthRecord, err := h.service.GetStudentHealthRecord(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student health record:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student health record"})
@@ -370,13 +387,13 @@ func (h *Handler) HandleGetStudentHealthRecord(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentConsultations(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	consultations, err := h.service.GetStudentConsultations(c.Request.Context(), iirId)
+	consultations, err := h.service.GetStudentConsultations(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student consultations:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student consultations"})
@@ -387,13 +404,13 @@ func (h *Handler) HandleGetStudentConsultations(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentActivities(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	activities, err := h.service.GetStudentActivities(c.Request.Context(), iirId)
+	activities, err := h.service.GetStudentActivities(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student activities:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student activities"})
@@ -404,13 +421,13 @@ func (h *Handler) HandleGetStudentActivities(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentSubjectPreferences(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	subjectPreferences, err := h.service.GetStudentSubjectPreferences(c.Request.Context(), iirId)
+	subjectPreferences, err := h.service.GetStudentSubjectPreferences(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student subject preferences:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student subject preferences"})
@@ -421,13 +438,13 @@ func (h *Handler) HandleGetStudentSubjectPreferences(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentHobbies(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	hobbies, err := h.service.GetStudentHobbies(c.Request.Context(), iirId)
+	hobbies, err := h.service.GetStudentHobbies(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student hobbies:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student hobbies"})
@@ -438,13 +455,13 @@ func (h *Handler) HandleGetStudentHobbies(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentTestResults(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	testResults, err := h.service.GetStudentTestResults(c.Request.Context(), iirId)
+	testResults, err := h.service.GetStudentTestResults(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student test results:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student test results"})
@@ -455,13 +472,13 @@ func (h *Handler) HandleGetStudentTestResults(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentSignificantNotes(c *gin.Context) {
-	iirId, err := strconv.Atoi(c.Param("iirId"))
+	iirID, err := strconv.Atoi(c.Param("iirID"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
 		return
 	}
 
-	significantNotes, err := h.service.GetStudentSignificantNotes(c.Request.Context(), iirId)
+	significantNotes, err := h.service.GetStudentSignificantNotes(c.Request.Context(), iirID)
 	if err != nil {
 		fmt.Println("Error getting student significant notes:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student significant notes"})

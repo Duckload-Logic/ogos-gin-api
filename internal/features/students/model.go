@@ -71,6 +71,14 @@ type ActivityOption struct {
 	IsActive bool   `db:"is_active" json:"isActive"`
 }
 
+type StudentBasicInfoView struct {
+	ID         int     `json:"id"`
+	FirstName  string  `json:"firstName"`
+	MiddleName *string `json:"middleName,omitempty"`
+	LastName   string  `json:"lastName"`
+	Email      string  `json:"email"`
+}
+
 type StudentProfileView struct {
 	IIRID         int     `db:"iir_id" json:"iirId"`
 	UserID        int     `db:"user_id" json:"userId"`
@@ -79,6 +87,7 @@ type StudentProfileView struct {
 	LastName      string  `db:"last_name" json:"lastName"`
 	Email         string  `db:"email" json:"email"`
 	StudentNumber string  `db:"student_number" json:"studentNumber"`
+	GenderID      int     `db:"gender_id" json:"genderId"`
 	CourseID      int     `db:"course" json:"course"`
 	Section       int     `db:"section" json:"section"`
 	YearLevel     int     `db:"year_level" json:"yearLevel"`
@@ -122,14 +131,19 @@ type StudentPersonalInfo struct {
 	Section       int     `db:"section" json:"section"`
 
 	// Additional Details
-	PlaceOfBirth    string    `db:"place_of_birth" json:"placeOfBirth"`
-	DateOfBirth     string    `db:"date_of_birth" json:"dateOfBirth"`
-	IsEmployed      bool      `db:"is_employed" json:"isEmployed"`
-	EmployerName    *string   `db:"employer_name" json:"employerName"`
-	EmployerAddress *string   `db:"employer_address" json:"employerAddress"`
-	ContactNumber   string    `db:"contact_no" json:"contactNumber"`
-	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt       time.Time `db:"updated_at" json:"updatedAt"`
+	PlaceOfBirth                   string    `db:"place_of_birth" json:"placeOfBirth"`
+	DateOfBirth                    string    `db:"date_of_birth" json:"dateOfBirth"`
+	IsEmployed                     bool      `db:"is_employed" json:"isEmployed"`
+	EmployerName                   *string   `db:"employer_name" json:"employerName"`
+	EmployerAddress                *string   `db:"employer_address" json:"employerAddress"`
+	MobileNumber                   string    `db:"mobile_number" json:"mobileNumber"`
+	TelephoneNumber                *string   `db:"telephone_number" json:"telephoneNumber"`
+	EmergencyContactName           string    `db:"emergency_contact_name" json:"emergencyContactName"`
+	EmergencyContactNumber         string    `db:"emergency_contact_number" json:"emergencyContactNumber"`
+	EmergencyContactRelationshipID int       `db:"emergency_contact_relationship_id" json:"emergencyRelationshipId"`
+	EmergencyContactAddressID      int       `db:"emergency_contact_address_id" json:"emergencyAddressId"`
+	CreatedAt                      time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt                      time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 // Location and Address
@@ -177,10 +191,9 @@ type StudentRelatedPerson struct {
 	RelationshipID int `db:"relationship_id" json:"relationshipId"`
 
 	// Roles
-	IsParent           bool `db:"is_parent" json:"isParent"`
-	IsGuardian         bool `db:"is_guardian" json:"isGuardian"`
-	IsEmergencyContact bool `db:"is_emergency_contact" json:"isEmergencyContact"`
-	IsLiving           bool `db:"is_living" json:"isLiving"`
+	IsParent   bool `db:"is_parent" json:"isParent"`
+	IsGuardian bool `db:"is_guardian" json:"isGuardian"`
+	IsLiving   bool `db:"is_living" json:"isLiving"`
 
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
@@ -201,6 +214,11 @@ type FamilyBackground struct {
 	NatureOfResidenceId   int       `db:"nature_of_residence_id" json:"natureOfResidenceId"`
 	CreatedAt             time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt             time.Time `db:"updated_at" json:"updatedAt"`
+}
+
+type StudentSiblingSupport struct {
+	FamilyBackgroundID int `db:"family_background_id" json:"familyBackgroundId"`
+	SupportTypeID      int `db:"support_type_id" json:"supportTypeId"`
 }
 
 // Education and Background
