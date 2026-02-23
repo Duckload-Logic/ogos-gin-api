@@ -487,3 +487,21 @@ func (h *Handler) HandleGetStudentSignificantNotes(c *gin.Context) {
 
 	c.JSON(http.StatusOK, significantNotes)
 }
+
+func (h *Handler) HandleSubmitIIR(c *gin.Context) {
+	userID := c.MustGet("userID").(int)
+	var req ComprehensiveProfileDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	iirID, err := h.service.SubmitStudentIIR(c.Request.Context(), userID, req)
+	if err != nil {
+		fmt.Println("Error submitting student IIR:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to submit student IIR"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"iirID": iirID, "message": "Student IIR submitted successfully"})
+}

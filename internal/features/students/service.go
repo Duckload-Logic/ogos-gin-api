@@ -848,7 +848,7 @@ func (s *Service) GetStudentSignificantNotes(ctx context.Context, iirID int) ([]
 	return noteDTOs, nil
 }
 
-func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req ComprehensiveProfileDTO) error {
+func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {
 	now := time.Now()
 	iirRecord := &IIRRecord{
 		UserID:      userID,
@@ -858,7 +858,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	}
 	iirID, err := s.repo.CreateIIRRecord(ctx, iirRecord)
 	if err != nil {
-		return fmt.Errorf("failed to create IIR record: %w", err)
+		return 0, fmt.Errorf("failed to create IIR record: %w", err)
 	}
 
 	// Use errgroup for concurrent operations
@@ -1246,5 +1246,5 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		return nil
 	})
 
-	return g.Wait()
+	return iirID, g.Wait()
 }

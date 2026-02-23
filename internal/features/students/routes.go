@@ -66,4 +66,12 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 		userRoutes.GET("/records/iir/:iirID/test-results", iirResourceLookup, h.HandleGetStudentTestResults)
 		userRoutes.GET("/records/iir/:iirID/significant-notes", iirResourceLookup, h.HandleGetStudentSignificantNotes)
 	}
+
+	postRoutes := inventoryRoutes.Group("/")
+	postRoutes.Use(middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+	))
+	{
+		postRoutes.POST("/records/iir", h.HandleSubmitIIR)
+	}
 }

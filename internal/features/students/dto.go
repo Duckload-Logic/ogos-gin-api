@@ -45,7 +45,7 @@ type GetStudentRequest struct {
 }
 
 type ComprehensiveProfileDTO struct {
-	IIRID   int `json:"iirId"`
+	IIRID   int `json:"iirId,omitempty"`
 	Student struct {
 		BasicInfo              StudentBasicInfoView `json:"basicInfo"`
 		StudentPersonalInfoDTO `json:"personalInfo"`
@@ -81,8 +81,8 @@ type StudentSelectedReasonDTO struct {
 }
 
 type StudentPersonalInfoDTO struct {
-	ID               int                 `json:"id"`
-	IIRID            int                 `json:"iirId"`
+	ID               int                 `json:"id,omitempty"`
+	IIRID            int                 `json:"iirId,omitempty"`
 	StudentNumber    string              `json:"studentNumber" binding:"required"`
 	Gender           Gender              `json:"gender" binding:"required"`
 	CivilStatus      CivilStatusType     `json:"civilStatus" binding:"required"`
@@ -96,7 +96,7 @@ type StudentPersonalInfoDTO struct {
 	Section          int                 `json:"section" binding:"required"`
 	PlaceOfBirth     string              `json:"placeOfBirth" binding:"required"`
 	DateOfBirth      string              `json:"dateOfBirth" binding:"required"`
-	IsEmployed       bool                `json:"isEmployed" binding:"required"`
+	IsEmployed       bool                `json:"isEmployed"`
 	EmployerName     sql.NullString      `json:"employerName,omitempty"`
 	EmployerAddress  sql.NullString      `json:"employerAddress,omitempty"`
 	MobileNumber     string              `json:"mobileNumber" binding:"required"`
@@ -105,72 +105,72 @@ type StudentPersonalInfoDTO struct {
 }
 
 type EmergencyContactDTO struct {
-	ID            int                     `json:"id"`
-	FirstName     string                  `json:"firstName"`
+	ID            int                     `json:"id,omitempty"`
+	FirstName     string                  `json:"firstName" binding:"required"`
 	MiddleName    sql.NullString          `json:"middleName,omitempty"`
-	LastName      string                  `json:"lastName"`
-	ContactNumber string                  `json:"contactNumber"`
-	Relationship  StudentRelationshipType `json:"relationship"`
-	Address       Address                 `json:"address"`
+	LastName      string                  `json:"lastName" binding:"required"`
+	ContactNumber string                  `json:"contactNumber" binding:"required"`
+	Relationship  StudentRelationshipType `json:"relationship" binding:"required"`
+	Address       Address                 `json:"address" binding:"required"`
 }
 
 type StudentAddressDTO struct {
-	ID          int       `json:"id"`
-	AddressType string    `json:"addressType"`
-	Address     Address   `json:"address"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          int       `json:"id,omitempty"`
+	AddressType string    `json:"addressType" binding:"required"`
+	Address     Address   `json:"address" binding:"required"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 }
 
 type EducationalBackgroundDTO struct {
-	ID                 int                `json:"id"`
-	NatureOfSchooling  string             `json:"natureOfSchooling"`
+	ID                 int                `json:"id,omitempty"`
+	NatureOfSchooling  string             `json:"natureOfSchooling" binding:"required"`
 	InterruptedDetails sql.NullString     `json:"interruptedDetails,omitempty"`
-	School             []SchoolDetailsDTO `json:"schools"`
-	CreatedAt          time.Time          `json:"createdAt"`
-	UpdatedAt          time.Time          `json:"updatedAt"`
+	School             []SchoolDetailsDTO `json:"schools" binding:"required"`
+	CreatedAt          time.Time          `json:"createdAt,omitempty"`
+	UpdatedAt          time.Time          `json:"updatedAt,omitempty"`
 }
 
 type SchoolDetailsDTO struct {
-	ID               int              `json:"id"`
-	EducationalLevel EducationalLevel `json:"educationalLevel"`
-	SchoolName       string           `json:"schoolName"`
+	ID               int              `json:"id,omitempty"`
+	EducationalLevel EducationalLevel `json:"educationalLevel" binding:"required"`
+	SchoolName       string           `json:"schoolName" binding:"required"`
 	SchoolAddress    string           `json:"schoolAddress,omitempty"`
-	SchoolType       string           `json:"schoolType"`
+	SchoolType       string           `json:"schoolType" binding:"required"`
 	YearStarted      int              `json:"yearStarted,omitempty"`
-	YearCompleted    int              `json:"yearCompleted"`
+	YearCompleted    int              `json:"yearCompleted" binding:"required"`
 	Awards           sql.NullString   `json:"awards,omitempty"`
 }
 
 type RelatedPersonDTO struct {
-	ID               int                     `json:"id"`
-	LastName         string                  `json:"lastName"`
-	FirstName        string                  `json:"firstName"`
+	ID               int                     `json:"id,omitempty"`
+	LastName         string                  `json:"lastName" binding:"required"`
+	FirstName        string                  `json:"firstName" binding:"required"`
 	MiddleName       sql.NullString          `json:"middleName,omitempty"`
-	DateOfBirth      string                  `json:"dateOfBirth,omitempty"`
-	EducationalLevel string                  `json:"educationalLevel"`
+	DateOfBirth      string                  `json:"dateOfBirth,omitempty" binding:"omitempty"`
+	EducationalLevel string                  `json:"educationalLevel" binding:"required"`
 	Occupation       sql.NullString          `json:"occupation,omitempty"`
 	EmployerName     sql.NullString          `json:"employerName,omitempty"`
 	EmployerAddress  sql.NullString          `json:"employerAddress,omitempty"`
-	Relationship     StudentRelationshipType `json:"relationship"`
+	Relationship     StudentRelationshipType `json:"relationship" binding:"required"`
 	IsParent         bool                    `json:"isParent"`
 	IsGuardian       bool                    `json:"isGuardian"`
 	IsLiving         bool                    `json:"isLiving"`
 }
 
 type FamilyBackgroundDTO struct {
-	ID                    int                   `json:"id"`
-	ParentalStatus        ParentalStatusType    `json:"parentalStatus"`
+	ID                    int                   `json:"id,omitempty"`
+	ParentalStatus        ParentalStatusType    `json:"parentalStatus" binding:"required"`
 	ParentalStatusDetails sql.NullString        `json:"parentalStatusDetails,omitempty"`
-	Brothers              int                   `json:"brothers"`
-	Sisters               int                   `json:"sisters"`
-	EmployedSiblings      int                   `json:"employedSiblings"`
-	OrdinalPosition       int                   `json:"ordinalPosition"`
+	Brothers              int                   `json:"brothers" binding:"required"`
+	Sisters               int                   `json:"sisters" binding:"required"`
+	EmployedSiblings      int                   `json:"employedSiblings" binding:"required"`
+	OrdinalPosition       int                   `json:"ordinalPosition" binding:"required"`
 	HaveQuietPlaceToStudy bool                  `json:"haveQuietPlaceToStudy"`
-	SiblingSupportTypes   []SibilingSupportType `json:"siblingSupportTypes"`
+	SiblingSupportTypes   []SibilingSupportType `json:"siblingSupportTypes" binding:"required"`
 	IsSharingRoom         bool                  `json:"isSharingRoom"`
 	RoomSharingDetails    sql.NullString        `json:"roomSharingDetails,omitempty"`
-	NatureOfResidence     NatureOfResidenceType `json:"natureOfResidence"`
+	NatureOfResidence     NatureOfResidenceType `json:"natureOfResidence" binding:"required"`
 }
 
 type EducationalBGDTO struct {
@@ -184,7 +184,7 @@ type EducationalBGDTO struct {
 }
 
 type StudentFinanceDTO struct {
-	ID                       int                  `json:"id"`
+	ID                       int                  `json:"id,omitempty"`
 	MonthlyFamilyIncomeRange IncomeRange          `json:"monthlyFamilyIncomeRange" binding:"required"`
 	OtherIncomeDetails       sql.NullString       `json:"otherIncomeDetails,omitempty"`
 	FinancialSupportTypes    []StudentSupportType `json:"financialSupportTypes" binding:"required"`
@@ -192,7 +192,7 @@ type StudentFinanceDTO struct {
 }
 
 type StudentHealthRecordDTO struct {
-	ID                      int            `json:"id"`
+	ID                      int            `json:"id,omitempty"`
 	VisionHasProblem        bool           `json:"visionHasProblem"`
 	VisionDetails           sql.NullString `json:"visionDetails,omitempty"`
 	HearingHasProblem       bool           `json:"hearingHasProblem"`
@@ -204,47 +204,47 @@ type StudentHealthRecordDTO struct {
 }
 
 type StudentConsultationDTO struct {
-	ID               int            `json:"id"`
-	ProfessionalType string         `json:"professionalType"`
+	ID               int            `json:"id,omitempty"`
+	ProfessionalType string         `json:"professionalType" binding:"required"`
 	HasConsulted     bool           `json:"hasConsulted"`
 	WhenDate         sql.NullString `json:"whenDate,omitempty"`
 	ForWhat          sql.NullString `json:"forWhat,omitempty"`
 }
 
 type StudentActivityDTO struct {
-	ID                 int            `json:"id"`
-	ActivityOption     ActivityOption `json:"activityOption"`
+	ID                 int            `json:"id,omitempty"`
+	ActivityOption     ActivityOption `json:"activityOption" binding:"required"`
 	OtherSpecification *string        `json:"otherSpecification,omitempty"`
-	Role               string         `json:"role"` // "Officer", "Member", "Other"
+	Role               string         `json:"role" binding:"required"` // "Officer", "Member", "Other"
 	RoleSpecification  *string        `json:"roleSpecification,omitempty"`
 }
 
 type StudentSubjectPreferenceDTO struct {
-	ID          int    `json:"id"`
-	SubjectName string `json:"subjectName"`
+	ID          int    `json:"id,omitempty"`
+	SubjectName string `json:"subjectName" binding:"required"`
 	IsFavorite  bool   `json:"isFavorite"`
 }
 
 type StudentHobbyDTO struct {
-	ID           int    `json:"id"`
-	HobbyName    string `json:"hobbyName"`
-	PriorityRank int    `json:"priorityRank"`
+	ID           int    `json:"id,omitempty"`
+	HobbyName    string `json:"hobbyName" binding:"required"`
+	PriorityRank int    `json:"priorityRank" binding:"required"`
 }
 
 type TestResultDTO struct {
-	ID          int    `json:"id"`
-	TestDate    string `json:"testDate"`
-	TestName    string `json:"testName"`
-	RawScore    string `json:"rawScore"`
-	Percentile  string `json:"percentile"`
+	ID          int    `json:"id,omitempty"`
+	TestDate    string `json:"testDate" binding:"required"`
+	TestName    string `json:"testName" binding:"required"`
+	RawScore    string `json:"rawScore" binding:"required"`
+	Percentile  string `json:"percentile" binding:"required"`
 	Description string `json:"description,omitempty"`
 }
 
 type SignificantNoteDTO struct {
-	ID                  int       `json:"id"`
-	NoteDate            string    `json:"noteDate"`
-	IncidentDescription string    `json:"incidentDescription"`
-	Remarks             string    `json:"remarks"`
-	CreatedAt           time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt           time.Time `db:"updated_at" json:"updatedAt"`
+	ID                  int       `json:"id,omitempty"`
+	NoteDate            string    `json:"noteDate" binding:"required"`
+	IncidentDescription string    `json:"incidentDescription" binding:"required"`
+	Remarks             string    `json:"remarks" binding:"required"`
+	CreatedAt           time.Time `db:"created_at" json:"createdAt,omitempty"`
+	UpdatedAt           time.Time `db:"updated_at" json:"updatedAt,omitempty"`
 }
