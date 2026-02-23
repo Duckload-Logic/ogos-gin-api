@@ -1,14 +1,13 @@
 package students
 
 import (
-	"database/sql"
-
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
-func RegisterRoutes(db *sql.DB, r *gin.RouterGroup, h *Handler) {
+func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 	// Root group: /api/v1/students
 	studentRoutes := r.Group("/students")
 	studentRoutes.Use(middleware.AuthMiddleware())
