@@ -2,262 +2,180 @@ package students
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
-// Helper function to convert string to *string (NULL if empty)
-func nullString(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 type Repository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewRepository(db *sql.DB) *Repository {
+func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
 // Lookup
 func (r *Repository) GetGenders(ctx context.Context) ([]Gender, error) {
-	query := `SELECT id, gender_name FROM genders ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get genders: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM genders ORDER BY id
+	`, database.GetColumns(Gender{}))
 
 	var genders []Gender
-	for rows.Next() {
-		var g Gender
-		if err := rows.Scan(&g.ID, &g.GenderName); err != nil {
-			return nil, err
-		}
-		genders = append(genders, g)
+	err := r.db.SelectContext(ctx, &genders, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get genders: %w", err)
 	}
 
 	return genders, nil
 }
 
 func (r *Repository) GetParentalStatusTypes(ctx context.Context) ([]ParentalStatusType, error) {
-	query := `SELECT id, status_name FROM parental_status_types ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
+	query := fmt.Sprintf(`
+		SELECT %s FROM parental_status_types ORDER BY id
+	`, database.GetColumns(ParentalStatusType{}))
+	var statuses []ParentalStatusType
+	err := r.db.SelectContext(ctx, &statuses, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get parental status types: %w", err)
-	}
-	defer rows.Close()
-
-	var statuses []ParentalStatusType
-	for rows.Next() {
-		var s ParentalStatusType
-		if err := rows.Scan(&s.ID, &s.StatusName); err != nil {
-			return nil, err
-		}
-		statuses = append(statuses, s)
 	}
 
 	return statuses, nil
 }
 
 func (r *Repository) GetEnrollmentReasons(ctx context.Context) ([]EnrollmentReason, error) {
-	query := `SELECT id, reason_text FROM enrollment_reasons ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
+	query := fmt.Sprintf(`
+		SELECT %s FROM enrollment_reasons ORDER BY id
+	`, database.GetColumns(EnrollmentReason{}))
+	var reasons []EnrollmentReason
+	err := r.db.SelectContext(ctx, &reasons, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get enrollment reasons: %w", err)
-	}
-	defer rows.Close()
-
-	var reasons []EnrollmentReason
-	for rows.Next() {
-		var er EnrollmentReason
-		if err := rows.Scan(&er.ID, &er.Text); err != nil {
-			return nil, err
-		}
-		reasons = append(reasons, er)
 	}
 
 	return reasons, nil
 }
 
 func (r *Repository) GetIncomeRanges(ctx context.Context) ([]IncomeRange, error) {
-	query := `SELECT id, range_text FROM income_ranges ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
+	query := fmt.Sprintf(`
+		SELECT %s FROM income_ranges ORDER BY id
+	`, database.GetColumns(IncomeRange{}))
+	var ranges []IncomeRange
+	err := r.db.SelectContext(ctx, &ranges, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get income ranges: %w", err)
-	}
-	defer rows.Close()
-
-	var ranges []IncomeRange
-	for rows.Next() {
-		var ir IncomeRange
-		if err := rows.Scan(&ir.ID, &ir.RangeText); err != nil {
-			return nil, err
-		}
-		ranges = append(ranges, ir)
 	}
 
 	return ranges, nil
 }
 
 func (r *Repository) GetStudentSupportTypes(ctx context.Context) ([]StudentSupportType, error) {
-	query := `SELECT id, support_type_name FROM student_support_types ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
+	query := fmt.Sprintf(`
+		SELECT %s FROM student_support_types ORDER BY id
+	`, database.GetColumns(StudentSupportType{}))
+	var supportTypes []StudentSupportType
+	err := r.db.SelectContext(ctx, &supportTypes, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student support types: %w", err)
-	}
-	defer rows.Close()
-
-	var supportTypes []StudentSupportType
-	for rows.Next() {
-		var s StudentSupportType
-		if err := rows.Scan(&s.ID, &s.SupportTypeName); err != nil {
-			return nil, err
-		}
-		supportTypes = append(supportTypes, s)
 	}
 
 	return supportTypes, nil
 }
 
 func (r *Repository) GetSiblingSupportTypes(ctx context.Context) ([]SibilingSupportType, error) {
-	query := `SELECT id, name FROM sibling_support_types ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get sibling support types: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM sibling_support_types ORDER BY id
+	`, database.GetColumns(SibilingSupportType{}))
 
 	var supportTypes []SibilingSupportType
-	for rows.Next() {
-		var s SibilingSupportType
-		if err := rows.Scan(&s.ID, &s.SupportName); err != nil {
-			return nil, err
-		}
-		supportTypes = append(supportTypes, s)
+	err := r.db.SelectContext(ctx, &supportTypes, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sibling support types: %w", err)
 	}
 
 	return supportTypes, nil
 }
 
 func (r *Repository) GetEducationalLevels(ctx context.Context) ([]EducationalLevel, error) {
-	query := `SELECT id, level_name FROM educational_levels ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get educational levels: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM educational_levels ORDER BY id
+	`, database.GetColumns(EducationalLevel{}))
 
 	var levels []EducationalLevel
-	for rows.Next() {
-		var el EducationalLevel
-		if err := rows.Scan(&el.ID, &el.LevelName); err != nil {
-			return nil, err
-		}
-		levels = append(levels, el)
+	err := r.db.SelectContext(ctx, &levels, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get educational levels: %w", err)
 	}
 
 	return levels, nil
 }
 
 func (r *Repository) GetCourses(ctx context.Context) ([]Course, error) {
-	query := `SELECT id, code, course_name FROM courses ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get courses: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM courses ORDER BY id
+	`, database.GetColumns(Course{}))
 
 	var courses []Course
-	for rows.Next() {
-		var c Course
-		if err := rows.Scan(&c.ID, &c.Code, &c.CourseName); err != nil {
-			return nil, err
-		}
-		courses = append(courses, c)
+	err := r.db.SelectContext(ctx, &courses, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get courses: %w", err)
 	}
 
 	return courses, nil
 }
 
 func (r *Repository) GetCivilStatusTypes(ctx context.Context) ([]CivilStatusType, error) {
-	query := `SELECT id, status_name FROM civil_status_types ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get civil status types: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM civil_status_types ORDER BY id
+	`, database.GetColumns(CivilStatusType{}))
 
 	var statuses []CivilStatusType
-	for rows.Next() {
-		var s CivilStatusType
-		if err := rows.Scan(&s.ID, &s.StatusName); err != nil {
-			return nil, err
-		}
-		statuses = append(statuses, s)
+	err := r.db.SelectContext(ctx, &statuses, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get civil status types: %w", err)
 	}
 
 	return statuses, nil
 }
 
 func (r *Repository) GetReligions(ctx context.Context) ([]Religion, error) {
-	query := `SELECT id, religion_name FROM religions ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get religions: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM religions ORDER BY id
+	`, database.GetColumns(Religion{}))
 
 	var religions []Religion
-	for rows.Next() {
-		var r Religion
-		if err := rows.Scan(&r.ID, &r.ReligionName); err != nil {
-			return nil, err
-		}
-		religions = append(religions, r)
+	err := r.db.SelectContext(ctx, &religions, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get religions: %w", err)
 	}
 
 	return religions, nil
 }
 
 func (r *Repository) GetStudentRelationshipTypes(ctx context.Context) ([]StudentRelationshipType, error) {
-	query := `SELECT id, relationship_name FROM student_relationship_types ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student relationship types: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM student_relationship_types ORDER BY id
+	`, database.GetColumns(StudentRelationshipType{}))
 
 	var relationships []StudentRelationshipType
-	for rows.Next() {
-		var s StudentRelationshipType
-		if err := rows.Scan(&s.ID, &s.RelationshipName); err != nil {
-			return nil, err
-		}
-		relationships = append(relationships, s)
+	err := r.db.SelectContext(ctx, &relationships, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student relationship types: %w", err)
 	}
 
 	return relationships, nil
 }
 
 func (r *Repository) GetNatureOfResidenceTypes(ctx context.Context) ([]NatureOfResidenceType, error) {
-	query := `SELECT id, residence_type_name FROM nature_of_residence_types ORDER BY id`
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get nature of residence types: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM nature_of_residence_types ORDER BY id
+	`, database.GetColumns(NatureOfResidenceType{}))
 
 	var residences []NatureOfResidenceType
-	for rows.Next() {
-		var n NatureOfResidenceType
-		if err := rows.Scan(&n.ID, &n.ResidenceTypeName); err != nil {
-			return nil, err
-		}
-		residences = append(residences, n)
+	err := r.db.SelectContext(ctx, &residences, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nature of residence types: %w", err)
 	}
 
 	return residences, nil
@@ -517,48 +435,14 @@ func (r *Repository) GetEnrollmentReasonByID(ctx context.Context, reasonID int) 
 }
 
 func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID int) (*StudentPersonalInfo, error) {
-	query := `
-		SELECT
-			id, iir_id, student_number, gender_id, civil_status_id,
-			religion_id, height_ft, weight_kg, complexion,
-			high_school_gwa, course_id, year_level, section,
-			place_of_birth, date_of_birth, is_employed,
-			employer_name, employer_address, mobile_number, telephone_number,
-			emergency_contact_name, emergency_contact_number, emergency_contact_relationship_id,
-			emergency_contact_address_id,
-			created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_personal_info
 		WHERE iir_id = ?
-	`
+	`, database.GetColumns(StudentPersonalInfo{}))
 
 	var info StudentPersonalInfo
-	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
-		&info.ID,
-		&info.IIRID,
-		&info.StudentNumber,
-		&info.GenderID,
-		&info.CivilStatusID,
-		&info.ReligionID,
-		&info.HeightFt,
-		&info.WeightKg,
-		&info.Complexion,
-		&info.HighSchoolGWA,
-		&info.CourseID,
-		&info.YearLevel,
-		&info.Section,
-		&info.PlaceOfBirth,
-		&info.DateOfBirth,
-		&info.IsEmployed,
-		&info.EmployerName,
-		&info.EmployerAddress,
-		&info.MobileNumber,
-		&info.TelephoneNumber,
-		&info.EmergencyContactName,
-		&info.EmergencyContactNumber,
-		&info.EmergencyContactRelationshipID,
-		&info.EmergencyContactAddressID,
-		&info.CreatedAt,
-		&info.UpdatedAt)
+	err := r.db.GetContext(ctx, &info, query, iirID)
 	if err != nil {
 		return nil, err
 	}
@@ -566,10 +450,30 @@ func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID int) (*St
 	return &info, nil
 }
 
+func (r *Repository) GetEmergencyContactByIIRID(ctx context.Context, iirID int) (*EmergencyContact, error) {
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM emergency_contacts ec
+		JOIN student_personal_info spi ON ec.id = spi.emergency_contact_id
+		WHERE spi.iir_id = ?
+	`, database.GetColumns(EmergencyContact{}))
+
+	var ec EmergencyContact
+	err := r.db.GetContext(ctx, &ec, query, iirID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ec, nil
+}
+
 func (r *Repository) GetGenderByID(ctx context.Context, genderID int) (*Gender, error) {
-	query := `SELECT id, gender_name FROM genders WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM genders WHERE id = ?
+	`, database.GetColumns(Gender{}))
+
 	var gender Gender
-	err := r.db.QueryRowContext(ctx, query, genderID).Scan(&gender.ID, &gender.GenderName)
+	err := r.db.GetContext(ctx, &gender, query, genderID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gender by ID: %w", err)
 	}
@@ -578,9 +482,12 @@ func (r *Repository) GetGenderByID(ctx context.Context, genderID int) (*Gender, 
 }
 
 func (r *Repository) GetCivilStatusByID(ctx context.Context, statusID int) (*CivilStatusType, error) {
-	query := `SELECT id, status_name FROM civil_status_types WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM civil_status_types WHERE id = ?
+	`, database.GetColumns(CivilStatusType{}))
+
 	var status CivilStatusType
-	err := r.db.QueryRowContext(ctx, query, statusID).Scan(&status.ID, &status.StatusName)
+	err := r.db.GetContext(ctx, &status, query, statusID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get civil status by ID: %w", err)
 	}
@@ -589,9 +496,12 @@ func (r *Repository) GetCivilStatusByID(ctx context.Context, statusID int) (*Civ
 }
 
 func (r *Repository) GetReligionByID(ctx context.Context, religionID int) (*Religion, error) {
-	query := `SELECT id, religion_name FROM religions WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM religions WHERE id = ?
+	`, database.GetColumns(Religion{}))
+
 	var religion Religion
-	err := r.db.QueryRowContext(ctx, query, religionID).Scan(&religion.ID, &religion.ReligionName)
+	err := r.db.GetContext(ctx, &religion, query, religionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get religion by ID: %w", err)
 	}
@@ -600,64 +510,43 @@ func (r *Repository) GetReligionByID(ctx context.Context, religionID int) (*Reli
 }
 
 func (r *Repository) GetCourseByID(ctx context.Context, courseID int) (*Course, error) {
-	query := `SELECT id, code, course_name FROM courses WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM courses WHERE id = ?
+	`, database.GetColumns(Course{}))
+
 	var course Course
-	err := r.db.QueryRowContext(ctx, query, courseID).Scan(&course.ID, &course.Code, &course.CourseName)
+	err := r.db.GetContext(ctx, &course, query, courseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get course by ID: %w", err)
 	}
 
 	return &course, nil
 }
-
 func (r *Repository) GetStudentAddresses(ctx context.Context, iirID int) ([]StudentAddress, error) {
-	query := `
-		SELECT id, iir_id, address_id, address_type, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_addresses
 		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student addresses: %w", err)
-	}
-	defer rows.Close()
+	`, database.GetColumns(StudentAddress{}))
 
 	var addresses []StudentAddress
-	for rows.Next() {
-		var sa StudentAddress
-		if err := rows.Scan(
-			&sa.ID,
-			&sa.IIRID,
-			&sa.AddressID,
-			&sa.AddressType,
-			&sa.CreatedAt,
-			&sa.UpdatedAt); err != nil {
-			return nil, err
-		}
-		addresses = append(addresses, sa)
+	err := r.db.SelectContext(ctx, &addresses, query, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student addresses: %w", err)
 	}
 
 	return addresses, nil
 }
 
 func (r *Repository) GetAddressByID(ctx context.Context, addressID int) (*Address, error) {
-	query := `
-		SELECT
-			id, region, city, barangay, street_detail,
-			created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM addresses
 		WHERE id = ?
-	`
+	`, database.GetColumns(Address{}))
+
 	var addr Address
-	err := r.db.QueryRowContext(ctx, query, addressID).Scan(
-		&addr.ID,
-		&addr.Region,
-		&addr.City,
-		&addr.Barangay,
-		&addr.StreetDetail,
-		&addr.CreatedAt,
-		&addr.UpdatedAt,
-	)
+	err := r.db.GetContext(ctx, &addr, query, addressID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get address by ID: %w", err)
 	}
@@ -666,22 +555,14 @@ func (r *Repository) GetAddressByID(ctx context.Context, addressID int) (*Addres
 }
 
 func (r *Repository) GetStudentEducationalBackground(ctx context.Context, iirID int) (*EducationalBackground, error) {
-	query := `
-		SELECT
-			id, iir_id, nature_of_schooling, interrupted_details,
-			created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM educational_backgrounds
 		WHERE iir_id = ?
-	`
+	`, database.GetColumns(EducationalBackground{}))
+
 	var eb EducationalBackground
-	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
-		&eb.ID,
-		&eb.IIRID,
-		&eb.NatureOfSchooling,
-		&eb.InterruptedDetails,
-		&eb.CreatedAt,
-		&eb.UpdatedAt,
-	)
+	err := r.db.GetContext(ctx, &eb, query, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student educational background: %w", err)
 	}
@@ -690,49 +571,28 @@ func (r *Repository) GetStudentEducationalBackground(ctx context.Context, iirID 
 }
 
 func (r *Repository) GetSchoolDetailsByEBID(ctx context.Context, ebID int) ([]SchoolDetails, error) {
-	query := `
-		SELECT
-			id, eb_id, educational_level_id, school_name,
-			school_address, school_type, year_started,
-			year_completed, awards, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM school_details
 		WHERE eb_id = ?
 		ORDER BY educational_level_id ASC
-	`
-
-	rows, err := r.db.QueryContext(ctx, query, ebID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get school details by EB ID: %w", err)
-	}
-	defer rows.Close()
+	`, database.GetColumns(SchoolDetails{}))
 
 	var schoolDetails []SchoolDetails
-	for rows.Next() {
-		var sd SchoolDetails
-		if err := rows.Scan(
-			&sd.ID,
-			&sd.EBID,
-			&sd.EducationalLevelID,
-			&sd.SchoolName,
-			&sd.SchoolAddress,
-			&sd.SchoolType,
-			&sd.YearStarted,
-			&sd.YearCompleted,
-			&sd.Awards,
-			&sd.CreatedAt,
-			&sd.UpdatedAt); err != nil {
-			return nil, err
-		}
-		schoolDetails = append(schoolDetails, sd)
+	err := r.db.SelectContext(ctx, &schoolDetails, query, ebID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get school details by EB ID: %w", err)
 	}
 
 	return schoolDetails, nil
 }
 
 func (r *Repository) GetEducationalLevelByID(ctx context.Context, levelID int) (*EducationalLevel, error) {
-	query := `SELECT id, level_name FROM educational_levels WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM educational_levels WHERE id = ?
+	`, database.GetColumns(EducationalLevel{}))
 	var el EducationalLevel
-	err := r.db.QueryRowContext(ctx, query, levelID).Scan(&el.ID, &el.LevelName)
+	err := r.db.GetContext(ctx, &el, query, levelID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get educational level by ID: %w", err)
 	}
@@ -743,34 +603,15 @@ func (r *Repository) GetEducationalLevelByID(ctx context.Context, levelID int) (
 func (r *Repository) GetStudentRelatedPersons(
 	ctx context.Context, iirID int,
 ) ([]StudentRelatedPerson, error) {
-	query := `
-		SELECT iir_id, related_person_id, relationship_id,
-			is_parent, is_guardian, is_living,
-			created_at, updated_at
-		FROM student_related_persons
-		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student related persons: %w", err)
-	}
-	defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM student_related_persons WHERE iir_id = ?
+	`, database.GetColumns(StudentRelatedPerson{}))
 
 	var persons []StudentRelatedPerson
-	for rows.Next() {
-		var srp StudentRelatedPerson
-		if err := rows.Scan(
-			&srp.IIRID,
-			&srp.RelatedPersonID,
-			&srp.RelationshipID,
-			&srp.IsParent,
-			&srp.IsGuardian,
-			&srp.IsLiving,
-			&srp.CreatedAt,
-			&srp.UpdatedAt); err != nil {
-			return nil, err
-		}
-		persons = append(persons, srp)
+
+	err := r.db.SelectContext(ctx, &persons, query, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student related persons: %w", err)
 	}
 
 	return persons, nil
@@ -779,31 +620,15 @@ func (r *Repository) GetStudentRelatedPersons(
 func (r *Repository) GetRelatedPersonByID(
 	ctx context.Context, personID int,
 ) (*RelatedPerson, error) {
-	query := `
+	query := fmt.Sprintf(`
 		SELECT
-			id, first_name, middle_name, last_name, address_id,
-			educational_level, date_of_birth, occupation,
-			employer_name, employer_address, contact_number,
-			created_at, updated_at
+			%s
 		FROM related_persons
 		WHERE id = ?
-	`
+	`, database.GetColumns(RelatedPerson{}))
+
 	var person RelatedPerson
-	err := r.db.QueryRowContext(ctx, query, personID).Scan(
-		&person.ID,
-		&person.FirstName,
-		&person.MiddleName,
-		&person.LastName,
-		&person.AddressID,
-		&person.EducationalLevel,
-		&person.DateOfBirth,
-		&person.Occupation,
-		&person.EmployerName,
-		&person.EmployerAddress,
-		&person.ContactNumber,
-		&person.CreatedAt,
-		&person.UpdatedAt,
-	)
+	err := r.db.GetContext(ctx, &person, query, personID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get related person by ID: %w", err)
 	}
@@ -814,9 +639,12 @@ func (r *Repository) GetRelatedPersonByID(
 func (r *Repository) GetStudentRelationshipByID(
 	ctx context.Context, relationshipID int,
 ) (*StudentRelationshipType, error) {
-	query := `SELECT id, relationship_name FROM student_relationship_types WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM student_relationship_types WHERE id = ?
+	`, database.GetColumns(StudentRelationshipType{}))
+
 	var srt StudentRelationshipType
-	err := r.db.QueryRowContext(ctx, query, relationshipID).Scan(&srt.ID, &srt.RelationshipName)
+	err := r.db.GetContext(ctx, &srt, query, relationshipID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student relationship by ID: %w", err)
 	}
@@ -825,32 +653,14 @@ func (r *Repository) GetStudentRelationshipByID(
 }
 
 func (r *Repository) GetStudentFamilyBackground(ctx context.Context, iirID int) (*FamilyBackground, error) {
-	query := `
-		SELECT
-			id, iir_id, parental_status_id, parental_status_details, brothers,
-			sisters, employed_siblings, ordinal_position,
-			have_quiet_place_to_study, is_sharing_room,
-			nature_of_residence_id, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM family_backgrounds
 		WHERE iir_id = ?
-	`
+	`, database.GetColumns(FamilyBackground{}))
 
 	var fb FamilyBackground
-	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
-		&fb.ID,
-		&fb.IIRID,
-		&fb.ParentalStatusID,
-		&fb.ParentalStatusDetails,
-		&fb.Brothers,
-		&fb.Sisters,
-		&fb.EmployedSiblings,
-		&fb.OrdinalPosition,
-		&fb.HaveQuietPlaceToStudy,
-		&fb.IsSharingRoom,
-		&fb.NatureOfResidenceId,
-		&fb.CreatedAt,
-		&fb.UpdatedAt,
-	)
+	err := r.db.GetContext(ctx, &fb, query, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student family background: %w", err)
 	}
@@ -859,9 +669,12 @@ func (r *Repository) GetStudentFamilyBackground(ctx context.Context, iirID int) 
 }
 
 func (r *Repository) GetParentalStatusByID(ctx context.Context, statusID int) (*ParentalStatusType, error) {
-	query := `SELECT id, status_name FROM parental_status_types WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM parental_status_types WHERE id = ?
+	`, database.GetColumns(ParentalStatusType{}))
+
 	var ps ParentalStatusType
-	err := r.db.QueryRowContext(ctx, query, statusID).Scan(&ps.ID, &ps.StatusName)
+	err := r.db.GetContext(ctx, &ps, query, statusID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get parental status by ID: %w", err)
 	}
@@ -870,9 +683,12 @@ func (r *Repository) GetParentalStatusByID(ctx context.Context, statusID int) (*
 }
 
 func (r *Repository) GetNatureOfResidenceByID(ctx context.Context, residenceID int) (*NatureOfResidenceType, error) {
-	query := `SELECT id, residence_type_name FROM nature_of_residence_types WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM nature_of_residence_types WHERE id = ?
+	`, database.GetColumns(NatureOfResidenceType{}))
+
 	var nr NatureOfResidenceType
-	err := r.db.QueryRowContext(ctx, query, residenceID).Scan(&nr.ID, &nr.ResidenceTypeName)
+	err := r.db.GetContext(ctx, &nr, query, residenceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nature of residence by ID: %w", err)
 	}
@@ -881,38 +697,28 @@ func (r *Repository) GetNatureOfResidenceByID(ctx context.Context, residenceID i
 }
 
 func (r *Repository) GetStudentSiblingSupport(ctx context.Context, fbID int) ([]StudentSiblingSupport, error) {
-	query := `
-		SELECT
-			family_background_id, support_type_id
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_sibling_supports
 		WHERE family_background_id = ?
-	`
+	`, database.GetColumns(StudentSiblingSupport{}))
+
 	var sss []StudentSiblingSupport
-	rows, err := r.db.QueryContext(ctx, query, fbID)
+	err := r.db.SelectContext(ctx, &sss, query, fbID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query student sibling supports: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var ss StudentSiblingSupport
-		err := rows.Scan(
-			&ss.FamilyBackgroundID,
-			&ss.SupportTypeID,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan student sibling support: %w", err)
-		}
-		sss = append(sss, ss)
 	}
 
 	return sss, nil
 }
 
 func (r *Repository) GetSiblingSupportTypeByID(ctx context.Context, supportID int) (*SibilingSupportType, error) {
-	query := `SELECT id, name FROM sibling_support_types WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM sibling_support_types WHERE id = ?
+	`, database.GetColumns(SibilingSupportType{}))
+
 	var sst SibilingSupportType
-	err := r.db.QueryRowContext(ctx, query, supportID).Scan(&sst.ID, &sst.SupportName)
+	err := r.db.GetContext(ctx, &sst, query, supportID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sibling support type by ID: %w", err)
 	}
@@ -921,23 +727,14 @@ func (r *Repository) GetSiblingSupportTypeByID(ctx context.Context, supportID in
 }
 
 func (r *Repository) GetStudentFinancialInfo(ctx context.Context, iirID int) (*StudentFinance, error) {
-	query := `
-		SELECT
-			id, iir_id, monthly_family_income_range_id, other_income_details,
-			weekly_allowance, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_finances
 		WHERE iir_id = ?
-	`
+	`, database.GetColumns(StudentFinance{}))
+
 	var fi StudentFinance
-	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
-		&fi.ID,
-		&fi.IIRID,
-		&fi.MonthlyFamilyIncomeRangeID,
-		&fi.OtherIncomeDetails,
-		&fi.WeeklyAllowance,
-		&fi.CreatedAt,
-		&fi.UpdatedAt,
-	)
+	err := r.db.GetContext(ctx, &fi, query, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student financial info: %w", err)
 	}
@@ -946,40 +743,28 @@ func (r *Repository) GetStudentFinancialInfo(ctx context.Context, iirID int) (*S
 }
 
 func (r *Repository) GetFinancialSupportTypeByFinanceID(ctx context.Context, financeID int) ([]StudentFinancialSupport, error) {
-	query := `
-		SELECT
-			sf_id, support_type_id, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_financial_supports
 		WHERE sf_id = ?
-	`
+	`, database.GetColumns(StudentFinancialSupport{}))
+
 	var sfs []StudentFinancialSupport
-	rows, err := r.db.QueryContext(ctx, query, financeID)
+	err := r.db.SelectContext(ctx, &sfs, query, financeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query student financial supports: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var sf StudentFinancialSupport
-		err := rows.Scan(
-			&sf.StudentFinanceID,
-			&sf.SupportTypeID,
-			&sf.CreatedAt,
-			&sf.UpdatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan student financial support: %w", err)
-		}
-		sfs = append(sfs, sf)
 	}
 
 	return sfs, nil
 }
 
 func (r *Repository) GetIncomeRangeByID(ctx context.Context, rangeID int) (*IncomeRange, error) {
-	query := `SELECT id, range_text FROM income_ranges WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM income_ranges WHERE id = ?
+	`, database.GetColumns(IncomeRange{}))
+
 	var ir IncomeRange
-	err := r.db.QueryRowContext(ctx, query, rangeID).Scan(&ir.ID, &ir.RangeText)
+	err := r.db.GetContext(ctx, &ir, query, rangeID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get income range by ID: %w", err)
 	}
@@ -988,9 +773,12 @@ func (r *Repository) GetIncomeRangeByID(ctx context.Context, rangeID int) (*Inco
 }
 
 func (r *Repository) GetStudentSupportByID(ctx context.Context, supportID int) (*StudentSupportType, error) {
-	query := `SELECT id, support_type_name FROM student_support_types WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM student_support_types WHERE id = ?
+	`, database.GetColumns(StudentSupportType{}))
+
 	var sst StudentSupportType
-	err := r.db.QueryRowContext(ctx, query, supportID).Scan(&sst.ID, &sst.SupportTypeName)
+	err := r.db.GetContext(ctx, &sst, query, supportID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student support by ID: %w", err)
 	}
@@ -999,30 +787,14 @@ func (r *Repository) GetStudentSupportByID(ctx context.Context, supportID int) (
 }
 
 func (r *Repository) GetStudentHealthRecord(ctx context.Context, iirID int) (*StudentHealthRecord, error) {
-	query := `
-		SELECT
-			id, iir_id, vision_has_problem, vision_details, hearing_has_problem,
-			hearing_details, speech_has_problem, speech_details,
-			general_health_has_problem, general_health_details,
-			created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_health_records
 		WHERE iir_id = ?
-	`
+	`, database.GetColumns(StudentHealthRecord{}))
+
 	var hr StudentHealthRecord
-	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
-		&hr.ID,
-		&hr.IIRID,
-		&hr.VisionHasProblem,
-		&hr.VisionDetails,
-		&hr.HearingHasProblem,
-		&hr.HearingDetails,
-		&hr.SpeechHasProblem,
-		&hr.SpeechDetails,
-		&hr.GeneralHealthHasProblem,
-		&hr.GeneralHealthDetails,
-		&hr.CreatedAt,
-		&hr.UpdatedAt,
-	)
+	err := r.db.GetContext(ctx, &hr, query, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student health record: %w", err)
 	}
@@ -1031,84 +803,44 @@ func (r *Repository) GetStudentHealthRecord(ctx context.Context, iirID int) (*St
 }
 
 func (r *Repository) GetStudentConsultations(ctx context.Context, iirID int) ([]StudentConsultation, error) {
-	query := `
-		SELECT
-			id, iir_id, professional_type,
-			has_consulted, when_date, for_what,
-			created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_consultations
 		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student consultations: %w", err)
-	}
-	defer rows.Close()
+	`, database.GetColumns(StudentConsultation{}))
 
 	var consultations []StudentConsultation
-	for rows.Next() {
-		var sc StudentConsultation
-		if err := rows.Scan(
-			&sc.ID,
-			&sc.IIRID,
-			&sc.ProfessionalType,
-			&sc.HasConsulted,
-			&sc.WhenDate,
-			&sc.ForWhat,
-			&sc.CreatedAt,
-			&sc.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		consultations = append(consultations, sc)
+	err := r.db.SelectContext(ctx, &consultations, query, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student consultations: %w", err)
 	}
 
 	return consultations, nil
 }
 
 func (r *Repository) GetStudentActivities(ctx context.Context, iirID int) ([]StudentActivity, error) {
-	query := `
-		SELECT
-			id, iir_id, option_id, other_specification,
-			role, role_specification, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_activities
 		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student activities: %w", err)
-	}
-	defer rows.Close()
+	`, database.GetColumns(StudentActivity{}))
 
 	var activities []StudentActivity
-	for rows.Next() {
-		var sa StudentActivity
-		if err := rows.Scan(
-			&sa.ID,
-			&sa.IIRID,
-			&sa.OptionID,
-			&sa.OtherSpecification,
-			&sa.Role,
-			&sa.RoleSpecification,
-			&sa.CreatedAt,
-			&sa.UpdatedAt); err != nil {
-			return nil, err
-		}
-		activities = append(activities, sa)
+	err := r.db.SelectContext(ctx, &activities, query, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student activities: %w", err)
 	}
 
 	return activities, nil
 }
 
 func (r *Repository) GetActivityOptionByID(ctx context.Context, optionID int) (*ActivityOption, error) {
-	query := `SELECT id, name, category, is_active FROM activity_options WHERE id = ?`
+	query := fmt.Sprintf(`
+		SELECT %s FROM activity_options WHERE id = ?
+	`, database.GetColumns(ActivityOption{}))
+
 	var ao ActivityOption
-	err := r.db.QueryRowContext(ctx, query, optionID).Scan(
-		&ao.ID,
-		&ao.Name,
-		&ao.Category,
-		&ao.IsActive,
-	)
+	err := r.db.GetContext(ctx, &ao, query, optionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get activity option by ID: %w", err)
 	}
@@ -1117,132 +849,673 @@ func (r *Repository) GetActivityOptionByID(ctx context.Context, optionID int) (*
 }
 
 func (r *Repository) GetStudentSubjectPreferences(ctx context.Context, iirID int) ([]StudentSubjectPreference, error) {
-	query := `
-		SELECT
-			id, iir_id, subject_name, is_favorite, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_subject_preferences
 		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student subject preferences: %w", err)
-	}
-	defer rows.Close()
+	`, database.GetColumns(StudentSubjectPreference{}))
 
 	var preferences []StudentSubjectPreference
-	for rows.Next() {
-		var sp StudentSubjectPreference
-		if err := rows.Scan(
-			&sp.ID,
-			&sp.IIRID,
-			&sp.SubjectName,
-			&sp.IsFavorite,
-			&sp.CreatedAt,
-			&sp.UpdatedAt); err != nil {
-			return nil, err
-		}
-		preferences = append(preferences, sp)
+	err := r.db.SelectContext(ctx, &preferences, query, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student subject preferences: %w", err)
 	}
 
 	return preferences, nil
 }
 
 func (r *Repository) GetStudentHobbies(ctx context.Context, iirID int) ([]StudentHobby, error) {
-	query := `
-		SELECT
-			id, iir_id, hobby_name, priority_rank, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM student_hobbies
 		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student hobbies: %w", err)
-	}
-	defer rows.Close()
+	`, database.GetColumns(StudentHobby{}))
 
 	var hobbies []StudentHobby
-	for rows.Next() {
-		var sh StudentHobby
-		if err := rows.Scan(
-			&sh.ID,
-			&sh.IIRID,
-			&sh.HobbyName,
-			&sh.PriorityRank,
-			&sh.CreatedAt,
-			&sh.UpdatedAt); err != nil {
-			return nil, err
-		}
-		hobbies = append(hobbies, sh)
+	err := r.db.SelectContext(ctx, &hobbies, query, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student hobbies: %w", err)
 	}
 
 	return hobbies, nil
 }
 
 func (r *Repository) GetStudentTestResults(ctx context.Context, iirID int) ([]TestResult, error) {
-	query := `
-		SELECT
-			id, iir_id, test_date, test_name,
-			raw_score, percentile, description,
-			created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM test_results
 		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student test results: %w", err)
-	}
-	defer rows.Close()
+	`, database.GetColumns(TestResult{}))
 
 	var results []TestResult
-	for rows.Next() {
-		var tr TestResult
-		if err := rows.Scan(
-			&tr.ID,
-			&tr.IIRID,
-			&tr.TestDate,
-			&tr.TestName,
-			&tr.RawScore,
-			&tr.Percentile,
-			&tr.Description,
-			&tr.CreatedAt,
-			&tr.UpdatedAt); err != nil {
-			return nil, err
-		}
-		results = append(results, tr)
+	err := r.db.SelectContext(ctx, &results, query, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student test results: %w", err)
 	}
 
 	return results, nil
 }
 
 func (r *Repository) GetStudentSignificantNotes(ctx context.Context, iirID int) ([]SignificantNote, error) {
-	query := `
-		SELECT
-			id, iir_id, note_date, incident_description, remarks,
-			created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM significant_notes
 		WHERE iir_id = ?
-	`
-	rows, err := r.db.QueryContext(ctx, query, iirID)
+	`, database.GetColumns(SignificantNote{}))
+
+	var notes []SignificantNote
+	err := r.db.SelectContext(ctx, &notes, query, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student significant notes: %w", err)
 	}
-	defer rows.Close()
-
-	var notes []SignificantNote
-	for rows.Next() {
-		var sn SignificantNote
-		if err := rows.Scan(
-			&sn.ID,
-			&sn.IIRID,
-			&sn.NoteDate,
-			&sn.IncidentDescription,
-			&sn.Remarks,
-			&sn.CreatedAt,
-			&sn.UpdatedAt); err != nil {
-			return nil, err
-		}
-		notes = append(notes, sn)
-	}
 
 	return notes, nil
+}
+
+// Save and Upsert
+func (r *Repository) CreateIIRRecord(ctx context.Context, iir *IIRRecord) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(IIRRecord{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO iir_records (%s)
+			VALUES (%s)
+		`, cols, vals)
+		result, err := tx.NamedExecContext(ctx, query, iir)
+		if err != nil {
+			return fmt.Errorf("failed to create IIR record: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for IIR record: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) UpsertStudentPersonalInfo(ctx context.Context, info *StudentPersonalInfo) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentPersonalInfo{}, []string{"created_at", "updated_at", "address_id"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentPersonalInfo{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_personal_info (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+
+		_, err := tx.NamedExecContext(ctx, query, info)
+		return err
+	})
+}
+
+func (r *Repository) UpsertEmergencyContact(ctx context.Context, ec *EmergencyContact) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(EmergencyContact{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(EmergencyContact{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO emergency_contacts (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, ec)
+		if err != nil {
+			return fmt.Errorf("failed to upsert emergency contact: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for emergency contact: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) UpsertStudentAddress(ctx context.Context, sa *StudentAddress) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentAddress{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentAddress{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_addresses (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, sa)
+		if err != nil {
+			return fmt.Errorf("failed to upsert student address: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for student address: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) UpsertAddress(ctx context.Context, addr *Address) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(Address{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(Address{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO addresses (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, addr)
+		if err != nil {
+			return fmt.Errorf("failed to upsert address: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for address: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) CreateStudentSelectedReason(ctx context.Context, ssr *StudentSelectedReason) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `
+			INSERT INTO student_selected_reasons (iir_id, reason_id, other_reason_text)
+			VALUES (:iir_id, :reason_id, :other_reason_text)
+		`
+		_, err := tx.NamedExecContext(ctx, query, ssr)
+		if err != nil {
+			return fmt.Errorf("failed to create student selected reason: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) DeleteStudentSelectedReasons(ctx context.Context, iirID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM student_selected_reasons WHERE iir_id = ?`
+		_, err := tx.ExecContext(ctx, query, iirID)
+		if err != nil {
+			return fmt.Errorf("failed to delete student selected reasons: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) UpsertRelatedPerson(ctx context.Context, rp *RelatedPerson) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(RelatedPerson{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(RelatedPerson{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO related_persons (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, rp)
+		if err != nil {
+			return fmt.Errorf("failed to upsert related person: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for related person: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) UpsertStudentRelatedPerson(ctx context.Context, srp *StudentRelatedPerson) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentRelatedPerson{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentRelatedPerson{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_related_persons (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+
+		_, err := tx.NamedExecContext(ctx, query, srp)
+		if err != nil {
+			return fmt.Errorf("failed to upsert student related person: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) DeleteStudentRelatedPersons(ctx context.Context, iirID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM student_related_persons WHERE iir_id = ?`
+		_, err := tx.ExecContext(ctx, query, iirID)
+		if err != nil {
+			return fmt.Errorf("failed to delete student related persons: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) UpsertFamilyBackground(ctx context.Context, fb *FamilyBackground) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(FamilyBackground{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(FamilyBackground{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO family_backgrounds (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, fb)
+		if err != nil {
+			return fmt.Errorf("failed to upsert family background: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for family background: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) CreateStudentSiblingSupport(ctx context.Context, sss *StudentSiblingSupport) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `
+			INSERT INTO student_sibling_supports (family_background_id, support_type_id)
+			VALUES (:family_background_id, :support_type_id)
+		`
+		_, err := tx.NamedExecContext(ctx, query, sss)
+		if err != nil {
+			return fmt.Errorf("failed to create student sibling support: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) DeleteStudentSiblingSupportsByFamilyID(ctx context.Context, familyBackgroundID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM student_sibling_supports WHERE family_background_id = ?`
+		_, err := tx.ExecContext(ctx, query, familyBackgroundID)
+		if err != nil {
+			return fmt.Errorf("failed to delete student sibling supports: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) UpsertEducationalBackground(ctx context.Context, eb *EducationalBackground) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(EducationalBackground{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(EducationalBackground{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO educational_backgrounds (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, eb)
+		if err != nil {
+			return fmt.Errorf("failed to upsert educational background: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for educational background: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) UpsertSchoolDetails(ctx context.Context, sd *SchoolDetails) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(SchoolDetails{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(SchoolDetails{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO school_details (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, sd)
+		if err != nil {
+			return fmt.Errorf("failed to upsert school details: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for school details: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) DeleteSchoolDetailsByEBID(ctx context.Context, ebID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM school_details WHERE eb_id = ?`
+		_, err := tx.ExecContext(ctx, query, ebID)
+		if err != nil {
+			return fmt.Errorf("failed to delete school details: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) UpsertStudentHealthRecord(ctx context.Context, hr *StudentHealthRecord) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentHealthRecord{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentHealthRecord{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_health_records (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, hr)
+		if err != nil {
+			return fmt.Errorf("failed to upsert student health record: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for student health record: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) UpsertStudentConsultation(ctx context.Context, sc *StudentConsultation) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentConsultation{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentConsultation{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_consultations (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, sc)
+		if err != nil {
+			return fmt.Errorf("failed to upsert student consultation: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for student consultation: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) UpsertStudentFinance(ctx context.Context, sf *StudentFinance) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentFinance{}, []string{"created_at", "updated_at"})
+		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentFinance{}, []string{"created_at", "updated_at", "iir_id"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_finances (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, updateCols)
+		result, err := tx.NamedExecContext(ctx, query, sf)
+		if err != nil {
+			return fmt.Errorf("failed to upsert student finance: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for student finance: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) CreateStudentFinancialSupport(ctx context.Context, sfs *StudentFinancialSupport) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `
+			INSERT INTO student_financial_supports (sf_id, support_type_id, created_at, updated_at)
+			VALUES (:sf_id, :support_type_id, :created_at, :updated_at)
+		`
+		_, err := tx.NamedExecContext(ctx, query, sfs)
+		if err != nil {
+			return fmt.Errorf("failed to create student financial support: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) DeleteStudentFinancialSupportsByFinanceID(ctx context.Context, financeID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM student_financial_supports WHERE sf_id = ?`
+		_, err := tx.ExecContext(ctx, query, financeID)
+		if err != nil {
+			return fmt.Errorf("failed to delete student financial supports: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) CreateStudentActivity(ctx context.Context, sa *StudentActivity) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentActivity{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_activities (%s)
+			VALUES (%s)
+		`, cols, vals)
+		result, err := tx.NamedExecContext(ctx, query, sa)
+		if err != nil {
+			return fmt.Errorf("failed to create student activity: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for student activity: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) DeleteStudentActivitiesByIIRID(ctx context.Context, iirID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM student_activities WHERE iir_id = ?`
+		_, err := tx.ExecContext(ctx, query, iirID)
+		if err != nil {
+			return fmt.Errorf("failed to delete student activities: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) CreateStudentSubjectPreference(ctx context.Context, ssp *StudentSubjectPreference) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentSubjectPreference{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_subject_preferences (%s)
+			VALUES (%s)
+		`, cols, vals)
+		result, err := tx.NamedExecContext(ctx, query, ssp)
+		if err != nil {
+			return fmt.Errorf("failed to create student subject preference: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for student subject preference: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) DeleteStudentSubjectPreferencesByIIRID(ctx context.Context, iirID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM student_subject_preferences WHERE iir_id = ?`
+		_, err := tx.ExecContext(ctx, query, iirID)
+		if err != nil {
+			return fmt.Errorf("failed to delete student subject preferences: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) CreateStudentHobby(ctx context.Context, sh *StudentHobby) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(StudentHobby{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO student_hobbies (%s)
+			VALUES (%s)
+		`, cols, vals)
+		result, err := tx.NamedExecContext(ctx, query, sh)
+		if err != nil {
+			return fmt.Errorf("failed to create student hobby: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for student hobby: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) DeleteStudentHobbiesByIIRID(ctx context.Context, iirID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM student_hobbies WHERE iir_id = ?`
+		_, err := tx.ExecContext(ctx, query, iirID)
+		if err != nil {
+			return fmt.Errorf("failed to delete student hobbies: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) CreateTestResult(ctx context.Context, tr *TestResult) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(TestResult{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO test_results (%s)
+			VALUES (%s)
+		`, cols, vals)
+		result, err := tx.NamedExecContext(ctx, query, tr)
+		if err != nil {
+			return fmt.Errorf("failed to create test result: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for test result: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) DeleteTestResultsByIIRID(ctx context.Context, iirID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM test_results WHERE iir_id = ?`
+		_, err := tx.ExecContext(ctx, query, iirID)
+		if err != nil {
+			return fmt.Errorf("failed to delete test results: %w", err)
+		}
+		return nil
+	})
+}
+
+func (r *Repository) CreateSignificantNote(ctx context.Context, sn *SignificantNote) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		cols, vals := database.GetInsertStatement(SignificantNote{}, []string{"created_at", "updated_at"})
+
+		query := fmt.Sprintf(`
+			INSERT INTO significant_notes (%s)
+			VALUES (%s)
+		`, cols, vals)
+		result, err := tx.NamedExecContext(ctx, query, sn)
+		if err != nil {
+			return fmt.Errorf("failed to create significant note: %w", err)
+		}
+
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("failed to get last insert ID for significant note: %w", err)
+		}
+
+		id = int(lastID)
+		return nil
+	})
+	return id, err
+}
+
+func (r *Repository) DeleteSignificantNotesByIIRID(ctx context.Context, iirID int) error {
+	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+		query := `DELETE FROM significant_notes WHERE iir_id = ?`
+		_, err := tx.ExecContext(ctx, query, iirID)
+		if err != nil {
+			return fmt.Errorf("failed to delete significant notes: %w", err)
+		}
+		return nil
+	})
 }
