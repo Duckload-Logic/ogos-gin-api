@@ -2,16 +2,16 @@
 package middleware
 
 import (
-	"database/sql"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 )
 
 // OwnershipMiddleware - Direct database access version
-func OwnershipMiddleware(db *sql.DB, paramName string) gin.HandlerFunc {
+func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		loggedInUserID := c.MustGet("userID").(int)
 		roleID := c.MustGet("roleID").(int)
@@ -52,7 +52,7 @@ func OwnershipMiddleware(db *sql.DB, paramName string) gin.HandlerFunc {
 
 // Direct database query - ONE function to rule them all
 func checkStudentOwnership(
-	db *sql.DB, userID int,
+	db *sqlx.DB, userID int,
 	paramName string, resourceID int,
 ) (bool, error) {
 	switch paramName {
