@@ -15,8 +15,8 @@ seed:
 	migrate create -ext sql -dir ./seeds -seq $(name)
 
 # Desc: To create fake data seed migration
-# Usage: make fake name=insert_fake_data
-fake:
+# Usage: make fake
+fakes:
 	go run cmd/faker/faker.go
 
 # Desc: To refresh database with cli
