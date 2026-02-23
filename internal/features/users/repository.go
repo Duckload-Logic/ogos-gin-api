@@ -2,16 +2,16 @@ package users
 
 import (
 	"context"
-	"database/sql"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
 type Repository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewRepository(db *sql.DB) *Repository {
+func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -80,7 +80,7 @@ func (r *Repository) CreateUser(
 ) (int, error) {
 	var userID int
 
-	err := database.RunInTransaction(ctx, r.db, func(tx *sql.Tx) error {
+	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
 		query := `
 			INSERT INTO users (
 				role_id, first_name,
