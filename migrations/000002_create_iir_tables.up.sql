@@ -16,7 +16,7 @@ CREATE TABLE addresses(
     region VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
     barangay VARCHAR(100) NOT NULL,
-    street_detail VARCHAR(255),
+    street_detail VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -24,6 +24,22 @@ CREATE TABLE addresses(
 -- ============================================================================
 -- STUDENT PROFILES & ENROLLMENT
 -- ============================================================================
+
+CREATE TABLE emergency_contacts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    iir_id INT NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    middle_name VARCHAR(100) DEFAULT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    contact_number VARCHAR(20) NOT NULL,
+    relationship_id INT NOT NULL,
+    address_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
+    FOREIGN KEY (relationship_id) REFERENCES student_relationship_types(id),
+    FOREIGN KEY (address_id) REFERENCES addresses(id)
+);
 
 CREATE TABLE student_personal_info(
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -37,28 +53,22 @@ CREATE TABLE student_personal_info(
     complexion VARCHAR(50) NOT NULL,
     high_school_gwa DECIMAL(4,2) NOT NULL,
     course_id INT NOT NULL,
-    year_level VARCHAR(50),
-    section VARCHAR(50),
-    place_of_birth VARCHAR(255),
-    date_of_birth DATE,
+    year_level INT NOT NULL,
+    section INT NOT NULL,
+    place_of_birth VARCHAR(255) NOT NULL,
+    date_of_birth DATE NOT NULL,
     is_employed BOOLEAN DEFAULT FALSE,
     employer_name VARCHAR(255) DEFAULT NULL,
     employer_address VARCHAR(255) DEFAULT NULL,
-    mobile_number VARCHAR(20),
-    telephone_number VARCHAR(20),
-    emergency_contact_name VARCHAR(255),
-    emergency_contact_number VARCHAR(20),
-    emergency_contact_relationship_id INT,
-    emergency_contact_address_id INT,
+    mobile_number VARCHAR(20) NOT NULL,
+    telephone_number VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE,
     FOREIGN KEY (religion_id) REFERENCES religions(id),
     FOREIGN KEY (civil_status_id) REFERENCES civil_status_types(id),
     FOREIGN KEY (course_id) REFERENCES courses(id),
-    FOREIGN KEY (gender_id) REFERENCES genders(id),
-    FOREIGN KEY (emergency_contact_relationship_id) REFERENCES student_relationship_types(id),
-    FOREIGN KEY (emergency_contact_address_id) REFERENCES addresses(id)
+    FOREIGN KEY (gender_id) REFERENCES genders(id)
 );
 
 CREATE TABLE student_selected_reasons (
@@ -94,16 +104,14 @@ CREATE TABLE related_persons(
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100) DEFAULT NULL,
     last_name VARCHAR(100) NOT NULL,
-    address_id INT,
     educational_level VARCHAR(100) NOT NULL,
-    date_of_birth DATE,
+    date_of_birth DATE NOT NULL,
     occupation VARCHAR(100) DEFAULT NULL,
     employer_name VARCHAR(150) DEFAULT NULL,
     employer_address VARCHAR(255) DEFAULT NULL,
     contact_number VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (address_id) REFERENCES addresses(id) ON DELETE SET NULL
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE student_related_persons (

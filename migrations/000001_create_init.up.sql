@@ -11,7 +11,7 @@ CREATE TABLE users(
     id INT AUTO_INCREMENT PRIMARY KEY,
     role_id INT NOT NULL,
     first_name VARCHAR(100) NOT NULL,
-    middle_name VARCHAR(100),
+    middle_name VARCHAR(100) DEFAULT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
