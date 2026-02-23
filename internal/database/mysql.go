@@ -1,13 +1,13 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 func buildDBURL() string {
@@ -37,9 +37,9 @@ func buildDBURL() string {
 	)
 }
 
-func GetDBConnection() (*sql.DB, error) {
+func GetDBConnection() (*sqlx.DB, error) {
 	// Open Database instance
-	db, err := sql.Open("mysql", buildDBURL())
+	db, err := sqlx.Connect("mysql", buildDBURL())
 	if err != nil {
 		log.Fatal("Failed to open Database connection:", err)
 	}
