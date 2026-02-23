@@ -856,10 +856,395 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	_, err := s.repo.CreateIIRRecord(ctx, iirRecord)
+	iirID, err := s.repo.CreateIIRRecord(ctx, iirRecord)
 	if err != nil {
 		return fmt.Errorf("failed to create IIR record: %w", err)
 	}
 
-	return nil
+	// Use errgroup for concurrent operations
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		if req.Student.StudentPersonalInfoDTO.ID == 0 {
+			req.Student.StudentPersonalInfoDTO.IIRID = iirID
+		}
+		return s.repo.UpsertStudentPersonalInfo(ctx, &StudentPersonalInfo{
+			IIRID:           iirID,
+			StudentNumber:   req.Student.StudentPersonalInfoDTO.StudentNumber,
+			GenderID:        req.Student.StudentPersonalInfoDTO.Gender.ID,
+			CivilStatusID:   req.Student.StudentPersonalInfoDTO.CivilStatus.ID,
+			ReligionID:      req.Student.StudentPersonalInfoDTO.Religion.ID,
+			HeightFt:        req.Student.StudentPersonalInfoDTO.HeightFt,
+			WeightKg:        req.Student.StudentPersonalInfoDTO.WeightKg,
+			Complexion:      req.Student.StudentPersonalInfoDTO.Complexion,
+			HighSchoolGWA:   req.Student.StudentPersonalInfoDTO.HighSchoolGWA,
+			CourseID:        req.Student.StudentPersonalInfoDTO.Course.ID,
+			YearLevel:       req.Student.StudentPersonalInfoDTO.YearLevel,
+			Section:         req.Student.StudentPersonalInfoDTO.Section,
+			PlaceOfBirth:    req.Student.StudentPersonalInfoDTO.PlaceOfBirth,
+			DateOfBirth:     req.Student.StudentPersonalInfoDTO.DateOfBirth,
+			IsEmployed:      req.Student.StudentPersonalInfoDTO.IsEmployed,
+			EmployerName:    req.Student.StudentPersonalInfoDTO.EmployerName,
+			EmployerAddress: req.Student.StudentPersonalInfoDTO.EmployerAddress,
+			MobileNumber:    req.Student.StudentPersonalInfoDTO.MobileNumber,
+			TelephoneNumber: req.Student.StudentPersonalInfoDTO.TelephoneNumber,
+			CreatedAt:       now,
+			UpdatedAt:       now,
+		})
+	})
+
+	g.Go(func() error {
+		ec := req.Student.StudentPersonalInfoDTO.EmergencyContact
+		// First upsert the address
+		addressID, err := s.repo.UpsertAddress(ctx, &Address{
+			Region:       ec.Address.Region,
+			City:         ec.Address.City,
+			Barangay:     ec.Address.Barangay,
+			StreetDetail: ec.Address.StreetDetail,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert emergency contact address: %w", err)
+		}
+
+		// Then upsert the emergency contact
+		_, err = s.repo.UpsertEmergencyContact(ctx, &EmergencyContact{
+			IIRID:          iirID,
+			FirstName:      ec.FirstName,
+			MiddleName:     ec.MiddleName,
+			LastName:       ec.LastName,
+			ContactNumber:  ec.ContactNumber,
+			RelationshipID: ec.Relationship.ID,
+			AddressID:      addressID,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		})
+		return err
+	})
+
+	g.Go(func() error {
+		for _, addrDTO := range req.Student.Addresses {
+			addressID, err := s.repo.UpsertAddress(ctx, &Address{
+				Region:       addrDTO.Address.Region,
+				City:         addrDTO.Address.City,
+				Barangay:     addrDTO.Address.Barangay,
+				StreetDetail: addrDTO.Address.StreetDetail,
+				CreatedAt:    now,
+				UpdatedAt:    now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to upsert student address: %w", err)
+			}
+
+			_, err = s.repo.UpsertStudentAddress(ctx, &StudentAddress{
+				IIRID:       iirID,
+				AddressID:   addressID,
+				AddressType: addrDTO.AddressType,
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save student address relation: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		ebID, err := s.repo.UpsertEducationalBackground(ctx, &EducationalBackground{
+			IIRID:              iirID,
+			NatureOfSchooling:  req.Education.NatureOfSchooling,
+			InterruptedDetails: req.Education.InterruptedDetails,
+			CreatedAt:          now,
+			UpdatedAt:          now,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert educational background: %w", err)
+		}
+
+		// Delete existing school details
+		if err := s.repo.DeleteSchoolDetailsByEBID(ctx, ebID); err != nil {
+			return fmt.Errorf("failed to delete existing school details: %w", err)
+		}
+
+		// Save new school details
+		for _, schoolDTO := range req.Education.School {
+			_, err := s.repo.UpsertSchoolDetails(ctx, &SchoolDetails{
+				EBID:               ebID,
+				EducationalLevelID: schoolDTO.EducationalLevel.ID,
+				SchoolName:         schoolDTO.SchoolName,
+				SchoolAddress:      schoolDTO.SchoolAddress,
+				SchoolType:         schoolDTO.SchoolType,
+				YearStarted:        schoolDTO.YearStarted,
+				YearCompleted:      schoolDTO.YearCompleted,
+				Awards:             schoolDTO.Awards,
+				CreatedAt:          now,
+				UpdatedAt:          now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save school details: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		fbID, err := s.repo.UpsertFamilyBackground(ctx, &FamilyBackground{
+			IIRID:                 iirID,
+			ParentalStatusID:      req.Family.FamilyBackgroundDTO.ParentalStatus.ID,
+			ParentalStatusDetails: req.Family.FamilyBackgroundDTO.ParentalStatusDetails,
+			Brothers:              req.Family.FamilyBackgroundDTO.Brothers,
+			Sisters:               req.Family.FamilyBackgroundDTO.Sisters,
+			EmployedSiblings:      req.Family.FamilyBackgroundDTO.EmployedSiblings,
+			OrdinalPosition:       req.Family.FamilyBackgroundDTO.OrdinalPosition,
+			HaveQuietPlaceToStudy: req.Family.FamilyBackgroundDTO.HaveQuietPlaceToStudy,
+			IsSharingRoom:         req.Family.FamilyBackgroundDTO.IsSharingRoom,
+			RoomSharingDetails:    req.Family.FamilyBackgroundDTO.RoomSharingDetails,
+			NatureOfResidenceId:   req.Family.FamilyBackgroundDTO.NatureOfResidence.ID,
+			CreatedAt:             now,
+			UpdatedAt:             now,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert family background: %w", err)
+		}
+
+		// Delete existing sibling supports
+		if err := s.repo.DeleteStudentSiblingSupportsByFamilyID(ctx, fbID); err != nil {
+			return fmt.Errorf("failed to delete existing sibling supports: %w", err)
+		}
+
+		// Save new sibling supports
+		for _, supportType := range req.Family.FamilyBackgroundDTO.SiblingSupportTypes {
+			if err := s.repo.CreateStudentSiblingSupport(ctx, &StudentSiblingSupport{
+				FamilyBackgroundID: fbID,
+				SupportTypeID:      supportType.ID,
+			}); err != nil {
+				return fmt.Errorf("failed to save sibling support: %w", err)
+			}
+		}
+
+		// Delete existing related persons
+		if err := s.repo.DeleteStudentRelatedPersons(ctx, iirID); err != nil {
+			return fmt.Errorf("failed to delete existing related persons: %w", err)
+		}
+
+		// Save new related persons
+		for _, relPersonDTO := range req.Family.RelatedPersons {
+			relPersonID, err := s.repo.UpsertRelatedPerson(ctx, &RelatedPerson{
+				FirstName:        relPersonDTO.FirstName,
+				LastName:         relPersonDTO.LastName,
+				MiddleName:       relPersonDTO.MiddleName,
+				DateOfBirth:      relPersonDTO.DateOfBirth,
+				EducationalLevel: relPersonDTO.EducationalLevel,
+				Occupation:       relPersonDTO.Occupation,
+				EmployerName:     relPersonDTO.EmployerName,
+				EmployerAddress:  relPersonDTO.EmployerAddress,
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save related person: %w", err)
+			}
+
+			if err := s.repo.UpsertStudentRelatedPerson(ctx, &StudentRelatedPerson{
+				IIRID:           iirID,
+				RelatedPersonID: relPersonID,
+				RelationshipID:  relPersonDTO.Relationship.ID,
+				IsParent:        relPersonDTO.IsParent,
+				IsGuardian:      relPersonDTO.IsGuardian,
+				IsLiving:        relPersonDTO.IsLiving,
+				CreatedAt:       now,
+				UpdatedAt:       now,
+			}); err != nil {
+				return fmt.Errorf("failed to save student related person relation: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		_, err := s.repo.UpsertStudentHealthRecord(ctx, &StudentHealthRecord{
+			IIRID:                   iirID,
+			VisionHasProblem:        req.Health.StudentHealthRecordDTO.VisionHasProblem,
+			VisionDetails:           req.Health.StudentHealthRecordDTO.VisionDetails,
+			HearingHasProblem:       req.Health.StudentHealthRecordDTO.HearingHasProblem,
+			HearingDetails:          req.Health.StudentHealthRecordDTO.HearingDetails,
+			SpeechHasProblem:        req.Health.StudentHealthRecordDTO.SpeechHasProblem,
+			SpeechDetails:           req.Health.StudentHealthRecordDTO.SpeechDetails,
+			GeneralHealthHasProblem: req.Health.StudentHealthRecordDTO.GeneralHealthHasProblem,
+			GeneralHealthDetails:    req.Health.StudentHealthRecordDTO.GeneralHealthDetails,
+			CreatedAt:               now,
+			UpdatedAt:               now,
+		})
+		return err
+	})
+
+	g.Go(func() error {
+		for _, consultationDTO := range req.Health.Consultations {
+			_, err := s.repo.UpsertStudentConsultation(ctx, &StudentConsultation{
+				IIRID:            iirID,
+				ProfessionalType: consultationDTO.ProfessionalType,
+				HasConsulted:     consultationDTO.HasConsulted,
+				WhenDate:         consultationDTO.WhenDate,
+				ForWhat:          consultationDTO.ForWhat,
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save student consultation: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		sfID, err := s.repo.UpsertStudentFinance(ctx, &StudentFinance{
+			IIRID:                      iirID,
+			MonthlyFamilyIncomeRangeID: req.Family.Finance.MonthlyFamilyIncomeRange.ID,
+			OtherIncomeDetails:         req.Family.Finance.OtherIncomeDetails,
+			WeeklyAllowance:            req.Family.Finance.WeeklyAllowance,
+			CreatedAt:                  now,
+			UpdatedAt:                  now,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to upsert student finance: %w", err)
+		}
+
+		// Delete existing financial supports
+		if err := s.repo.DeleteStudentFinancialSupportsByFinanceID(ctx, sfID); err != nil {
+			return fmt.Errorf("failed to delete existing financial supports: %w", err)
+		}
+
+		// Save new financial supports
+		for _, supportType := range req.Family.Finance.FinancialSupportTypes {
+			if err := s.repo.CreateStudentFinancialSupport(ctx, &StudentFinancialSupport{
+				StudentFinanceID: sfID,
+				SupportTypeID:    supportType.ID,
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			}); err != nil {
+				return fmt.Errorf("failed to save student financial support: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		// Delete existing activities
+		if err := s.repo.DeleteStudentActivitiesByIIRID(ctx, iirID); err != nil {
+			return fmt.Errorf("failed to delete existing activities: %w", err)
+		}
+
+		// Save new activities
+		for _, activityDTO := range req.Interests.Activities {
+			_, err := s.repo.CreateStudentActivity(ctx, &StudentActivity{
+				IIRID:              iirID,
+				OptionID:           activityDTO.ActivityOption.ID,
+				OtherSpecification: activityDTO.OtherSpecification,
+				Role:               activityDTO.Role,
+				RoleSpecification:  activityDTO.RoleSpecification,
+				CreatedAt:          now,
+				UpdatedAt:          now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save student activity: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		// Delete existing subject preferences
+		if err := s.repo.DeleteStudentSubjectPreferencesByIIRID(ctx, iirID); err != nil {
+			return fmt.Errorf("failed to delete existing subject preferences: %w", err)
+		}
+
+		// Save new subject preferences
+		for _, prefDTO := range req.Interests.SubjectPreferences {
+			_, err := s.repo.CreateStudentSubjectPreference(ctx, &StudentSubjectPreference{
+				IIRID:       iirID,
+				SubjectName: prefDTO.SubjectName,
+				IsFavorite:  prefDTO.IsFavorite,
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save student subject preference: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		// Delete existing hobbies
+		if err := s.repo.DeleteStudentHobbiesByIIRID(ctx, iirID); err != nil {
+			return fmt.Errorf("failed to delete existing hobbies: %w", err)
+		}
+
+		// Save new hobbies
+		for _, hobbyDTO := range req.Interests.Hobbies {
+			_, err := s.repo.CreateStudentHobby(ctx, &StudentHobby{
+				IIRID:        iirID,
+				HobbyName:    hobbyDTO.HobbyName,
+				PriorityRank: hobbyDTO.PriorityRank,
+				CreatedAt:    now,
+				UpdatedAt:    now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save student hobby: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		// Delete existing test results
+		if err := s.repo.DeleteTestResultsByIIRID(ctx, iirID); err != nil {
+			return fmt.Errorf("failed to delete existing test results: %w", err)
+		}
+
+		// Save new test results
+		for _, testResultDTO := range req.TestResults {
+			_, err := s.repo.CreateTestResult(ctx, &TestResult{
+				IIRID:       iirID,
+				TestDate:    testResultDTO.TestDate,
+				TestName:    testResultDTO.TestName,
+				RawScore:    testResultDTO.RawScore,
+				Percentile:  testResultDTO.Percentile,
+				Description: testResultDTO.Description,
+				CreatedAt:   now,
+				UpdatedAt:   now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save test result: %w", err)
+			}
+		}
+		return nil
+	})
+
+	g.Go(func() error {
+		// Delete existing significant notes
+		if err := s.repo.DeleteSignificantNotesByIIRID(ctx, iirID); err != nil {
+			return fmt.Errorf("failed to delete existing significant notes: %w", err)
+		}
+
+		// Save new significant notes
+		for _, noteDTO := range req.SignificantNotes {
+			_, err := s.repo.CreateSignificantNote(ctx, &SignificantNote{
+				IIRID:               iirID,
+				NoteDate:            noteDTO.NoteDate,
+				IncidentDescription: noteDTO.IncidentDescription,
+				Remarks:             noteDTO.Remarks,
+				CreatedAt:           now,
+				UpdatedAt:           now,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to save significant note: %w", err)
+			}
+		}
+		return nil
+	})
+
+	return g.Wait()
 }

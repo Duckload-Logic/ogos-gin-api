@@ -82,6 +82,7 @@ type StudentSelectedReasonDTO struct {
 
 type StudentPersonalInfoDTO struct {
 	ID               int                 `json:"id"`
+	IIRID            int                 `json:"iirId"`
 	StudentNumber    string              `json:"studentNumber" binding:"required"`
 	Gender           Gender              `json:"gender" binding:"required"`
 	CivilStatus      CivilStatusType     `json:"civilStatus" binding:"required"`
