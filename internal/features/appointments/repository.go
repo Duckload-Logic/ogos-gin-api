@@ -4,13 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Repository struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
-func NewRepository(db *sql.DB) *Repository {
+func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -18,7 +20,7 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 
 	query := `
 		INSERT INTO appointments (
-			user_id, reason, scheduled_date, scheduled_time, 
+			user_id, reason, scheduled_date, scheduled_time,
 			concern_category, status, created_at, updated_at
 		)
 		VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -47,8 +49,8 @@ func (r *Repository) Create(ctx context.Context, appt *Appointment) error {
 
 func (r *Repository) GetByID(ctx context.Context, id int) (*Appointment, error) {
 	query := `
-        SELECT 
-            appointment_id, user_id, reason, scheduled_date, 
+        SELECT
+            appointment_id, user_id, reason, scheduled_date,
 			scheduled_time, concern_category, status, created_at, updated_at
         FROM appointments
         WHERE appointment_id = ?`
@@ -81,8 +83,8 @@ func (r *Repository) List(
 	ctx context.Context, status string, startDate string, endDate string,
 ) ([]Appointment, error) {
 	query := `
-        SELECT 
-            appointment_id, user_id, reason, scheduled_date, 
+        SELECT
+            appointment_id, user_id, reason, scheduled_date,
 			scheduled_time, concern_category, status, created_at, updated_at
         FROM appointments
         WHERE 1=1`
@@ -130,14 +132,14 @@ func (r *Repository) List(
 
 		appts = append(appts, appt)
 	}
-	
+
 	return appts, nil
 }
 
 func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]Appointment, error) {
 	query := `
 		SELECT
-			appointment_id, user_id, reason, scheduled_date, 
+			appointment_id, user_id, reason, scheduled_date,
 			scheduled_time, concern_category,status, created_at, updated_at
 		FROM appointments
 		WHERE scheduled_date = ?
@@ -175,8 +177,8 @@ func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]Appointme
 
 func (r *Repository) GetByUserID(ctx context.Context, userID int) ([]Appointment, error) {
 	query := `
-        SELECT 
-            appointment_id, user_id, reason, scheduled_date, 
+        SELECT
+            appointment_id, user_id, reason, scheduled_date,
 			scheduled_time, concern_category, status, created_at, updated_at
         FROM appointments
         WHERE user_id = ?`
