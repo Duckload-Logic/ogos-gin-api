@@ -1,8 +1,7 @@
 package bootstrap
 
 import (
-	"database/sql"
-
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
@@ -11,7 +10,7 @@ import (
 )
 
 type Handlers struct {
-	DB                 *sql.DB
+	DB                 *sqlx.DB
 	AuthHandler        *auth.Handler
 	UserHandler        *users.Handler
 	StudentHandler     *students.Handler

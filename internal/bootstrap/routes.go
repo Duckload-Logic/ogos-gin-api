@@ -1,11 +1,11 @@
 package bootstrap
 
 import (
-	"database/sql"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
@@ -19,7 +19,7 @@ import (
 	_ "github.com/olazo-johnalbert/duckload-api/docs"
 )
 
-func SetupRoutes(db *sql.DB, handlers *Handlers) *gin.Engine {
+func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	g := gin.Default()
 
 	corsConfig := cors.DefaultConfig()
