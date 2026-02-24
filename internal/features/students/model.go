@@ -8,70 +8,70 @@ import (
 // Lookup models
 type Gender struct {
 	ID         int    `db:"id" json:"id"`
-	GenderName string `db:"gender_name" json:"name"`
+	GenderName string `db:"gender_name" json:"name,omitempty"`
 }
 
 type ParentalStatusType struct {
 	ID         int    `db:"id" json:"id"`
-	StatusName string `db:"status_name" json:"name"`
+	StatusName string `db:"status_name" json:"name,omitempty"`
 }
 
 type StudentSupportType struct {
 	ID              int    `db:"id" json:"id"`
-	SupportTypeName string `db:"support_type_name" json:"name"`
+	SupportTypeName string `db:"support_type_name" json:"name,omitempty"`
 }
 
 type EnrollmentReason struct {
 	ID   int    `db:"id" json:"id"`
-	Text string `db:"reason_text" json:"text"`
+	Text string `db:"reason_text" json:"text,omitempty"`
 }
 
 type IncomeRange struct {
 	ID        int    `db:"id" json:"id"`
-	RangeText string `db:"range_text" json:"text"`
+	RangeText string `db:"range_text" json:"text,omitempty"`
 }
 
 type EducationalLevel struct {
 	ID        int    `db:"id" json:"id"`
-	LevelName string `db:"level_name" json:"name"`
+	LevelName string `db:"level_name" json:"name,omitempty"`
 }
 
 type Course struct {
 	ID         int    `db:"id" json:"id"`
-	Code       string `db:"code" json:"code"`
-	CourseName string `db:"course_name" json:"name"`
+	Code       string `db:"code" json:"code,omitempty"`
+	CourseName string `db:"course_name" json:"name,omitempty"`
 }
 
 type CivilStatusType struct {
 	ID         int    `db:"id" json:"id"`
-	StatusName string `db:"status_name" json:"name"`
+	StatusName string `db:"status_name" json:"name,omitempty"`
 }
 
 type Religion struct {
 	ID           int    `db:"id" json:"id"`
-	ReligionName string `db:"religion_name" json:"name"`
+	ReligionName string `db:"religion_name" json:"name,omitempty"`
 }
 
 type StudentRelationshipType struct {
 	ID               int    `db:"id" json:"id"`
-	RelationshipName string `db:"relationship_name" json:"name"`
+	RelationshipName string `db:"relationship_name" json:"name,omitempty"`
 }
 
 type NatureOfResidenceType struct {
 	ID                int    `db:"id" json:"id"`
-	ResidenceTypeName string `db:"residence_type_name" json:"name"`
+	ResidenceTypeName string `db:"residence_type_name" json:"name,omitempty"`
 }
 
 type SibilingSupportType struct {
 	ID          int    `db:"id" json:"id"`
-	SupportName string `db:"name" json:"name"`
+	SupportName string `db:"name" json:"name,omitempty"`
 }
 
 type ActivityOption struct {
 	ID       int    `db:"id" json:"id"`
-	Name     string `db:"name" json:"name"`         // "Academic" or "Extra-Curricular"
-	Category string `db:"category" json:"category"` // e.g., "Basketball", "Student Government", "Volunteering"
-	IsActive bool   `db:"is_active" json:"isActive"`
+	Name     string `db:"name" json:"name,omitempty"`         // "Academic" or "Extra-Curricular"
+	Category string `db:"category" json:"category,omitempty"` // e.g., "Basketball", "Student Government", "Volunteering"
+	IsActive bool   `db:"is_active" json:"isActive,omitempty"`
 }
 
 type StudentBasicInfoView struct {
@@ -302,14 +302,14 @@ type StudentFinancialSupport struct {
 
 // Interests and Activities
 type StudentActivity struct {
-	ID                 int       `db:"id" json:"id"`
-	IIRID              int       `db:"iir_id" json:"iirId"`
-	OptionID           int       `db:"option_id" json:"optionId,omitempty"`                     // FK to interest_options for standardized activities
-	OtherSpecification *string   `db:"other_specification" json:"otherSpecification,omitempty"` // For "Other" category
-	Role               string    `db:"role" json:"role"`                                        // "Officer", "Member", "Other"
-	RoleSpecification  *string   `db:"role_specification" json:"roleSpecification,omitempty"`   // If Role is "Other", specify
-	CreatedAt          time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt          time.Time `db:"updated_at" json:"updatedAt"`
+	ID                 int            `db:"id" json:"id"`
+	IIRID              int            `db:"iir_id" json:"iirId"`
+	OptionID           int            `db:"option_id" json:"optionId,omitempty"`                     // FK to interest_options for standardized activities
+	OtherSpecification sql.NullString `db:"other_specification" json:"otherSpecification,omitempty"` // For "Other" category
+	Role               string         `db:"role" json:"role"`                                        // "Officer", "Member", "Other"
+	RoleSpecification  sql.NullString `db:"role_specification" json:"roleSpecification,omitempty"`   // If Role is "Other", specify
+	CreatedAt          time.Time      `db:"created_at" json:"createdAt"`
+	UpdatedAt          time.Time      `db:"updated_at" json:"updatedAt"`
 }
 
 type StudentSubjectPreference struct {

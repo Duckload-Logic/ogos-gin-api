@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -179,7 +180,7 @@ func (s *Service) ListStudents(
 				IIRID:         st.IIRID,
 				UserID:        st.UserID,
 				FirstName:     st.FirstName,
-				MiddleName:    st.MiddleName,
+				MiddleName:    structs.FromSqlNull(st.MiddleName),
 				LastName:      st.LastName,
 				Gender:        *gender,
 				Email:         st.Email,
@@ -468,7 +469,7 @@ func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*Stude
 	emergencyContactDTO := EmergencyContactDTO{
 		ID:            emergencyContact.ID,
 		FirstName:     emergencyContact.FirstName,
-		MiddleName:    emergencyContact.MiddleName,
+		MiddleName:    structs.FromSqlNull(emergencyContact.MiddleName),
 		LastName:      emergencyContact.LastName,
 		ContactNumber: emergencyContact.ContactNumber,
 		Relationship:  *emergencyContactRelationship,
@@ -490,11 +491,11 @@ func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*Stude
 		Section:          personalInfo.Section,
 		PlaceOfBirth:     personalInfo.PlaceOfBirth,
 		DateOfBirth:      personalInfo.DateOfBirth,
-		TelephoneNumber:  personalInfo.TelephoneNumber,
+		TelephoneNumber:  structs.FromSqlNull(personalInfo.TelephoneNumber),
 		MobileNumber:     personalInfo.MobileNumber,
 		IsEmployed:       personalInfo.IsEmployed,
-		EmployerName:     personalInfo.EmployerName,
-		EmployerAddress:  personalInfo.EmployerAddress,
+		EmployerName:     structs.FromSqlNull(personalInfo.EmployerName),
+		EmployerAddress:  structs.FromSqlNull(personalInfo.EmployerAddress),
 		EmergencyContact: emergencyContactDTO,
 	}, nil
 }
@@ -563,7 +564,7 @@ func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID int) (*F
 	family = &FamilyBackgroundDTO{
 		ID:                    studentFamily.ID,
 		ParentalStatus:        *parentalStatus,
-		ParentalStatusDetails: studentFamily.ParentalStatusDetails,
+		ParentalStatusDetails: structs.FromSqlNull(studentFamily.ParentalStatusDetails),
 		Brothers:              studentFamily.Brothers,
 		Sisters:               studentFamily.Sisters,
 		EmployedSiblings:      studentFamily.EmployedSiblings,
@@ -571,7 +572,7 @@ func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID int) (*F
 		HaveQuietPlaceToStudy: studentFamily.HaveQuietPlaceToStudy,
 		IsSharingRoom:         studentFamily.IsSharingRoom,
 		SiblingSupportTypes:   supportTypes,
-		RoomSharingDetails:    studentFamily.RoomSharingDetails,
+		RoomSharingDetails:    structs.FromSqlNull(studentFamily.RoomSharingDetails),
 		NatureOfResidence:     *natureOfResidence,
 	}
 
@@ -600,12 +601,12 @@ func (s *Service) GetStudentRelatedPersons(ctx context.Context, iirID int) ([]Re
 			ID:               relatedPerson.ID,
 			FirstName:        relatedPerson.FirstName,
 			LastName:         relatedPerson.LastName,
-			MiddleName:       relatedPerson.MiddleName,
+			MiddleName:       structs.FromSqlNull(relatedPerson.MiddleName),
 			DateOfBirth:      relatedPerson.DateOfBirth,
 			EducationalLevel: relatedPerson.EducationalLevel,
-			Occupation:       relatedPerson.Occupation,
-			EmployerName:     relatedPerson.EmployerName,
-			EmployerAddress:  relatedPerson.EmployerAddress,
+			Occupation:       structs.FromSqlNull(relatedPerson.Occupation),
+			EmployerName:     structs.FromSqlNull(relatedPerson.EmployerName),
+			EmployerAddress:  structs.FromSqlNull(relatedPerson.EmployerAddress),
 			Relationship:     *relationship,
 			IsParent:         srp.IsParent,
 			IsGuardian:       srp.IsGuardian,
@@ -644,14 +645,14 @@ func (s *Service) GetEducationalBackground(ctx context.Context, iirID int) (*Edu
 			SchoolType:       school.SchoolType,
 			YearStarted:      school.YearStarted,
 			YearCompleted:    school.YearCompleted,
-			Awards:           school.Awards,
+			Awards:           structs.FromSqlNull(school.Awards),
 		})
 	}
 
 	return &EducationalBackgroundDTO{
 		ID:                 educationalBackground.ID,
 		NatureOfSchooling:  educationalBackground.NatureOfSchooling,
-		InterruptedDetails: educationalBackground.InterruptedDetails,
+		InterruptedDetails: structs.FromSqlNull(educationalBackground.InterruptedDetails),
 		School:             schoolDTOs,
 		CreatedAt:          educationalBackground.CreatedAt,
 		UpdatedAt:          educationalBackground.UpdatedAt,
@@ -686,7 +687,7 @@ func (s *Service) GetStudentFinancialInfo(ctx context.Context, iirID int) (*Stud
 	return &StudentFinanceDTO{
 		ID:                       financialInfo.ID,
 		MonthlyFamilyIncomeRange: *incomeRange,
-		OtherIncomeDetails:       financialInfo.OtherIncomeDetails,
+		OtherIncomeDetails:       structs.FromSqlNull(financialInfo.OtherIncomeDetails),
 		FinancialSupportTypes:    supportTypes,
 		WeeklyAllowance:          financialInfo.WeeklyAllowance,
 	}, nil
@@ -701,13 +702,13 @@ func (s *Service) GetStudentHealthRecord(ctx context.Context, iirID int) (*Stude
 	return &StudentHealthRecordDTO{
 		ID:                      healthRecord.ID,
 		VisionHasProblem:        healthRecord.VisionHasProblem,
-		VisionDetails:           healthRecord.VisionDetails,
+		VisionDetails:           structs.FromSqlNull(healthRecord.VisionDetails),
 		HearingHasProblem:       healthRecord.HearingHasProblem,
-		HearingDetails:          healthRecord.HearingDetails,
+		HearingDetails:          structs.FromSqlNull(healthRecord.HearingDetails),
 		SpeechHasProblem:        healthRecord.SpeechHasProblem,
-		SpeechDetails:           healthRecord.SpeechDetails,
+		SpeechDetails:           structs.FromSqlNull(healthRecord.SpeechDetails),
 		GeneralHealthHasProblem: healthRecord.GeneralHealthHasProblem,
-		GeneralHealthDetails:    healthRecord.GeneralHealthDetails,
+		GeneralHealthDetails:    structs.FromSqlNull(healthRecord.GeneralHealthDetails),
 	}, nil
 }
 
@@ -723,8 +724,8 @@ func (s *Service) GetStudentConsultations(ctx context.Context, iirID int) ([]Stu
 			ID:               c.ID,
 			ProfessionalType: c.ProfessionalType,
 			HasConsulted:     c.HasConsulted,
-			WhenDate:         c.WhenDate,
-			ForWhat:          c.ForWhat,
+			WhenDate:         structs.FromSqlNull(c.WhenDate),
+			ForWhat:          structs.FromSqlNull(c.ForWhat),
 		})
 	}
 
@@ -753,9 +754,9 @@ func (s *Service) GetStudentActivities(ctx context.Context, iirID int) ([]Studen
 			activityDTOs[i] = StudentActivityDTO{
 				ID:                 a.ID,
 				ActivityOption:     *option,
-				OtherSpecification: a.OtherSpecification,
+				OtherSpecification: structs.FromSqlNull(a.OtherSpecification),
 				Role:               a.Role,
-				RoleSpecification:  a.RoleSpecification,
+				RoleSpecification:  structs.FromSqlNull(a.RoleSpecification),
 			}
 		}(i, a)
 	}
@@ -884,10 +885,10 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			PlaceOfBirth:    req.Student.StudentPersonalInfoDTO.PlaceOfBirth,
 			DateOfBirth:     req.Student.StudentPersonalInfoDTO.DateOfBirth,
 			IsEmployed:      req.Student.StudentPersonalInfoDTO.IsEmployed,
-			EmployerName:    req.Student.StudentPersonalInfoDTO.EmployerName,
-			EmployerAddress: req.Student.StudentPersonalInfoDTO.EmployerAddress,
+			EmployerName:    structs.ToSqlNull(req.Student.StudentPersonalInfoDTO.EmployerName),
+			EmployerAddress: structs.ToSqlNull(req.Student.StudentPersonalInfoDTO.EmployerAddress),
 			MobileNumber:    req.Student.StudentPersonalInfoDTO.MobileNumber,
-			TelephoneNumber: req.Student.StudentPersonalInfoDTO.TelephoneNumber,
+			TelephoneNumber: structs.ToSqlNull(req.Student.StudentPersonalInfoDTO.TelephoneNumber),
 			CreatedAt:       now,
 			UpdatedAt:       now,
 		})
@@ -912,7 +913,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		_, err = s.repo.UpsertEmergencyContact(ctx, &EmergencyContact{
 			IIRID:          iirID,
 			FirstName:      ec.FirstName,
-			MiddleName:     ec.MiddleName,
+			MiddleName:     structs.ToSqlNull(ec.MiddleName),
 			LastName:       ec.LastName,
 			ContactNumber:  ec.ContactNumber,
 			RelationshipID: ec.Relationship.ID,
@@ -955,7 +956,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		ebID, err := s.repo.UpsertEducationalBackground(ctx, &EducationalBackground{
 			IIRID:              iirID,
 			NatureOfSchooling:  req.Education.NatureOfSchooling,
-			InterruptedDetails: req.Education.InterruptedDetails,
+			InterruptedDetails: structs.ToSqlNull(req.Education.InterruptedDetails),
 			CreatedAt:          now,
 			UpdatedAt:          now,
 		})
@@ -978,7 +979,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 				SchoolType:         schoolDTO.SchoolType,
 				YearStarted:        schoolDTO.YearStarted,
 				YearCompleted:      schoolDTO.YearCompleted,
-				Awards:             schoolDTO.Awards,
+				Awards:             structs.ToSqlNull(schoolDTO.Awards),
 				CreatedAt:          now,
 				UpdatedAt:          now,
 			})
@@ -993,14 +994,14 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		fbID, err := s.repo.UpsertFamilyBackground(ctx, &FamilyBackground{
 			IIRID:                 iirID,
 			ParentalStatusID:      req.Family.FamilyBackgroundDTO.ParentalStatus.ID,
-			ParentalStatusDetails: req.Family.FamilyBackgroundDTO.ParentalStatusDetails,
+			ParentalStatusDetails: structs.ToSqlNull(req.Family.FamilyBackgroundDTO.ParentalStatusDetails),
 			Brothers:              req.Family.FamilyBackgroundDTO.Brothers,
 			Sisters:               req.Family.FamilyBackgroundDTO.Sisters,
 			EmployedSiblings:      req.Family.FamilyBackgroundDTO.EmployedSiblings,
 			OrdinalPosition:       req.Family.FamilyBackgroundDTO.OrdinalPosition,
 			HaveQuietPlaceToStudy: req.Family.FamilyBackgroundDTO.HaveQuietPlaceToStudy,
 			IsSharingRoom:         req.Family.FamilyBackgroundDTO.IsSharingRoom,
-			RoomSharingDetails:    req.Family.FamilyBackgroundDTO.RoomSharingDetails,
+			RoomSharingDetails:    structs.ToSqlNull(req.Family.FamilyBackgroundDTO.RoomSharingDetails),
 			NatureOfResidenceId:   req.Family.FamilyBackgroundDTO.NatureOfResidence.ID,
 			CreatedAt:             now,
 			UpdatedAt:             now,
@@ -1034,12 +1035,12 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			relPersonID, err := s.repo.UpsertRelatedPerson(ctx, &RelatedPerson{
 				FirstName:        relPersonDTO.FirstName,
 				LastName:         relPersonDTO.LastName,
-				MiddleName:       relPersonDTO.MiddleName,
+				MiddleName:       structs.ToSqlNull(relPersonDTO.MiddleName),
 				DateOfBirth:      relPersonDTO.DateOfBirth,
 				EducationalLevel: relPersonDTO.EducationalLevel,
-				Occupation:       relPersonDTO.Occupation,
-				EmployerName:     relPersonDTO.EmployerName,
-				EmployerAddress:  relPersonDTO.EmployerAddress,
+				Occupation:       structs.ToSqlNull(relPersonDTO.Occupation),
+				EmployerName:     structs.ToSqlNull(relPersonDTO.EmployerName),
+				EmployerAddress:  structs.ToSqlNull(relPersonDTO.EmployerAddress),
 				CreatedAt:        now,
 				UpdatedAt:        now,
 			})
@@ -1067,13 +1068,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		_, err := s.repo.UpsertStudentHealthRecord(ctx, &StudentHealthRecord{
 			IIRID:                   iirID,
 			VisionHasProblem:        req.Health.StudentHealthRecordDTO.VisionHasProblem,
-			VisionDetails:           req.Health.StudentHealthRecordDTO.VisionDetails,
+			VisionDetails:           structs.ToSqlNull(req.Health.StudentHealthRecordDTO.VisionDetails),
 			HearingHasProblem:       req.Health.StudentHealthRecordDTO.HearingHasProblem,
-			HearingDetails:          req.Health.StudentHealthRecordDTO.HearingDetails,
+			HearingDetails:          structs.ToSqlNull(req.Health.StudentHealthRecordDTO.HearingDetails),
 			SpeechHasProblem:        req.Health.StudentHealthRecordDTO.SpeechHasProblem,
-			SpeechDetails:           req.Health.StudentHealthRecordDTO.SpeechDetails,
+			SpeechDetails:           structs.ToSqlNull(req.Health.StudentHealthRecordDTO.SpeechDetails),
 			GeneralHealthHasProblem: req.Health.StudentHealthRecordDTO.GeneralHealthHasProblem,
-			GeneralHealthDetails:    req.Health.StudentHealthRecordDTO.GeneralHealthDetails,
+			GeneralHealthDetails:    structs.ToSqlNull(req.Health.StudentHealthRecordDTO.GeneralHealthDetails),
 			CreatedAt:               now,
 			UpdatedAt:               now,
 		})
@@ -1086,8 +1087,8 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 				IIRID:            iirID,
 				ProfessionalType: consultationDTO.ProfessionalType,
 				HasConsulted:     consultationDTO.HasConsulted,
-				WhenDate:         consultationDTO.WhenDate,
-				ForWhat:          consultationDTO.ForWhat,
+				WhenDate:         structs.ToSqlNull(consultationDTO.WhenDate),
+				ForWhat:          structs.ToSqlNull(consultationDTO.ForWhat),
 				CreatedAt:        now,
 				UpdatedAt:        now,
 			})
@@ -1102,7 +1103,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		sfID, err := s.repo.UpsertStudentFinance(ctx, &StudentFinance{
 			IIRID:                      iirID,
 			MonthlyFamilyIncomeRangeID: req.Family.Finance.MonthlyFamilyIncomeRange.ID,
-			OtherIncomeDetails:         req.Family.Finance.OtherIncomeDetails,
+			OtherIncomeDetails:         structs.ToSqlNull(req.Family.Finance.OtherIncomeDetails),
 			WeeklyAllowance:            req.Family.Finance.WeeklyAllowance,
 			CreatedAt:                  now,
 			UpdatedAt:                  now,
@@ -1141,9 +1142,9 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			_, err := s.repo.CreateStudentActivity(ctx, &StudentActivity{
 				IIRID:              iirID,
 				OptionID:           activityDTO.ActivityOption.ID,
-				OtherSpecification: activityDTO.OtherSpecification,
+				OtherSpecification: structs.ToSqlNull(activityDTO.OtherSpecification),
 				Role:               activityDTO.Role,
-				RoleSpecification:  activityDTO.RoleSpecification,
+				RoleSpecification:  structs.ToSqlNull(activityDTO.RoleSpecification),
 				CreatedAt:          now,
 				UpdatedAt:          now,
 			})
