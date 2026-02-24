@@ -2,13 +2,14 @@ package database
 
 import (
 	"context"
-	"database/sql"
+
+	"github.com/jmoiron/sqlx"
 )
 
 func RunInTransaction(
-	ctx context.Context, db *sql.DB, fn func(*sql.Tx) error,
+	ctx context.Context, db *sqlx.DB, fn func(*sqlx.Tx) error,
 ) error {
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}

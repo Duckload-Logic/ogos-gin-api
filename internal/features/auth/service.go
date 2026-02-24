@@ -36,13 +36,13 @@ func (s *Service) AuthenticateUser(
 		return "", "", errors.New("invalid credentials")
 	}
 
-	// Generate the token 
-	token, err := s.tokenService.GenerateToken(user.ID, user.RoleID, "access", 30)
+	// Generate the token
+	token, err := s.tokenService.GenerateToken(user.ID, user.RoleID, "access", 60*24)
 	if err != nil {
 		return "", "", errors.New("failed to generate session")
 	}
 
-	// Generate refresh token 
+	// Generate refresh token
 	refreshToken, err := s.tokenService.GenerateToken(user.ID, user.RoleID, "refresh", 1440)
 	if err != nil {
 		return "", "", errors.New("failed to generate refresh token")
@@ -63,7 +63,7 @@ func (s *Service) RefreshToken(
 	userID := claims.UserID
 	roleID := claims.RoleID
 
-	// Generate new token 
+	// Generate new token
 	newToken, err := s.tokenService.GenerateToken(userID, roleID, "access", 30)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new token")

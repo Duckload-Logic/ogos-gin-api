@@ -15,9 +15,9 @@ seed:
 	migrate create -ext sql -dir ./seeds -seq $(name)
 
 # Desc: To create fake data seed migration
-# Usage: make fake name=insert_fake_data
-fake:
-	migrate create -ext sql -dir ./fakes -seq $(name)
+# Usage: make fake
+fakes:
+	go run cmd/faker/faker.go
 
 # Desc: To refresh database with cli
 # Usage: make migrate-up
@@ -34,18 +34,6 @@ migrate-down:
 seed-up:
 	migrate -path seeds -database \
 	"$(DB_URL)?x-migrations-table=seed_migrations" up
-
-# Desc: To apply fake data to database
-# Usage: make fake-up
-fake-up:
-	migrate -path fakes -database \
-	"$(DB_URL)?x-migrations-table=fake_migrations" up
-
-# Desc: To undo fake data migrations
-# Usage: make fake-down
-fake-down:
-	migrate -path fakes -database \
-	"$(DB_URL)?x-migrations-table=fake_migrations" drop -f
 
 refresh: migrate-down migrate-up seed-up
 

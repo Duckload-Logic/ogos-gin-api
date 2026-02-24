@@ -1,8 +1,7 @@
 package bootstrap
 
 import (
-	"database/sql"
-
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
@@ -16,7 +15,7 @@ type Repositories struct {
 	ExcuseSlipRepo  *excuseslips.Repository
 }
 
-func getRepositories(db *sql.DB) *Repositories {
+func getRepositories(db *sqlx.DB) *Repositories {
 	return &Repositories{
 		UserRepo:        users.NewRepository(db),
 		StudentRepo:     students.NewRepository(db),

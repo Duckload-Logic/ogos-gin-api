@@ -7,6 +7,6 @@ type IncludeParams struct {
 	IncludeEducation        bool `form:"include_education"`
 	IncludeAddress          bool `form:"include_address"`
 	IncludeFinance          bool `form:"include_finance"`
-	IncludeParents          bool `form:"include_parents"`
+	IncludeRelatedPersons   bool `form:"include_related_persons"`
 	IncludeEmergencyContact bool `form:"include_emergency_contact"`
 }

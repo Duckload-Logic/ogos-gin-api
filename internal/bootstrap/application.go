@@ -1,12 +1,12 @@
 package bootstrap
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 )
 
 type Application struct {
@@ -14,7 +14,7 @@ type Application struct {
 	Server *gin.Engine
 }
 
-func GetNewApplication(db *sql.DB) (*Application, error) {
+func GetNewApplication(db *sqlx.DB) (*Application, error) {
 
 	repos := getRepositories(db)
 

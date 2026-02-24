@@ -1,30 +1,42 @@
 package students
 
-import "github.com/olazo-johnalbert/duckload-api/internal/core/request"
+import (
+	"time"
+
+	"github.com/olazo-johnalbert/duckload-api/internal/core/request"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+)
 
 // List Students
 type ListStudentsRequest struct {
 	request.PaginationParams
-	Course   string `form:"course,omitempty"`
-	GenderID int    `form:"gender_id,omitempty"`
+	Search    string `form:"search,omitempty"`
+	CourseID  int    `form:"course_id,omitempty"`
+	GenderID  int    `form:"gender_id,omitempty"`
+	YearLevel int    `form:"year_level,omitempty"`
+	OrderBy   string `form:"order_by,omitempty" binding:"omitempty,oneof=first_name last_name student_number iir_id created_at updated_at year_level course_id"`
 }
 
 type ListStudentsResponse struct {
-	Students   []StudentProfileView `json:"students"`
-	Total      int                  `json:"total"`
-	Page       int                  `json:"page"`
-	PageSize   int                  `json:"pageSize"`
-	TotalPages int                  `json:"totalPages"`
+	Students   []StudentProfileDTO `json:"students"`
+	Total      int                 `json:"total"`
+	Page       int                 `json:"page"`
+	PageSize   int                 `json:"pageSize"`
+	TotalPages int                 `json:"totalPages"`
 }
 
-type StudentProfileView struct {
-	StudentRecordID int    `db:"student_record_id" json:"studentRecordId"`
-	UserID          int    `db:"user_id" json:"userId"`
-	FirstName       string `db:"first_name" json:"firstName"`
-	MiddleName      string `db:"middle_name" json:"middleName"`
-	LastName        string `db:"last_name" json:"lastName"`
-	Email           string `db:"email" json:"email"`
-	Course          string `db:"course" json:"course"`
+type StudentProfileDTO struct {
+	IIRID         int                    `json:"iirId"`
+	UserID        int                    `json:"userId"`
+	FirstName     string                 `json:"firstName"`
+	MiddleName    structs.NullableString `json:"middleName,omitempty"`
+	LastName      string                 `json:"lastName"`
+	Gender        Gender                 `json:"gender"`
+	Email         string                 `json:"email"`
+	StudentNumber string                 `json:"studentNumber"`
+	Course        Course                 `json:"course"`
+	Section       int                    `json:"section"`
+	YearLevel     int                    `json:"yearLevel"`
 }
 
 // Get Student
@@ -32,96 +44,145 @@ type GetStudentRequest struct {
 	IncludeParams
 }
 
-type ComprehensiveProfileResponse struct {
-	EnrollmentReasons []StudentSelectedReason  `json:"enrollmentReasons,omitempty"`
-	StudentProfile    *StudentProfile          `json:"studentProfile"`
-	EmergencyContact  *StudentEmergencyContact `json:"emergencyContact,omitempty"`
-	Family            *FamilyBackground        `json:"family,omitempty"`
-	Parents           []ParentInfoView         `json:"parents,omitempty"`
-	Health            *StudentHealthRecord     `json:"health,omitempty"`
-	Education         []EducationalBackground  `json:"education,omitempty"`
-	Addresses         []StudentAddress         `json:"addresses,omitempty"`
-	Finance           *StudentFinance          `json:"finance,omitempty"`
+type ComprehensiveProfileDTO struct {
+	IIRID   int `json:"iirId,omitempty"`
+	Student struct {
+		BasicInfo              StudentBasicInfoViewDTO `json:"basicInfo"`
+		StudentPersonalInfoDTO `json:"personalInfo"`
+		Addresses              []StudentAddressDTO `json:"addresses"`
+	} `json:"student"`
+
+	Education EducationalBackgroundDTO `json:"education"`
+
+	Family struct {
+		FamilyBackgroundDTO `json:"background"`
+		RelatedPersons      []RelatedPersonDTO `json:"relatedPersons"`
+		Finance             StudentFinanceDTO  `json:"finance"`
+	} `json:"family"`
+
+	Health struct {
+		StudentHealthRecordDTO `json:"healthRecord"`
+		Consultations          []StudentConsultationDTO `json:"consultations"`
+	} `json:"health"`
+
+	Interests struct {
+		Activities         []StudentActivityDTO          `json:"activities"`
+		SubjectPreferences []StudentSubjectPreferenceDTO `json:"subjectPreferences"`
+		Hobbies            []StudentHobbyDTO             `json:"hobbies"`
+	} `json:"interests"`
+
+	TestResults      []TestResultDTO      `json:"testResults"`
+	SignificantNotes []SignificantNoteDTO `json:"significantNotes,omitempty"`
 }
 
-type StudentProfileResponse struct {
-	StudentProfile *StudentProfile `json:"studentProfile"`
+type StudentSelectedReasonDTO struct {
+	Reason          EnrollmentReason `json:"reason"`
+	OtherReasonText *string          `json:"otherReasonText,omitempty"`
 }
 
-type GetEmergencyContactResponse struct {
-	EmergencyContact *StudentEmergencyContact `json:"emergencyContact"`
+type StudentBasicInfoViewDTO struct {
+	ID         int                    `json:"id"`
+	FirstName  string                 `json:"firstName"`
+	MiddleName structs.NullableString `json:"middleName,omitempty"`
+	LastName   string                 `json:"lastName"`
+	Email      string                 `json:"email"`
 }
 
-// Create Student
-type CreateStudentRecordRequest struct {
-	GenderID          int                            `json:"genderId" binding:"required"`
-	CivilStatusTypeID int                            `json:"civilStatusTypeId" binding:"required"`
-	Religion          string                         `json:"religion" binding:"required"`
-	HeightFt          float64                        `json:"heightFt" binding:"required"`
-	WeightKg          float64                        `json:"weightKg" binding:"required"`
-	StudentNumber     string                         `json:"studentNumber,omitempty" `
-	Course            string                         `json:"course" binding:"required"`
-	HighSchoolGWA     float64                        `json:"highSchoolGWA" binding:"required"`
-	PlaceOfBirth      string                         `json:"placeOfBirth" binding:"required"`
-	BirthDate         string                         `json:"birthDate" binding:"required"`
-	ContactNo         string                         `json:"contactNo" binding:"required"`
-	EmergencyContact  *UpdateEmergencyContactRequest `json:"emergencyContact" binding:"required"`
-	Addresses         []StudentAddressDTO            `json:"addresses" binding:"required,min=1"`
+type StudentPersonalInfoDTO struct {
+	ID               int                    `json:"id,omitempty"`
+	IIRID            int                    `json:"iirId,omitempty"`
+	StudentNumber    string                 `json:"studentNumber" binding:"required"`
+	Gender           Gender                 `json:"gender" binding:"required"`
+	CivilStatus      CivilStatusType        `json:"civilStatus" binding:"required"`
+	Religion         Religion               `json:"religion" binding:"required"`
+	HeightFt         float64                `json:"heightFt" binding:"required"`
+	WeightKg         float64                `json:"weightKg" binding:"required"`
+	Complexion       string                 `json:"complexion" binding:"required"`
+	HighSchoolGWA    float64                `json:"highSchoolGWA" binding:"required"`
+	Course           Course                 `json:"course" binding:"required"`
+	YearLevel        int                    `json:"yearLevel" binding:"required"`
+	Section          int                    `json:"section" binding:"required"`
+	PlaceOfBirth     string                 `json:"placeOfBirth" binding:"required"`
+	DateOfBirth      string                 `json:"dateOfBirth" binding:"required"`
+	IsEmployed       bool                   `json:"isEmployed"`
+	EmployerName     structs.NullableString `json:"employerName,omitempty"`
+	EmployerAddress  structs.NullableString `json:"employerAddress,omitempty"`
+	MobileNumber     string                 `json:"mobileNumber" binding:"required"`
+	TelephoneNumber  structs.NullableString `json:"telephoneNumber,omitempty"`
+	EmergencyContact EmergencyContactDTO    `json:"emergencyContact,omitempty"`
 }
 
-// Update Emergency Contact
-type UpdateEmergencyContactRequest struct {
-	ParentID                     *int    `json:"parentId,omitempty"`
-	EmergencyContactFirstName    string  `json:"emergencyContactFirstName" binding:"required"`
-	EmergencyContactMiddleName   *string `json:"emergencyContactMiddleName,omitempty"`
-	EmergencyContactLastName     string  `json:"emergencyContactLastName" binding:"required"`
-	EmergencyContactPhone        string  `json:"emergencyContactPhone" binding:"required"`
-	EmergencyContactRelationship string  `json:"emergencyContactRelationship" binding:"required"`
+type EmergencyContactDTO struct {
+	ID            int                     `json:"id,omitempty"`
+	FirstName     string                  `json:"firstName" binding:"required"`
+	MiddleName    structs.NullableString  `json:"middleName,omitempty"`
+	LastName      string                  `json:"lastName" binding:"required"`
+	ContactNumber string                  `json:"contactNumber" binding:"required"`
+	Relationship  StudentRelationshipType `json:"relationship" binding:"required"`
+	Address       Address                 `json:"address" binding:"required"`
 }
 
-// Update Enrollment Reasons
-type UpdateEnrollmentReasonsRequest struct {
-	EnrollmentReasonIDs []int  `json:"enrollmentReasonIds"`
-	OtherReasonText     string `json:"otherReasonText,omitempty"`
+type StudentAddressDTO struct {
+	ID          int       `json:"id,omitempty"`
+	AddressType string    `json:"addressType" binding:"required"`
+	Address     Address   `json:"address" binding:"required"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 }
 
-// Update Family and Parents
-type UpdateFamilyRequest struct {
-	ParentalStatusID      int     `json:"parentalStatusId" binding:"required"`
-	ParentalStatusDetails string  `json:"parentalStatusDetails,omitempty"`
-	SiblingsBrothers      *int    `json:"siblingsBrothers" binding:"required"`
-	SiblingSisters        *int    `json:"siblingSisters" binding:"required"`
-	MonthlyFamilyIncome   string  `json:"monthlyFamilyIncome" binding:"required"`
-	GuardianFirstName     string  `json:"guardianFirstName" binding:"required"`
-	GuardianLastName      string  `json:"guardianLastName" binding:"required"`
-	GuardianMiddleName    *string `json:"guardianMiddleName,omitempty"`
-	GuardianAddress       string  `json:"guardianAddress" binding:"required"`
-	UpdateFinanceRequest
-	Parents []ParentDTO `json:"parents" binding:"required,dive"`
+type EducationalBackgroundDTO struct {
+	ID                 int                    `json:"id,omitempty"`
+	NatureOfSchooling  string                 `json:"natureOfSchooling" binding:"required"`
+	InterruptedDetails structs.NullableString `json:"interruptedDetails,omitempty"`
+	School             []SchoolDetailsDTO     `json:"schools" binding:"required"`
+	CreatedAt          time.Time              `json:"createdAt,omitempty"`
+	UpdatedAt          time.Time              `json:"updatedAt,omitempty"`
 }
 
-type ParentDTO struct {
-	FirstName        string `json:"firstName" binding:"required"`
-	LastName         string `json:"lastName" binding:"required"`
-	MiddleName       string `json:"middleName,omitempty"`
-	EducationalLevel string `json:"educationalLevel" binding:"required"`
-	BirthDate        string `json:"birthDate" binding:"required"`
-	Occupation       string `json:"occupation" binding:"required"`
-	CompanyName      string `json:"companyName,omitempty"`
-	Relationship     int    `json:"relationship" binding:"required"`
+type SchoolDetailsDTO struct {
+	ID               int                    `json:"id,omitempty"`
+	EducationalLevel EducationalLevel       `json:"educationalLevel" binding:"required"`
+	SchoolName       string                 `json:"schoolName" binding:"required"`
+	SchoolAddress    string                 `json:"schoolAddress,omitempty"`
+	SchoolType       string                 `json:"schoolType" binding:"required"`
+	YearStarted      int                    `json:"yearStarted,omitempty"`
+	YearCompleted    int                    `json:"yearCompleted" binding:"required"`
+	Awards           structs.NullableString `json:"awards,omitempty"`
 }
 
-type ParentInfoView struct {
-	Parent
-	Relationship string `db:"relationship" json:"relationship"`
+type RelatedPersonDTO struct {
+	ID               int                     `json:"id,omitempty"`
+	LastName         string                  `json:"lastName" binding:"required"`
+	FirstName        string                  `json:"firstName" binding:"required"`
+	MiddleName       structs.NullableString  `json:"middleName,omitempty"`
+	DateOfBirth      string                  `json:"dateOfBirth,omitempty" binding:"omitempty"`
+	EducationalLevel string                  `json:"educationalLevel" binding:"required"`
+	Occupation       structs.NullableString  `json:"occupation,omitempty"`
+	EmployerName     structs.NullableString  `json:"employerName,omitempty"`
+	EmployerAddress  structs.NullableString  `json:"employerAddress,omitempty"`
+	Relationship     StudentRelationshipType `json:"relationship" binding:"required"`
+	IsParent         bool                    `json:"isParent"`
+	IsGuardian       bool                    `json:"isGuardian"`
+	IsLiving         bool                    `json:"isLiving"`
 }
 
-// Update Education
-type UpdateEducationRequest struct {
-	EducationalBGs []EducationalBGDTO `json:"educationalBackgrounds" binding:"required,dive"`
+type FamilyBackgroundDTO struct {
+	ID                    int                    `json:"id,omitempty"`
+	ParentalStatus        ParentalStatusType     `json:"parentalStatus" binding:"required"`
+	ParentalStatusDetails structs.NullableString `json:"parentalStatusDetails,omitempty"`
+	Brothers              int                    `json:"brothers" binding:"required"`
+	Sisters               int                    `json:"sisters" binding:"required"`
+	EmployedSiblings      int                    `json:"employedSiblings" binding:"required"`
+	OrdinalPosition       int                    `json:"ordinalPosition" binding:"required"`
+	HaveQuietPlaceToStudy bool                   `json:"haveQuietPlaceToStudy"`
+	SiblingSupportTypes   []SibilingSupportType  `json:"siblingSupportTypes" binding:"required"`
+	IsSharingRoom         bool                   `json:"isSharingRoom"`
+	RoomSharingDetails    structs.NullableString `json:"roomSharingDetails,omitempty"`
+	NatureOfResidence     NatureOfResidenceType  `json:"natureOfResidence" binding:"required"`
 }
 
 type EducationalBGDTO struct {
+	ID               int    `json:"id"`
 	EducationalLevel string `json:"educationalLevel" binding:"required"`
 	SchoolName       string `json:"schoolName" binding:"required"`
 	Location         string `json:"location,omitempty"`
@@ -130,41 +191,68 @@ type EducationalBGDTO struct {
 	Awards           string `json:"awards,omitempty"`
 }
 
-// Update Address
-type UpdateAddressRequest struct {
-	Addresses []StudentAddressDTO `json:"addresses" binding:"required,dive"`
+type StudentFinanceDTO struct {
+	ID                       int                    `json:"id,omitempty"`
+	MonthlyFamilyIncomeRange IncomeRange            `json:"monthlyFamilyIncomeRange" binding:"required"`
+	OtherIncomeDetails       structs.NullableString `json:"otherIncomeDetails,omitempty"`
+	FinancialSupportTypes    []StudentSupportType   `json:"financialSupportTypes" binding:"required"`
+	WeeklyAllowance          float64                `json:"weeklyAllowance" binding:"required"`
 }
 
-type StudentAddressDTO struct {
-	AddressType  string `json:"addressType" binding:"required"`
-	RegionName   string `json:"regionName" binding:"required"`
-	ProvinceName string `json:"provinceName,omitempty"`
-	CityName     string `json:"cityName" binding:"required"`
-	BarangayName string `json:"barangayName" binding:"required"`
-	StreetLotBlk string `json:"streetLotBlk,omitempty"`
-	UnitNo       string `json:"unitNo,omitempty"`
-	BuildingName string `json:"buildingName,omitempty"`
+type StudentHealthRecordDTO struct {
+	ID                      int                    `json:"id,omitempty"`
+	VisionHasProblem        bool                   `json:"visionHasProblem"`
+	VisionDetails           structs.NullableString `json:"visionDetails,omitempty"`
+	HearingHasProblem       bool                   `json:"hearingHasProblem"`
+	HearingDetails          structs.NullableString `json:"hearingDetails,omitempty"`
+	SpeechHasProblem        bool                   `json:"speechHasProblem"`
+	SpeechDetails           structs.NullableString `json:"speechDetails,omitempty"`
+	GeneralHealthHasProblem bool                   `json:"generalHealthHasProblem"`
+	GeneralHealthDetails    structs.NullableString `json:"generalHealthDetails,omitempty"`
 }
 
-// Update Health
-type UpdateHealthRecordRequest struct {
-	VisionRemark          string  `json:"visionRemark" binding:"required"`
-	HearingRemark         string  `json:"hearingRemark" binding:"required"`
-	MobilityRemark        string  `json:"mobilityRemark" binding:"required"`
-	SpeechRemark          string  `json:"speechRemark" binding:"required"`
-	GeneralHealthRemark   string  `json:"generalHealthRemark" binding:"required"`
-	ConsultedProfessional *string `json:"consultedProfessional,omitempty"`
-	ConsultationReason    *string `json:"consultationReason,omitempty"`
-	DateStarted           *string `json:"dateStarted,omitempty"`
-	NumberOfSessions      *int64  `json:"numberOfSessions,omitempty"`
-	DateConcluded         *string `json:"dateConcluded,omitempty"`
+type StudentConsultationDTO struct {
+	ID               int                    `json:"id,omitempty"`
+	ProfessionalType string                 `json:"professionalType" binding:"required"`
+	HasConsulted     bool                   `json:"hasConsulted"`
+	WhenDate         structs.NullableString `json:"whenDate,omitempty"`
+	ForWhat          structs.NullableString `json:"forWhat,omitempty"`
 }
 
-// Update Finance
-type UpdateFinanceRequest struct {
-	EmployedFamilyMembersCount int     `json:"employedFamilyMembersCount" binding:"required"`
-	SupportsStudiesCount       int     `json:"supportsStudiesCount"`
-	SupportsFamilyCount        int     `json:"supportsFamilyCount"`
-	FinancialSupport           string  `json:"financialSupport" binding:"required"`
-	WeeklyAllowance            float64 `json:"weeklyAllowance" binding:"required"`
+type StudentActivityDTO struct {
+	ID                 int                    `json:"id,omitempty"`
+	ActivityOption     ActivityOption         `json:"activityOption" binding:"required"`
+	OtherSpecification structs.NullableString `json:"otherSpecification,omitempty"`
+	Role               string                 `json:"role" binding:"required"` // "Officer", "Member", "Other"
+	RoleSpecification  structs.NullableString `json:"roleSpecification,omitempty"`
+}
+
+type StudentSubjectPreferenceDTO struct {
+	ID          int    `json:"id,omitempty"`
+	SubjectName string `json:"subjectName" binding:"required"`
+	IsFavorite  bool   `json:"isFavorite"`
+}
+
+type StudentHobbyDTO struct {
+	ID           int    `json:"id,omitempty"`
+	HobbyName    string `json:"hobbyName" binding:"required"`
+	PriorityRank int    `json:"priorityRank" binding:"required"`
+}
+
+type TestResultDTO struct {
+	ID          int    `json:"id,omitempty"`
+	TestDate    string `json:"testDate" binding:"required"`
+	TestName    string `json:"testName" binding:"required"`
+	RawScore    string `json:"rawScore" binding:"required"`
+	Percentile  string `json:"percentile" binding:"required"`
+	Description string `json:"description,omitempty"`
+}
+
+type SignificantNoteDTO struct {
+	ID                  int       `json:"id,omitempty"`
+	NoteDate            string    `json:"noteDate" binding:"required"`
+	IncidentDescription string    `json:"incidentDescription" binding:"required"`
+	Remarks             string    `json:"remarks" binding:"required"`
+	CreatedAt           time.Time `db:"created_at" json:"createdAt,omitempty"`
+	UpdatedAt           time.Time `db:"updated_at" json:"updatedAt,omitempty"`
 }
