@@ -47,7 +47,7 @@ type GetStudentRequest struct {
 type ComprehensiveProfileDTO struct {
 	IIRID   int `json:"iirId,omitempty"`
 	Student struct {
-		BasicInfo              StudentBasicInfoView `json:"basicInfo"`
+		BasicInfo              StudentBasicInfoViewDTO `json:"basicInfo"`
 		StudentPersonalInfoDTO `json:"personalInfo"`
 		Addresses              []StudentAddressDTO `json:"addresses"`
 	} `json:"student"`
@@ -78,6 +78,14 @@ type ComprehensiveProfileDTO struct {
 type StudentSelectedReasonDTO struct {
 	Reason          EnrollmentReason `json:"reason"`
 	OtherReasonText *string          `json:"otherReasonText,omitempty"`
+}
+
+type StudentBasicInfoViewDTO struct {
+	ID         int                    `json:"id"`
+	FirstName  string                 `json:"firstName"`
+	MiddleName structs.NullableString `json:"middleName,omitempty"`
+	LastName   string                 `json:"lastName"`
+	Email      string                 `json:"email"`
 }
 
 type StudentPersonalInfoDTO struct {

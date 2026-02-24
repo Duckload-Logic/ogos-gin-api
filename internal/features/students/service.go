@@ -375,13 +375,21 @@ func (s *Service) GetStudentProfile(ctx context.Context, iirID int) (*Comprehens
 	return profile, nil
 }
 
-func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentBasicInfoView, error) {
+func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentBasicInfoViewDTO, error) {
 	info, err := s.repo.GetStudentBasicInfo(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student basic info: %w", err)
 	}
 
-	return info, nil
+	basicInfo := &StudentBasicInfoViewDTO{
+		ID:         info.ID,
+		FirstName:  info.FirstName,
+		MiddleName: structs.FromSqlNull(info.MiddleName),
+		LastName:   info.LastName,
+		Email:      info.Email,
+	}
+
+	return basicInfo, nil
 }
 
 func (s *Service) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {

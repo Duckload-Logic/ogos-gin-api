@@ -91,7 +91,7 @@ type StudentProfileView struct {
 	Email         string         `db:"email" json:"email"`
 	StudentNumber string         `db:"student_number" json:"studentNumber"`
 	GenderID      int            `db:"gender_id" json:"genderId"`
-	CourseID      int            `db:"course" json:"course"`
+	CourseID      int            `db:"course_id" json:"courseId"`
 	Section       int            `db:"section" json:"section"`
 	YearLevel     int            `db:"year_level" json:"yearLevel"`
 }
