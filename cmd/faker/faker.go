@@ -39,9 +39,9 @@ var (
 
 func main() {
 	// ---------- CONFIGURATION ----------
-	numStudents := 50  // number of students to generate
-	numCounselors := 1 // number of counselors (admins)
-	numWorkers := 12   // number of concurrent student workers
+	numStudents := 1_000 // number of students to generate
+	numCounselors := 1   // number of counselors (admins)
+	numWorkers := 12     // number of concurrent student workers
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
 	// -----------------------------------
@@ -701,11 +701,16 @@ func insertAddress(tx *sqlx.Tx) int {
 		log.Fatal("No regions found. Please run the address seeder first (make locations): ", err)
 	}
 
-	// Fetch a random city in that region
+	// Fetch a random city in that region that has barangays
 	var cityID int
-	err = tx.Get(&cityID, "SELECT id FROM cities WHERE region_id = ? ORDER BY RAND() LIMIT 1", regionID)
+	err = tx.Get(&cityID, `
+		SELECT DISTINCT c.id FROM cities c
+		INNER JOIN barangays b ON c.id = b.city_id
+		WHERE c.region_id = ?
+		ORDER BY RAND() LIMIT 1
+	`, regionID)
 	if err != nil {
-		log.Fatal("No cities found for region ID "+fmt.Sprint(regionID)+": ", err)
+		log.Fatal("No cities with barangays found for region ID "+fmt.Sprint(regionID)+": ", err)
 	}
 
 	// Fetch a random barangay in that city
