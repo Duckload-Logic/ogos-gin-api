@@ -694,16 +694,33 @@ func insertSelectedReasons(tx *sqlx.Tx, iirID int) {
 }
 
 func insertAddress(tx *sqlx.Tx) int {
-	// generate a random Philippine-like address
-	region := gofakeit.RandomString([]string{"NCR", "Region IV-A", "Region III", "Region VII"})
-	city := gofakeit.City()
-	barangay := "Barangay " + gofakeit.StreetName()
+	// Fetch a random region
+	var regionID int
+	err := tx.Get(&regionID, "SELECT id FROM regions ORDER BY RAND() LIMIT 1")
+	if err != nil {
+		log.Fatal("No regions found. Please run the address seeder first (make locations): ", err)
+	}
+
+	// Fetch a random city in that region
+	var cityID int
+	err = tx.Get(&cityID, "SELECT id FROM cities WHERE region_id = ? ORDER BY RAND() LIMIT 1", regionID)
+	if err != nil {
+		log.Fatal("No cities found for region ID "+fmt.Sprint(regionID)+": ", err)
+	}
+
+	// Fetch a random barangay in that city
+	var barangayID int
+	err = tx.Get(&barangayID, "SELECT id FROM barangays WHERE city_id = ? ORDER BY RAND() LIMIT 1", cityID)
+	if err != nil {
+		log.Fatal("No barangays found for city ID "+fmt.Sprint(cityID)+": ", err)
+	}
+
 	street := gofakeit.Street()
 
 	res, err := tx.Exec(`
-		INSERT INTO addresses (region, city, barangay, street_detail)
+		INSERT INTO addresses (region_id, city_id, barangay_id, street_detail)
 		VALUES (?, ?, ?, ?)
-	`, region, city, barangay, street)
+	`, regionID, cityID, barangayID, street)
 	if err != nil {
 		log.Fatal(err)
 	}
