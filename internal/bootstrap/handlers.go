@@ -5,6 +5,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
@@ -21,7 +22,8 @@ type Handlers struct {
 func getHandlers(repos *Repositories) *Handlers {
 	authService := auth.NewService(repos.UserRepo, auth.NewTokenService())
 	userService := users.NewService(repos.UserRepo)
-	studentService := students.NewService(repos.StudentRepo)
+	locationsService := locations.NewService(repos.LocationsRepo)
+	studentService := students.NewService(repos.StudentRepo, locationsService)
 	appointmentService := appointments.NewService(repos.AppointmentRepo)
 	excuseSlipService := excuseslips.NewService(repos.ExcuseSlipRepo)
 
