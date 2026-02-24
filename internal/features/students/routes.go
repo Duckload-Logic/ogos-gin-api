@@ -9,15 +9,15 @@ import (
 
 func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 	// Root group: /api/v1/students
-	studentRoutes := r.Group("/students")
-	studentRoutes.Use(middleware.AuthMiddleware())
+	routes := r.Group("/students")
+	routes.Use(middleware.AuthMiddleware())
 
 	// Define lookups
 	userResourceLookup := middleware.OwnershipMiddleware(db, "userID")
 	iirResourceLookup := middleware.OwnershipMiddleware(db, "iirID")
 	// inventoryRecordLookup := middleware.OwnershipMiddleware(db, "inventoryRecordID")
 
-	lookupRoutes := studentRoutes.Group("/lookups")
+	lookupRoutes := routes.Group("/lookups")
 	{
 		lookupRoutes.GET("/genders", h.HandleGetGenders)
 		lookupRoutes.GET("/religions", h.HandleGetReligions)
@@ -32,7 +32,7 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 		lookupRoutes.GET("/student-relationship-types", h.HandleGetStudentRelationshipTypes)
 	}
 
-	inventoryRoutes := studentRoutes.Group("/inventory")
+	inventoryRoutes := routes.Group("/inventory")
 
 	counselorRoutes := inventoryRoutes.Group("/")
 	counselorRoutes.Use(middleware.RoleMiddleware(
@@ -68,11 +68,14 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 		userRoutes.GET("/records/iir/:iirID/significant-notes", iirResourceLookup, h.HandleGetStudentSignificantNotes)
 	}
 
-	postRoutes := inventoryRoutes.Group("/")
-	postRoutes.Use(middleware.RoleMiddleware(
+	studentRoutes := inventoryRoutes.Group("/")
+	studentRoutes.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 	))
 	{
-		postRoutes.POST("/records/iir", h.HandleSubmitIIR)
+		studentRoutes.GET("/records/iir/draft", h.HandleGetIIRDraft)
+		studentRoutes.POST("/records/iir/draft", h.HandleSaveIIRDraft)
+
+		studentRoutes.POST("/records/iir", h.HandleSubmitIIR)
 	}
 }

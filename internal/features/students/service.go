@@ -2,6 +2,7 @@ package students
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -390,6 +391,24 @@ func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentB
 	}
 
 	return basicInfo, nil
+}
+
+func (s *Service) GetIIRDraft(ctx context.Context, userID int) (*ComprehensiveProfileDTO, error) {
+	draft, err := s.repo.GetIIRDraftByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IIR draft: %w", err)
+	}
+
+	if draft == nil || len(draft.Data) == 0 {
+		return nil, nil
+	}
+
+	var draftData ComprehensiveProfileDTO
+	if err := json.Unmarshal([]byte(draft.Data), &draftData); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal IIR draft data: %w", err)
+	}
+
+	return &draftData, nil
 }
 
 func (s *Service) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
@@ -854,6 +873,25 @@ func (s *Service) GetStudentSignificantNotes(ctx context.Context, iirID int) ([]
 	}
 
 	return noteDTOs, nil
+}
+
+func (s *Service) SaveIIRDraft(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {
+	jsonData, err := json.Marshal(req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to encode draft data: %w", err)
+	}
+
+	draft := IIRDraft{
+		UserID: userID,
+		Data:   string(jsonData),
+	}
+
+	draftID, err := s.repo.UpsertIIRDraft(ctx, draft)
+	if err != nil {
+		return 0, fmt.Errorf("failed to save IIR draft: %w", err)
+	}
+
+	return draftID, nil
 }
 
 func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {

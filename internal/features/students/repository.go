@@ -354,6 +354,20 @@ func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID int) (*Stude
 	return &info, nil
 }
 
+func (r *Repository) GetIIRDraftByUserID(ctx context.Context, userID int) (*IIRDraft, error) {
+	query := fmt.Sprintf(`
+		SELECT %s FROM iir_drafts WHERE user_id = ? LIMIT 1
+	`, database.GetColumns(IIRDraft{}))
+
+	var draft IIRDraft
+	err := r.db.GetContext(ctx, &draft, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &draft, nil
+}
+
 func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
 	query := fmt.Sprintf(`
 		SELECT %s FROM iir_records WHERE user_id = ? LIMIT 1
@@ -898,6 +912,37 @@ func (r *Repository) GetStudentSignificantNotes(ctx context.Context, iirID int) 
 }
 
 // Save and Upsert
+func (r *Repository) UpsertIIRDraft(ctx context.Context, draft IIRDraft) (int, error) {
+	var id int
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertIIRDraftTx(ctx, txn, draft)
+		return err
+	})
+	return id, err
+}
+
+func (r *Repository) upsertIIRDraftTx(ctx context.Context, tx *sqlx.Tx, draft IIRDraft) (int, error) {
+	cols, vals := database.GetInsertStatement(IIRDraft{}, []string{"created_at", "updated_at"})
+	onDuplicateKey := database.GetOnDuplicateKeyUpdateStatement(IIRDraft{}, []string{"created_at", "updated_at"})
+	query := fmt.Sprintf(`
+		INSERT INTO iir_drafts (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, onDuplicateKey)
+	result, err := tx.NamedExecContext(ctx, query, draft)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert IIR draft: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for IIR draft: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
 func (r *Repository) UpsertIIRRecord(ctx context.Context, tx *sqlx.Tx, iir *IIRRecord) (int, error) {
 	if tx != nil {
 		return r.upsertIIRRecordTx(ctx, tx, iir)

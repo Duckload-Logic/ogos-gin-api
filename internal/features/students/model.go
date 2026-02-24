@@ -97,6 +97,14 @@ type StudentProfileView struct {
 }
 
 // Core Student Records
+type IIRDraft struct {
+	ID        int       `db:"id" json:"id"`
+	UserID    int       `db:"user_id" json:"userId"`
+	Data      string    `db:"data" json:"data"` // JSON string of the draft data
+	CreatedAt time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
+}
+
 type IIRRecord struct {
 	ID          int       `db:"id" json:"id"`
 	UserID      int       `db:"user_id" json:"userId"`

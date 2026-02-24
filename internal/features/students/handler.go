@@ -1,6 +1,7 @@
 package students
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -214,6 +215,18 @@ func (h *Handler) HandleGetStudentBasicInfo(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, basicInfo)
+}
+
+func (h *Handler) HandleGetIIRDraft(c *gin.Context) {
+	userID := c.MustGet("userID").(int)
+	draft, err := h.service.GetIIRDraft(c.Request.Context(), userID)
+	if err != nil {
+		fmt.Println("Error getting IIR draft:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get IIR draft"})
+		return
+	}
+
+	c.JSON(http.StatusOK, draft)
 }
 
 func (h *Handler) HandleGetStudentIIRByUserID(c *gin.Context) {
@@ -488,6 +501,24 @@ func (h *Handler) HandleGetStudentSignificantNotes(c *gin.Context) {
 	c.JSON(http.StatusOK, significantNotes)
 }
 
+func (h *Handler) HandleSaveIIRDraft(c *gin.Context) {
+	userID := c.MustGet("userID").(int)
+	var req ComprehensiveProfileDTO
+	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		return
+	}
+
+	draftID, err := h.service.SaveIIRDraft(c.Request.Context(), userID, req)
+	if err != nil {
+		fmt.Println("Error saving IIR draft:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save IIR draft"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"id": draftID, "message": "IIR draft saved successfully"})
+}
+
 func (h *Handler) HandleSubmitIIR(c *gin.Context) {
 	userID := c.MustGet("userID").(int)
 	var req ComprehensiveProfileDTO
@@ -503,5 +534,5 @@ func (h *Handler) HandleSubmitIIR(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"iirID": iirID, "message": "Student IIR submitted successfully"})
+	c.JSON(http.StatusCreated, gin.H{"id": iirID, "message": "Student IIR submitted successfully"})
 }
