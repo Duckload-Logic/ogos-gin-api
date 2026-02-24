@@ -439,9 +439,8 @@ func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID int) (*St
 func (r *Repository) GetEmergencyContactByIIRID(ctx context.Context, iirID int) (*EmergencyContact, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
-		FROM emergency_contacts ec
-		JOIN student_personal_info spi ON ec.id = spi.emergency_contact_id
-		WHERE spi.iir_id = ?
+		FROM emergency_contacts
+		WHERE iir_id = ?
 	`, database.GetColumns(EmergencyContact{}))
 
 	var ec EmergencyContact
