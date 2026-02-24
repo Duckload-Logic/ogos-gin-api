@@ -503,5 +503,5 @@ func (h *Handler) HandleSubmitIIR(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"iirID": iirID, "message": "Student IIR submitted successfully"})
+	c.JSON(http.StatusCreated, gin.H{"iirID": iirID, "message": "Student IIR submitted successfully"})
 }

@@ -355,21 +355,12 @@ func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID int) (*Stude
 }
 
 func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
-	query := `
-		SELECT id, user_id, is_submitted, created_at, updated_at
-		FROM iir_records
-		WHERE user_id = ?
-		LIMIT 1
-	`
+	query := fmt.Sprintf(`
+		SELECT %s FROM iir_records WHERE user_id = ? LIMIT 1
+	`, database.GetColumns(IIRRecord{}))
 
 	var iir IIRRecord
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&iir.ID,
-		&iir.UserID,
-		&iir.IsSubmitted,
-		&iir.CreatedAt,
-		&iir.UpdatedAt,
-	)
+	err := r.db.GetContext(ctx, &iir, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -378,19 +369,14 @@ func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*II
 }
 
 func (r *Repository) GetStudentIIR(ctx context.Context, iirID int) (*IIRRecord, error) {
-	query := `
-		SELECT id, user_id, is_submitted, created_at, updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM iir_records
 		WHERE id = ?
-	`
+	`, database.GetColumns(IIRRecord{}))
 
 	var iir IIRRecord
-	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
-		&iir.ID,
-		&iir.UserID,
-		&iir.IsSubmitted,
-		&iir.CreatedAt,
-		&iir.UpdatedAt)
+	err := r.db.GetContext(ctx, &iir, query, iirID)
 	if err != nil {
 		return nil, err
 	}
@@ -913,609 +899,865 @@ func (r *Repository) GetStudentSignificantNotes(ctx context.Context, iirID int) 
 }
 
 // Save and Upsert
-func (r *Repository) CreateIIRRecord(ctx context.Context, iir *IIRRecord) (int, error) {
+func (r *Repository) UpsertIIRRecord(ctx context.Context, tx *sqlx.Tx, iir *IIRRecord) (int, error) {
+	if tx != nil {
+		return r.upsertIIRRecordTx(ctx, tx, iir)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(IIRRecord{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO iir_records (%s)
-			VALUES (%s)
-		`, cols, vals)
-		result, err := tx.NamedExecContext(ctx, query, iir)
-		if err != nil {
-			return fmt.Errorf("failed to create IIR record: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for IIR record: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
-	})
-	return id, err
-}
-
-func (r *Repository) UpsertStudentPersonalInfo(ctx context.Context, info *StudentPersonalInfo) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentPersonalInfo{}, []string{"created_at", "updated_at", "address_id"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentPersonalInfo{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_personal_info (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-
-		_, err := tx.NamedExecContext(ctx, query, info)
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertIIRRecordTx(ctx, txn, iir)
 		return err
 	})
+	return id, err
 }
 
-func (r *Repository) UpsertEmergencyContact(ctx context.Context, ec *EmergencyContact) (int, error) {
+func (r *Repository) upsertIIRRecordTx(ctx context.Context, tx *sqlx.Tx, iir *IIRRecord) (int, error) {
+	cols, vals := database.GetInsertStatement(IIRRecord{}, []string{"created_at", "updated_at"})
+	onDuplicateKey := database.GetOnDuplicateKeyUpdateStatement(IIRRecord{}, []string{"created_at", "updated_at"})
+	query := fmt.Sprintf(`
+		INSERT INTO iir_records (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, onDuplicateKey)
+	result, err := tx.NamedExecContext(ctx, query, iir)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert IIR record: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for IIR record: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) UpsertStudentPersonalInfo(ctx context.Context, tx *sqlx.Tx, info *StudentPersonalInfo) error {
+	if tx != nil {
+		return r.upsertStudentPersonalInfoTx(ctx, tx, info)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.upsertStudentPersonalInfoTx(ctx, txn, info)
+	})
+}
+
+func (r *Repository) upsertStudentPersonalInfoTx(ctx context.Context, tx *sqlx.Tx, info *StudentPersonalInfo) error {
+	cols, vals := database.GetInsertStatement(StudentPersonalInfo{}, []string{"created_at", "updated_at", "address_id"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentPersonalInfo{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_personal_info (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+
+	_, err := tx.NamedExecContext(ctx, query, info)
+	return err
+}
+
+func (r *Repository) UpsertEmergencyContact(ctx context.Context, tx *sqlx.Tx, ec *EmergencyContact) (int, error) {
+	if tx != nil {
+		return r.upsertEmergencyContactTx(ctx, tx, ec)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(EmergencyContact{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(EmergencyContact{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO emergency_contacts (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, ec)
-		if err != nil {
-			return fmt.Errorf("failed to upsert emergency contact: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for emergency contact: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertEmergencyContactTx(ctx, txn, ec)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) UpsertStudentAddress(ctx context.Context, sa *StudentAddress) (int, error) {
+func (r *Repository) upsertEmergencyContactTx(ctx context.Context, tx *sqlx.Tx, ec *EmergencyContact) (int, error) {
+	cols, vals := database.GetInsertStatement(EmergencyContact{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(EmergencyContact{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO emergency_contacts (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, ec)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert emergency contact: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for emergency contact: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) UpsertStudentAddress(ctx context.Context, tx *sqlx.Tx, sa *StudentAddress) (int, error) {
+	if tx != nil {
+		return r.upsertStudentAddressTx(ctx, tx, sa)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentAddress{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentAddress{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_addresses (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, sa)
-		if err != nil {
-			return fmt.Errorf("failed to upsert student address: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for student address: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertStudentAddressTx(ctx, txn, sa)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) UpsertAddress(ctx context.Context, addr *Address) (int, error) {
+func (r *Repository) upsertStudentAddressTx(ctx context.Context, tx *sqlx.Tx, sa *StudentAddress) (int, error) {
+	cols, vals := database.GetInsertStatement(StudentAddress{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentAddress{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_addresses (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, sa)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert student address: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for student address: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) UpsertAddress(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
+	if tx != nil {
+		return r.upsertAddressTx(ctx, tx, addr)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(Address{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(Address{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO addresses (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, addr)
-		if err != nil {
-			return fmt.Errorf("failed to upsert address: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for address: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertAddressTx(ctx, txn, addr)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) CreateStudentSelectedReason(ctx context.Context, ssr *StudentSelectedReason) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `
-			INSERT INTO student_selected_reasons (iir_id, reason_id, other_reason_text)
-			VALUES (:iir_id, :reason_id, :other_reason_text)
-		`
-		_, err := tx.NamedExecContext(ctx, query, ssr)
-		if err != nil {
-			return fmt.Errorf("failed to create student selected reason: %w", err)
-		}
-		return nil
+func (r *Repository) upsertAddressTx(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
+	cols, vals := database.GetInsertStatement(Address{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(Address{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO addresses (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, addr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert address: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for address: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) CreateStudentSelectedReason(ctx context.Context, tx *sqlx.Tx, ssr *StudentSelectedReason) error {
+	if tx != nil {
+		return r.createStudentSelectedReasonTx(ctx, tx, ssr)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.createStudentSelectedReasonTx(ctx, txn, ssr)
 	})
 }
 
-func (r *Repository) DeleteStudentSelectedReasons(ctx context.Context, iirID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM student_selected_reasons WHERE iir_id = ?`
-		_, err := tx.ExecContext(ctx, query, iirID)
-		if err != nil {
-			return fmt.Errorf("failed to delete student selected reasons: %w", err)
-		}
-		return nil
+func (r *Repository) createStudentSelectedReasonTx(ctx context.Context, tx *sqlx.Tx, ssr *StudentSelectedReason) error {
+	query := `
+		INSERT INTO student_selected_reasons (iir_id, reason_id, other_reason_text)
+		VALUES (:iir_id, :reason_id, :other_reason_text)
+	`
+	_, err := tx.NamedExecContext(ctx, query, ssr)
+	if err != nil {
+		return fmt.Errorf("failed to create student selected reason: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) DeleteStudentSelectedReasons(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	if tx != nil {
+		return r.deleteStudentSelectedReasonsTx(ctx, tx, iirID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteStudentSelectedReasonsTx(ctx, txn, iirID)
 	})
 }
 
-func (r *Repository) UpsertRelatedPerson(ctx context.Context, rp *RelatedPerson) (int, error) {
+func (r *Repository) deleteStudentSelectedReasonsTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	query := `DELETE FROM student_selected_reasons WHERE iir_id = ?`
+	_, err := tx.ExecContext(ctx, query, iirID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student selected reasons: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) UpsertRelatedPerson(ctx context.Context, tx *sqlx.Tx, rp *RelatedPerson) (int, error) {
+	if tx != nil {
+		return r.upsertRelatedPersonTx(ctx, tx, rp)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(RelatedPerson{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(RelatedPerson{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO related_persons (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, rp)
-		if err != nil {
-			return fmt.Errorf("failed to upsert related person: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for related person: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertRelatedPersonTx(ctx, txn, rp)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) UpsertStudentRelatedPerson(ctx context.Context, srp *StudentRelatedPerson) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentRelatedPerson{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentRelatedPerson{}, []string{"created_at", "updated_at"})
+func (r *Repository) upsertRelatedPersonTx(ctx context.Context, tx *sqlx.Tx, rp *RelatedPerson) (int, error) {
+	cols, vals := database.GetInsertStatement(RelatedPerson{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(RelatedPerson{}, []string{"created_at", "updated_at"})
 
-		query := fmt.Sprintf(`
-			INSERT INTO student_related_persons (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
+	query := fmt.Sprintf(`
+		INSERT INTO related_persons (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, rp)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert related person: %w", err)
+	}
 
-		_, err := tx.NamedExecContext(ctx, query, srp)
-		if err != nil {
-			return fmt.Errorf("failed to upsert student related person: %w", err)
-		}
-		return nil
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for related person: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) UpsertStudentRelatedPerson(ctx context.Context, tx *sqlx.Tx, srp *StudentRelatedPerson) error {
+	if tx != nil {
+		return r.upsertStudentRelatedPersonTx(ctx, tx, srp)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.upsertStudentRelatedPersonTx(ctx, txn, srp)
 	})
 }
 
-func (r *Repository) DeleteStudentRelatedPersons(ctx context.Context, iirID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM student_related_persons WHERE iir_id = ?`
-		_, err := tx.ExecContext(ctx, query, iirID)
-		if err != nil {
-			return fmt.Errorf("failed to delete student related persons: %w", err)
-		}
-		return nil
+func (r *Repository) upsertStudentRelatedPersonTx(ctx context.Context, tx *sqlx.Tx, srp *StudentRelatedPerson) error {
+	cols, vals := database.GetInsertStatement(StudentRelatedPerson{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentRelatedPerson{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_related_persons (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+
+	_, err := tx.NamedExecContext(ctx, query, srp)
+	if err != nil {
+		return fmt.Errorf("failed to upsert student related person: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) DeleteStudentRelatedPersons(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	if tx != nil {
+		return r.deleteStudentRelatedPersonsTx(ctx, tx, iirID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteStudentRelatedPersonsTx(ctx, txn, iirID)
 	})
 }
 
-func (r *Repository) UpsertFamilyBackground(ctx context.Context, fb *FamilyBackground) (int, error) {
+func (r *Repository) deleteStudentRelatedPersonsTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	query := `DELETE FROM student_related_persons WHERE iir_id = ?`
+	_, err := tx.ExecContext(ctx, query, iirID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student related persons: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) UpsertFamilyBackground(ctx context.Context, tx *sqlx.Tx, fb *FamilyBackground) (int, error) {
+	if tx != nil {
+		return r.upsertFamilyBackgroundTx(ctx, tx, fb)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(FamilyBackground{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(FamilyBackground{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO family_backgrounds (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, fb)
-		if err != nil {
-			return fmt.Errorf("failed to upsert family background: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for family background: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertFamilyBackgroundTx(ctx, txn, fb)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) CreateStudentSiblingSupport(ctx context.Context, sss *StudentSiblingSupport) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `
-			INSERT INTO student_sibling_supports (family_background_id, support_type_id)
-			VALUES (:family_background_id, :support_type_id)
-		`
-		_, err := tx.NamedExecContext(ctx, query, sss)
-		if err != nil {
-			return fmt.Errorf("failed to create student sibling support: %w", err)
-		}
-		return nil
+func (r *Repository) upsertFamilyBackgroundTx(ctx context.Context, tx *sqlx.Tx, fb *FamilyBackground) (int, error) {
+	cols, vals := database.GetInsertStatement(FamilyBackground{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(FamilyBackground{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO family_backgrounds (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, fb)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert family background: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for family background: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) CreateStudentSiblingSupport(ctx context.Context, tx *sqlx.Tx, sss *StudentSiblingSupport) error {
+	if tx != nil {
+		return r.createStudentSiblingSupportTx(ctx, tx, sss)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.createStudentSiblingSupportTx(ctx, txn, sss)
 	})
 }
 
-func (r *Repository) DeleteStudentSiblingSupportsByFamilyID(ctx context.Context, familyBackgroundID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM student_sibling_supports WHERE family_background_id = ?`
-		_, err := tx.ExecContext(ctx, query, familyBackgroundID)
-		if err != nil {
-			return fmt.Errorf("failed to delete student sibling supports: %w", err)
-		}
-		return nil
+func (r *Repository) createStudentSiblingSupportTx(ctx context.Context, tx *sqlx.Tx, sss *StudentSiblingSupport) error {
+	cols, vals := database.GetInsertStatement(StudentSiblingSupport{}, []string{"created_at", "updated_at"})
+	query := fmt.Sprintf(`
+		INSERT INTO student_sibling_supports (%s) VALUES (%s)
+	`, cols, vals)
+	_, err := tx.NamedExecContext(ctx, query, sss)
+	if err != nil {
+		return fmt.Errorf("failed to create student sibling support: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) DeleteStudentSiblingSupportsByFamilyID(ctx context.Context, tx *sqlx.Tx, familyBackgroundID int) error {
+	if tx != nil {
+		return r.deleteStudentSiblingSupportsByFamilyIDTx(ctx, tx, familyBackgroundID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteStudentSiblingSupportsByFamilyIDTx(ctx, txn, familyBackgroundID)
 	})
 }
 
-func (r *Repository) UpsertEducationalBackground(ctx context.Context, eb *EducationalBackground) (int, error) {
+func (r *Repository) deleteStudentSiblingSupportsByFamilyIDTx(ctx context.Context, tx *sqlx.Tx, familyBackgroundID int) error {
+	query := `DELETE FROM student_sibling_supports WHERE family_background_id = ?`
+	_, err := tx.ExecContext(ctx, query, familyBackgroundID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student sibling supports: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) UpsertEducationalBackground(ctx context.Context, tx *sqlx.Tx, eb *EducationalBackground) (int, error) {
+	if tx != nil {
+		return r.upsertEducationalBackgroundTx(ctx, tx, eb)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(EducationalBackground{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(EducationalBackground{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO educational_backgrounds (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, eb)
-		if err != nil {
-			return fmt.Errorf("failed to upsert educational background: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for educational background: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertEducationalBackgroundTx(ctx, txn, eb)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) UpsertSchoolDetails(ctx context.Context, sd *SchoolDetails) (int, error) {
+func (r *Repository) upsertEducationalBackgroundTx(ctx context.Context, tx *sqlx.Tx, eb *EducationalBackground) (int, error) {
+	cols, vals := database.GetInsertStatement(EducationalBackground{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(EducationalBackground{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO educational_backgrounds (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, eb)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert educational background: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for educational background: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) UpsertSchoolDetails(ctx context.Context, tx *sqlx.Tx, sd *SchoolDetails) (int, error) {
+	if tx != nil {
+		return r.upsertSchoolDetailsTx(ctx, tx, sd)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(SchoolDetails{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(SchoolDetails{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO school_details (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, sd)
-		if err != nil {
-			return fmt.Errorf("failed to upsert school details: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for school details: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertSchoolDetailsTx(ctx, txn, sd)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) DeleteSchoolDetailsByEBID(ctx context.Context, ebID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM school_details WHERE eb_id = ?`
-		_, err := tx.ExecContext(ctx, query, ebID)
-		if err != nil {
-			return fmt.Errorf("failed to delete school details: %w", err)
-		}
-		return nil
+func (r *Repository) upsertSchoolDetailsTx(ctx context.Context, tx *sqlx.Tx, sd *SchoolDetails) (int, error) {
+	cols, vals := database.GetInsertStatement(SchoolDetails{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(SchoolDetails{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO school_details (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, sd)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert school details: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for school details: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) DeleteSchoolDetailsByEBID(ctx context.Context, tx *sqlx.Tx, ebID int) error {
+	if tx != nil {
+		return r.deleteSchoolDetailsByEBIDTx(ctx, tx, ebID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteSchoolDetailsByEBIDTx(ctx, txn, ebID)
 	})
 }
 
-func (r *Repository) UpsertStudentHealthRecord(ctx context.Context, hr *StudentHealthRecord) (int, error) {
+func (r *Repository) deleteSchoolDetailsByEBIDTx(ctx context.Context, tx *sqlx.Tx, ebID int) error {
+	query := `DELETE FROM school_details WHERE eb_id = ?`
+	_, err := tx.ExecContext(ctx, query, ebID)
+	if err != nil {
+		return fmt.Errorf("failed to delete school details: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) UpsertStudentHealthRecord(ctx context.Context, tx *sqlx.Tx, hr *StudentHealthRecord) (int, error) {
+	if tx != nil {
+		return r.upsertStudentHealthRecordTx(ctx, tx, hr)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentHealthRecord{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentHealthRecord{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_health_records (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, hr)
-		if err != nil {
-			return fmt.Errorf("failed to upsert student health record: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for student health record: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertStudentHealthRecordTx(ctx, txn, hr)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) UpsertStudentConsultation(ctx context.Context, sc *StudentConsultation) (int, error) {
+func (r *Repository) upsertStudentHealthRecordTx(ctx context.Context, tx *sqlx.Tx, hr *StudentHealthRecord) (int, error) {
+	cols, vals := database.GetInsertStatement(StudentHealthRecord{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentHealthRecord{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_health_records (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, hr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert student health record: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for student health record: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) UpsertStudentConsultation(ctx context.Context, tx *sqlx.Tx, sc *StudentConsultation) (int, error) {
+	if tx != nil {
+		return r.upsertStudentConsultationTx(ctx, tx, sc)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentConsultation{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentConsultation{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_consultations (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, sc)
-		if err != nil {
-			return fmt.Errorf("failed to upsert student consultation: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for student consultation: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertStudentConsultationTx(ctx, txn, sc)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) UpsertStudentFinance(ctx context.Context, sf *StudentFinance) (int, error) {
+func (r *Repository) upsertStudentConsultationTx(ctx context.Context, tx *sqlx.Tx, sc *StudentConsultation) (int, error) {
+	cols, vals := database.GetInsertStatement(StudentConsultation{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentConsultation{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_consultations (%s) VALUES (%s) ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, sc)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert student consultation: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for student consultation: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) UpsertStudentFinance(ctx context.Context, tx *sqlx.Tx, sf *StudentFinance) (int, error) {
+	if tx != nil {
+		return r.upsertStudentFinanceTx(ctx, tx, sf)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentFinance{}, []string{"created_at", "updated_at"})
-		updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentFinance{}, []string{"created_at", "updated_at", "iir_id"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_finances (%s)
-			VALUES (%s)
-			ON DUPLICATE KEY UPDATE %s
-		`, cols, vals, updateCols)
-		result, err := tx.NamedExecContext(ctx, query, sf)
-		if err != nil {
-			return fmt.Errorf("failed to upsert student finance: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for student finance: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.upsertStudentFinanceTx(ctx, txn, sf)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) CreateStudentFinancialSupport(ctx context.Context, sfs *StudentFinancialSupport) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `
-			INSERT INTO student_financial_supports (sf_id, support_type_id, created_at, updated_at)
-			VALUES (:sf_id, :support_type_id, :created_at, :updated_at)
-		`
-		_, err := tx.NamedExecContext(ctx, query, sfs)
-		if err != nil {
-			return fmt.Errorf("failed to create student financial support: %w", err)
-		}
-		return nil
+func (r *Repository) upsertStudentFinanceTx(ctx context.Context, tx *sqlx.Tx, sf *StudentFinance) (int, error) {
+	cols, vals := database.GetInsertStatement(StudentFinance{}, []string{"created_at", "updated_at"})
+	updateCols := database.GetOnDuplicateKeyUpdateStatement(StudentFinance{}, []string{"created_at", "updated_at", "iir_id"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_finances (%s)
+		VALUES (%s)
+		ON DUPLICATE KEY UPDATE %s
+	`, cols, vals, updateCols)
+	result, err := tx.NamedExecContext(ctx, query, sf)
+	if err != nil {
+		return 0, fmt.Errorf("failed to upsert student finance: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for student finance: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) CreateStudentFinancialSupport(ctx context.Context, tx *sqlx.Tx, sfs *StudentFinancialSupport) error {
+	if tx != nil {
+		return r.createStudentFinancialSupportTx(ctx, tx, sfs)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.createStudentFinancialSupportTx(ctx, txn, sfs)
 	})
 }
 
-func (r *Repository) DeleteStudentFinancialSupportsByFinanceID(ctx context.Context, financeID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM student_financial_supports WHERE sf_id = ?`
-		_, err := tx.ExecContext(ctx, query, financeID)
-		if err != nil {
-			return fmt.Errorf("failed to delete student financial supports: %w", err)
-		}
-		return nil
+func (r *Repository) createStudentFinancialSupportTx(ctx context.Context, tx *sqlx.Tx, sfs *StudentFinancialSupport) error {
+	cols, vals := database.GetInsertStatement(StudentFinancialSupport{}, []string{"created_at", "updated_at"})
+	query := fmt.Sprintf(`
+		INSERT INTO student_financial_supports (%s)
+		VALUES (%s)
+	`, cols, vals)
+	_, err := tx.NamedExecContext(ctx, query, sfs)
+	if err != nil {
+		return fmt.Errorf("failed to create student financial support: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) DeleteStudentFinancialSupportsByFinanceID(ctx context.Context, tx *sqlx.Tx, financeID int) error {
+	if tx != nil {
+		return r.deleteStudentFinancialSupportsByFinanceIDTx(ctx, tx, financeID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteStudentFinancialSupportsByFinanceIDTx(ctx, txn, financeID)
 	})
 }
 
-func (r *Repository) CreateStudentActivity(ctx context.Context, sa *StudentActivity) (int, error) {
+func (r *Repository) deleteStudentFinancialSupportsByFinanceIDTx(ctx context.Context, tx *sqlx.Tx, financeID int) error {
+	query := `DELETE FROM student_financial_supports WHERE sf_id = ?`
+	_, err := tx.ExecContext(ctx, query, financeID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student financial supports: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) CreateStudentActivity(ctx context.Context, tx *sqlx.Tx, sa *StudentActivity) (int, error) {
+	if tx != nil {
+		return r.createStudentActivityTx(ctx, tx, sa)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentActivity{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_activities (%s)
-			VALUES (%s)
-		`, cols, vals)
-		result, err := tx.NamedExecContext(ctx, query, sa)
-		if err != nil {
-			return fmt.Errorf("failed to create student activity: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for student activity: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.createStudentActivityTx(ctx, txn, sa)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) DeleteStudentActivitiesByIIRID(ctx context.Context, iirID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM student_activities WHERE iir_id = ?`
-		_, err := tx.ExecContext(ctx, query, iirID)
-		if err != nil {
-			return fmt.Errorf("failed to delete student activities: %w", err)
-		}
-		return nil
+func (r *Repository) createStudentActivityTx(ctx context.Context, tx *sqlx.Tx, sa *StudentActivity) (int, error) {
+	cols, vals := database.GetInsertStatement(StudentActivity{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_activities (%s)
+		VALUES (%s)
+	`, cols, vals)
+	result, err := tx.NamedExecContext(ctx, query, sa)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create student activity: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for student activity: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) DeleteStudentActivitiesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	if tx != nil {
+		return r.deleteStudentActivitiesByIIRIDTx(ctx, tx, iirID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteStudentActivitiesByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
-func (r *Repository) CreateStudentSubjectPreference(ctx context.Context, ssp *StudentSubjectPreference) (int, error) {
+func (r *Repository) deleteStudentActivitiesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	query := `DELETE FROM student_activities WHERE iir_id = ?`
+	_, err := tx.ExecContext(ctx, query, iirID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student activities: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) CreateStudentSubjectPreference(ctx context.Context, tx *sqlx.Tx, ssp *StudentSubjectPreference) (int, error) {
+	if tx != nil {
+		return r.createStudentSubjectPreferenceTx(ctx, tx, ssp)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentSubjectPreference{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_subject_preferences (%s)
-			VALUES (%s)
-		`, cols, vals)
-		result, err := tx.NamedExecContext(ctx, query, ssp)
-		if err != nil {
-			return fmt.Errorf("failed to create student subject preference: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for student subject preference: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.createStudentSubjectPreferenceTx(ctx, txn, ssp)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) DeleteStudentSubjectPreferencesByIIRID(ctx context.Context, iirID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM student_subject_preferences WHERE iir_id = ?`
-		_, err := tx.ExecContext(ctx, query, iirID)
-		if err != nil {
-			return fmt.Errorf("failed to delete student subject preferences: %w", err)
-		}
-		return nil
+func (r *Repository) createStudentSubjectPreferenceTx(ctx context.Context, tx *sqlx.Tx, ssp *StudentSubjectPreference) (int, error) {
+	cols, vals := database.GetInsertStatement(StudentSubjectPreference{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_subject_preferences (%s)
+		VALUES (%s)
+	`, cols, vals)
+	result, err := tx.NamedExecContext(ctx, query, ssp)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create student subject preference: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for student subject preference: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) DeleteStudentSubjectPreferencesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	if tx != nil {
+		return r.deleteStudentSubjectPreferencesByIIRIDTx(ctx, tx, iirID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteStudentSubjectPreferencesByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
-func (r *Repository) CreateStudentHobby(ctx context.Context, sh *StudentHobby) (int, error) {
+func (r *Repository) deleteStudentSubjectPreferencesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	query := `DELETE FROM student_subject_preferences WHERE iir_id = ?`
+	_, err := tx.ExecContext(ctx, query, iirID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student subject preferences: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) CreateStudentHobby(ctx context.Context, tx *sqlx.Tx, sh *StudentHobby) (int, error) {
+	if tx != nil {
+		return r.createStudentHobbyTx(ctx, tx, sh)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(StudentHobby{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO student_hobbies (%s)
-			VALUES (%s)
-		`, cols, vals)
-		result, err := tx.NamedExecContext(ctx, query, sh)
-		if err != nil {
-			return fmt.Errorf("failed to create student hobby: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for student hobby: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.createStudentHobbyTx(ctx, txn, sh)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) DeleteStudentHobbiesByIIRID(ctx context.Context, iirID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM student_hobbies WHERE iir_id = ?`
-		_, err := tx.ExecContext(ctx, query, iirID)
-		if err != nil {
-			return fmt.Errorf("failed to delete student hobbies: %w", err)
-		}
-		return nil
+func (r *Repository) createStudentHobbyTx(ctx context.Context, tx *sqlx.Tx, sh *StudentHobby) (int, error) {
+	cols, vals := database.GetInsertStatement(StudentHobby{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO student_hobbies (%s)
+		VALUES (%s)
+	`, cols, vals)
+	result, err := tx.NamedExecContext(ctx, query, sh)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create student hobby: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for student hobby: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) DeleteStudentHobbiesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	if tx != nil {
+		return r.deleteStudentHobbiesByIIRIDTx(ctx, tx, iirID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteStudentHobbiesByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
-func (r *Repository) CreateTestResult(ctx context.Context, tr *TestResult) (int, error) {
+func (r *Repository) deleteStudentHobbiesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	query := `DELETE FROM student_hobbies WHERE iir_id = ?`
+	_, err := tx.ExecContext(ctx, query, iirID)
+	if err != nil {
+		return fmt.Errorf("failed to delete student hobbies: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) CreateTestResult(ctx context.Context, tx *sqlx.Tx, tr *TestResult) (int, error) {
+	if tx != nil {
+		return r.createTestResultTx(ctx, tx, tr)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(TestResult{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO test_results (%s)
-			VALUES (%s)
-		`, cols, vals)
-		result, err := tx.NamedExecContext(ctx, query, tr)
-		if err != nil {
-			return fmt.Errorf("failed to create test result: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for test result: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.createTestResultTx(ctx, txn, tr)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) DeleteTestResultsByIIRID(ctx context.Context, iirID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM test_results WHERE iir_id = ?`
-		_, err := tx.ExecContext(ctx, query, iirID)
-		if err != nil {
-			return fmt.Errorf("failed to delete test results: %w", err)
-		}
-		return nil
+func (r *Repository) createTestResultTx(ctx context.Context, tx *sqlx.Tx, tr *TestResult) (int, error) {
+	cols, vals := database.GetInsertStatement(TestResult{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO test_results (%s)
+		VALUES (%s)
+	`, cols, vals)
+	result, err := tx.NamedExecContext(ctx, query, tr)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create test result: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for test result: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) DeleteTestResultsByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	if tx != nil {
+		return r.deleteTestResultsByIIRIDTx(ctx, tx, iirID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteTestResultsByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
-func (r *Repository) CreateSignificantNote(ctx context.Context, sn *SignificantNote) (int, error) {
+func (r *Repository) deleteTestResultsByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	query := `DELETE FROM test_results WHERE iir_id = ?`
+	_, err := tx.ExecContext(ctx, query, iirID)
+	if err != nil {
+		return fmt.Errorf("failed to delete test results: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) CreateSignificantNote(ctx context.Context, tx *sqlx.Tx, sn *SignificantNote) (int, error) {
+	if tx != nil {
+		return r.createSignificantNoteTx(ctx, tx, sn)
+	}
+
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(SignificantNote{}, []string{"created_at", "updated_at"})
-
-		query := fmt.Sprintf(`
-			INSERT INTO significant_notes (%s)
-			VALUES (%s)
-		`, cols, vals)
-		result, err := tx.NamedExecContext(ctx, query, sn)
-		if err != nil {
-			return fmt.Errorf("failed to create significant note: %w", err)
-		}
-
-		lastID, err := result.LastInsertId()
-		if err != nil {
-			return fmt.Errorf("failed to get last insert ID for significant note: %w", err)
-		}
-
-		id = int(lastID)
-		return nil
+	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		var err error
+		id, err = r.createSignificantNoteTx(ctx, txn, sn)
+		return err
 	})
 	return id, err
 }
 
-func (r *Repository) DeleteSignificantNotesByIIRID(ctx context.Context, iirID int) error {
-	return database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `DELETE FROM significant_notes WHERE iir_id = ?`
-		_, err := tx.ExecContext(ctx, query, iirID)
-		if err != nil {
-			return fmt.Errorf("failed to delete significant notes: %w", err)
-		}
-		return nil
+func (r *Repository) createSignificantNoteTx(ctx context.Context, tx *sqlx.Tx, sn *SignificantNote) (int, error) {
+	cols, vals := database.GetInsertStatement(SignificantNote{}, []string{"created_at", "updated_at"})
+
+	query := fmt.Sprintf(`
+		INSERT INTO significant_notes (%s)
+		VALUES (%s)
+	`, cols, vals)
+	result, err := tx.NamedExecContext(ctx, query, sn)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create significant note: %w", err)
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get last insert ID for significant note: %w", err)
+	}
+
+	return int(lastID), nil
+}
+
+func (r *Repository) DeleteSignificantNotesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	if tx != nil {
+		return r.deleteSignificantNotesByIIRIDTx(ctx, tx, iirID)
+	}
+
+	return database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+		return r.deleteSignificantNotesByIIRIDTx(ctx, txn, iirID)
 	})
+}
+
+func (r *Repository) deleteSignificantNotesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+	query := `DELETE FROM significant_notes WHERE iir_id = ?`
+	_, err := tx.ExecContext(ctx, query, iirID)
+	if err != nil {
+		return fmt.Errorf("failed to delete significant notes: %w", err)
+	}
+	return nil
 }
