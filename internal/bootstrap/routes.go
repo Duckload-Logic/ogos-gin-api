@@ -9,6 +9,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
@@ -63,6 +64,7 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 
 	auth.RegisterRoutes(apiV1Routes, handlers.AuthHandler)
 	users.RegisterRoutes(db, apiV1Routes, handlers.UserHandler)
+	locations.RegisterRoutes(apiV1Routes, handlers.LocationsHandler)
 	students.RegisterRoutes(db, apiV1Routes, handlers.StudentHandler)
 	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
 	excuseslips.RegisterRoutes(apiV1Routes, handlers.ExcuseSlipHandler)

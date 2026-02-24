@@ -33,15 +33,17 @@ CREATE TABLE regions (
 CREATE TABLE cities (
     id INT AUTO_INCREMENT PRIMARY KEY,
     region_id INT NOT NULL,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    FOREIGN KEY (region_id) REFERENCES regions(id)
+    name VARCHAR(100),
+    FOREIGN KEY (region_id) REFERENCES regions(id),
+    CONSTRAINT unique_region_city UNIQUE KEY (region_id, name)
 );
 
 CREATE TABLE barangays (
     id INT AUTO_INCREMENT PRIMARY KEY,
     city_id INT NOT NULL,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    FOREIGN KEY (city_id) REFERENCES cities(id)
+    name VARCHAR(100),
+    FOREIGN KEY (city_id) REFERENCES cities(id),
+    CONSTRAINT unique_city_barangay UNIQUE KEY (city_id, name)
 );
 
 CREATE TABLE genders(

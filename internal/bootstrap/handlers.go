@@ -14,6 +14,7 @@ type Handlers struct {
 	DB                 *sqlx.DB
 	AuthHandler        *auth.Handler
 	UserHandler        *users.Handler
+	LocationsHandler   *locations.Handler
 	StudentHandler     *students.Handler
 	AppointmentHandler *appointments.Handler
 	ExcuseSlipHandler  *excuseslips.Handler
@@ -30,6 +31,7 @@ func getHandlers(repos *Repositories) *Handlers {
 	return &Handlers{
 		AuthHandler:        auth.NewHandler(authService),
 		UserHandler:        users.NewHandler(userService),
+		LocationsHandler:   locations.NewHandler(locationsService),
 		StudentHandler:     students.NewHandler(studentService),
 		AppointmentHandler: appointments.NewHandler(appointmentService),
 		ExcuseSlipHandler:  excuseslips.NewHandler(excuseSlipService),

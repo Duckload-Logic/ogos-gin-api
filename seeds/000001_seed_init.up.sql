@@ -94,15 +94,22 @@ INSERT INTO nature_of_residence_types (residence_type_name) VALUES
     ('Shares apartment with friends/relatives');
 
 INSERT INTO religions (religion_name) VALUES
+    ('Christian/Born Again'),
     ('Roman Catholic'),
-    ('Islam'),
-    ('Protestant'),
+    ('Baptist'),
     ('Iglesia ni Cristo'),
-    ('Aglipayan'),
-    ('Buddhism'),
-    ('Hinduism'),
-    ('Judaism'),
-    ('Other');
+    ('Islam/Muslim'),
+    ('Protestant'),
+    ('MCGI'),
+    ('Jehovah’s Witness'),
+    ('Seventh-Day Adventist'),
+    ('Mormons/Latter-day Saints'),
+    ('Apostolic'),
+    ('UCCP'),
+    ('COC'),
+    ('United Pentecostal'),
+    ('Other'),
+    ('Not Applicable');
 
 INSERT INTO sibling_support_types (`name`) VALUES
     ('Family'),

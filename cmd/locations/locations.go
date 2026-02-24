@@ -85,24 +85,30 @@ func (s *AddressSeeder) SeedAddresses(jsonFile string) error {
 
 	// Step 1: Seed regions
 	fmt.Println("Seeding regions...")
-	regionCount, err := s.seedRegions(locations)
+	err = s.seedRegions(locations)
 	if err != nil {
 		return fmt.Errorf("failed to seed regions: %w", err)
 	}
 
 	// Step 2: Seed cities
 	fmt.Println("Seeding cities...")
-	cityCount, err := s.seedCities(locations)
+	err = s.seedCities(locations)
 	if err != nil {
 		return fmt.Errorf("failed to seed cities: %w", err)
 	}
 
 	// Step 3: Seed barangays
 	fmt.Println("Seeding barangays...")
-	barangayCount, err := s.seedBarangays(locations)
+	err = s.seedBarangays(locations)
 	if err != nil {
 		return fmt.Errorf("failed to seed barangays: %w", err)
 	}
+
+	// Get actual counts from database
+	var regionCount, cityCount, barangayCount int
+	s.db.Get(&regionCount, "SELECT COUNT(*) FROM regions")
+	s.db.Get(&cityCount, "SELECT COUNT(*) FROM cities")
+	s.db.Get(&barangayCount, "SELECT COUNT(*) FROM barangays")
 
 	elapsed := time.Since(start)
 	fmt.Printf("Address seeding completed in %v\n", elapsed)
@@ -130,12 +136,12 @@ func (s *AddressSeeder) clearData() error {
 }
 
 // seedRegions extracts and inserts regions from JSON into database
-func (s *AddressSeeder) seedRegions(locations JSONStructure) (int, error) {
+func (s *AddressSeeder) seedRegions(locations JSONStructure) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if len(locations) == 0 {
-		return 0, nil
+		return nil
 	}
 
 	// Batch insert regions (region names are keys in JSON)
@@ -153,7 +159,7 @@ func (s *AddressSeeder) seedRegions(locations JSONStructure) (int, error) {
 
 	_, err := s.db.Exec(query, args...)
 	if err != nil {
-		return 0, fmt.Errorf("failed to batch insert regions: %w", err)
+		return fmt.Errorf("failed to batch insert regions: %w", err)
 	}
 
 	// Load all regions into map for city seeding
@@ -163,18 +169,18 @@ func (s *AddressSeeder) seedRegions(locations JSONStructure) (int, error) {
 	}
 	err = s.db.Select(&regions, "SELECT id, name FROM regions")
 	if err != nil {
-		return 0, fmt.Errorf("failed to load regions: %w", err)
+		return fmt.Errorf("failed to load regions: %w", err)
 	}
 
 	for _, region := range regions {
 		s.regionsMap.Store(region.Name, int64(region.ID))
 	}
 
-	return len(locations), nil
+	return nil
 }
 
 // seedCities extracts and inserts cities from JSON into database
-func (s *AddressSeeder) seedCities(locations JSONStructure) (int, error) {
+func (s *AddressSeeder) seedCities(locations JSONStructure) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -198,7 +204,7 @@ func (s *AddressSeeder) seedCities(locations JSONStructure) (int, error) {
 	}
 
 	if cityCount == 0 {
-		return 0, nil
+		return nil
 	}
 
 	query := "INSERT INTO cities (name, region_id) VALUES " + strings.Join(placeholders, ", ") +
@@ -206,7 +212,7 @@ func (s *AddressSeeder) seedCities(locations JSONStructure) (int, error) {
 
 	_, err := s.db.Exec(query, args...)
 	if err != nil {
-		return 0, fmt.Errorf("failed to batch insert cities: %w", err)
+		return fmt.Errorf("failed to batch insert cities: %w", err)
 	}
 
 	// Load all cities into map for barangay seeding
@@ -216,18 +222,18 @@ func (s *AddressSeeder) seedCities(locations JSONStructure) (int, error) {
 	}
 	err = s.db.Select(&cities, "SELECT id, name FROM cities")
 	if err != nil {
-		return 0, fmt.Errorf("failed to load cities: %w", err)
+		return fmt.Errorf("failed to load cities: %w", err)
 	}
 
 	for _, city := range cities {
 		s.citiesMap.Store(city.Name, int64(city.ID))
 	}
 
-	return cityCount, nil
+	return nil
 }
 
 // seedBarangays extracts and inserts barangays from JSON into database
-func (s *AddressSeeder) seedBarangays(locations JSONStructure) (int, error) {
+func (s *AddressSeeder) seedBarangays(locations JSONStructure) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -252,7 +258,7 @@ func (s *AddressSeeder) seedBarangays(locations JSONStructure) (int, error) {
 				// Insert when batch size reached
 				if len(currentBatch) >= batchSize {
 					if err := s.executeBatchInsert("barangays", currentPlaceholders, currentBatch); err != nil {
-						return 0, err
+						return err
 					}
 					currentBatch = nil
 					currentPlaceholders = nil
@@ -264,11 +270,11 @@ func (s *AddressSeeder) seedBarangays(locations JSONStructure) (int, error) {
 	// Insert remaining barangays
 	if len(currentBatch) > 0 {
 		if err := s.executeBatchInsert("barangays", currentPlaceholders, currentBatch); err != nil {
-			return 0, err
+			return err
 		}
 	}
 
-	return barangayCount, nil
+	return nil
 }
 
 // executeBatchInsert executes a batch insert for a table

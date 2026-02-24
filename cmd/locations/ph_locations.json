@@ -426,7 +426,7 @@
       "Taliboboka",
       "Tambac"
     ],
-    "City of Lamitan": [
+    "Lamitan": [
       "Arco",
       "Ba-as",
       "Baimbing",
@@ -473,7 +473,7 @@
       "Matibay",
       "Simbangon"
     ],
-    "City of Marawi": [
+    "Marawi": [
       "Ambolong",
       "Bacolod Chico Proper",
       "Banga",
@@ -2653,10 +2653,7 @@
       "Sumbaga Rogong",
       "Tangcal"
     ],
-    "Turtle Islands": [
-      "Taganak Poblacion",
-      "Likud Bakkao"
-    ],
+    "Turtle Islands": ["Taganak Poblacion", "Likud Bakkao"],
     "Ungkaya Pukan": [
       "Amaloy",
       "Bohe-Pahuh",
@@ -3699,7 +3696,7 @@
       "Punta Batsan",
       "Tubog"
     ],
-    "City of Iriga": [
+    "Iriga": [
       "Antipolo",
       "Cristo Rey",
       "Del Rosario",
@@ -3737,7 +3734,7 @@
       "Santo Domingo",
       "Santo Niño"
     ],
-    "City of Legazpi": [
+    "Legazpi": [
       "Bgy. 47 - Arimbay",
       "Bgy. 64 - Bagacay",
       "Bgy. 48 - Bagong Abre",
@@ -3809,7 +3806,7 @@
       "Bgy. 58 - Buragwis",
       "Bgy. 60 - Lamba"
     ],
-    "City of Ligao": [
+    "Ligao": [
       "Abella",
       "Allang",
       "Amtic",
@@ -3866,7 +3863,7 @@
       "Tula-tula Pequeño",
       "Tupas"
     ],
-    "City of Masbate": [
+    "Masbate": [
       "Anas",
       "Asid",
       "B. Titong",
@@ -3898,7 +3895,7 @@
       "Ubongan Dacu",
       "Usab"
     ],
-    "City of Naga": [
+    "Naga": [
       "Abella",
       "Bagumbayan Norte",
       "Bagumbayan Sur",
@@ -3927,7 +3924,7 @@
       "Tinago",
       "Triangulo"
     ],
-    "City of Sorsogon": [
+    "Sorsogon": [
       "Abuyog",
       "Almendras-Cogon (Pob.)",
       "Balogo",
@@ -3993,7 +3990,7 @@
       "Sawanga",
       "Sugod"
     ],
-    "City of Tabaco": [
+    "Tabaco": [
       "Agnas",
       "Bacolod",
       "Bangkilingan",
@@ -7288,7 +7285,7 @@
       "Tibatib",
       "Udia"
     ],
-    "City of Antipolo": [
+    "Antipolo": [
       "Calawis",
       "Cupang",
       "Dela Paz (Pob.)",
@@ -7306,7 +7303,7 @@
       "Santa Cruz",
       "Muntingdilaw"
     ],
-    "City of Bacoor": [
+    "Bacoor": [
       "Alima",
       "Aniban I",
       "Banalo",
@@ -7381,7 +7378,7 @@
       "Zapote IV",
       "Zapote V"
     ],
-    "City of Biñan": [
+    "Biñan": [
       "Biñan",
       "Bungahan",
       "Santo Tomas",
@@ -7407,7 +7404,7 @@
       "Tubigan",
       "Zapote"
     ],
-    "City of Cabuyao": [
+    "Cabuyao": [
       "Baclaran",
       "Banaybanay",
       "Banlic",
@@ -7427,7 +7424,7 @@
       "Barangay Dos (Pob.)",
       "Barangay Tres (Pob.)"
     ],
-    "City of Calamba": [
+    "Calamba": [
       "Bagong Kalsada",
       "Banadero",
       "Banlic",
@@ -7483,7 +7480,7 @@
       "Batino",
       "Majada Labas"
     ],
-    "City of Cavite": [
+    "Cavite": [
       "Barangay 1",
       "Barangay 10",
       "Barangay 2",
@@ -7569,7 +7566,7 @@
       "Barangay 62-A",
       "Barangay 62-B"
     ],
-    "City of Dasmariñas": [
+    "Dasmariñas": [
       "Burol",
       "Langkaan I",
       "Paliparan I",
@@ -7646,7 +7643,7 @@
       "H-2",
       "Victoria Reyes"
     ],
-    "City of General Trias": [
+    "General Trias": [
       "Alingaro",
       "Bacao I",
       "Gov. Ferrer Pob.",
@@ -7681,7 +7678,7 @@
       "Pasong Camachile II",
       "San Juan II"
     ],
-    "City of Imus": [
+    "Imus": [
       "Alapan I-A",
       "Alapan II-A",
       "Anabu I-A",
@@ -7780,7 +7777,7 @@
       "Toclong I-C",
       "Toclong II-B"
     ],
-    "City of Lipa": [
+    "Lipa": [
       "Adya",
       "Anilao",
       "Anilao-Labac",
@@ -7854,7 +7851,7 @@
       "Poblacion Barangay 9-A",
       "Barangay 12 (Pob.)"
     ],
-    "City of Lucena": [
+    "Lucena": [
       "Barangay 1 (Pob.)",
       "Barangay 10 (Pob.)",
       "Barangay 11 (Pob.)",
@@ -7889,7 +7886,7 @@
       "Talao-talao",
       "Market View"
     ],
-    "City of San Pablo": [
+    "San Pablo": [
       "Bagong Bayan II-A (Pob.)",
       "Bagong Pook VI-C (Pob.)",
       "Barangay I-A (Pob.)",
@@ -7971,7 +7968,7 @@
       "Santa Maria",
       "Santa Monica"
     ],
-    "City of San Pedro": [
+    "San Pedro": [
       "Bagong Silang",
       "Cuyab",
       "Estrella",
@@ -8000,7 +7997,7 @@
       "Rosario",
       "San Lorenzo Ruiz"
     ],
-    "City of Santa Rosa": [
+    "Santa Rosa": [
       "Aplaya",
       "Balibago",
       "Caingin",
@@ -8020,7 +8017,7 @@
       "Sinalhan",
       "Tagapo"
     ],
-    "City of Sto. Tomas": [
+    "Sto. Tomas": [
       "Barangay I (Pob.)",
       "Barangay II (Pob.)",
       "Barangay III (Pob.)",
@@ -8052,7 +8049,7 @@
       "Santiago",
       "Santa Teresita"
     ],
-    "City of Tagaytay": [
+    "Tagaytay": [
       "Asisan",
       "Bagong Tubig",
       "Dapdap West",
@@ -8088,7 +8085,7 @@
       "Sungay North",
       "Tolentino East"
     ],
-    "City of Tanauan": [
+    "Tanauan": [
       "Altura Bata",
       "Altura Matanda",
       "Altura-South",
@@ -8138,7 +8135,7 @@
       "Ulango",
       "Wawa"
     ],
-    "City of Tayabas": [
+    "Tayabas": [
       "Alitao",
       "Alupay",
       "Angeles Zone I (Pob.)",
@@ -8206,7 +8203,7 @@
       "Valencia",
       "Wakas"
     ],
-    "City of Trece Martires": [
+    "Trece Martires": [
       "Cabezas",
       "Cabuco",
       "De Ocampo",
@@ -8613,18 +8610,8 @@
       "Special District (Pob.)",
       "Paalaman"
     ],
-    "Jomalig": [
-      "Bukal",
-      "Casuguran",
-      "Gango",
-      "Talisoy (Pob.)",
-      "Apad"
-    ],
-    "Kalayaan": [
-      "Longos",
-      "San Antonio",
-      "San Juan (Pob.)"
-    ],
+    "Jomalig": ["Bukal", "Casuguran", "Gango", "Talisoy (Pob.)", "Apad"],
+    "Kalayaan": ["Longos", "San Antonio", "San Juan (Pob.)"],
     "Kawit": [
       "Binakayan-Kanluran",
       "Gahak",
@@ -10982,12 +10969,7 @@
       "Siblong",
       "Tabiog"
     ],
-    "Bucloc": [
-      "Ducligan",
-      "Labaan",
-      "Lingey",
-      "Lamao (Pob.)"
-    ],
+    "Bucloc": ["Ducligan", "Labaan", "Lingey", "Lamao (Pob.)"],
     "Buguias": [
       "Abatan",
       "Amgaleyguey",
@@ -11024,7 +11006,7 @@
       "Macalino",
       "Santa Elena"
     ],
-    "City of Baguio": [
+    "Baguio": [
       "Apugan-Loakan",
       "Asin Road",
       "Atok Trail",
@@ -11155,7 +11137,7 @@
       "Market Subdivision, Upper",
       "Padre Zamora"
     ],
-    "City of Tabuk": [
+    "Tabuk": [
       "Agbannawag",
       "Amlao",
       "Appas",
@@ -11223,12 +11205,7 @@
       "Ili",
       "Mawigue"
     ],
-    "Daguioman": [
-      "Ableg",
-      "Cabaruyan",
-      "Pikek",
-      "Tui (Pob.)"
-    ],
+    "Daguioman": ["Ableg", "Cabaruyan", "Pikek", "Tui (Pob.)"],
     "Danglas": [
       "Abaquid",
       "Cabaruan",
@@ -11470,13 +11447,7 @@
       "Poblacion North",
       "Poblacion West"
     ],
-    "Lagayan": [
-      "Ba-i",
-      "Collago",
-      "Pang-ot",
-      "Poblacion",
-      "Pulot"
-    ],
+    "Lagayan": ["Ba-i", "Collago", "Pang-ot", "Poblacion", "Pulot"],
     "Lamut": [
       "Ambasa",
       "Hapid",
@@ -12778,7 +12749,7 @@
       "Dammang Sur",
       "Sapping"
     ],
-    "City of Cauayan": [
+    "Cauayan": [
       "Alicaocao",
       "Alinam",
       "Amobocan",
@@ -12845,7 +12816,7 @@
       "Villa Luna",
       "Villaflor"
     ],
-    "City of Ilagan": [
+    "Ilagan": [
       "Cabeseria 27",
       "Aggasian",
       "Alibagu",
@@ -12938,7 +12909,7 @@
       "San Rodrigo",
       "Santa Maria"
     ],
-    "City of Santiago": [
+    "Santiago": [
       "Abra",
       "Ambalatungan",
       "Balintocatoc",
@@ -13414,12 +13385,7 @@
       "Santa Maria",
       "Santa Rosa"
     ],
-    "Ivana": [
-      "Radiwan",
-      "Salagao",
-      "San Vicente",
-      "Tuhel (Pob.)"
-    ],
+    "Ivana": ["Radiwan", "Salagao", "San Vicente", "Tuhel (Pob.)"],
     "Jones": [
       "Abulan",
       "Addalam",
@@ -13664,12 +13630,7 @@
       "Jose Ancheta",
       "Santa Maria"
     ],
-    "Mahatao": [
-      "Hañib",
-      "Kaumbakan",
-      "Panatayan",
-      "Uvoy (Pob.)"
-    ],
+    "Mahatao": ["Hañib", "Kaumbakan", "Panatayan", "Uvoy (Pob.)"],
     "Mallig": [
       "San Pedro",
       "Binmonton",
@@ -14538,12 +14499,7 @@
       "Ugad",
       "Moldero"
     ],
-    "Uyugan": [
-      "Kayvaluganan (Pob.)",
-      "Imnajbu",
-      "Itbud",
-      "Kayuganan (Pob.)"
-    ],
+    "Uyugan": ["Kayvaluganan (Pob.)", "Imnajbu", "Itbud", "Kayuganan (Pob.)"],
     "Villaverde": [
       "Bintawan Sur",
       "Ibung",
@@ -14772,7 +14728,7 @@
       "Saca (Pob.)",
       "Tag-Anito"
     ],
-    "City of Bayugan": [
+    "Bayugan": [
       "Calaitan",
       "Charito",
       "Fili",
@@ -14817,7 +14773,7 @@
       "Tagubay",
       "Villa Undayon"
     ],
-    "City of Bislig": [
+    "Bislig": [
       "Bucto",
       "Burboanan",
       "San Roque",
@@ -14843,7 +14799,7 @@
       "Maharlika",
       "Comawas"
     ],
-    "City of Butuan": [
+    "Butuan": [
       "Agao Pob.",
       "Agusan Pequeño",
       "Ambago",
@@ -14931,7 +14887,7 @@
       "Don Francisco",
       "Pigdaulan"
     ],
-    "City of Cabadbaran": [
+    "Cabadbaran": [
       "Antonio Luna",
       "Bay-ang",
       "Bayabas",
@@ -14964,7 +14920,7 @@
       "Tolosa",
       "Mahaba"
     ],
-    "City of Surigao": [
+    "Surigao": [
       "Alang-alang",
       "Alegria",
       "Anomar",
@@ -15020,7 +14976,7 @@
       "Zaragoza",
       "Canlanipa"
     ],
-    "City of Tandag": [
+    "Tandag": [
       "Awasian",
       "Bagong Lungsod (Pob.)",
       "Bioto",
@@ -16639,7 +16595,7 @@
       "San Roque",
       "Santa Maria"
     ],
-    "City of Angeles": [
+    "Angeles": [
       "Agapito del Rosario",
       "Anunas",
       "Balibago",
@@ -16674,7 +16630,7 @@
       "Amsic",
       "Ninoy Aquino"
     ],
-    "City of Balanga": [
+    "Balanga": [
       "Bagumbayan",
       "Cabog-Cabog",
       "Munting Batangas",
@@ -16701,7 +16657,7 @@
       "Doña Francisca",
       "Lote"
     ],
-    "City of Cabanatuan": [
+    "Cabanatuan": [
       "Aduas Centro",
       "Bagong Sikat",
       "Bagong Buhay",
@@ -16792,7 +16748,7 @@
       "Sangitan East",
       "Santo Niño"
     ],
-    "City of Gapan": [
+    "Gapan": [
       "Bayanihan",
       "Bulak",
       "Kapalangan",
@@ -16817,7 +16773,7 @@
       "Maburak",
       "Puting Tubig"
     ],
-    "City of Malolos": [
+    "Malolos": [
       "Anilao",
       "Atlag",
       "Babatnin",
@@ -16870,7 +16826,7 @@
       "Tikay",
       "Cofradia"
     ],
-    "City of Meycauayan": [
+    "Meycauayan": [
       "Bagbaguin",
       "Bahay Pare",
       "Bancal",
@@ -16898,7 +16854,7 @@
       "Zamora",
       "Caingin"
     ],
-    "City of Olongapo": [
+    "Olongapo": [
       "Asinan",
       "Banicain",
       "Barretto",
@@ -16917,7 +16873,7 @@
       "West Tapinac",
       "Old Cabalan"
     ],
-    "City of Palayan": [
+    "Palayan": [
       "Aulo",
       "Bo. Militar",
       "Ganaderia",
@@ -16938,7 +16894,7 @@
       "Popolon Pagas",
       "Bagong Buhay"
     ],
-    "City of San Fernando": [
+    "San Fernando": [
       "Alasas",
       "Baliti",
       "Bulaon",
@@ -16975,7 +16931,7 @@
       "Telabastagan",
       "Pulung Bulu"
     ],
-    "City of San Jose Del Monte": [
+    "San Jose Del Monte": [
       "Bagong Buhay I",
       "Dulong Bayan",
       "Gaya-gaya",
@@ -17036,7 +16992,7 @@
       "Santo Niño II",
       "San Martin de Porres"
     ],
-    "City of Tarlac": [
+    "Tarlac": [
       "Aguso",
       "Alvindia Segundo",
       "Amucao",
@@ -18185,13 +18141,7 @@
       "Tolega Sur",
       "Villa"
     ],
-    "Morong": [
-      "Binaritan",
-      "Mabayo",
-      "Nagbalayong",
-      "Poblacion",
-      "Sabang"
-    ],
+    "Morong": ["Binaritan", "Mabayo", "Nagbalayong", "Poblacion", "Sabang"],
     "Nampicuan": [
       "Alemania",
       "Ambasador Alzate Village",
@@ -19168,7 +19118,7 @@
       "Santo Tomas",
       "Sebitanan"
     ],
-    "Science City of Muñoz": [
+    "Science Muñoz": [
       "Bagong Sikat",
       "Balante",
       "Bantug",
@@ -20128,7 +20078,7 @@
       "Corazon (Pob.)",
       "Flores (Pob.)"
     ],
-    "City of Bais": [
+    "Bais": [
       "Barangay I (Pob.)",
       "Barangay II (Pob.)",
       "Basak",
@@ -20165,7 +20115,7 @@
       "Tangculogan",
       "Valencia"
     ],
-    "City of Bayawan": [
+    "Bayawan": [
       "Ali-is",
       "Banaybanay",
       "Banga",
@@ -20195,7 +20145,7 @@
       "Villareal",
       "San Isidro"
     ],
-    "City of Bogo": [
+    "Bogo": [
       "Cogon (Pob.)",
       "Anonang Norte",
       "Anonang Sur",
@@ -20226,7 +20176,7 @@
       "Taytayan",
       "Sudlonon"
     ],
-    "City of Canlaon": [
+    "Canlaon": [
       "Bayog",
       "Binalbagan",
       "Bucalan",
@@ -20240,7 +20190,7 @@
       "Budlasan",
       "Ninoy Aquino"
     ],
-    "City of Carcar": [
+    "Carcar": [
       "Bolinawan",
       "Buenavista",
       "Calidngan",
@@ -20257,7 +20207,7 @@
       "Poblacion III",
       "Tuyom"
     ],
-    "City of Cebu": [
+    "Cebu": [
       "Adlaon",
       "Agsungot",
       "Apas",
@@ -20339,7 +20289,7 @@
       "Zapatera",
       "Sudlon II"
     ],
-    "City of Dumaguete": [
+    "Dumaguete": [
       "Bagacay",
       "Bajumpandan",
       "Balugo",
@@ -20371,7 +20321,7 @@
       "Taclobo",
       "Talay"
     ],
-    "City of Guihulngan": [
+    "Guihulngan": [
       "Bakid",
       "Balogo",
       "Banwaque",
@@ -20406,7 +20356,7 @@
       "Trinidad",
       "Villegas"
     ],
-    "City of Lapu-Lapu": [
+    "Lapu-Lapu": [
       "Agus",
       "Babag",
       "Bankal",
@@ -20438,7 +20388,7 @@
       "Tungasan",
       "San Vicente"
     ],
-    "City of Mandaue": [
+    "Mandaue": [
       "Alang-alang",
       "Bakilid",
       "Banilad",
@@ -20467,7 +20417,7 @@
       "Tipolo",
       "Umapad"
     ],
-    "City of Naga": [
+    "Naga": [
       "Alfaco",
       "Bairan",
       "Balirong",
@@ -20497,7 +20447,7 @@
       "Uling",
       "West Poblacion"
     ],
-    "City of Tagbilaran": [
+    "Tagbilaran": [
       "Bool",
       "Booy",
       "Cabawan",
@@ -20514,7 +20464,7 @@
       "Tiptip",
       "Ubujan"
     ],
-    "City of Talisay": [
+    "Talisay": [
       "Bulacao",
       "Cadulawan",
       "Cansojong",
@@ -20538,7 +20488,7 @@
       "Lawaan II",
       "Lawaan III"
     ],
-    "City of Tanjay": [
+    "Tanjay": [
       "Azagra",
       "Bahi-an",
       "Luca",
@@ -20564,7 +20514,7 @@
       "Santo Niño",
       "Tugas"
     ],
-    "City of Toledo": [
+    "Toledo": [
       "Awihao",
       "Bagakay",
       "Bato",
@@ -22794,7 +22744,7 @@
       "Taytayan",
       "Poblacion"
     ],
-    "City of Davao": [
+    "Davao": [
       "Acacia",
       "Agdao",
       "Alambre",
@@ -22978,7 +22928,7 @@
       "Alfonso Angliongto Sr.",
       "Vicente Hizon Sr."
     ],
-    "City of Digos": [
+    "Digos": [
       "Aplaya",
       "Balabag",
       "San Jose",
@@ -23006,7 +22956,7 @@
       "Zone 2 (Pob.)",
       "Zone 3 (Pob.)"
     ],
-    "City of Mati": [
+    "Mati": [
       "Badas",
       "Bobon",
       "Buso",
@@ -23034,7 +22984,7 @@
       "Taguibo",
       "Tamisan"
     ],
-    "City of Panabo": [
+    "Panabo": [
       "A. O. Floirendo",
       "Datu Abdul Dadia",
       "Buenavista",
@@ -23076,7 +23026,7 @@
       "Waterfall",
       "San Pedro"
     ],
-    "City of Tagum": [
+    "Tagum": [
       "Apokon",
       "Bincungan",
       "Busaon",
@@ -23181,7 +23131,7 @@
       "Sinayawan",
       "Tologan"
     ],
-    "Island Garden City of Samal": [
+    "Island Garden Samal": [
       "Adecor",
       "Anonang",
       "Aumbay",
@@ -23874,11 +23824,7 @@
       "Tanwalang",
       "Waterfall"
     ],
-    "Talaingod": [
-      "Dagohoy",
-      "Palma Gil",
-      "Santo Niño"
-    ],
+    "Talaingod": ["Dagohoy", "Palma Gil", "Santo Niño"],
     "Tarragona": [
       "Cabagayan",
       "Central (Pob.)",
@@ -24837,7 +24783,7 @@
       "Barangay 7 (Pob.)",
       "Barangay 8 (Pob.)"
     ],
-    "City of Baybay": [
+    "Baybay": [
       "Altavista",
       "Ambacan",
       "Amguhan",
@@ -24931,7 +24877,7 @@
       "Monte Verde",
       "Villa Mag-aso"
     ],
-    "City of Borongan": [
+    "Borongan": [
       "Alang-alang",
       "Amantacop",
       "Ando",
@@ -24994,7 +24940,7 @@
       "Tabunan",
       "Tamoso"
     ],
-    "City of Calbayog": [
+    "Calbayog": [
       "Jose A. Roño",
       "Acedillo",
       "Alibaba",
@@ -25153,7 +25099,7 @@
       "Cagmanipis Sur",
       "Manuel Barral, Sr."
     ],
-    "City of Catbalogan": [
+    "Catbalogan": [
       "Albalate",
       "Bagongon",
       "Bangon",
@@ -25212,7 +25158,7 @@
       "Ibol",
       "Socorro"
     ],
-    "City of Maasin": [
+    "Maasin": [
       "Abgao (Pob.)",
       "Asuncion",
       "Bactul II",
@@ -25284,7 +25230,7 @@
       "Pasay",
       "San Agustin"
     ],
-    "City of Tacloban": [
+    "Tacloban": [
       "Barangay 2",
       "Nula-tula",
       "Libertad",
@@ -28569,9 +28515,7 @@
     ]
   },
   "Ilocos Region": {
-    "Adams": [
-      "Adams (Pob.)"
-    ],
+    "Adams": ["Adams (Pob.)"],
     "Agno": [
       "Allabon",
       "Aloleng",
@@ -29554,11 +29498,7 @@
       "Don Alejandro Quirolgico (Pob.)",
       "Don Lorenzo Querubin (Pob.)"
     ],
-    "Carasi": [
-      "Angset",
-      "Barbaqueso (Pob.)",
-      "Virbira"
-    ],
+    "Carasi": ["Angset", "Barbaqueso (Pob.)", "Virbira"],
     "Cervantes": [
       "Aluling",
       "Comillas North",
@@ -29574,7 +29514,7 @@
       "San Luis",
       "Malaya"
     ],
-    "City of Alaminos": [
+    "Alaminos": [
       "Alos",
       "Amandiego",
       "Amangbangan",
@@ -29615,7 +29555,7 @@
       "Pandan",
       "San Antonio"
     ],
-    "City of Batac": [
+    "Batac": [
       "Aglipay (Pob.)",
       "Baay",
       "Baligat",
@@ -29660,7 +29600,7 @@
       "Sumader",
       "Tabug"
     ],
-    "City of Candon": [
+    "Candon": [
       "Allangigan Primero",
       "Allangigan Segundo",
       "Amguid",
@@ -29704,7 +29644,7 @@
       "Tamurong Segundo",
       "Villarica"
     ],
-    "City of Dagupan": [
+    "Dagupan": [
       "Bacayao Norte",
       "Bacayao Sur",
       "Barangay II",
@@ -29737,7 +29677,7 @@
       "Tapuac",
       "Tebeng"
     ],
-    "City of Laoag": [
+    "Laoag": [
       "Bgy. No. 42, Apaya",
       "Bgy. No. 36, Araniw",
       "Bgy. No. 56-A, Bacsil North",
@@ -29819,7 +29759,7 @@
       "Bgy. No. 55-C, Vira",
       "Bgy. No. 44, Zamboanga"
     ],
-    "City of San Carlos": [
+    "San Carlos": [
       "Abanon",
       "Agdao",
       "Anando",
@@ -29907,7 +29847,7 @@
       "M. Soriano",
       "Tandang Sora"
     ],
-    "City of San Fernando": [
+    "San Fernando": [
       "Abut",
       "Apaleng",
       "Bacsil",
@@ -29968,7 +29908,7 @@
       "Tanqui",
       "Tanquigan"
     ],
-    "City of Urdaneta": [
+    "Urdaneta": [
       "Anonas",
       "Bactad East",
       "Dr. Pedro T. Orata",
@@ -30004,7 +29944,7 @@
       "Tipuso",
       "Tulong"
     ],
-    "City of Vigan": [
+    "Vigan": [
       "Ayusan Norte",
       "Ayusan Sur",
       "Barangay I (Pob.)",
@@ -30123,12 +30063,7 @@
       "San Marcos",
       "Elizabeth"
     ],
-    "Dumalneg": [
-      "Cabaritan",
-      "San Isidro",
-      "Kalaw",
-      "Quibel"
-    ],
+    "Dumalneg": ["Cabaritan", "San Isidro", "Kalaw", "Quibel"],
     "Galimuyod": [
       "Abaya",
       "Baracbac",
@@ -32476,7 +32411,7 @@
       "Poypoy",
       "Tanyag"
     ],
-    "City of Calapan": [
+    "Calapan": [
       "Balingayan",
       "Balite",
       "Baruyan",
@@ -32540,7 +32475,7 @@
       "Wawa",
       "Nag-Iba II"
     ],
-    "City of Puerto Princesa": [
+    "Puerto Princesa": [
       "Babuyan",
       "Bacungan",
       "Bagong Bayan",
@@ -32798,9 +32733,7 @@
       "Tambong",
       "Alma Villa"
     ],
-    "Kalayaan": [
-      "Pag-Asa (Pob.)"
-    ],
+    "Kalayaan": ["Pag-Asa (Pob.)"],
     "Linapacan": [
       "Barangonan",
       "Cabunlawan",
@@ -33670,7 +33603,7 @@
     ]
   },
   "NCR": {
-    "City of Caloocan": [
+    "Caloocan": [
       "Barangay 1",
       "Barangay 2",
       "Barangay 3",
@@ -33860,7 +33793,7 @@
       "Barangay 187",
       "Barangay 188"
     ],
-    "City of Las Piñas": [
+    "Las Piñas": [
       "Almanza Uno",
       "Daniel Fajardo",
       "Elias Aldana",
@@ -33882,7 +33815,7 @@
       "Talon Kuatro",
       "Talon Singko"
     ],
-    "City of Makati": [
+    "Makati": [
       "Bangkal",
       "Bel-Air",
       "Cembo",
@@ -33917,7 +33850,7 @@
       "West Rembo",
       "Rizal"
     ],
-    "City of Malabon": [
+    "Malabon": [
       "Acacia",
       "Baritan",
       "Bayan-bayanan",
@@ -33940,7 +33873,7 @@
       "Tonsuya",
       "Tugatog"
     ],
-    "City of Mandaluyong": [
+    "Mandaluyong": [
       "Addition Hills",
       "Bagong Silang",
       "Barangka Drive",
@@ -33969,7 +33902,7 @@
       "Vergara",
       "Wack-wack Greenhills"
     ],
-    "City of Manila": [
+    "Manila": [
       "Barangay 1",
       "Barangay 2",
       "Barangay 3",
@@ -34868,7 +34801,7 @@
       "Barangay 808",
       "Barangay 818-A"
     ],
-    "City of Marikina": [
+    "Marikina": [
       "Barangka",
       "Calumpang",
       "Concepcion Uno",
@@ -34886,7 +34819,7 @@
       "Fortune",
       "Tumana"
     ],
-    "City of Muntinlupa": [
+    "Muntinlupa": [
       "Alabang",
       "Bayanan",
       "Buli",
@@ -34897,7 +34830,7 @@
       "Tunasan",
       "New Alabang Village"
     ],
-    "City of Navotas": [
+    "Navotas": [
       "Sipac-Almacen",
       "Bagumbayan North",
       "Bagumbayan South",
@@ -34917,7 +34850,7 @@
       "Tangos North",
       "Tanza 2"
     ],
-    "City of Parañaque": [
+    "Parañaque": [
       "Baclaran",
       "Don Galo",
       "La Huerta",
@@ -34935,7 +34868,7 @@
       "Sun Valley",
       "Vitalez"
     ],
-    "City of Pasig": [
+    "Pasig": [
       "Bagong Ilog",
       "Bagong Katipunan",
       "Bambang",
@@ -34967,7 +34900,7 @@
       "Ugong",
       "Santa Lucia"
     ],
-    "City of San Juan": [
+    "San Juan": [
       "Addition Hills",
       "Balong-Bato",
       "Batis",
@@ -34990,7 +34923,7 @@
       "West Crame",
       "Greenhills"
     ],
-    "City of Taguig": [
+    "Taguig": [
       "Tanyag",
       "Bagumbayan",
       "Bambang",
@@ -35020,7 +34953,7 @@
       "South Daang Hari",
       "South Signal Village"
     ],
-    "City of Valenzuela": [
+    "Valenzuela": [
       "Arkong Bato",
       "Bagbaguin",
       "Balangkas",
@@ -35712,7 +35645,7 @@
       "Santo Niño",
       "Tangaro"
     ],
-    "City of Cagayan De Oro": [
+    "Cagayan De Oro": [
       "Agusan",
       "Baikingon",
       "Bulua",
@@ -35794,7 +35727,7 @@
       "Barangay 36 (Pob.)",
       "Barangay 37 (Pob.)"
     ],
-    "City of El Salvador": [
+    "El Salvador": [
       "Amoros",
       "Bolisong",
       "Bolobolo",
@@ -35811,7 +35744,7 @@
       "Taytay",
       "Ulaliman"
     ],
-    "City of Gingoog": [
+    "Gingoog": [
       "Agay-ayan",
       "Alagatan",
       "Anakan",
@@ -35892,7 +35825,7 @@
       "Sangalan",
       "Tagpako"
     ],
-    "City of Iligan": [
+    "Iligan": [
       "Abuno",
       "Bonbonon",
       "Bunawan",
@@ -35938,7 +35871,7 @@
       "Upper Hinaplanon",
       "Villa Verde"
     ],
-    "City of Malaybalay": [
+    "Malaybalay": [
       "Aglayan",
       "Bangcud",
       "Busdi",
@@ -35986,7 +35919,7 @@
       "Violeta",
       "Zamboanguita"
     ],
-    "City of Oroquieta": [
+    "Oroquieta": [
       "Apil",
       "Binuangan",
       "Bolibol",
@@ -36035,7 +35968,7 @@
       "Victoria",
       "Villaflor"
     ],
-    "City of Ozamiz": [
+    "Ozamiz": [
       "Aguada (Pob.)",
       "Banadero (Pob.)",
       "Bacolod",
@@ -36088,7 +36021,7 @@
       "50th District (Pob.)",
       "Doña Consuelo"
     ],
-    "City of Tangub": [
+    "Tangub": [
       "Santa Maria",
       "Balatacan",
       "Banglay",
@@ -36145,7 +36078,7 @@
       "Sicot",
       "Tugas"
     ],
-    "City of Valencia": [
+    "Valencia": [
       "Bagontaas",
       "Banlag",
       "Barobo",
@@ -37819,7 +37752,7 @@
       "Pebpoloan",
       "Tupig"
     ],
-    "City of Cotabato": [
+    "Cotabato": [
       "Bagua",
       "Kalanganan",
       "Poblacion",
@@ -37858,7 +37791,7 @@
       "Tamontaka IV",
       "Tamontaka V"
     ],
-    "City of General Santos": [
+    "General Santos": [
       "Baluan",
       "Buayan",
       "Bula",
@@ -37886,7 +37819,7 @@
       "Fatima",
       "Olympog"
     ],
-    "City of Kidapawan": [
+    "Kidapawan": [
       "Amas",
       "Amazion",
       "Balabag",
@@ -37928,7 +37861,7 @@
       "Sumbao",
       "Magsaysay"
     ],
-    "City of Koronadal": [
+    "Koronadal": [
       "Assumption",
       "Avanceña",
       "Cacub",
@@ -37957,7 +37890,7 @@
       "Sarabia",
       "Zulueta"
     ],
-    "City of Tacurong": [
+    "Tacurong": [
       "Baras",
       "Buenaflor",
       "Calean",
@@ -39739,7 +39672,7 @@
       "Tuyom",
       "Yao-yao"
     ],
-    "City of Bacolod": [
+    "Bacolod": [
       "Alangilan",
       "Alijis",
       "Banago",
@@ -39802,7 +39735,7 @@
       "Vista Alegre",
       "Handumanan"
     ],
-    "City of Bago": [
+    "Bago": [
       "Abuanan",
       "Alianza",
       "Atipuluan",
@@ -39828,7 +39761,7 @@
       "Taloc",
       "Sampinit"
     ],
-    "City of Cadiz": [
+    "Cadiz": [
       "Andres Bonifacio",
       "Banquerohan",
       "Barangay 1 Pob.",
@@ -39852,7 +39785,7 @@
       "Tiglawigan",
       "Tinampa-an"
     ],
-    "City of Escalante": [
+    "Escalante": [
       "Alimango",
       "Balintawak (Pob.)",
       "Magsaysay",
@@ -39875,7 +39808,7 @@
       "Udtongan",
       "Washington"
     ],
-    "City of Himamaylan": [
+    "Himamaylan": [
       "Aguisan",
       "Buenavista",
       "Cabadiangan",
@@ -39896,7 +39829,7 @@
       "Barangay III (Pob.)",
       "Barangay IV (Pob.)"
     ],
-    "City of Iloilo": [
+    "Iloilo": [
       "Santa Cruz",
       "Aguinaldo",
       "Airport",
@@ -40078,7 +40011,7 @@
       "Tabuc Suba",
       "Rizal"
     ],
-    "City of Kabankalan": [
+    "Kabankalan": [
       "Bantayan",
       "Binicuil",
       "Camansi",
@@ -40112,7 +40045,7 @@
       "Tapi",
       "Tagukon"
     ],
-    "City of La Carlota": [
+    "La Carlota": [
       "Ara-al",
       "Ayungon",
       "Balabag",
@@ -40128,7 +40061,7 @@
       "San Miguel",
       "Yubo"
     ],
-    "City of Passi": [
+    "Passi": [
       "Agdahon",
       "Agdayao",
       "Aglalana",
@@ -40181,7 +40114,7 @@
       "Tubod",
       "Tuburan"
     ],
-    "City of Roxas": [
+    "Roxas": [
       "Adlawan",
       "Bago",
       "Balijuagan",
@@ -40230,7 +40163,7 @@
       "Tanza",
       "Tiza"
     ],
-    "City of Sagay": [
+    "Sagay": [
       "Andres Bonifacio",
       "Bato",
       "Baviera",
@@ -40257,7 +40190,7 @@
       "Vito",
       "Rafaela Barrera"
     ],
-    "City of San Carlos": [
+    "San Carlos": [
       "Bagonbon",
       "Buluangan",
       "Codcod",
@@ -40277,7 +40210,7 @@
       "Rizal",
       "San Juan"
     ],
-    "City of Silay": [
+    "Silay": [
       "Balaring",
       "Barangay I (Pob.)",
       "Barangay II (Pob.)",
@@ -40295,7 +40228,7 @@
       "Bagtic",
       "Patag"
     ],
-    "City of Sipalay": [
+    "Sipalay": [
       "Barangay 1 (Pob.)",
       "Barangay 2 (Pob.)",
       "Barangay 3 (Pob.)",
@@ -40314,7 +40247,7 @@
       "Nauhang",
       "San Jose"
     ],
-    "City of Talisay": [
+    "Talisay": [
       "Bubog",
       "Cabatangan",
       "Zone 4-A (Pob.)",
@@ -40343,7 +40276,7 @@
       "Zone 3 (Pob.)",
       "Katilingban"
     ],
-    "City of Victorias": [
+    "Victorias": [
       "Barangay I (Pob.)",
       "Barangay II (Pob.)",
       "Barangay III (Pob.)",
@@ -43407,7 +43340,7 @@
       "Datu Panas",
       "Guintuloan"
     ],
-    "City of Dapitan": [
+    "Dapitan": [
       "Aliguay",
       "Antipolo",
       "Aseniero",
@@ -43459,7 +43392,7 @@
       "Potol (Pob.)",
       "Santa Cruz (Pob.)"
     ],
-    "City of Dipolog": [
+    "Dipolog": [
       "Cogon",
       "Dicayas",
       "Diwan",
@@ -43482,7 +43415,7 @@
       "Turno",
       "Santa Isabel"
     ],
-    "City of Isabela": [
+    "Isabela": [
       "Aguada",
       "Balatanay",
       "Baluno",
@@ -43529,7 +43462,7 @@
       "Small Kapatagan",
       "Tampalan"
     ],
-    "City of Pagadian": [
+    "Pagadian": [
       "Alegria",
       "Balangasan (Pob.)",
       "Balintawak",
@@ -43585,7 +43518,7 @@
       "Dampalan",
       "Dumagoc"
     ],
-    "City of Zamboanga": [
+    "Zamboanga": [
       "Arena Blanco",
       "Ayala",
       "Baliwasan",

@@ -39,9 +39,9 @@ var (
 
 func main() {
 	// ---------- CONFIGURATION ----------
-	numStudents := 50  // number of students to generate
-	numCounselors := 1 // number of counselors (admins)
-	numWorkers := 12   // number of concurrent student workers
+	numStudents := 50_000 // number of students to generate
+	numCounselors := 1    // number of counselors (admins)
+	numWorkers := 50      // number of concurrent student workers
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
 	// -----------------------------------
@@ -380,117 +380,122 @@ func createStudent(index int) {
 	}
 	userID, _ := res.LastInsertId()
 
-	// 2. iir_records
-	res, err = tx.Exec(`
-		INSERT INTO iir_records (user_id, is_submitted) VALUES (?, ?)
-	`, userID, gofakeit.Bool())
-	if err != nil {
-		log.Fatal(err)
-	}
-	iirID, _ := res.LastInsertId()
+	if rand.Float32() < 0.7 {
+		res, err = tx.Exec(`
+			INSERT INTO iir_records (user_id, is_submitted) VALUES (?, ?)
+		`, userID, true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		iirID, _ := res.LastInsertId()
 
-	// 3. selected reasons
-	insertSelectedReasons(tx, int(iirID))
+		// 3. selected reasons
+		insertSelectedReasons(tx, int(iirID))
 
-	// 4. addresses (residential & provincial)
-	resAddr1 := insertAddress(tx)
-	resAddr2 := insertAddress(tx)
-	insertStudentAddress(tx, int(iirID), resAddr1, "Residential")
-	insertStudentAddress(tx, int(iirID), resAddr2, "Provincial")
+		// 4. addresses (residential & provincial)
+		resAddr1 := insertAddress(tx)
+		resAddr2 := insertAddress(tx)
+		insertStudentAddress(tx, int(iirID), resAddr1, "Residential")
+		insertStudentAddress(tx, int(iirID), resAddr2, "Provincial")
 
-	// 5. related persons (father, mother, optional guardian)
-	father := insertRelatedPerson(tx)
-	mother := insertRelatedPerson(tx)
-	father.AddressID = &resAddr1
-	mother.AddressID = &resAddr1
+		// 5. related persons (father, mother, optional guardian)
+		father := insertRelatedPerson(tx)
+		mother := insertRelatedPerson(tx)
+		father.AddressID = &resAddr1
+		mother.AddressID = &resAddr1
 
-	guardianScenario := pickGuardianScenario()
-	var guardian *relatedPersonSeed
+		guardianScenario := pickGuardianScenario()
+		var guardian *relatedPersonSeed
 
-	switch guardianScenario {
-	case "father_guardian":
-		father.AddressID = &resAddr2
-	case "mother_guardian":
-		mother.AddressID = &resAddr2
-	case "separate_guardian":
-		g := insertRelatedPerson(tx)
-		g.AddressID = &resAddr2
-		guardian = &g
-	}
+		switch guardianScenario {
+		case "father_guardian":
+			father.AddressID = &resAddr2
+		case "mother_guardian":
+			mother.AddressID = &resAddr2
+		case "separate_guardian":
+			g := insertRelatedPerson(tx)
+			g.AddressID = &resAddr2
+			guardian = &g
+		}
 
-	// 6. link related persons
-	switch guardianScenario {
-	case "no_guardian":
-		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
-		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
-	case "father_guardian":
-		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, true, true)
-		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
-	case "mother_guardian":
-		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
-		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, true, true)
-	case "separate_guardian":
-		linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
-		linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
-		linkRelatedPerson(tx, int(iirID), guardian.ID, "Guardian", false, true, true)
-	}
+		// 6. link related persons
+		switch guardianScenario {
+		case "no_guardian":
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+		case "father_guardian":
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, true, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+		case "mother_guardian":
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, true, true)
+		case "separate_guardian":
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+			linkRelatedPerson(tx, int(iirID), guardian.ID, "Guardian", false, true, true)
+		}
 
-	// 7. student_personal_info
-	emergency := deriveEmergencyContact(father, mother, guardian, guardianScenario, resAddr1, resAddr2)
-	emergencyContactID := insertEmergencyContact(tx, int(iirID), emergency)
-	insertPersonalInfo(tx, int(iirID), dob, index, emergencyContactID)
+		// 7. student_personal_info
+		emergency := deriveEmergencyContact(father, mother, guardian, guardianScenario, resAddr1, resAddr2)
+		emergencyContactID := insertEmergencyContact(tx, int(iirID), emergency)
+		insertPersonalInfo(tx, int(iirID), dob, index, emergencyContactID)
 
-	// 8. family background
-	familyBgID := insertFamilyBackground(tx, int(iirID))
+		// 8. family background
+		familyBgID := insertFamilyBackground(tx, int(iirID))
 
-	// 9. sibling supports (if employed siblings > 0)
-	insertSiblingSupports(tx, familyBgID)
+		// 9. sibling supports (if employed siblings > 0)
+		insertSiblingSupports(tx, familyBgID)
 
-	// 10. educational background
-	ebID := insertEducationalBackground(tx, int(iirID))
+		// 10. educational background
+		ebID := insertEducationalBackground(tx, int(iirID))
 
-	// 11. school details for each educational level
-	insertSchoolDetails(tx, ebID, birthYear, index)
+		// 11. school details for each educational level
+		insertSchoolDetails(tx, ebID, birthYear, index)
 
-	// 12. health records
-	insertHealthRecords(tx, int(iirID))
+		// 12. health records
+		insertHealthRecords(tx, int(iirID))
 
-	// 13. consultations
-	insertConsultations(tx, int(iirID))
+		// 13. consultations
+		insertConsultations(tx, int(iirID))
 
-	// 14. test results
-	insertTestResults(tx, int(iirID))
+		// 14. test results
+		insertTestResults(tx, int(iirID))
 
-	// 15. significant notes
-	insertSignificantNotes(tx, int(iirID))
+		// 15. significant notes
+		insertSignificantNotes(tx, int(iirID))
 
-	// 16. finances
-	sfID := insertStudentFinances(tx, int(iirID))
+		// 16. finances
+		sfID := insertStudentFinances(tx, int(iirID))
 
-	// 17. financial supports
-	insertFinancialSupports(tx, sfID)
+		// 17. financial supports
+		insertFinancialSupports(tx, sfID)
 
-	// 18. activities
-	insertActivities(tx, int(iirID))
+		// 18. activities
+		insertActivities(tx, int(iirID))
 
-	// 19. subject preferences
-	insertSubjectPreferences(tx, int(iirID))
+		// 19. subject preferences
+		insertSubjectPreferences(tx, int(iirID))
 
-	// 20. hobbies
-	insertHobbies(tx, int(iirID))
+		// 20. hobbies
+		insertHobbies(tx, int(iirID))
 
-	// 21. admission slip (30% chance)
-	if rand.Float32() < 0.3 {
-		insertAdmissionSlip(tx, int(iirID))
-	}
+		// 21. admission slip (30% chance)
+		if rand.Float32() < 0.3 {
+			insertAdmissionSlip(tx, int(iirID))
+		}
 
-	// 22. appointment (20% chance)
-	if rand.Float32() < 0.2 {
-		insertAppointment(tx, int(userID))
+		// 22. appointment (20% chance)
+		if rand.Float32() < 0.2 {
+			insertAppointment(tx, int(userID))
+		}
+
+		tx.Commit()
+		fmt.Printf("Created student %d (iirID=%d)\n", index+1, iirID)
+		return
 	}
 
 	tx.Commit()
-	fmt.Printf("Created student %d (iirID=%d)\n", index+1, iirID)
+	fmt.Printf("Created student %d (no IIR)\n", index+1)
 }
 
 // ----------------------------------------------------------------------
@@ -636,7 +641,7 @@ func fakePasswordHash() string {
 }
 
 func insertPersonalInfo(tx *sqlx.Tx, iirID int, dob time.Time, studentIndex int, emergencyContactID int) {
-	studentNumber := fmt.Sprintf("%d-%04d-TG-%d", time.Now().Year(), iirID, rand.Intn(10))
+	studentNumber := fmt.Sprintf("%d-%05d-TG-%d", time.Now().Year(), iirID, rand.Intn(10))
 	isEmployed := studentIndex%2 == 0
 	var employerName, employerAddress sql.NullString
 	if isEmployed {
@@ -701,11 +706,16 @@ func insertAddress(tx *sqlx.Tx) int {
 		log.Fatal("No regions found. Please run the address seeder first (make locations): ", err)
 	}
 
-	// Fetch a random city in that region
+	// Fetch a random city in that region that has barangays
 	var cityID int
-	err = tx.Get(&cityID, "SELECT id FROM cities WHERE region_id = ? ORDER BY RAND() LIMIT 1", regionID)
+	err = tx.Get(&cityID, `
+		SELECT DISTINCT c.id FROM cities c
+		INNER JOIN barangays b ON c.id = b.city_id
+		WHERE c.region_id = ?
+		ORDER BY RAND() LIMIT 1
+	`, regionID)
 	if err != nil {
-		log.Fatal("No cities found for region ID "+fmt.Sprint(regionID)+": ", err)
+		log.Fatal("No cities with barangays found for region ID "+fmt.Sprint(regionID)+": ", err)
 	}
 
 	// Fetch a random barangay in that city
