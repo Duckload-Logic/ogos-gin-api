@@ -20,6 +20,7 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 	lookupRoutes := studentRoutes.Group("/lookups")
 	{
 		lookupRoutes.GET("/genders", h.HandleGetGenders)
+		lookupRoutes.GET("/religions", h.HandleGetReligions)
 		lookupRoutes.GET("/parental-status-types", h.HandleGetParentalStatusTypes)
 		lookupRoutes.GET("/enrollment-reasons", h.HandleGetEnrollmentReasons)
 		lookupRoutes.GET("/income-ranges", h.HandleGetIncomeRanges)
