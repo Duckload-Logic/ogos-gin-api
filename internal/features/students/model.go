@@ -167,15 +167,6 @@ type EmergencyContact struct {
 }
 
 // Location and Address
-type Address struct {
-	ID           int       `db:"id" json:"id"`
-	Region       string    `db:"region" json:"region"`
-	City         string    `db:"city" json:"city"`
-	Barangay     string    `db:"barangay" json:"barangay"`
-	StreetDetail *string   `db:"street_detail" json:"streetDetail"` // Lot/Blk/Street
-	CreatedAt    time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time `db:"updated_at" json:"updatedAt"`
-}
 
 type StudentAddress struct {
 	ID          int       `db:"id" json:"id"`

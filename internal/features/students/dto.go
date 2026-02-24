@@ -5,6 +5,7 @@ import (
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/request"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 )
 
 // List Students
@@ -119,15 +120,15 @@ type EmergencyContactDTO struct {
 	LastName      string                  `json:"lastName" binding:"required"`
 	ContactNumber string                  `json:"contactNumber" binding:"required"`
 	Relationship  StudentRelationshipType `json:"relationship" binding:"required"`
-	Address       Address                 `json:"address" binding:"required"`
+	Address       locations.AddressDTO    `json:"address" binding:"required"`
 }
 
 type StudentAddressDTO struct {
-	ID          int       `json:"id,omitempty"`
-	AddressType string    `json:"addressType" binding:"required"`
-	Address     Address   `json:"address" binding:"required"`
-	CreatedAt   time.Time `json:"createdAt,omitempty"`
-	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
+	ID          int                  `json:"id,omitempty"`
+	AddressType string               `json:"addressType" binding:"required"`
+	Address     locations.AddressDTO `json:"address" binding:"required"`
+	CreatedAt   time.Time            `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time            `json:"updatedAt,omitempty"`
 }
 
 type EducationalBackgroundDTO struct {
