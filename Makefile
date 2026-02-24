@@ -19,6 +19,9 @@ seed:
 fakes:
 	go run cmd/faker/faker.go
 
+locations:
+	go run cmd/locations/locations.go
+
 # Desc: To refresh database with cli
 # Usage: make migrate-up
 migrate-up:
@@ -35,7 +38,7 @@ seed-up:
 	migrate -path seeds -database \
 	"$(DB_URL)?x-migrations-table=seed_migrations" up
 
-refresh: migrate-down migrate-up seed-up
+refresh: migrate-down migrate-up seed-up locations
 
 # Desc: To generate swagger docs
 # Usage: make swagger

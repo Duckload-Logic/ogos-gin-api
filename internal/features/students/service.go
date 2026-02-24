@@ -7,15 +7,20 @@ import (
 	"sync"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"golang.org/x/sync/errgroup"
 )
 
 type Service struct {
-	repo *Repository
+	repo         *Repository
+	locationsSvc *locations.Service
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, locationsSvc *locations.Service) *Service {
+	return &Service{
+		repo:         repo,
+		locationsSvc: locationsSvc,
+	}
 }
 
 func (s *Service) GetGenders(ctx context.Context) ([]Gender, error) {
@@ -487,9 +492,32 @@ func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*Stude
 		return nil, fmt.Errorf("failed to get emergency contact relationship by ID: %w", err)
 	}
 
-	emergencyContactAddress, err := s.repo.GetAddressByID(ctx, emergencyContact.AddressID)
+	emergencyContactAddress, err := s.locationsSvc.GetAddressByID(ctx, emergencyContact.AddressID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get emergency contact address by ID: %w", err)
+	}
+
+	emergencyContactRegion, err := s.locationsSvc.GetRegionByID(ctx, emergencyContactAddress.Region.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get emergency contact region by ID: %w", err)
+	}
+
+	emergencyContactCity, err := s.locationsSvc.GetCityByID(ctx, emergencyContactAddress.City.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get emergency contact city by ID: %w", err)
+	}
+
+	emergencyContactBarangay, err := s.locationsSvc.GetBarangayByID(ctx, emergencyContactAddress.Barangay.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get emergency contact barangay by ID: %w", err)
+	}
+
+	emergencyAddressDTO := locations.AddressDTO{
+		ID:           emergencyContactAddress.ID,
+		StreetDetail: emergencyContactAddress.StreetDetail,
+		Region:       *emergencyContactRegion,
+		City:         *emergencyContactCity,
+		Barangay:     *emergencyContactBarangay,
 	}
 
 	emergencyContactDTO := EmergencyContactDTO{
@@ -499,7 +527,7 @@ func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*Stude
 		LastName:      emergencyContact.LastName,
 		ContactNumber: emergencyContact.ContactNumber,
 		Relationship:  *emergencyContactRelationship,
-		Address:       *emergencyContactAddress,
+		Address:       emergencyAddressDTO,
 	}
 
 	return &StudentPersonalInfoDTO{
@@ -534,14 +562,21 @@ func (s *Service) GetStudentAddresses(ctx context.Context, iirID int) ([]Student
 
 	var addresses []StudentAddressDTO
 	for _, addr := range studentAddresses {
-		a, err := s.repo.GetAddressByID(ctx, addr.AddressID)
+		// Use locations service to get detailed address information
+		addrDTO, err := s.locationsSvc.GetAddressByID(ctx, addr.AddressID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get address by ID: %w", err)
 		}
 
 		addresses = append(addresses, StudentAddressDTO{
-			ID:          addr.ID,
-			Address:     *a,
+			ID: addr.ID,
+			Address: locations.AddressDTO{
+				ID:           addrDTO.ID,
+				Region:       addrDTO.Region,
+				City:         addrDTO.City,
+				Barangay:     addrDTO.Barangay,
+				StreetDetail: addrDTO.StreetDetail,
+			},
 			AddressType: addr.AddressType,
 			CreatedAt:   addr.CreatedAt,
 			UpdatedAt:   addr.UpdatedAt,
@@ -938,11 +973,11 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 
 	// 2. Save Emergency Contact
 	ec := req.Student.StudentPersonalInfoDTO.EmergencyContact
-	addressID, err := s.repo.UpsertAddress(ctx, tx, &Address{
-		Region:       ec.Address.Region,
-		City:         ec.Address.City,
-		Barangay:     ec.Address.Barangay,
-		StreetDetail: ec.Address.StreetDetail,
+	addressID, err := s.locationsSvc.SaveAddress(ctx, tx, &locations.Address{
+		RegionID:     ec.Address.Region.ID,
+		CityID:       ec.Address.City.ID,
+		BarangayID:   ec.Address.Barangay.ID,
+		StreetDetail: &ec.Address.StreetDetail,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to upsert emergency contact address: %w", err)
@@ -962,11 +997,11 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 
 	// 3. Save Student Addresses
 	for _, addrDTO := range req.Student.Addresses {
-		addressID, err := s.repo.UpsertAddress(ctx, tx, &Address{
-			Region:       addrDTO.Address.Region,
-			City:         addrDTO.Address.City,
-			Barangay:     addrDTO.Address.Barangay,
-			StreetDetail: addrDTO.Address.StreetDetail,
+		addressID, err := s.locationsSvc.SaveAddress(ctx, tx, &locations.Address{
+			RegionID:     addrDTO.Address.Region.ID,
+			CityID:       addrDTO.Address.City.ID,
+			BarangayID:   addrDTO.Address.Barangay.ID,
+			StreetDetail: &addrDTO.Address.StreetDetail,
 		})
 		if err != nil {
 			return 0, fmt.Errorf("failed to upsert student address: %w", err)

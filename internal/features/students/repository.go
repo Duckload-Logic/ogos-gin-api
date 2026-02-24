@@ -537,22 +537,6 @@ func (r *Repository) GetStudentAddresses(ctx context.Context, iirID int) ([]Stud
 	return addresses, nil
 }
 
-func (r *Repository) GetAddressByID(ctx context.Context, addressID int) (*Address, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM addresses
-		WHERE id = ?
-	`, database.GetColumns(Address{}))
-
-	var addr Address
-	err := r.db.GetContext(ctx, &addr, query, addressID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get address by ID: %w", err)
-	}
-
-	return &addr, nil
-}
-
 func (r *Repository) GetStudentEducationalBackground(ctx context.Context, iirID int) (*EducationalBackground, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -1069,42 +1053,6 @@ func (r *Repository) upsertStudentAddressTx(ctx context.Context, tx *sqlx.Tx, sa
 	lastID, err := result.LastInsertId()
 	if err != nil {
 		return 0, fmt.Errorf("failed to get last insert ID for student address: %w", err)
-	}
-
-	return int(lastID), nil
-}
-
-func (r *Repository) UpsertAddress(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
-	if tx != nil {
-		return r.upsertAddressTx(ctx, tx, addr)
-	}
-
-	var id int
-	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
-		var err error
-		id, err = r.upsertAddressTx(ctx, txn, addr)
-		return err
-	})
-	return id, err
-}
-
-func (r *Repository) upsertAddressTx(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
-	cols, vals := database.GetInsertStatement(Address{}, []string{"created_at", "updated_at"})
-	updateCols := database.GetOnDuplicateKeyUpdateStatement(Address{}, []string{"created_at", "updated_at"})
-
-	query := fmt.Sprintf(`
-		INSERT INTO addresses (%s)
-		VALUES (%s)
-		ON DUPLICATE KEY UPDATE %s
-	`, cols, vals, updateCols)
-	result, err := tx.NamedExecContext(ctx, query, addr)
-	if err != nil {
-		return 0, fmt.Errorf("failed to upsert address: %w", err)
-	}
-
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert ID for address: %w", err)
 	}
 
 	return int(lastID), nil

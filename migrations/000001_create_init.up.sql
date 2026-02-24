@@ -25,6 +25,25 @@ CREATE TABLE users(
 -- REFERENCE DATA (Lookups & Enumerations)
 -- ============================================================================
 
+CREATE TABLE regions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL
+);
+
+CREATE TABLE cities (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    region_id INT NOT NULL,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    FOREIGN KEY (region_id) REFERENCES regions(id)
+);
+
+CREATE TABLE barangays (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    city_id INT NOT NULL,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    FOREIGN KEY (city_id) REFERENCES cities(id)
+);
+
 CREATE TABLE genders(
     id INT  PRIMARY KEY,
     gender_name VARCHAR(50) UNIQUE NOT NULL
