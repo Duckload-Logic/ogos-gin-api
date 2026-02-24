@@ -1158,17 +1158,6 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		return 0, fmt.Errorf("failed to delete existing significant notes: %w", err)
 	}
 
-	for _, noteDTO := range req.SignificantNotes {
-		if _, err := s.repo.CreateSignificantNote(ctx, tx, &SignificantNote{
-			IIRID:               iirID,
-			NoteDate:            noteDTO.NoteDate,
-			IncidentDescription: noteDTO.IncidentDescription,
-			Remarks:             noteDTO.Remarks,
-		}); err != nil {
-			return 0, fmt.Errorf("failed to save significant note: %w", err)
-		}
-	}
-
 	IIRRecordUpdate := &IIRRecord{
 		ID:          iirID,
 		UserID:      userID,

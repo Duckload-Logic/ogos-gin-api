@@ -72,7 +72,7 @@ type ComprehensiveProfileDTO struct {
 	} `json:"interests"`
 
 	TestResults      []TestResultDTO      `json:"testResults"`
-	SignificantNotes []SignificantNoteDTO `json:"significantNotes"`
+	SignificantNotes []SignificantNoteDTO `json:"significantNotes,omitempty"`
 }
 
 type StudentSelectedReasonDTO struct {
