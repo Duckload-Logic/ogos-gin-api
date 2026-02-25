@@ -39,9 +39,9 @@ var (
 
 func main() {
 	// ---------- CONFIGURATION ----------
-	numStudents := 50_000 // number of students to generate
-	numCounselors := 1    // number of counselors (admins)
-	numWorkers := 50      // number of concurrent student workers
+	numStudents := 50  // number of students to generate
+	numCounselors := 1 // number of counselors (admins)
+	numWorkers := 50   // number of concurrent student workers
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
 	// -----------------------------------
