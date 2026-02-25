@@ -2,6 +2,8 @@ package users
 
 import (
 	"context"
+	"fmt"
+	"log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
@@ -27,16 +29,11 @@ func (r *Repository) GetUser(
 ) (*User, error) {
 	var user User
 
-	query := `
-		SELECT
-			id, role_id,
-			first_name, middle_name,
-			last_name, email,
-			password_hash, created_at,
-			updated_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM users
 		WHERE 1=1
-	`
+	`, database.GetColumns(User{}))
 
 	var args []interface{}
 
@@ -50,22 +47,31 @@ func (r *Repository) GetUser(
 		args = append(args, *email)
 	}
 
-	err := r.db.QueryRowContext(ctx, query, args...).Scan(
-		&user.ID,
-		&user.RoleID,
-		&user.FirstName,
-		&user.MiddleName,
-		&user.LastName,
-		&user.Email,
-		&user.PasswordHash,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	query += " LIMIT 1"
+
+	err := r.db.GetContext(ctx, &user, query, args...)
 	if err != nil {
 		return nil, err
 	}
 
 	return &user, nil
+}
+
+func (r *Repository) GetRoleByID(
+	ctx context.Context, roleID int,
+) (*Role, error) {
+	var role Role
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM user_roles
+		WHERE id = ?
+	`, database.GetColumns(Role{}))
+	err := r.db.GetContext(ctx, &role, query, roleID)
+	if err != nil {
+		log.Printf("Error fetching role with ID %d: %v\n", roleID, err)
+		return nil, err
+	}
+	return &role, nil
 }
 
 // =============================================
@@ -81,14 +87,13 @@ func (r *Repository) CreateUser(
 	var userID int
 
 	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		query := `
-			INSERT INTO users (
-				role_id, first_name,
-				middle_name, last_name,
-				email, password_hash
-			)
-			VALUES (?,?,?,?,?,?)
-		`
+		cols, vals := database.GetInsertStatement(User{}, []string{"updated_at"})
+		onDuplicateKeyStmt := database.GetOnDuplicateKeyUpdateStatement(User{}, []string{"updated_at"})
+		query := fmt.Sprintf(`
+			INSERT INTO users (%s)
+			VALUES (%s)
+			ON DUPLICATE KEY UPDATE %s
+		`, cols, vals, onDuplicateKeyStmt)
 
 		result, err := tx.ExecContext(ctx, query,
 			user.RoleID,

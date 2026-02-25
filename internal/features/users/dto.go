@@ -1,14 +1,16 @@
 package users
 
+import "github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+
 type GetUserResponse struct {
-	ID         int    `json:"id"`
-	RoleID     int    `json:"roleId"`
-	FirstName  string `json:"firstName"`
-	MiddleName string `json:"middleName,omitempty"`
-	LastName   string `json:"lastName"`
-	Email      string `json:"email"`
-	CreatedAt  string `json:"createdAt,omitempty"`
-	UpdatedAt  string `json:"updatedAt,omitempty"`
+	ID         int                    `json:"id"`
+	Role       Role                   `json:"role"`
+	FirstName  string                 `json:"firstName"`
+	MiddleName structs.NullableString `json:"middleName,omitempty"`
+	LastName   string                 `json:"lastName"`
+	Email      string                 `json:"email"`
+	CreatedAt  string                 `json:"createdAt,omitempty"`
+	UpdatedAt  string                 `json:"updatedAt,omitempty"`
 }
 
 type CreateUserRequest struct {

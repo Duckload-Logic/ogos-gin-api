@@ -1,6 +1,11 @@
 package users
 
-import "context"
+import (
+	"context"
+	"log"
+
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+)
 
 type Service struct {
 	repo *Repository
@@ -18,6 +23,8 @@ func (s *Service) GetUserByID(
 		return nil, err
 	}
 
+	log.Println(s.mapUserModelToResponse(user))
+
 	return s.mapUserModelToResponse(user), nil
 }
 
@@ -33,11 +40,16 @@ func (s *Service) GetUserByEmail(
 }
 
 func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
+	role, err := s.repo.GetRoleByID(context.Background(), user.RoleID)
+	if err != nil {
+		return nil
+	}
+
 	return &GetUserResponse{
 		ID:         user.ID,
-		RoleID:     user.RoleID,
+		Role:       *role,
 		FirstName:  user.FirstName,
-		MiddleName: user.MiddleName.String,
+		MiddleName: structs.FromSqlNull(user.MiddleName),
 		LastName:   user.LastName,
 		Email:      user.Email,
 		CreatedAt:  user.CreatedAt.Time.String(),
