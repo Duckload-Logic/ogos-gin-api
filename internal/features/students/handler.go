@@ -3,6 +3,7 @@ package students
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -508,6 +509,8 @@ func (h *Handler) HandleSaveIIRDraft(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
+
+	log.Printf("Received IIR draft save request for userID %d: %+v\n", userID, req)
 
 	draftID, err := h.service.SaveIIRDraft(c.Request.Context(), userID, req)
 	if err != nil {
