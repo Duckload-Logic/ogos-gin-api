@@ -39,11 +39,12 @@ var (
 
 func main() {
 	// ---------- CONFIGURATION ----------
-	numStudents := 50  // number of students to generate
-	numCounselors := 1 // number of counselors (admins)
-	numWorkers := 50   // number of concurrent student workers
+	numStudents := 2_000 // number of students to generate
+	numCounselors := 1   // number of counselors (admins)
+	numWorkers := 100    // number of concurrent student workers
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
+	startTime := time.Now()
 	// -----------------------------------
 
 	var err error
@@ -88,6 +89,7 @@ func main() {
 	wg.Wait()
 
 	fmt.Println("Dummy data generation completed successfully.")
+	log.Println("Time taken:", time.Since(startTime))
 }
 
 // ----------------------------------------------------------------------
@@ -641,8 +643,9 @@ func fakePasswordHash() string {
 }
 
 func insertPersonalInfo(tx *sqlx.Tx, iirID int, dob time.Time, studentIndex int, emergencyContactID int) {
-	studentNumber := fmt.Sprintf("%d-%05d-TG-%d", time.Now().Year(), iirID, rand.Intn(10))
+	studentStatus := rand.Intn(2) % 2 // 0 or 1
 	isEmployed := studentIndex%2 == 0
+	studentNumber := fmt.Sprintf("%d-%05d-TG-%d", time.Now().Year(), iirID, studentStatus)
 	var employerName, employerAddress sql.NullString
 	if isEmployed {
 		empName := gofakeit.Company()
