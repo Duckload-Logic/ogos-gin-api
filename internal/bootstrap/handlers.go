@@ -8,6 +8,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 )
 
 type Handlers struct {
@@ -18,6 +19,7 @@ type Handlers struct {
 	StudentHandler     *students.Handler
 	AppointmentHandler *appointments.Handler
 	ExcuseSlipHandler  *excuseslips.Handler
+	AnalyticsHandler *analytics.Handler
 }
 
 func getHandlers(repos *Repositories) *Handlers {
@@ -27,6 +29,8 @@ func getHandlers(repos *Repositories) *Handlers {
 	studentService := students.NewService(repos.StudentRepo, locationsService)
 	appointmentService := appointments.NewService(repos.AppointmentRepo)
 	excuseSlipService := excuseslips.NewService(repos.ExcuseSlipRepo)
+	analyticsService := analytics.NewService(repos.AnalyticsRepo)
+	analyticsHandler := analytics.NewHandler(analyticsService)
 
 	return &Handlers{
 		AuthHandler:        auth.NewHandler(authService),
@@ -35,5 +39,6 @@ func getHandlers(repos *Repositories) *Handlers {
 		StudentHandler:     students.NewHandler(studentService),
 		AppointmentHandler: appointments.NewHandler(appointmentService),
 		ExcuseSlipHandler:  excuseslips.NewHandler(excuseSlipService),
+		AnalyticsHandler: analyticsHandler,
 	}
 }
