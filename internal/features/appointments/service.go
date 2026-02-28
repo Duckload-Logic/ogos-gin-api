@@ -94,6 +94,8 @@ func (s *Service) ListAppointments(ctx context.Context, req ListAppointmentsRequ
 	dtos := make([]AppointmentDTO, 0, len(appts))
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
+			ID:         appt.UserID,
+			Role:       users.Role{ID: 0, Name: ""},
 			FirstName:  appt.UserFirstName,
 			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
 			LastName:   appt.UserLastName,
@@ -167,6 +169,8 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 	dtos := make([]AppointmentDTO, 0, len(appts))
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
+			ID:         appt.UserID,
+			Role:       users.Role{ID: 0, Name: ""},
 			FirstName:  appt.UserFirstName,
 			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
 			LastName:   appt.UserLastName,
