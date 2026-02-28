@@ -50,6 +50,7 @@ type Appointment struct {
 // AppointmentWithDetailsView holds appointment data with joined time slot, category, and status
 type AppointmentWithDetailsView struct {
 	ID             int            `db:"id"`
+	UserID         int            `db:"user_id"`
 	UserFirstName  string         `db:"user_first_name"`
 	UserMiddleName sql.NullString `db:"user_middle_name"`
 	UserLastName   string         `db:"user_last_name"`
