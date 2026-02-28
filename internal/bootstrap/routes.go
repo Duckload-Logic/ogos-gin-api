@@ -13,6 +13,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -68,6 +69,7 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	students.RegisterRoutes(db, apiV1Routes, handlers.StudentHandler)
 	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
 	excuseslips.RegisterRoutes(apiV1Routes, handlers.ExcuseSlipHandler)
+	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
 
 	return g
 }
