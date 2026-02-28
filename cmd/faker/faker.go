@@ -20,28 +20,34 @@ var db *sqlx.DB
 
 // lookup slices (IDs)
 var (
-	genderIDs              []int
-	civilStatusIDs         []int
-	civilStatusByName      map[string]int
-	religionIDs            []int
-	courseIDs              []int
-	enrollmentReasonIDs    []int
-	supportTypeIDs         []int
-	incomeRangeIDs         []int
-	parentalStatusIDs      []int
-	educationalLevelIDs    []int
-	educationalLevelByName map[string]int
-	relationshipTypeIDs    map[string]int
-	natureOfResidenceIDs   []int
-	siblingSupportTypeIDs  []int
-	activityOptionIDs      []int
+	genderIDs                []int
+	civilStatusIDs           []int
+	civilStatusByName        map[string]int
+	religionIDs              []int
+	courseIDs                []int
+	enrollmentReasonIDs      []int
+	supportTypeIDs           []int
+	incomeRangeIDs           []int
+	parentalStatusIDs        []int
+	educationalLevelIDs      []int
+	educationalLevelByName   map[string]int
+	relationshipTypeIDs      map[string]int
+	natureOfResidenceIDs     []int
+	siblingSupportTypeIDs    []int
+	activityOptionIDs        []int
+	timeSlotIDs              []int
+	appointmentStatusIDs     []int
+	appointmentStatusByName  map[string]int
+	appointmentCategoryIDs   []int
+	appointmentSlotMu        sync.Mutex
+	reservedAppointmentSlots = make(map[string]struct{})
 )
 
 func main() {
 	// ---------- CONFIGURATION ----------
-	numStudents := 2_000 // number of students to generate
-	numCounselors := 1   // number of counselors (admins)
-	numWorkers := 100    // number of concurrent student workers
+	numStudents := 500 // number of students to generate
+	numCounselors := 1 // number of counselors (admins)
+	numWorkers := 100  // number of concurrent student workers
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
 	startTime := time.Now()
@@ -262,6 +268,50 @@ func loadLookups() {
 		var id int
 		rows.Scan(&id)
 		activityOptionIDs = append(activityOptionIDs, id)
+	}
+
+	// appointment time slots
+	rows, err = db.Query("SELECT id FROM time_slots")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		rows.Scan(&id)
+		timeSlotIDs = append(timeSlotIDs, id)
+	}
+
+	// appointment statuses
+	appointmentStatusByName = make(map[string]int)
+	rows, err = db.Query("SELECT id, name FROM appointment_statuses")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			log.Fatal(err)
+		}
+		appointmentStatusIDs = append(appointmentStatusIDs, id)
+		appointmentStatusByName[strings.ToLower(name)] = id
+	}
+
+	// appointment categories (fallback to concern_categories if present in local schema)
+	rows, err = db.Query("SELECT id FROM appointment_categories")
+	if err != nil {
+		rows, err = db.Query("SELECT id FROM concern_categories")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		rows.Scan(&id)
+		appointmentCategoryIDs = append(appointmentCategoryIDs, id)
 	}
 }
 
@@ -486,9 +536,11 @@ func createStudent(index int) {
 			insertAdmissionSlip(tx, int(iirID))
 		}
 
-		// 22. appointment (20% chance)
-		if rand.Float32() < 0.2 {
-			insertAppointment(tx, int(userID))
+		// 22. appointment (30% chance)
+		if rand.Float32() < 0.3 {
+			for i := 0; i < rand.Intn(5)+1; i++ { // up to 15 appointments per student
+				insertAppointment(tx, int(userID))
+			}
 		}
 
 		tx.Commit()
@@ -1193,20 +1245,126 @@ func insertAdmissionSlip(tx *sqlx.Tx, iirID int) {
 }
 
 func insertAppointment(tx *sqlx.Tx, userID int) {
-	status := randomChoice([]string{"Pending", "Approved", "Completed", "Cancelled", "Rescheduled"})
+	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 || len(appointmentStatusIDs) == 0 {
+		log.Printf("skipping appointment creation for user %d: missing appointment lookup data", userID)
+		return
+	}
+
+	whenDate, timeSlotID := reserveAppointmentSlot()
+	statusID := chooseAppointmentStatusID()
+	concernCategoryID := randomChoice(appointmentCategoryIDs).(int)
+
+	// Determine admin_notes value
+	var adminNotes sql.NullString
+	statusName := ""
+	for name, id := range appointmentStatusByName {
+		if id == statusID {
+			statusName = strings.ToLower(name)
+			break
+		}
+	}
+	if statusName == "cancelled" || statusName == "rejected" || strings.Contains(statusName, "show") {
+		adminNotes = sql.NullString{String: gofakeit.Sentence(rand.Intn(5) + 5), Valid: true}
+	} else {
+		adminNotes = sql.NullString{Valid: false}
+	}
+
 	_, err := tx.Exec(`
-		INSERT INTO appointments (
-			user_id, reason, scheduled_date, scheduled_time, concern_category, status
-		) VALUES (?, ?, ?, ?, ?, ?)
-	`, userID,
-		gofakeit.Sentence(4),
-		gofakeit.FutureDate().Format("2006-01-02"),
-		gofakeit.Date().Format("15:04:05"),
-		gofakeit.Word(),
-		status)
+		       INSERT INTO appointments (
+			       user_id, reason, admin_notes, when_date, time_slot_id, appointment_category_id, status_id
+		       ) VALUES (?, ?, ?, ?, ?, ?, ?)
+	       `, userID,
+		gofakeit.Sentence(rand.Intn(11)+20),
+		adminNotes,
+		whenDate,
+		timeSlotID,
+		concernCategoryID,
+		statusID)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func reserveAppointmentSlot() (string, int) {
+	if len(timeSlotIDs) == 0 {
+		log.Fatal("no time slots found in time_slots")
+	}
+
+	for attempts := 0; attempts < 500; attempts++ {
+		when := time.Now().AddDate(0, 0, rand.Intn(180)+1)
+		weekday := when.Weekday()
+		if weekday == time.Saturday || weekday == time.Sunday {
+			continue // skip weekends
+		}
+		whenDate := when.Format("2006-01-02")
+		timeSlotID := randomChoice(timeSlotIDs).(int)
+		key := fmt.Sprintf("%s|%d", whenDate, timeSlotID)
+
+		appointmentSlotMu.Lock()
+		_, exists := reservedAppointmentSlots[key]
+		if !exists {
+			reservedAppointmentSlots[key] = struct{}{}
+			appointmentSlotMu.Unlock()
+			return whenDate, timeSlotID
+		}
+		appointmentSlotMu.Unlock()
+	}
+
+	log.Fatal("unable to reserve unique appointment slot after multiple attempts")
+	return "", 0
+}
+
+func chooseAppointmentStatusID() int {
+	if len(appointmentStatusByName) == 0 {
+		return randomChoice(appointmentStatusIDs).(int)
+	}
+
+	type weightedStatus struct {
+		id     int
+		weight int
+	}
+
+	weighted := make([]weightedStatus, 0)
+	used := make(map[int]bool)
+
+	add := func(name string, weight int) {
+		if id, ok := appointmentStatusByName[name]; ok {
+			weighted = append(weighted, weightedStatus{id: id, weight: weight})
+			used[id] = true
+		}
+	}
+
+	add("pending", 50)
+	add("approved", 20)
+	add("completed", 15)
+	add("cancelled", 10)
+	add("rejected", 20)
+	add("rescheduled", 10)
+
+	for _, id := range appointmentStatusIDs {
+		if !used[id] {
+			weighted = append(weighted, weightedStatus{id: id, weight: 3})
+		}
+	}
+
+	if len(weighted) == 0 {
+		return randomChoice(appointmentStatusIDs).(int)
+	}
+
+	totalWeight := 0
+	for _, item := range weighted {
+		totalWeight += item.weight
+	}
+
+	roll := rand.Intn(totalWeight)
+	for _, item := range weighted {
+		roll -= item.weight
+		if roll < 0 {
+			return item.id
+		}
+	}
+
+	return weighted[len(weighted)-1].id
 }
 
 func chooseCivilStatusID() int {
