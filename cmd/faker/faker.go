@@ -284,7 +284,7 @@ func loadLookups() {
 
 	// appointment statuses
 	appointmentStatusByName = make(map[string]int)
-	rows, err = db.Query("SELECT id, name FROM statuses")
+	rows, err = db.Query("SELECT id, name FROM statuses WHERE status_type IN ('appointment', 'both')")
 	if err != nil {
 		log.Fatal(err)
 	}
