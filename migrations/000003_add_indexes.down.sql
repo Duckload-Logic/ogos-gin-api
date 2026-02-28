@@ -71,7 +71,7 @@ DROP INDEX idx_student_financial_supports_support_type_id ON student_financial_s
 DROP INDEX idx_admission_slips_iir_id ON admission_slips;
 
 -- Commonly Searched Columns
-DROP INDEX idx_appointments_status ON appointments;
+DROP INDEX idx_appointments_status_id ON appointments;
 DROP INDEX idx_appointments_scheduled_date ON appointments;
 DROP INDEX idx_cities_region_id ON cities;
 DROP INDEX idx_barangays_city_id ON barangays;
