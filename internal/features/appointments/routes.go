@@ -7,43 +7,40 @@ import (
 )
 
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
-	
 	routes := rg.Group("/appointments")
-
 	routes.Use(middleware.AuthMiddleware())
 
-	routes.GET("/slots", middleware.RoleMiddleware(
+	adminOnly := routes.Group("")
+	adminOnly.Use(middleware.RoleMiddleware(
+		int(constants.CounselorRoleID),
+	))
+	{
+		adminOnly.GET("", h.HandleListAppointments)
+		adminOnly.PATCH("/:id/status", h.HandleUpdateAppointmentStatus)
+		adminOnly.GET("/calendar/stats", h.HandleGetDailyStatusCount)
+	}
+
+	studentOnly := routes.Group("")
+	studentOnly.Use(middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+	))
+	{
+		studentOnly.GET("/me", h.HandleGetAppointmentsByUserID)
+	}
+
+	sharedRoutes := routes.Group("")
+	sharedRoutes.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 		int(constants.CounselorRoleID),
-		int(constants.FrontDeskRoleID),
-	), h.HandleGetAvailableTimeSlots)
+	))
+	{
+		sharedRoutes.GET("/id/:id", h.GetAppointmentByID)
+		sharedRoutes.GET("/stats", h.HandleGetAppointmentStats)
+		sharedRoutes.GET("/lookups/categories", h.HandleGetConcernCategories)
+		sharedRoutes.GET("/lookups/slots", h.HandleGetAvailableTimeSlots)
+		sharedRoutes.GET("/lookups/statuses", h.HandleGetAppointmentStatuses)
 
-	// List All (Counselor)
-	routes.GET("", middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
-	), h.HandleListAppointments) 
-
-	// List the Appointments (Student)
-	routes.GET("/me", middleware.RoleMiddleware(
-		int(constants.StudentRoleID),
-	), h.GetAppointments) 
-
-	// Create New
-	routes.POST("", middleware.RoleMiddleware(
-		int(constants.StudentRoleID),
-		int(constants.FrontDeskRoleID),
-	), h.Create)
-
-	// Get Details
-	routes.GET("/:id", middleware.RoleMiddleware(
-		int(constants.StudentRoleID),
-		int(constants.CounselorRoleID),
-		int(constants.FrontDeskRoleID),
-	), h.HandleGetAppointment) 
-
-	// Update Status or Reschedule
-	routes.PATCH("/:id", middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
-		int(constants.FrontDeskRoleID),
-	), h.HandleUpdateStatus)
+		sharedRoutes.POST("", h.HandleCreateAppointment)
+		sharedRoutes.PATCH("/id/:id", h.HandleUpdateAppointment)
+	}
 }

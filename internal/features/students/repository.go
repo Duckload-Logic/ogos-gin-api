@@ -2,6 +2,7 @@ package students
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -362,6 +363,9 @@ func (r *Repository) GetIIRDraftByUserID(ctx context.Context, userID int) (*IIRD
 	var draft IIRDraft
 	err := r.db.GetContext(ctx, &draft, query, userID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -376,6 +380,10 @@ func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*II
 	var iir IIRRecord
 	err := r.db.GetContext(ctx, &iir, query, userID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
@@ -392,6 +400,10 @@ func (r *Repository) GetStudentIIR(ctx context.Context, iirID int) (*IIRRecord, 
 	var iir IIRRecord
 	err := r.db.GetContext(ctx, &iir, query, iirID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 

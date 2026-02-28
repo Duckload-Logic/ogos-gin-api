@@ -2,8 +2,13 @@ package users
 
 import "database/sql"
 
+type Role struct {
+	ID   int    `db:"id" json:"id"`
+	Name string `db:"name" json:"name"`
+}
+
 type User struct {
-	ID           int            `db:"user_id" json:"id"`
+	ID           int            `db:"id" json:"id"`
 	RoleID       int            `db:"role_id" json:"role_id"`
 	FirstName    string         `db:"first_name" json:"first_name"`
 	MiddleName   sql.NullString `db:"middle_name" json:"middle_name"`
