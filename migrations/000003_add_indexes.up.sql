@@ -71,7 +71,7 @@ CREATE INDEX idx_student_financial_supports_support_type_id ON student_financial
 CREATE INDEX idx_admission_slips_iir_id ON admission_slips(iir_id);
 
 -- Commonly Searched Columns
-CREATE INDEX idx_appointments_status ON appointments(`status`);
-CREATE INDEX idx_appointments_scheduled_date ON appointments(scheduled_date);
+CREATE INDEX idx_appointments_status_id ON appointments(status_id);
+CREATE INDEX idx_appointments_when_date ON appointments(when_date);
 CREATE INDEX idx_cities_region_id ON cities(region_id);
 CREATE INDEX idx_barangays_city_id ON barangays(city_id);
