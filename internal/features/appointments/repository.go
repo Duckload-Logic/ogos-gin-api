@@ -79,7 +79,7 @@ func (r *Repository) GetDailyStatusCount(ctx context.Context, startDate, endDate
 			COUNT(CASE WHEN s.name = 'Scheduled' THEN 1 END) as scheduled_count,
 			COUNT(CASE WHEN s.name = 'Rescheduled' THEN 1 END) as rescheduled_count
 		FROM appointments a
-		JOIN appointment_statuses s ON a.status_id = s.id
+		JOIN statuses s ON a.status_id = s.id
 		WHERE when_date BETWEEN ? AND ?
 		GROUP BY DATE(a.when_date);
 	`
@@ -149,7 +149,7 @@ func (r *Repository) List(
 		JOIN users u ON a.user_id = u.id
 		JOIN time_slots ts ON a.time_slot_id = ts.id
 		JOIN appointment_categories ac ON a.appointment_category_id = ac.id
-		JOIN appointment_statuses as2 ON a.status_id = as2.id
+		JOIN statuses as2 ON a.status_id = as2.id
 		WHERE 1=1
 	`)
 	var args []interface{}
@@ -247,7 +247,7 @@ func (r *Repository) GetAvailableTimeSlots(ctx context.Context, date string) ([]
         FROM time_slots ts
         LEFT JOIN appointments a ON ts.id = a.time_slot_id
             AND a.when_date = ?
-            AND a.status_id != (SELECT id FROM appointment_statuses WHERE name = 'Cancelled')
+            AND a.status_id != (SELECT id FROM statuses WHERE name = 'Cancelled')
 	`
 
 	var slots []AvailableTimeSlotView
@@ -300,7 +300,7 @@ func (r *Repository) ListByUserID(ctx context.Context, userID int, offset, limit
 		JOIN users u ON a.user_id = u.id
 		JOIN time_slots ts ON a.time_slot_id = ts.id
 		JOIN appointment_categories ac ON a.appointment_category_id = ac.id
-		JOIN appointment_statuses as2 ON a.status_id = as2.id
+		JOIN statuses as2 ON a.status_id = as2.id
 		WHERE a.user_id = ?
 	`
 	args := []interface{}{userID}
@@ -361,7 +361,7 @@ func (r *Repository) GetAppointmentStats(ctx context.Context, statusID, startDat
 			as2.id AS id,
 			as2.name AS name,
 			COUNT(a.id) AS count
-		FROM appointment_statuses as2
+		FROM statuses as2
 		LEFT JOIN appointments a ON %s
 		GROUP BY as2.id, as2.name
 		ORDER BY as2.id
