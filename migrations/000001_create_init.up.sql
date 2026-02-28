@@ -118,6 +118,42 @@ CREATE TABLE activity_options (
 -- ============================================================================
 -- COUNSELING & APPOINTMENTS
 -- ============================================================================
+CREATE TABLE time_slots (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    time TIME NOT NULL UNIQUE
+);
+
+CREATE TABLE appointment_statuses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    color_key ENUM('warning', 'danger', 'success', 'info', 'stale', 'notice') NOT NULL
+);
+
+CREATE TABLE appointment_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE appointments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    time_slot_id INT NOT NULL,
+    when_date DATE NOT NULL,
+    reason TEXT,
+    admin_notes TEXT,
+    appointment_category_id INT NOT NULL,
+    status_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (time_slot_id) REFERENCES time_slots(id),
+    FOREIGN KEY (status_id) REFERENCES appointment_statuses(id),
+    FOREIGN KEY (appointment_category_id) REFERENCES appointment_categories(id),
+
+    -- PREVENTS DOUBLE BOOKING:
+    UNIQUE KEY unique_appointment (when_date, time_slot_id)
+);
 
 CREATE TABLE counselor_profiles(
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -127,23 +163,4 @@ CREATE TABLE counselor_profiles(
     is_available BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE appointments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    reason VARCHAR(255),
-    scheduled_date DATE NOT NULL,
-    scheduled_time TIME NOT NULL,
-    concern_category VARCHAR(100),
-    `status` ENUM(
-        'Pending',
-        'Approved',
-        'Completed',
-        'Cancelled',
-        'Rescheduled'
-    ) DEFAULT 'Pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
