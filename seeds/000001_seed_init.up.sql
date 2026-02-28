@@ -136,14 +136,16 @@ INSERT INTO appointment_categories (id, name) VALUES
     (5, 'Mental Health'),
     (6, 'Other');
 
-INSERT INTO appointment_statuses (id, name, color_key) VALUES
-    (1, 'Pending', 'warning'), -- Orange
-    (2, 'Scheduled', 'info'), -- Blue
-    (3, 'Completed', 'success'), -- Green
-    (4, 'Cancelled', 'danger'), -- Red
-    (5, 'Rejected', 'danger'), -- Red
-    (6, 'Rescheduled', 'notice'), -- Orange
-    (7, 'No-show', 'stale'); -- Gray
+INSERT INTO statuses (id, name, color_key, status_type) VALUES
+    (1, 'Pending', 'warning', 'both'), -- Orange
+    (2, 'Scheduled', 'info', 'appointment'), -- Blue
+    (3, 'Completed', 'success', 'appointment'), -- Green
+    (4, 'Cancelled', 'danger', 'appointment'), -- Red
+    (5, 'Rejected', 'danger', 'both'), -- Red
+    (6, 'Rescheduled', 'notice', 'appointment'), -- Orange
+    (7, 'No-show', 'stale', 'appointment'), -- Gray
+    (8, 'Approved', 'success', 'slip'), -- Green
+    (9, 'For Revision', 'notice', 'slip'); -- Red
 
 INSERT INTO time_slots (id, time) VALUES
     (1, '08:00:00'),

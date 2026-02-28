@@ -123,10 +123,11 @@ CREATE TABLE time_slots (
     time TIME NOT NULL UNIQUE
 );
 
-CREATE TABLE appointment_statuses (
+CREATE TABLE statuses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
-    color_key ENUM('warning', 'danger', 'success', 'info', 'stale', 'notice') NOT NULL
+    color_key ENUM('warning', 'danger', 'success', 'info', 'stale', 'notice') NOT NULL,
+    status_type ENUM('appointment', 'slip', 'both') NOT NULL DEFAULT 'both'
 );
 
 CREATE TABLE appointment_categories (
@@ -142,13 +143,13 @@ CREATE TABLE appointments (
     reason TEXT,
     admin_notes TEXT,
     appointment_category_id INT NOT NULL,
-    status_id INT NOT NULL,
+    status_id INT NOT NULL DEFAULT 1, -- Default to 'Pending'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (time_slot_id) REFERENCES time_slots(id),
-    FOREIGN KEY (status_id) REFERENCES appointment_statuses(id),
+    FOREIGN KEY (status_id) REFERENCES statuses(id),
     FOREIGN KEY (appointment_category_id) REFERENCES appointment_categories(id),
 
     -- PREVENTS DOUBLE BOOKING:
