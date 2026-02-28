@@ -215,7 +215,7 @@ func (r *Repository) GetAppointmentCategoryByID(ctx context.Context, id int) (*A
 	var category AppointmentCategory
 	err := r.db.GetContext(ctx, &category, query, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get concern category by ID: %w", err)
+		return nil, fmt.Errorf("failed to get appointment category by ID: %w", err)
 	}
 
 	return &category, nil
@@ -224,8 +224,9 @@ func (r *Repository) GetAppointmentCategoryByID(ctx context.Context, id int) (*A
 func (r *Repository) GetStatusByID(ctx context.Context, id int) (*AppointmentStatus, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
-		FROM appointment_statuses
-		WHERE id = ?
+		FROM statuses
+		WHERE status_type IN ('appointment', 'both')
+		AND id = ?
 	`, database.GetColumns(AppointmentStatus{}))
 
 	var status AppointmentStatus
@@ -261,11 +262,13 @@ func (r *Repository) GetAvailableTimeSlots(ctx context.Context, date string) ([]
 func (r *Repository) GetStatuses(ctx context.Context) ([]AppointmentStatus, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
-		FROM appointment_statuses
+		FROM statuses
+		WHERE status_type IN ('appointment', 'both')
 	`, database.GetColumns(AppointmentStatus{}))
 	var statuses []AppointmentStatus
 	err := r.db.SelectContext(ctx, &statuses, query)
 	if err != nil {
+		log.Printf("Error fetching appointment statuses: %v", err)
 		return nil, fmt.Errorf("failed to get appointment statuses: %w", err)
 	}
 
