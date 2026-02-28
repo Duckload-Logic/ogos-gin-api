@@ -128,6 +128,34 @@ INSERT INTO activity_options (`name`, category) VALUES
     ('Glee Club', 'extra_curricular'),
     ('Scouting', 'extra_curricular');
 
+INSERT INTO appointment_categories (id, name) VALUES
+    (1, 'Academic'),
+    (2, 'Financial'),
+    (3, 'Personal'),
+    (4, 'Career Guidance'),
+    (5, 'Mental Health'),
+    (6, 'Other');
+
+INSERT INTO appointment_statuses (id, name, color_key) VALUES
+    (1, 'Pending', 'warning'), -- Orange
+    (2, 'Scheduled', 'info'), -- Blue
+    (3, 'Completed', 'success'), -- Green
+    (4, 'Cancelled', 'danger'), -- Red
+    (5, 'Rejected', 'danger'), -- Red
+    (6, 'Rescheduled', 'notice'), -- Orange
+    (7, 'No-show', 'stale'); -- Gray
+
+INSERT INTO time_slots (id, time) VALUES
+    (1, '08:00:00'),
+    (2, '09:00:00'),
+    (3, '10:00:00'),
+    (4, '11:00:00'),
+    (5, '13:00:00'),
+    (6, '14:00:00'),
+    (7, '15:00:00'),
+    (8, '16:00:00'),
+    (9, '17:00:00');
+
 -- INSERT INTO appointment_types (id, appointment_type_name)
 -- VALUES
 --     (1, 'Initial Interview'),
