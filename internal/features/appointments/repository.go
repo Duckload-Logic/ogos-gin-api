@@ -128,6 +128,7 @@ func (r *Repository) List(
 	query := (`
 		SELECT
 			a.id,
+			u.id AS user_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
@@ -275,6 +276,7 @@ func (r *Repository) ListByUserID(ctx context.Context, userID int, offset, limit
 	query := `
 		SELECT
 			a.id,
+			u.id AS user_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
