@@ -22,7 +22,7 @@ func (h *Handler) GetAnalyticsDashboard(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": "Failed to generate analytics dashboard",
-			"error":   err.Error(), // Provides the specific DB error like 1146 for debugging
+			"error":   err.Error(),
 		})
 		return
 	}

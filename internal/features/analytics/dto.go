@@ -20,14 +20,14 @@ type DashboardResponseDTO struct {
 	Religions       []DemographicStatDTO `json:"religions"`
 	CityAddress     []DemographicStatDTO `json:"cityAddress"`
 
-	// Family & Financial Background
+	// Family & Financial Background 
 	MonthlyIncome        []DemographicStatDTO `json:"monthlyIncome"`
 	OrdinalPosition      []DemographicStatDTO `json:"ordinalPosition"`
 	FatherEducation      []DemographicStatDTO `json:"fatherEducation"`
 	MotherEducation      []DemographicStatDTO `json:"motherEducation"`
 	ParentsMaritalStatus []DemographicStatDTO `json:"parentsMaritalStatus"`
 
-	// Academic Background
+	// Academic Background 
 	HighSchoolGWA     []DemographicStatDTO `json:"highSchoolGWA"`
 	Elementary        []DemographicStatDTO `json:"elementary"`
 	JuniorHigh        []DemographicStatDTO `json:"juniorHigh"`

@@ -15,285 +15,306 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) GetTotalStudents(ctx context.Context) (int, error) {
 	var total int
-	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM student_personal_info").Scan(&total)
+	err := r.db.GetContext(ctx, &total, "SELECT COUNT(*) FROM student_personal_info")
 	return total, err
 }
 
-//personal info
+// --- PERSONAL INFORMATION ---
 
 func (r *Repository) GetAgeStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			CAST(TIMESTAMPDIFF(YEAR, spi.date_of_birth, CURDATE()) AS CHAR) AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
 		LEFT JOIN genders g ON spi.gender_id = g.id
 		WHERE spi.date_of_birth IS NOT NULL
-		GROUP BY category
-		ORDER BY CAST(category AS UNSIGNED) ASC;
-	`
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetCivilStatusStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(cs.name, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(status_name, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
-		LEFT JOIN civil_statuses cs ON spi.civil_status_id = cs.id
+		LEFT JOIN civil_status_types cs ON spi.civil_status_id = cs.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
 		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		ORDER BY rank_pos ASC;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetReligionStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(rel.name, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(religion_name, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
 		LEFT JOIN religions rel ON spi.religion_id = rel.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
 		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		ORDER BY rank_pos ASC;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetCityAddressStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(a.city, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(sa.city, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
-		LEFT JOIN addresses a ON spi.address_id = a.id 
+		JOIN student_addresses sa ON spi.iir_id = sa.iir_id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
-
-//family & background
+// --- FAMILY & FINANCIAL BACKGROUND ---
 
 func (r *Repository) GetMonthlyIncomeStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.monthly_income, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(ir.range_text, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN student_finances sf ON spi.iir_id = sf.iir_id
+		LEFT JOIN income_ranges ir ON sf.monthly_family_income_range_id = ir.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetOrdinalPositionStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.ordinal_position, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			CAST(fb.ordinal_position AS CHAR) AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN family_backgrounds fb ON spi.iir_id = fb.iir_id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetFatherEducationStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.father_education, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(rp.educational_level, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN related_persons rp ON spi.iir_id = rp.iir_id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		WHERE rp.relationship = 'Father'
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetMotherEducationStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.mother_education, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(rp.educational_level, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN related_persons rp ON spi.iir_id = rp.iir_id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		WHERE rp.relationship = 'Mother'
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetParentsMaritalStatusStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.parents_marital_status, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(pst.status_name, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN family_backgrounds fb ON spi.iir_id = fb.iir_id
+		LEFT JOIN parental_status_types pst ON fb.parental_status_id = pst.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
-//academic background
+func (r *Repository) GetQuietStudyPlaceStats(ctx context.Context) ([]AggregatedStatModel, error) {
+	query := `
+		SELECT 
+			CASE WHEN fb.have_quiet_place_to_study = 1 THEN 'Yes' ELSE 'No' END AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COUNT(*) as total,
+			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
+		FROM student_personal_info spi
+		JOIN family_backgrounds fb ON spi.iir_id = fb.iir_id
+		LEFT JOIN genders g ON spi.gender_id = g.id
+		GROUP BY category;`
+	return r.executeStatQuery(ctx, query)
+}
+
+// --- ACADEMIC BACKGROUND ---
+
 func (r *Repository) GetHSGWAStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			CASE
-				WHEN spi.high_school_gwa >= 97 THEN '97-99'
-				WHEN spi.high_school_gwa >= 94 AND spi.high_school_gwa < 97 THEN '94-96'
-				WHEN spi.high_school_gwa >= 91 AND spi.high_school_gwa < 94 THEN '91-93'
-				WHEN spi.high_school_gwa >= 88 AND spi.high_school_gwa < 91 THEN '88-90'
-				WHEN spi.high_school_gwa >= 85 AND spi.high_school_gwa < 88 THEN '85-87'
-				WHEN spi.high_school_gwa >= 82 AND spi.high_school_gwa < 85 THEN '82-84'
-				ELSE 'Not Indicated'
+			CASE 
+				WHEN spi.high_school_gwa >= 95.00 THEN '95.00 - 100.00'
+				WHEN spi.high_school_gwa >= 90.00 THEN '90.00 - 94.99'
+				WHEN spi.high_school_gwa >= 85.00 THEN '85.00 - 89.99'
+				WHEN spi.high_school_gwa >= 80.00 THEN '80.00 - 84.99'
+				WHEN spi.high_school_gwa >= 75.00 THEN '75.00 - 79.99'
+				ELSE 'Below 75.00'
 			END AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		WHERE spi.high_school_gwa IS NOT NULL AND spi.high_school_gwa > 0
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetElementaryStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.elem_school_type, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(sd.school_type, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN educational_backgrounds eb ON spi.iir_id = eb.iir_id
+		JOIN educational_levels el ON eb.education_level_id = el.id
+		LEFT JOIN school_details sd ON eb.school_detail_id = sd.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		WHERE el.level_name = 'Elementary'
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetJuniorHighStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.jhs_type, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(sd.school_type, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN educational_backgrounds eb ON spi.iir_id = eb.iir_id
+		JOIN educational_levels el ON eb.education_level_id = el.id
+		LEFT JOIN school_details sd ON eb.school_detail_id = sd.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		WHERE el.level_name = 'Junior High School'
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetSeniorHighStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.shs_type, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(sd.school_type, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN educational_backgrounds eb ON spi.iir_id = eb.iir_id
+		JOIN educational_levels el ON eb.education_level_id = el.id
+		LEFT JOIN school_details sd ON eb.school_detail_id = sd.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		WHERE el.level_name = 'Senior High School'
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
 func (r *Repository) GetNatureOfSchoolingStats(ctx context.Context) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
-			COALESCE(spi.nature_of_schooling, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COALESCE(eb.nature_of_schooling, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
 			COUNT(*) as total,
 			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
 		FROM student_personal_info spi
+		JOIN educational_backgrounds eb ON spi.iir_id = eb.iir_id
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
+		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
 
-//study environment
-
-func (r *Repository) GetQuietStudyPlaceStats(ctx context.Context) ([]AggregatedStatModel, error) {
-	query := `
-		SELECT 
-			COALESCE(spi.quiet_study_place, 'Not Indicated') AS category,
-			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
-			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
-			COUNT(*) as total,
-			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
-		FROM student_personal_info spi
-		LEFT JOIN genders g ON spi.gender_id = g.id
-		GROUP BY category
-		ORDER BY rank_pos ASC;
-	`
-	return r.executeStatQuery(ctx, query)
-}
-
-//helper function
+// --- HELPERS ---
 
 func (r *Repository) executeStatQuery(ctx context.Context, query string) ([]AggregatedStatModel, error) {
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	stats := make([]AggregatedStatModel, 0)
+	err := r.db.SelectContext(ctx, &stats, query)
+	return stats, err
+}
 
-	var stats []AggregatedStatModel
-	for rows.Next() {
-		var stat AggregatedStatModel
-		if err := rows.Scan(&stat.Category, &stat.MaleCount, &stat.FemaleCount, &stat.Total, &stat.RankPos); err != nil {
-			return nil, err
-		}
-		stats = append(stats, stat)
-	}
-	return stats, nil
+func (r *Repository) getSchoolTypeStats(ctx context.Context, levelName string) ([]AggregatedStatModel, error) {
+	query := `
+		SELECT 
+			COALESCE(sd.school_type, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COUNT(*) as total,
+			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
+		FROM student_personal_info spi
+		JOIN educational_backgrounds eb ON spi.iir_id = eb.iir_id
+		JOIN educational_levels el ON eb.education_level_id = el.id
+		JOIN school_details sd ON eb.school_detail_id = sd.id
+		LEFT JOIN genders g ON spi.gender_id = g.id
+		WHERE el.name = ?
+		GROUP BY category;`
+	
+	stats := make([]AggregatedStatModel, 0)
+	err := r.db.SelectContext(ctx, &stats, query, levelName)
+	return stats, err
+}
+
+func (r *Repository) getParentEducationStats(ctx context.Context, parentType string) ([]AggregatedStatModel, error) {
+	query := `
+		SELECT 
+			COALESCE(ed.level_name, 'Not Indicated') AS category,
+			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
+			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
+			COUNT(*) as total,
+			RANK() OVER (ORDER BY COUNT(*) DESC) as rank_pos
+		FROM student_personal_info spi
+		JOIN family_backgrounds fb ON spi.iir_id = fb.iir_id
+		LEFT JOIN educational_levels ed ON (CASE WHEN ? = 'Father' THEN fb.father_education_id ELSE fb.mother_education_id END) = ed.id
+		LEFT JOIN genders g ON spi.gender_id = g.id
+		GROUP BY category;`
+	
+	stats := make([]AggregatedStatModel, 0)
+	err := r.db.SelectContext(ctx, &stats, query, parentType)
+	return stats, err
 }

@@ -2,6 +2,7 @@ package analytics
 
 import "time"
 
+// AggregatedStatModel
 type AggregatedStatModel struct {
 	Category    string `db:"category"`
 	MaleCount   int    `db:"male_count"`
@@ -35,18 +36,27 @@ type StudentPersonalInfo struct {
 	UpdatedAt     time.Time `db:"updated_at"`
 }
 
-// StudentFinances
+// StudentFinances 
 type StudentFinances struct {
-	ID                         int      `db:"id"`
-	IIRID                      int      `db:"iir_id"`
-	MonthlyFamilyIncomeRangeID *int     `db:"monthly_family_income_range_id"`
-	WeeklyAllowance            float64  `db:"weekly_allowance"`
+	ID                         int     `db:"id"`
+	IIRID                      int     `db:"iir_id"`
+	MonthlyFamilyIncomeRangeID *int    `db:"monthly_family_income_range_id"`
+	WeeklyAllowance            float64 `db:"weekly_allowance"`
 }
 
 // FamilyBackground 
 type FamilyBackground struct {
 	IIRID                 int  `db:"iir_id"`
-	ParentalStatusID      int  `db:"parental_status_id"`
+	ParentalStatusID      int  `db:"parental_status_id"` 
 	OrdinalPosition       int  `db:"ordinal_position"`
 	HaveQuietPlaceToStudy bool `db:"have_quiet_place_to_study"`
+}
+
+// EducationalBackground 
+type EducationalBackground struct {
+	ID              int     `db:"id"`
+	IIRID           int     `db:"iir_id"`
+	EducationLevelID int     `db:"education_level_id"` 
+	SchoolDetailID   int     `db:"school_detail_id"`  
+	GWA             float64 `db:"gwa"`
 }
