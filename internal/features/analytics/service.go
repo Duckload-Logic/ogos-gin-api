@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"context"
+	"math"
 )
 
 type Service struct {
@@ -38,6 +39,7 @@ func (s *Service) GetDashboard(ctx context.Context) (*DashboardResponseDTO, erro
 	}
 
 	if total > 0 {
+		// Demographic data
 		rawAges, _ := s.repo.GetAgeStats(ctx)
 		dashboard.AgeDistribution = s.mapToDTO(rawAges, total)
 
@@ -50,12 +52,17 @@ func (s *Service) GetDashboard(ctx context.Context) (*DashboardResponseDTO, erro
 		rawCityAddress, _ := s.repo.GetCityAddressStats(ctx)
 		dashboard.CityAddress = s.mapToDTO(rawCityAddress, total)
 
+		// Economic/Social data
 		rawMonthlyIncome, _ := s.repo.GetMonthlyIncomeStats(ctx)
 		dashboard.MonthlyIncome = s.mapToDTO(rawMonthlyIncome, total)
 
 		rawOrdinalPosition, _ := s.repo.GetOrdinalPositionStats(ctx)
 		dashboard.OrdinalPosition = s.mapToDTO(rawOrdinalPosition, total)
 
+		rawQuietPlace, _ := s.repo.GetQuietStudyPlaceStats(ctx)
+		dashboard.QuietStudyPlace = s.mapToDTO(rawQuietPlace, total)
+
+		// Family data
 		rawFatherEd, _ := s.repo.GetFatherEducationStats(ctx)
 		dashboard.FatherEducation = s.mapToDTO(rawFatherEd, total)
 
@@ -65,6 +72,7 @@ func (s *Service) GetDashboard(ctx context.Context) (*DashboardResponseDTO, erro
 		rawParentsMarital, _ := s.repo.GetParentsMaritalStatusStats(ctx)
 		dashboard.ParentsMaritalStatus = s.mapToDTO(rawParentsMarital, total)
 
+		// Academic data
 		rawHSGWA, _ := s.repo.GetHSGWAStats(ctx)
 		dashboard.HighSchoolGWA = s.mapToDTO(rawHSGWA, total)
 
@@ -79,9 +87,6 @@ func (s *Service) GetDashboard(ctx context.Context) (*DashboardResponseDTO, erro
 
 		rawNature, _ := s.repo.GetNatureOfSchoolingStats(ctx)
 		dashboard.NatureOfSchooling = s.mapToDTO(rawNature, total)
-
-		rawQuietPlace, _ := s.repo.GetQuietStudyPlaceStats(ctx)
-		dashboard.QuietStudyPlace = s.mapToDTO(rawQuietPlace, total)
 	}
 
 	return dashboard, nil
@@ -103,12 +108,20 @@ func (s *Service) mapToDTO(rawStats []AggregatedStatModel, totalStudents int) []
 			Rank:        stat.RankPos,
 		}
 
-		dto.TotalPct = (float64(stat.Total) / float64(totalStudents)) * 100
-		dto.MalePct = (float64(stat.MaleCount) / float64(totalStudents)) * 100
-		dto.FemalePct = (float64(stat.FemaleCount) / float64(totalStudents)) * 100
+		dto.TotalPct = s.calculatePercentage(stat.Total, totalStudents)
+		dto.MalePct = s.calculatePercentage(stat.MaleCount, totalStudents)
+		dto.FemalePct = s.calculatePercentage(stat.FemaleCount, totalStudents)
 
 		dtos = append(dtos, dto)
 	}
 
 	return dtos
+}
+
+func (s *Service) calculatePercentage(count int, total int) float64 {
+	if total == 0 {
+		return 0
+	}
+	percent := (float64(count) / float64(total)) * 100
+	return math.Round(percent*100) / 100
 }
