@@ -136,6 +136,12 @@ INSERT INTO appointment_categories (id, name) VALUES
     (5, 'Mental Health'),
     (6, 'Other');
 
+INSERT INTO admission_slip_categories (id, name) VALUES
+    (1, 'Medical'),
+    (2, 'Personal'),
+    (3, 'Family-related'),
+    (4, 'Other');
+
 INSERT INTO statuses (id, name, color_key, status_type) VALUES
     (1, 'Pending', 'warning', 'both'), -- Orange
     (2, 'Scheduled', 'info', 'appointment'), -- Blue
