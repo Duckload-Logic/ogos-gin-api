@@ -31,7 +31,10 @@ go.work.sum
 tmp/*
 
 # static storage
-uploads/*
+uploads/
+
+# air
+.air.toml
 
 # Editor/IDE
 # .idea/
