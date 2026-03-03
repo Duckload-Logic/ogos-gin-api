@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -14,33 +15,37 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
 )
 
 var db *sqlx.DB
 
 // lookup slices (IDs)
 var (
-	genderIDs                []int
-	civilStatusIDs           []int
-	civilStatusByName        map[string]int
-	religionIDs              []int
-	courseIDs                []int
-	enrollmentReasonIDs      []int
-	supportTypeIDs           []int
-	incomeRangeIDs           []int
-	parentalStatusIDs        []int
-	educationalLevelIDs      []int
-	educationalLevelByName   map[string]int
-	relationshipTypeIDs      map[string]int
-	natureOfResidenceIDs     []int
-	siblingSupportTypeIDs    []int
-	activityOptionIDs        []int
-	timeSlotIDs              []int
-	appointmentStatusIDs     []int
-	appointmentStatusByName  map[string]int
-	appointmentCategoryIDs   []int
-	appointmentSlotMu        sync.Mutex
-	reservedAppointmentSlots = make(map[string]struct{})
+	genderIDs                   []int
+	civilStatusIDs              []int
+	civilStatusByName           map[string]int
+	religionIDs                 []int
+	courseIDs                   []int
+	enrollmentReasonIDs         []int
+	supportTypeIDs              []int
+	incomeRangeIDs              []int
+	parentalStatusIDs           []int
+	educationalLevelIDs         []int
+	educationalLevelByName      map[string]int
+	relationshipTypeIDs         map[string]int
+	natureOfResidenceIDs        []int
+	siblingSupportTypeIDs       []int
+	activityOptionIDs           []int
+	timeSlotIDs                 []int
+	appointmentStatusIDs        []int
+	appointmentStatusByName     map[string]int
+	admissionSlipStatusIDs      []int
+	admissioNSlipStatusesByName map[string]int
+	appointmentCategoryIDs      []int
+	admissionSlipCategoryIDs    []int
+	appointmentSlotMu           sync.Mutex
+	reservedAppointmentSlots    = make(map[string]struct{})
 )
 
 func main() {
@@ -299,19 +304,45 @@ func loadLookups() {
 		appointmentStatusByName[strings.ToLower(name)] = id
 	}
 
-	// appointment categories (fallback to concern_categories if present in local schema)
-	rows, err = db.Query("SELECT id FROM appointment_categories")
+	admissioNSlipStatusesByName = make(map[string]int)
+	rows, err = db.Query("SELECT id, name FROM statuses WHERE status_type IN ('slip', 'both')")
 	if err != nil {
-		rows, err = db.Query("SELECT id FROM concern_categories")
-		if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id int
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
 			log.Fatal(err)
 		}
+
+		admissionSlipStatusIDs = append(admissionSlipStatusIDs, id)
+		admissioNSlipStatusesByName[strings.ToLower(name)] = id
+	}
+
+	// appointment categories
+	rows, err = db.Query("SELECT id FROM appointment_categories")
+	if err != nil {
+		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id int
 		rows.Scan(&id)
 		appointmentCategoryIDs = append(appointmentCategoryIDs, id)
+	}
+
+	// admission_slip_categories
+	row, err := db.Query("SELECT id FROM admission_slip_categories")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer row.Close()
+	for row.Next() {
+		var id int
+		row.Scan(&id)
+		admissionSlipCategoryIDs = append(admissionSlipCategoryIDs, id)
 	}
 }
 
@@ -1229,18 +1260,181 @@ func insertHobbies(tx *sqlx.Tx, iirID int) {
 }
 
 func insertAdmissionSlip(tx *sqlx.Tx, iirID int) {
-	status := randomChoice([]string{"Pending", "Approved", "Rejected"})
-	_, err := tx.Exec(`
+	// More realistic status distribution (pending less likely for historical data)
+	statusName := chooseAdmissionSlipStatus()
+	statusID, ok := admissioNSlipStatusesByName[statusName]
+	if !ok {
+		log.Printf("Admission slip status '%s' not found in lookup, defaulting to random status", statusName)
+		statusID = randomChoice(admissionSlipStatusIDs).(int)
+	}
+	categoryID := randomChoice(admissionSlipCategoryIDs).(int)
+
+	// Realistic reasons for admission slips
+	reason := generateRealisticAdmissionReason()
+
+	daysAgo := rand.Intn(7) + 2 // 2-8 days ago
+	dateOfAbsence := time.Now().AddDate(0, 0, -daysAgo).Format("2006-01-02")
+
+	// Date needed: submission should be a few days to weeks after absence
+	daysAfterAbsence := rand.Intn(7) + 1
+	// 1. Calculate the target date
+	targetDate := time.Now().AddDate(0, 0, -daysAgo+daysAfterAbsence)
+
+	// 2. If targetDate is before "Now", set it to "Now"
+	if targetDate.Before(time.Now()) {
+		targetDate = time.Now()
+	}
+
+	// 3. Format for the database
+	dateNeeded := targetDate.Format("2006-01-02")
+
+	// Use PDF as primary extension (more realistic for official documents)
+	extensions := []string{".pdf", ".pdf", ".pdf", ".jpg", ".jpeg", ".png"}
+	ext := extensions[rand.Intn(len(extensions))]
+	basePath := os.Getenv("UPLOAD_DIR")
+	subFolder := gofakeit.UUID()
+
+	// More realistic file names for admission documents
+	baseFileName := generateAdmissionFileName()
+	readableFileName := baseFileName + ext
+	fileName := hash.GetSHA256Hash(readableFileName, 16) + ext
+
+	// DISK PATH (Where Go writes the bytes)
+	fullStoragePath := filepath.Join(basePath, "slips", subFolder, fileName)
+
+	dbURL := fmt.Sprintf("/slips/%s/%s", subFolder, fileName)
+	// Create directory and file
+	dir := filepath.Dir(fullStoragePath)
+	os.MkdirAll(dir, os.ModePerm)
+	f, _ := os.Create(fullStoragePath)
+	// Write realistic dummy content
+	content := fmt.Sprintf("ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %d\nDate: %s\nReason: %s\n\n[Document content created for admission purposes]", iirID, dateOfAbsence, reason)
+	f.WriteString(content)
+	f.Close()
+
+	// Find user_id from iir_id
+	var userID int
+	err := tx.Get(&userID, "SELECT user_id FROM iir_records WHERE id = ?", iirID)
+	if err != nil {
+		log.Fatal("Could not find user_id for iir_id", iirID, err)
+	}
+
+	// Admin notes more realistic based on status
+	adminNotes := generateAdmissionNotes(statusName)
+
+	res, err := tx.Exec(`
 		INSERT INTO admission_slips (
-			iir_id, reason, date_of_absence, file_path, excuse_slip_status
-		) VALUES (?, ?, ?, ?, ?)
-	`, iirID,
-		gofakeit.Sentence(5),
-		gofakeit.Date().Format("2006-01-02"),
-		"/uploads/"+gofakeit.UUID()+".pdf",
-		status)
+			user_id, reason, category_id, date_of_absence, date_needed, status_id, admin_notes
+		) VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, userID, reason, categoryID, dateOfAbsence, dateNeeded, statusID, adminNotes)
 	if err != nil {
 		log.Fatal(err)
+	}
+	slipID, _ := res.LastInsertId()
+
+	_, err = tx.Exec(`
+		INSERT INTO slip_attachments (admission_slip_id, file_name, file_url)
+		VALUES (?, ?, ?)
+	`, slipID, readableFileName, dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func chooseAdmissionSlipStatus() string {
+	statuses := []struct {
+		name   string
+		weight int
+	}{
+		{"approved", 50},
+		{"pending", 25},
+		{"for revision", 15},
+		{"rejected", 10},
+	}
+
+	totalWeight := 0
+	for _, s := range statuses {
+		totalWeight += s.weight
+	}
+
+	roll := rand.Intn(totalWeight)
+	for _, s := range statuses {
+		roll -= s.weight
+		if roll < 0 {
+			return s.name
+		}
+	}
+	return "pending"
+}
+
+func generateRealisticAdmissionReason() string {
+	reasons := []string{
+		"Medical consultation - Doctor's appointment",
+		"Family emergency requiring immediate attention",
+		"Legal matter - Court appearance required",
+		"University business - Office of the Registrar",
+		"Health center visit - Medical examination",
+		"Dental appointment - Preventive care",
+		"Job interview - Employment opportunity",
+		"Scholarship office - Financial aid matters",
+		"Hospital admission - Medical treatment",
+		"Burial ceremony - Family death",
+		"Important family matter - Guardian meeting",
+		"University activity - Student organization duty",
+		"Mental health counseling session",
+		"Physical therapy appointment",
+		"Government office work - Official business",
+	}
+	return reasons[rand.Intn(len(reasons))]
+}
+
+func generateAdmissionFileName() string {
+	fileTypes := []string{
+		"medical_certificate",
+		"excuse_letter",
+		"hospital_clearance",
+		"doctor_note",
+		"appointment_slip",
+		"official_letter",
+		"emergency_report",
+		"proof_of_attendance",
+	}
+	return fileTypes[rand.Intn(len(fileTypes))]
+}
+
+func generateAdmissionNotes(status string) sql.NullString {
+	switch status {
+	case "approved":
+		notes := []string{
+			"Verified with hospital records",
+			"Legitimate documentation provided",
+			"Approved - excused absence",
+			"Admission approved as submitted",
+			"",
+		}
+		selected := notes[rand.Intn(len(notes))]
+		if selected == "" {
+			return sql.NullString{Valid: false}
+		}
+		return sql.NullString{String: selected, Valid: true}
+	case "rejected":
+		notes := []string{
+			"Insufficient documentation",
+			"Outside acceptable timeframe",
+			"Documentation not properly verified",
+			"Required supporting documents missing",
+		}
+		return sql.NullString{String: notes[rand.Intn(len(notes))], Valid: true}
+	case "for revision":
+		notes := []string{
+			"Requires additional supporting documents",
+			"Need clarification on dates",
+			"Missing required signatures",
+			"Please provide recent medical certificate",
+		}
+		return sql.NullString{String: notes[rand.Intn(len(notes))], Valid: true}
+	default:
+		return sql.NullString{Valid: false}
 	}
 }
 

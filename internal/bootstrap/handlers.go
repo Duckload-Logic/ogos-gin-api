@@ -2,13 +2,13 @@ package bootstrap
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/excuseslips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 )
 
 type Handlers struct {
@@ -18,8 +18,8 @@ type Handlers struct {
 	LocationsHandler   *locations.Handler
 	StudentHandler     *students.Handler
 	AppointmentHandler *appointments.Handler
-	ExcuseSlipHandler  *excuseslips.Handler
-	AnalyticsHandler *analytics.Handler
+	SlipHandler        *slips.Handler
+	AnalyticsHandler   *analytics.Handler
 }
 
 func getHandlers(repos *Repositories) *Handlers {
@@ -28,7 +28,7 @@ func getHandlers(repos *Repositories) *Handlers {
 	locationsService := locations.NewService(repos.LocationsRepo)
 	studentService := students.NewService(repos.StudentRepo, locationsService)
 	appointmentService := appointments.NewService(repos.AppointmentRepo)
-	excuseSlipService := excuseslips.NewService(repos.ExcuseSlipRepo)
+	slipService := slips.NewService(repos.SlipRepo)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo)
 	analyticsHandler := analytics.NewHandler(analyticsService)
 
@@ -38,7 +38,7 @@ func getHandlers(repos *Repositories) *Handlers {
 		LocationsHandler:   locations.NewHandler(locationsService),
 		StudentHandler:     students.NewHandler(studentService),
 		AppointmentHandler: appointments.NewHandler(appointmentService),
-		ExcuseSlipHandler:  excuseslips.NewHandler(excuseSlipService),
-		AnalyticsHandler: analyticsHandler,
+		SlipHandler:        slips.NewHandler(slipService),
+		AnalyticsHandler:   analyticsHandler,
 	}
 }

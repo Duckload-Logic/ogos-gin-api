@@ -68,7 +68,8 @@ CREATE INDEX idx_student_financial_supports_sf_id ON student_financial_supports(
 CREATE INDEX idx_student_financial_supports_support_type_id ON student_financial_supports(support_type_id);
 
 -- Administrative
-CREATE INDEX idx_admission_slips_iir_id ON admission_slips(iir_id);
+CREATE INDEX idx_admission_slips_user_id ON admission_slips(user_id);
+CREATE INDEX idx_admission_slips_attachment ON slip_attachments(admission_slip_id);
 
 -- Commonly Searched Columns
 CREATE INDEX idx_appointments_status_id ON appointments(status_id);
