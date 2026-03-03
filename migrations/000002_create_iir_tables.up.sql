@@ -317,15 +317,35 @@ CREATE TABLE student_financial_supports (
 -- ============================================================================
 -- ADMINISTRATIVE & RECORDS
 -- ============================================================================
+CREATE TABLE admission_slip_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
 CREATE TABLE admission_slips (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    user_id INT NOT NULL,
+    category_id INT NOT NULL,
     reason TEXT NOT NULL,
     date_of_absence DATE NOT NULL,
-    file_path VARCHAR(255) NOT NULL,
-    excuse_slip_status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    date_needed DATE NOT NULL,
+    status_id INT NOT NULL DEFAULT 1,
+    admin_notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (iir_id) REFERENCES iir_records(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (status_id) REFERENCES statuses(id),
+    FOREIGN KEY (category_id) REFERENCES admission_slip_categories(id)
+);
+
+CREATE TABLE slip_attachments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admission_slip_id INT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (admission_slip_id) REFERENCES admission_slips(id) ON DELETE CASCADE
 );
