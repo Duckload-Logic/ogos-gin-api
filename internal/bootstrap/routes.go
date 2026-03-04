@@ -12,6 +12,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 
@@ -70,6 +71,7 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
 	slips.RegisterRoutes(apiV1Routes, handlers.SlipHandler)
 	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
+	trails.RegisterRoutes(apiV1Routes, handlers.AuditTrailHandler)
 
 	return g
 }

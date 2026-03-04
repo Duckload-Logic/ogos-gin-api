@@ -8,6 +8,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
@@ -20,15 +21,18 @@ type Handlers struct {
 	AppointmentHandler *appointments.Handler
 	SlipHandler        *slips.Handler
 	AnalyticsHandler   *analytics.Handler
+	AuditTrailHandler  *trails.Handler
 }
 
 func getHandlers(repos *Repositories) *Handlers {
+	auditTrailService := trails.NewService(repos.AuditTrailRepo)
+
 	authService := auth.NewService(repos.UserRepo)
 	userService := users.NewService(repos.UserRepo)
 	locationsService := locations.NewService(repos.LocationsRepo)
 	studentService := students.NewService(repos.StudentRepo, locationsService)
-	appointmentService := appointments.NewService(repos.AppointmentRepo)
-	slipService := slips.NewService(repos.SlipRepo)
+	appointmentService := appointments.NewService(repos.AppointmentRepo, auditTrailService)
+	slipService := slips.NewService(repos.SlipRepo, auditTrailService)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo)
 	analyticsHandler := analytics.NewHandler(analyticsService)
 
@@ -40,5 +44,6 @@ func getHandlers(repos *Repositories) *Handlers {
 		AppointmentHandler: appointments.NewHandler(appointmentService),
 		SlipHandler:        slips.NewHandler(slipService),
 		AnalyticsHandler:   analyticsHandler,
+		AuditTrailHandler:  trails.NewHandler(auditTrailService),
 	}
 }

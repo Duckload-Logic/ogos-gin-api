@@ -7,6 +7,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
@@ -17,6 +18,7 @@ type Repositories struct {
 	SlipRepo        *slips.Repository
 	LocationsRepo   *locations.Repository
 	AnalyticsRepo   *analytics.Repository
+	AuditTrailRepo  *trails.Repository
 }
 
 func getRepositories(db *sqlx.DB) *Repositories {
@@ -27,5 +29,6 @@ func getRepositories(db *sqlx.DB) *Repositories {
 		SlipRepo:        slips.NewRepository(db),
 		LocationsRepo:   locations.NewRepository(db),
 		AnalyticsRepo:   analytics.NewRepository(db),
+		AuditTrailRepo:  trails.NewRepository(db),
 	}
 }
