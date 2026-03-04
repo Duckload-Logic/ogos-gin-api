@@ -23,7 +23,7 @@ type Handlers struct {
 }
 
 func getHandlers(repos *Repositories) *Handlers {
-	authService := auth.NewService(repos.UserRepo, auth.NewTokenService())
+	authService := auth.NewService(repos.UserRepo)
 	userService := users.NewService(repos.UserRepo)
 	locationsService := locations.NewService(repos.LocationsRepo)
 	studentService := students.NewService(repos.StudentRepo, locationsService)

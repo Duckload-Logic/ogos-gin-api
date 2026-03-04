@@ -27,7 +27,7 @@ func NewHandler(s *Service) *Handler {
 // @Router       /auth/login [post]
 func (h *Handler) HandleLogin(c *gin.Context) {
 	// Map request body to struct
-	var req LoginRequest
+	var req LoginDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
@@ -43,7 +43,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	}
 
 	// Return tokens
-	c.JSON(http.StatusOK, TokenResponse{
+	c.JSON(http.StatusOK, TokenDTO{
 		Token:        token,
 		RefreshToken: refreshToken,
 	})
@@ -62,7 +62,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 // @Router       /auth/refresh-token [post]
 func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	// Map request body to struct
-	var req RefreshTokenRequest
+	var req RefreshTokenDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
@@ -78,8 +78,29 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	}
 
 	// Return new tokens
-	c.JSON(http.StatusOK, TokenResponse{
+	c.JSON(http.StatusOK, TokenDTO{
 		Token:        newToken,
 		RefreshToken: newRefreshToken,
 	})
+}
+
+// HandleLogout godoc
+// @Summary      User logout
+// @Description  Invalidates the user's JWT token (if token blacklisting is implemented).
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Success      200     {object}  map[string]string      "Logout successful"
+// @Failure      401     {object}  map[string]string      "Unauthorized"
+// @Router       /auth/logout [post]
+func (h *Handler) HandleLogout(c *gin.Context) {
+	var req RefreshTokenDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	h.service.Logout(c, req.RefreshToken)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
 }

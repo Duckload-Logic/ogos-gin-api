@@ -1,26 +1,26 @@
-package auth
+package tokens
 
 import (
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
-type TokenService struct {
+var JWTSecretEnv = os.Getenv("JWT_SECRET")
+
+type Service struct {
 	secret []byte
 }
 
-func NewTokenService() *TokenService {
-	return &TokenService{secret: []byte(os.Getenv("JWT_SECRET"))}
+func NewService() *Service {
+	return &Service{secret: []byte(JWTSecretEnv)}
 }
 
-func (s *TokenService) GenerateToken(
+func (s *Service) GenerateToken(
 	userID, roleID int, roleName string, expireMinutes int,
 ) (string, error) {
-	// Create the JWT claims
-	claims := &middleware.Claims{
+	claims := &Claims{
 		UserID: userID,
 		RoleID: roleID,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -37,13 +37,12 @@ func (s *TokenService) GenerateToken(
 	return token.SignedString(s.secret)
 }
 
-func (s *TokenService) ValidateToken(tokenString string) (
-	*middleware.Claims, error,
+func (s *Service) ValidateToken(tokenString string) (
+	*Claims, error,
 ) {
-	// Parse the token
 	token, err := jwt.ParseWithClaims(
 		tokenString,
-		&middleware.Claims{},
+		&Claims{},
 		func(token *jwt.Token) (interface{}, error) {
 			return s.secret, nil
 		},
@@ -52,12 +51,15 @@ func (s *TokenService) ValidateToken(tokenString string) (
 		return nil, err
 	}
 
-	// Validate the claims
-	claims, ok := token.Claims.(*middleware.Claims)
+	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return nil, jwt.ErrTokenInvalidClaims
 	}
 
 	return claims, nil
+}
 
+func (s *Service) InvalidateToken(tokenString string) error {
+	// TODO: Implement token invalidation (e.g., using a blacklist or token store)
+	return nil
 }

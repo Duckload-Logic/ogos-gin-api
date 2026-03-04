@@ -7,5 +7,6 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	{
 		authRoutes.POST("/login", h.HandleLogin)
 		authRoutes.POST("/refresh", h.HandleRefreshToken)
+		authRoutes.POST("/logout", h.HandleLogout)
 	}
 }

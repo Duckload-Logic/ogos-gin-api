@@ -4,18 +4,23 @@ import (
 	"context"
 	"errors"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	repo         *users.Repository
-	tokenService *TokenService
+	repo *users.Repository
 }
 
-func NewService(repo *users.Repository, tokenService *TokenService) *Service {
-	return &Service{repo: repo, tokenService: tokenService}
+func NewService(repo *users.Repository) *Service {
+	return &Service{repo: repo}
 }
+
+var tokenService = tokens.NewService()
+
+const accessTokenValidityMinutes = 60 * 1   // 60 minutes * 1 hour = 1 hour
+const refreshTokenValidityMinutes = 60 * 12 // 60 minutes * 12 hours = 12 hours
 
 // AuthenticateUser
 func (s *Service) AuthenticateUser(
@@ -37,13 +42,13 @@ func (s *Service) AuthenticateUser(
 	}
 
 	// Generate the token
-	token, err := s.tokenService.GenerateToken(user.ID, user.RoleID, "access", 60*24)
+	token, err := tokenService.GenerateToken(user.ID, user.RoleID, "access", accessTokenValidityMinutes)
 	if err != nil {
 		return "", "", errors.New("failed to generate session")
 	}
 
 	// Generate refresh token
-	refreshToken, err := s.tokenService.GenerateToken(user.ID, user.RoleID, "refresh", 1440)
+	refreshToken, err := tokenService.GenerateToken(user.ID, user.RoleID, "refresh", refreshTokenValidityMinutes)
 	if err != nil {
 		return "", "", errors.New("failed to generate refresh token")
 	}
@@ -54,7 +59,7 @@ func (s *Service) AuthenticateUser(
 func (s *Service) RefreshToken(
 	ctx context.Context, refreshToken string,
 ) (string, string, error) {
-	claims, err := s.tokenService.ValidateToken(refreshToken)
+	claims, err := tokenService.ValidateToken(refreshToken)
 
 	if err != nil {
 		return "", "", errors.New("Invalid refresh token")
@@ -64,16 +69,21 @@ func (s *Service) RefreshToken(
 	roleID := claims.RoleID
 
 	// Generate new token
-	newToken, err := s.tokenService.GenerateToken(userID, roleID, "access", 30)
+	newToken, err := tokenService.GenerateToken(userID, roleID, "access", accessTokenValidityMinutes)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new token")
 	}
 
 	// Generate new refresh token
-	newRefreshToken, err := s.tokenService.GenerateToken(userID, roleID, "refresh", 1440)
+	newRefreshToken, err := tokenService.GenerateToken(userID, roleID, "refresh", refreshTokenValidityMinutes)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new refresh token")
 	}
 
 	return newToken, newRefreshToken, nil
+}
+
+func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+	// TODO: Implement token blacklisting if needed
+	return nil
 }
