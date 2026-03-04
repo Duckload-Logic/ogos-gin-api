@@ -7,6 +7,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/olazo-johnalbert/duckload-api/internal/bootstrap"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
@@ -14,10 +15,18 @@ import (
 // @version         1.0
 // @host            localhost:8080
 // @BasePath        /api/v1
-
 func main() {
-	// Get database connection
-	db, err := database.GetDBConnection()
+	config := config.LoadConfig()
+	dbUrl := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?parseTime=true",
+		config.DBUser,
+		config.DBPassword,
+		config.DBHost,
+		config.DBPort,
+		config.DBName,
+	)
+
+	db, err := database.GetDBConnection(dbUrl)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
