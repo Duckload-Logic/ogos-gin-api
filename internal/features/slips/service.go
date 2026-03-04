@@ -10,20 +10,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/builders"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
 const MaxFileSize = 5 * 1024 * 1024 // 5MB limit
 
 type Service struct {
-	repo *Repository
+	repo         *Repository
+	auditService *trails.Service
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, auditService *trails.Service) *Service {
+	return &Service{repo: repo, auditService: auditService}
 }
 
 func (s *Service) GetSlipStatuses(ctx context.Context) ([]SlipStatus, error) {
@@ -360,6 +363,18 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userID int, req CreateSl
 		}
 	}
 
+	// Record audit trail
+	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	s.auditService.Record(ctx, trails.AuditEntry{
+		UserID:     auditUserID,
+		Action:     trails.ActionCreate,
+		EntityType: "slip",
+		EntityID:   slip.ID,
+		NewValues:  req,
+		IPAddress:  ipAddress,
+		UserAgent:  userAgent,
+	})
+
 	return slip, nil
 }
 
@@ -392,10 +407,28 @@ func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id int, newStatus 
 		return fmt.Errorf("invalid status: must be 'Pending', 'Approved', 'Rejected', or 'For Revision'")
 	}
 
+	// Fetch old state for audit trail
+	oldSlip, _ := s.repo.GetSlipByID(ctx, id)
+
 	err := s.repo.UpdateStatus(ctx, id, newStatus, adminNotes)
 	if err != nil {
 		return err
 	}
+
+	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	s.auditService.Record(ctx, trails.AuditEntry{
+		UserID:     auditUserID,
+		Action:     trails.ActionUpdate,
+		EntityType: "slip",
+		EntityID:   id,
+		OldValues:  oldSlip,
+		NewValues: map[string]interface{}{
+			"status":     newStatus,
+			"adminNotes": adminNotes,
+		},
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+	})
 
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 func RegisterRoutes(api *gin.RouterGroup, h *Handler) {
 	excuseslipGroup := api.Group("/slips")
 	excuseslipGroup.Use(middleware.AuthMiddleware())
+	excuseslipGroup.Use(middleware.AuditContextMiddleware())
 
 	adminOnly := excuseslipGroup.Group("")
 	adminOnly.Use(middleware.RoleMiddleware(int(constants.CounselorRoleID)))
