@@ -1,14 +1,14 @@
 package middleware
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 )
+
+var tokenService = tokens.NewService()
 
 // AuthMiddleware
 func AuthMiddleware() gin.HandlerFunc {
@@ -24,7 +24,7 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 
-		claims, err := validateToken(tokenString)
+		claims, err := tokenService.ValidateToken(tokenString)
 		if err != nil {
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
@@ -37,29 +37,4 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("roleID", claims.RoleID)
 		c.Next()
 	}
-}
-
-// validateToken
-func validateToken(tokenString string) (*Claims, error) {
-	token, err := jwt.ParseWithClaims(
-		tokenString, &Claims{}, func(token *jwt.Token,
-		) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf(
-					"unexpected signing method: %v",
-					token.Header["alg"],
-				)
-			}
-			return jwtSecret, nil
-		})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
-		return claims, nil
-	}
-
-	return nil, errors.New("invalid token")
 }
