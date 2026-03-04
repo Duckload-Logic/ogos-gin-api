@@ -11,7 +11,6 @@ const (
 )
 
 // WithContext enriches a context with audit metadata (IP, user agent, user ID).
-// Call this in middleware or handlers before service calls.
 func WithContext(ctx context.Context, userID int, ipAddress, userAgent string) context.Context {
 	ctx = context.WithValue(ctx, userIDKey, userID)
 	ctx = context.WithValue(ctx, ipAddressKey, ipAddress)
