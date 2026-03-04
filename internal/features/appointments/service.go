@@ -5,16 +5,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
 type Service struct {
-	repo *Repository
+	repo         *Repository
+	auditService *trails.Service
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, auditService *trails.Service) *Service {
+	return &Service{repo: repo, auditService: auditService}
 }
 
 func (s *Service) GetConcernCategories(ctx context.Context) ([]AppointmentCategory, error) {
@@ -34,6 +37,18 @@ func (s *Service) CreateAppointment(ctx context.Context, userID int, req Appoint
 	if err := s.repo.CreateAppointment(ctx, appt); err != nil {
 		return nil, err
 	}
+
+	// Record audit trail
+	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	s.auditService.Record(ctx, trails.AuditEntry{
+		UserID:     auditUserID,
+		Action:     trails.ActionCreate,
+		EntityType: "appointment",
+		EntityID:   appt.ID,
+		NewValues:  req,
+		IPAddress:  ipAddress,
+		UserAgent:  userAgent,
+	})
 
 	return appt, nil
 }
@@ -233,6 +248,9 @@ func (s *Service) GetAppointmentStatuses(ctx context.Context) ([]AppointmentStat
 
 // handles Status updates AND Rescheduling
 func (s *Service) UpdateAppointment(ctx context.Context, id int, req AppointmentDTO) error {
+	// Fetch old state for audit trail
+	oldAppt, _ := s.repo.GetAppointment(ctx, id)
+
 	appt := Appointment{
 		ID:                    id,
 		Reason:                structs.ToSqlNull(req.Reason),
@@ -246,10 +264,26 @@ func (s *Service) UpdateAppointment(ctx context.Context, id int, req Appointment
 		return err
 	}
 
+	// Record audit trail
+	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	s.auditService.Record(ctx, trails.AuditEntry{
+		UserID:     auditUserID,
+		Action:     trails.ActionUpdate,
+		EntityType: "appointment",
+		EntityID:   id,
+		OldValues:  oldAppt,
+		NewValues:  req,
+		IPAddress:  ipAddress,
+		UserAgent:  userAgent,
+	})
+
 	return nil
 }
 
 func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req AppointmentDTO) error {
+	// Fetch old state for audit trail
+	oldAppt, _ := s.repo.GetAppointment(ctx, id)
+
 	appt := Appointment{
 		ID:                    id,
 		StatusID:              req.Status.ID,
@@ -264,6 +298,19 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Appoi
 	if err != nil {
 		return err
 	}
+
+	// Record audit trail
+	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	s.auditService.Record(ctx, trails.AuditEntry{
+		UserID:     auditUserID,
+		Action:     trails.ActionUpdate,
+		EntityType: "appointment",
+		EntityID:   id,
+		OldValues:  oldAppt,
+		NewValues:  req,
+		IPAddress:  ipAddress,
+		UserAgent:  userAgent,
+	})
 
 	return nil
 }

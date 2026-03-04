@@ -385,6 +385,23 @@ func (r *Repository) GetByUserID(ctx context.Context, userID int, req *ListSlipR
 	return slips, nil
 }
 
+func (r *Repository) GetSlipByID(ctx context.Context, id int) (*Slip, error) {
+	var slip Slip
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM admission_slips
+		WHERE id = ?
+	`, database.GetColumns(Slip{}))
+	err := r.db.GetContext(ctx, &slip, query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get slip by ID: %w", err)
+	}
+	return &slip, nil
+}
+
 func (r *Repository) GetSlipAttachments(ctx context.Context, slipID int) ([]SlipAttachment, error) {
 	var attachments []SlipAttachment
 	query := fmt.Sprintf(`

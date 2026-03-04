@@ -8,11 +8,11 @@ import (
 
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	analyticsRoutes := rg.Group("/analytics")
-
+	analyticsRoutes.Use(middleware.AuditContextMiddleware())
 	analyticsRoutes.Use(middleware.AuthMiddleware())
 
-	analyticsRoutes.GET("/dashboard", 
-		middleware.RoleMiddleware(int(constants.CounselorRoleID)), 
+	analyticsRoutes.GET("/dashboard",
+		middleware.RoleMiddleware(int(constants.CounselorRoleID)),
 		h.GetAnalyticsDashboard,
 	)
 }
