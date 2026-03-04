@@ -9,6 +9,7 @@ import (
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	routes := rg.Group("/appointments")
 	routes.Use(middleware.AuthMiddleware())
+	routes.Use(middleware.AuditContextMiddleware())
 
 	adminOnly := routes.Group("")
 	adminOnly.Use(middleware.RoleMiddleware(
