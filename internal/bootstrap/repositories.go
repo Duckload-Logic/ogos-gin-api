@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
@@ -19,6 +20,7 @@ type Repositories struct {
 	LocationsRepo   *locations.Repository
 	AnalyticsRepo   *analytics.Repository
 	AuditTrailRepo  *trails.Repository
+	APIKeyRepo      *apikeys.Repository
 }
 
 func getRepositories(db *sqlx.DB) *Repositories {
@@ -30,5 +32,6 @@ func getRepositories(db *sqlx.DB) *Repositories {
 		LocationsRepo:   locations.NewRepository(db),
 		AnalyticsRepo:   analytics.NewRepository(db),
 		AuditTrailRepo:  trails.NewRepository(db),
+		APIKeyRepo:      apikeys.NewRepository(db),
 	}
 }
