@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -14,25 +13,49 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// JSONStructure represents the ph_locations.json format
-// { "REGION": { "CITY": ["barangay1", "barangay2", ...], ... }, ... }
-type JSONStructure map[string]map[string][]string
+// JSON file structures (matches output of cmd/psgc)
+type PSGCRegion struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
 
-// AddressSeeder handles seeding of address data from JSON
+type PSGCProvince struct {
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	RegionCode string `json:"regionCode"`
+}
+
+type PSGCCity struct {
+	Code         string `json:"code"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	ZipCode      string `json:"zipCode"`
+	District     string `json:"district"`
+	RegionCode   string `json:"regionCode"`
+	ProvinceCode string `json:"provinceCode,omitempty"`
+}
+
+type PSGCBarangay struct {
+	Code     string `json:"code"`
+	Name     string `json:"name"`
+	CityCode string `json:"cityCode"`
+}
+
+type PSGCData struct {
+	Regions   []PSGCRegion   `json:"regions"`
+	Provinces []PSGCProvince `json:"provinces"`
+	Cities    []PSGCCity     `json:"cities"`
+	Barangays []PSGCBarangay `json:"barangays"`
+}
+
 type AddressSeeder struct {
-	db         *sqlx.DB
-	regionsMap sync.Map // thread-safe map for region name -> ID
-	citiesMap  sync.Map // thread-safe map for city name -> ID
-	mu         *sync.Mutex
+	db *sqlx.DB
 }
 
 var db *sqlx.DB
 
 func NewAddressSeeder(db *sqlx.DB) *AddressSeeder {
-	return &AddressSeeder{
-		db: db,
-		mu: &sync.Mutex{},
-	}
+	return &AddressSeeder{db: db}
 }
 
 func main() {
@@ -46,24 +69,36 @@ func main() {
 	}
 	defer db.Close()
 
-	seeder := NewAddressSeeder(db)
-
-	// Try to find ph_locations.json in common locations
-	jsonFile := "ph_locations.json"
+	// Find psgc_data.json
+	jsonFile := "psgc_data.json"
 	if _, err := os.Stat(jsonFile); os.IsNotExist(err) {
-		jsonFile = "cmd/locations/ph_locations.json"
+		jsonFile = "cmd/locations/psgc_data.json"
 	}
 
+	seeder := NewAddressSeeder(db)
 	if err := seeder.SeedAddresses(jsonFile); err != nil {
 		log.Fatal("failed to seed addresses:", err)
 	}
-	fmt.Println("✓ Address seeding completed successfully.")
+	fmt.Println("Address seeding completed successfully.")
 }
 
-// SeedAddresses loads JSON file and seeds all address data to database
+// SeedAddresses reads the PSGC JSON file and seeds all location tables.
 func (s *AddressSeeder) SeedAddresses(jsonFile string) error {
-	fmt.Println("Starting address seeding from JSON...")
+	fmt.Printf("Loading PSGC data from %s...\n", jsonFile)
 	start := time.Now()
+
+	raw, err := os.ReadFile(jsonFile)
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", jsonFile, err)
+	}
+
+	var data PSGCData
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return fmt.Errorf("failed to parse JSON: %w", err)
+	}
+
+	fmt.Printf("Loaded %d regions, %d provinces, %d cities, %d barangays\n",
+		len(data.Regions), len(data.Provinces), len(data.Cities), len(data.Barangays))
 
 	// Clear existing data
 	fmt.Println("Clearing existing address data...")
@@ -71,238 +106,186 @@ func (s *AddressSeeder) SeedAddresses(jsonFile string) error {
 		return fmt.Errorf("failed to clear existing data: %w", err)
 	}
 
-	// Load JSON file
-	data, err := os.ReadFile(jsonFile)
-	if err != nil {
-		return fmt.Errorf("failed to read JSON file: %w", err)
-	}
-
-	// Parse JSON
-	var locations JSONStructure
-	if err := json.Unmarshal(data, &locations); err != nil {
-		return fmt.Errorf("failed to parse JSON: %w", err)
-	}
-
-	// Step 1: Seed regions
+	// Seed regions
 	fmt.Println("Seeding regions...")
-	err = s.seedRegions(locations)
-	if err != nil {
+	if err := s.seedRegions(data.Regions); err != nil {
 		return fmt.Errorf("failed to seed regions: %w", err)
 	}
 
-	// Step 2: Seed cities
+	// Seed provinces
+	fmt.Println("Seeding provinces...")
+	if err := s.seedProvinces(data.Provinces); err != nil {
+		return fmt.Errorf("failed to seed provinces: %w", err)
+	}
+
+	var regionRows []struct {
+		ID   int    `db:"id"`
+		Code string `db:"code"`
+	}
+	if err := s.db.Select(&regionRows, "SELECT id, code FROM regions"); err != nil {
+		return fmt.Errorf("failed to load region IDs: %w", err)
+	}
+
+	// Seed cities
 	fmt.Println("Seeding cities...")
-	err = s.seedCities(locations)
-	if err != nil {
+	if err := s.seedCities(data.Cities); err != nil {
 		return fmt.Errorf("failed to seed cities: %w", err)
 	}
 
-	// Step 3: Seed barangays
+	// Build city code -> DB id map
+	cityIDMap := make(map[string]int)
+	var cityRows []struct {
+		ID   int    `db:"id"`
+		Code string `db:"code"`
+	}
+	if err := s.db.Select(&cityRows, "SELECT id, code FROM cities"); err != nil {
+		return fmt.Errorf("failed to load city IDs: %w", err)
+	}
+	for _, c := range cityRows {
+		cityIDMap[c.Code] = c.ID
+	}
+
+	// Seed barangays
 	fmt.Println("Seeding barangays...")
-	err = s.seedBarangays(locations)
-	if err != nil {
+	if err := s.seedBarangays(data.Barangays); err != nil {
 		return fmt.Errorf("failed to seed barangays: %w", err)
 	}
 
-	// Get actual counts from database
-	var regionCount, cityCount, barangayCount int
-	s.db.Get(&regionCount, "SELECT COUNT(*) FROM regions")
-	s.db.Get(&cityCount, "SELECT COUNT(*) FROM cities")
-	s.db.Get(&barangayCount, "SELECT COUNT(*) FROM barangays")
-
 	elapsed := time.Since(start)
-	fmt.Printf("Address seeding completed in %v\n", elapsed)
-	fmt.Printf("Total: %d regions, %d cities, %d barangays\n", regionCount, cityCount, barangayCount)
-
+	fmt.Printf("Seeding completed in %v\n", elapsed)
 	return nil
 }
 
-// clearData truncates all address tables
 func (s *AddressSeeder) clearData() error {
-	// Disable foreign key checks temporarily
 	if _, err := s.db.Exec("SET FOREIGN_KEY_CHECKS = 0"); err != nil {
 		return err
 	}
 	defer s.db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 
-	// Truncate tables
-	for _, table := range []string{"barangays", "cities", "regions"} {
+	for _, table := range []string{"barangays", "cities", "provinces", "regions"} {
 		if _, err := s.db.Exec(fmt.Sprintf("TRUNCATE TABLE %s", table)); err != nil {
 			return fmt.Errorf("failed to truncate %s: %w", table, err)
 		}
 	}
-
 	return nil
 }
 
-// seedRegions extracts and inserts regions from JSON into database
-func (s *AddressSeeder) seedRegions(locations JSONStructure) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if len(locations) == 0 {
+func (s *AddressSeeder) seedRegions(regions []PSGCRegion) error {
+	if len(regions) == 0 {
 		return nil
 	}
 
-	// Batch insert regions (region names are keys in JSON)
-	placeholders := make([]string, 0, len(locations))
-	args := make([]interface{}, 0, len(locations)*2)
-
-	for regionName := range locations {
-		// Use region name as both code and name (JSON doesn't have separate codes)
-		placeholders = append(placeholders, "(?)")
-		args = append(args, regionName)
+	placeholders := make([]string, 0, len(regions))
+	args := make([]interface{}, 0, len(regions)*2)
+	for _, r := range regions {
+		placeholders = append(placeholders, "(?, ?)")
+		args = append(args, r.Code, r.Name)
 	}
 
-	query := "INSERT INTO regions (name) VALUES " + strings.Join(placeholders, ", ") +
+	query := "INSERT INTO regions (code, name) VALUES " + strings.Join(placeholders, ", ") +
 		" ON DUPLICATE KEY UPDATE name=VALUES(name)"
-
 	_, err := s.db.Exec(query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to batch insert regions: %w", err)
+	return err
+}
+
+func (s *AddressSeeder) seedProvinces(provinces []PSGCProvince) error {
+	if len(provinces) == 0 {
+		return nil
 	}
 
-	// Load all regions into map for city seeding
-	var regions []struct {
-		ID   int    `db:"id"`
-		Name string `db:"name"`
-	}
-	err = s.db.Select(&regions, "SELECT id, name FROM regions")
-	if err != nil {
-		return fmt.Errorf("failed to load regions: %w", err)
-	}
+	batchSize := 500
+	for i := 0; i < len(provinces); i += batchSize {
+		end := i + batchSize
+		if end > len(provinces) {
+			end = len(provinces)
+		}
+		batch := provinces[i:end]
 
-	for _, region := range regions {
-		s.regionsMap.Store(region.Name, int64(region.ID))
-	}
+		placeholders := make([]string, 0, len(batch))
+		args := make([]interface{}, 0, len(batch)*3)
+		for _, p := range batch {
+			placeholders = append(placeholders, "(?, ?, ?)")
+			args = append(args, p.Code, p.Name, p.RegionCode)
+		}
 
+		query := "INSERT INTO provinces (code, name, region_code) VALUES " + strings.Join(placeholders, ", ") +
+			" ON DUPLICATE KEY UPDATE name=VALUES(name)"
+		if _, err := s.db.Exec(query, args...); err != nil {
+			return fmt.Errorf("failed to batch insert provinces: %w", err)
+		}
+	}
 	return nil
 }
 
-// seedCities extracts and inserts cities from JSON into database
-func (s *AddressSeeder) seedCities(locations JSONStructure) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *AddressSeeder) seedCities(cities []PSGCCity) error {
+	if len(cities) == 0 {
+		return nil
+	}
 
-	// Prepare batch insert (city names are keys in nested JSON)
-	placeholders := make([]string, 0)
-	args := make([]interface{}, 0)
-	cityCount := 0
+	batchSize := 500
+	for i := 0; i < len(cities); i += batchSize {
+		end := i + batchSize
+		if end > len(cities) {
+			end = len(cities)
+		}
+		batch := cities[i:end]
 
-	for regionName, cities := range locations {
-		regionID, ok := s.regionsMap.Load(regionName)
-		if !ok {
-			// Skip cities without matched region
+		placeholders := make([]string, 0, len(batch))
+		args := make([]interface{}, 0, len(batch)*7)
+		for _, c := range batch {
+			var provCode interface{}
+			if c.ProvinceCode != "" {
+				provCode = c.ProvinceCode
+			}
+			placeholders = append(placeholders, "(?, ?, ?, ?, ?, ?)")
+			args = append(args, c.Code, c.Name, provCode, c.Type, c.ZipCode, c.District)
+		}
+
+		query := "INSERT INTO cities (code, name, province_code, `type`, zip_code, district) VALUES " +
+			strings.Join(placeholders, ", ") +
+			" ON DUPLICATE KEY UPDATE name=VALUES(name), `type`=VALUES(`type`), zip_code=VALUES(zip_code), district=VALUES(district)"
+		if _, err := s.db.Exec(query, args...); err != nil {
+			return fmt.Errorf("failed to batch insert cities: %w", err)
+		}
+	}
+	return nil
+}
+
+func (s *AddressSeeder) seedBarangays(barangays []PSGCBarangay) error {
+	if len(barangays) == 0 {
+		return nil
+	}
+
+	batchSize := 2000
+	for i := 0; i < len(barangays); i += batchSize {
+		end := i + batchSize
+		if end > len(barangays) {
+			end = len(barangays)
+		}
+		batch := barangays[i:end]
+
+		placeholders := make([]string, 0, len(batch))
+		args := make([]interface{}, 0, len(batch)*3)
+		for _, b := range batch {
+			placeholders = append(placeholders, "(?, ?, ?)")
+			args = append(args, b.Code, b.Name, b.CityCode)
+		}
+
+		if len(placeholders) == 0 {
 			continue
 		}
 
-		for cityName := range cities {
-			placeholders = append(placeholders, "(?, ?)")
-			args = append(args, cityName, regionID) // Use city name as both code and name
-			cityCount++
+		query := "INSERT INTO barangays (code, name, city_code) VALUES " +
+			strings.Join(placeholders, ", ") +
+			" ON DUPLICATE KEY UPDATE name=VALUES(name)"
+		if _, err := s.db.Exec(query, args...); err != nil {
+			return fmt.Errorf("failed to batch insert barangays: %w", err)
+		}
+
+		if (i+batchSize)%10000 < batchSize {
+			fmt.Printf("  Inserted %d/%d barangays...\n", end, len(barangays))
 		}
 	}
-
-	if cityCount == 0 {
-		return nil
-	}
-
-	query := "INSERT INTO cities (name, region_id) VALUES " + strings.Join(placeholders, ", ") +
-		" ON DUPLICATE KEY UPDATE name=VALUES(name)"
-
-	_, err := s.db.Exec(query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to batch insert cities: %w", err)
-	}
-
-	// Load all cities into map for barangay seeding
-	var cities []struct {
-		ID   int    `db:"id"`
-		Name string `db:"name"`
-	}
-	err = s.db.Select(&cities, "SELECT id, name FROM cities")
-	if err != nil {
-		return fmt.Errorf("failed to load cities: %w", err)
-	}
-
-	for _, city := range cities {
-		s.citiesMap.Store(city.Name, int64(city.ID))
-	}
-
-	return nil
-}
-
-// seedBarangays extracts and inserts barangays from JSON into database
-func (s *AddressSeeder) seedBarangays(locations JSONStructure) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	barangayCount := 0
-	batchSize := 5000 // Insert 5000 at a time to avoid placeholder limit
-	var currentBatch []interface{}
-	var currentPlaceholders []string
-
-	for _, cities := range locations {
-		for cityName, barangays := range cities {
-			cityID, ok := s.citiesMap.Load(cityName)
-			if !ok {
-				// Skip barangays without matched city
-				continue
-			}
-
-			for _, barangayName := range barangays {
-				currentPlaceholders = append(currentPlaceholders, "(?, ?)")
-				currentBatch = append(currentBatch, barangayName, cityID)
-				barangayCount++
-
-				// Insert when batch size reached
-				if len(currentBatch) >= batchSize {
-					if err := s.executeBatchInsert("barangays", currentPlaceholders, currentBatch); err != nil {
-						return err
-					}
-					currentBatch = nil
-					currentPlaceholders = nil
-				}
-			}
-		}
-	}
-
-	// Insert remaining barangays
-	if len(currentBatch) > 0 {
-		if err := s.executeBatchInsert("barangays", currentPlaceholders, currentBatch); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// executeBatchInsert executes a batch insert for a table
-func (s *AddressSeeder) executeBatchInsert(table string, placeholders []string, args []interface{}) error {
-	if len(placeholders) == 0 {
-		return nil
-	}
-
-	var query string
-	switch table {
-	case "regions":
-		query = "INSERT INTO regions (name) VALUES " + strings.Join(placeholders, ", ") +
-			" ON DUPLICATE KEY UPDATE name=VALUES(name)"
-	case "cities":
-		query = "INSERT INTO cities (name, region_id) VALUES " + strings.Join(placeholders, ", ") +
-			" ON DUPLICATE KEY UPDATE name=VALUES(name)"
-	case "barangays":
-		query = "INSERT INTO barangays ( name, city_id) VALUES " + strings.Join(placeholders, ", ") +
-			" ON DUPLICATE KEY UPDATE name=VALUES(name)"
-	default:
-		return fmt.Errorf("unknown table: %s", table)
-	}
-
-	_, err := s.db.Exec(query, args...)
-	if err != nil {
-		return fmt.Errorf("failed to batch insert %s: %w", table, err)
-	}
-
 	return nil
 }
 
