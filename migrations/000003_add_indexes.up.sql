@@ -76,5 +76,6 @@ CREATE INDEX idx_admission_slips_attachment ON slip_attachments(admission_slip_i
 CREATE INDEX idx_appointments_status_id ON appointments(status_id);
 CREATE INDEX idx_appointments_when_date ON appointments(when_date);
 CREATE INDEX idx_province_region_code ON provinces(region_code);
+CREATE INDEX idx_cities_region_code ON cities(region_code);
 CREATE INDEX idx_cities_province_code ON cities(province_code);
 CREATE INDEX idx_barangays_city_code ON barangays(city_code);
