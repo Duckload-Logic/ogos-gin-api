@@ -12,9 +12,10 @@ CREATE INDEX idx_iir_records_user_id ON iir_records(user_id);
 CREATE INDEX idx_iir_drafts_user_id ON iir_drafts(user_id);
 
 -- Addresses
-CREATE INDEX idx_addresses_region_id ON addresses(region_id);
-CREATE INDEX idx_addresses_city_id ON addresses(city_id);
-CREATE INDEX idx_addresses_barangay_id ON addresses(barangay_id);
+CREATE INDEX idx_addresses_region_id ON addresses(region_code);
+CREATE INDEX idx_addresses_province_id ON addresses(province_code);
+CREATE INDEX idx_addresses_city_id ON addresses(city_code);
+CREATE INDEX idx_addresses_barangay_id ON addresses(barangay_code);
 CREATE INDEX idx_emergency_contacts_iir_id ON emergency_contacts(iir_id);
 CREATE INDEX idx_emergency_contacts_relationship_id ON emergency_contacts(relationship_id);
 CREATE INDEX idx_emergency_contacts_address_id ON emergency_contacts(address_id);
@@ -74,5 +75,6 @@ CREATE INDEX idx_admission_slips_attachment ON slip_attachments(admission_slip_i
 -- Commonly Searched Columns
 CREATE INDEX idx_appointments_status_id ON appointments(status_id);
 CREATE INDEX idx_appointments_when_date ON appointments(when_date);
-CREATE INDEX idx_cities_region_id ON cities(region_id);
-CREATE INDEX idx_barangays_city_id ON barangays(city_id);
+CREATE INDEX idx_province_region_code ON provinces(region_code);
+CREATE INDEX idx_cities_province_code ON cities(province_code);
+CREATE INDEX idx_barangays_city_code ON barangays(city_code);
