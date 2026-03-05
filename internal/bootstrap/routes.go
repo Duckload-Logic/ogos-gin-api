@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
@@ -72,6 +73,10 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	slips.RegisterRoutes(apiV1Routes, handlers.SlipHandler)
 	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
 	trails.RegisterRoutes(apiV1Routes, handlers.AuditTrailHandler)
+	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler)
+
+	// External API (API-key authenticated, read-only)
+	students.RegisterExternalRoutes(apiV1Routes, handlers.StudentHandler, handlers.APIKeyService.ValidateKeyFunc())
 
 	return g
 }

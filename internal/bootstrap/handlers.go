@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
@@ -22,10 +23,13 @@ type Handlers struct {
 	SlipHandler        *slips.Handler
 	AnalyticsHandler   *analytics.Handler
 	AuditTrailHandler  *trails.Handler
+	APIKeyHandler      *apikeys.Handler
+	APIKeyService      *apikeys.Service
 }
 
 func getHandlers(repos *Repositories) *Handlers {
 	auditTrailService := trails.NewService(repos.AuditTrailRepo)
+	apiKeyService := apikeys.NewService(repos.APIKeyRepo)
 
 	authService := auth.NewService(repos.UserRepo)
 	userService := users.NewService(repos.UserRepo)
@@ -45,5 +49,7 @@ func getHandlers(repos *Repositories) *Handlers {
 		SlipHandler:        slips.NewHandler(slipService),
 		AnalyticsHandler:   analyticsHandler,
 		AuditTrailHandler:  trails.NewHandler(auditTrailService),
+		APIKeyHandler:      apikeys.NewHandler(apiKeyService),
+		APIKeyService:      apiKeyService,
 	}
 }
