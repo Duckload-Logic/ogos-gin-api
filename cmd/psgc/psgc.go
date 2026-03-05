@@ -201,8 +201,10 @@ func fetchAll() (*PSGCData, error) {
 		}
 		for _, c := range cities {
 			if idx, ok := cityIndex[c.Code]; ok {
-				// Enrich existing entry with province code
-				data.Cities[idx].ProvinceCode = prov.Code
+				// Only enrich with province code if the province belongs to the same region
+				if data.Cities[idx].RegionCode == prov.RegionCode {
+					data.Cities[idx].ProvinceCode = prov.Code
+				}
 			} else {
 				// City wasn't in region-level fetch — add it
 				seenCities[c.Code] = true
