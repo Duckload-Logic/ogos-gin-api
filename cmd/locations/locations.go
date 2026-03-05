@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -233,13 +234,13 @@ func (s *AddressSeeder) seedCities(cities []PSGCCity) error {
 		placeholders := make([]string, 0, len(batch))
 		args := make([]interface{}, 0, len(batch)*8)
 		for _, c := range batch {
-			var provCode interface{}
+			provCode := sql.NullString{Valid: false}
 			if c.ProvinceCode != "" {
-				provCode = c.ProvinceCode
+				provCode = sql.NullString{String: c.ProvinceCode, Valid: true}
 			}
-			var regCode interface{}
+			regCode := sql.NullString{Valid: false}
 			if c.RegionCode != "" {
-				regCode = c.RegionCode
+				regCode = sql.NullString{String: c.RegionCode, Valid: true}
 			}
 			placeholders = append(placeholders, "(?, ?, ?, ?, ?, ?, ?)")
 			args = append(args, c.Code, c.Name, provCode, c.Type, c.ZipCode, c.District, regCode)
