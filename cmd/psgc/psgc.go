@@ -160,38 +160,18 @@ func fetchAll() (*PSGCData, error) {
 	}
 	fmt.Printf("  %d provinces\n", len(data.Provinces))
 
-	// 3. Cities/municipalities per province
+	// 3. Cities/municipalities — fetch from regions FIRST (authoritative region mapping),
+	// then enrich with province codes from the province-level fetch.
 	fmt.Println("Fetching cities/municipalities...")
-	// Track which city codes we've already added (provinces may share codes with region-level fetch)
+
+	// 3a. Fetch cities per region first (gives correct region_code, especially for NCR)
 	seenCities := make(map[string]bool)
+	cityIndex := make(map[string]int) // city code -> index in data.Cities
 
-	for _, prov := range data.Provinces {
-		var cities []apiCity
-		if err := fetchJSON(fmt.Sprintf("%s/provinces/%s/cities-municipalities", psgcBaseURL, prov.Code), &cities); err != nil {
-			fmt.Printf("  Warning: cities for province %s: %v\n", prov.Code, err)
-			continue
-		}
-		for _, c := range cities {
-			if seenCities[c.Code] {
-				continue
-			}
-			seenCities[c.Code] = true
-			data.Cities = append(data.Cities, PSGCCity{
-				Code:         c.Code,
-				Name:         c.Name,
-				Type:         c.Type,
-				ZipCode:      c.ZipCode,
-				District:     c.District,
-				RegionCode:   prov.RegionCode,
-				ProvinceCode: prov.Code,
-			})
-		}
-	}
-
-	// Also cities directly under regions (e.g. NCR has no provinces)
 	for _, reg := range regions {
 		var cities []apiCity
 		if err := fetchJSON(fmt.Sprintf("%s/regions/%s/cities-municipalities", psgcBaseURL, reg.Code), &cities); err != nil {
+			fmt.Printf("  Warning: cities for region %s: %v\n", reg.Name, err)
 			continue
 		}
 		for _, c := range cities {
@@ -199,6 +179,7 @@ func fetchAll() (*PSGCData, error) {
 				continue
 			}
 			seenCities[c.Code] = true
+			cityIndex[c.Code] = len(data.Cities)
 			data.Cities = append(data.Cities, PSGCCity{
 				Code:       c.Code,
 				Name:       c.Name,
@@ -206,7 +187,36 @@ func fetchAll() (*PSGCData, error) {
 				ZipCode:    c.ZipCode,
 				District:   c.District,
 				RegionCode: reg.Code,
+				// ProvinceCode left empty; filled below if the city belongs to a province
 			})
+		}
+	}
+
+	// 3b. Fetch cities per province to fill in province_code
+	for _, prov := range data.Provinces {
+		var cities []apiCity
+		if err := fetchJSON(fmt.Sprintf("%s/provinces/%s/cities-municipalities", psgcBaseURL, prov.Code), &cities); err != nil {
+			fmt.Printf("  Warning: cities for province %s: %v\n", prov.Code, err)
+			continue
+		}
+		for _, c := range cities {
+			if idx, ok := cityIndex[c.Code]; ok {
+				// Enrich existing entry with province code
+				data.Cities[idx].ProvinceCode = prov.Code
+			} else {
+				// City wasn't in region-level fetch — add it
+				seenCities[c.Code] = true
+				cityIndex[c.Code] = len(data.Cities)
+				data.Cities = append(data.Cities, PSGCCity{
+					Code:         c.Code,
+					Name:         c.Name,
+					Type:         c.Type,
+					ZipCode:      c.ZipCode,
+					District:     c.District,
+					RegionCode:   prov.RegionCode,
+					ProvinceCode: prov.Code,
+				})
+			}
 		}
 	}
 	fmt.Printf("  %d cities/municipalities\n", len(data.Cities))
