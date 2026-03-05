@@ -19,6 +19,13 @@ seed:
 fakes:
 	go run cmd/faker/faker.go
 
+# Desc: Fetch PSGC data from API and save to JSON (run once, commit the file)
+# Usage: make psgc-fetch
+psgc-fetch:
+	go run cmd/psgc/psgc.go
+
+# Desc: Seed locations from psgc_data.json into the database
+# Usage: make locations
 locations:
 	go run cmd/locations/locations.go
 

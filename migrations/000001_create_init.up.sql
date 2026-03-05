@@ -27,23 +27,39 @@ CREATE TABLE users(
 
 CREATE TABLE regions (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL
+    name VARCHAR(100) UNIQUE NOT NULL,
+    code VARCHAR(10) UNIQUE NOT NULL
+);
+
+CREATE TABLE provinces (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(10) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    region_code VARCHAR(10) NOT NULL,
+    FOREIGN KEY (region_code) REFERENCES regions(code)
 );
 
 CREATE TABLE cities (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    region_id INT NOT NULL,
+    code VARCHAR(10) UNIQUE NOT NULL,
     name VARCHAR(100),
-    FOREIGN KEY (region_id) REFERENCES regions(id),
-    CONSTRAINT unique_region_city UNIQUE KEY (region_id, name)
+    type VARCHAR(20) DEFAULT NULL,
+    zip_code VARCHAR(10) DEFAULT NULL,
+    district VARCHAR(50) DEFAULT NULL,
+    province_code VARCHAR(10) DEFAULT NULL,
+    region_code VARCHAR(10) DEFAULT NULL,
+    FOREIGN KEY (province_code) REFERENCES provinces(code),
+    FOREIGN KEY (region_code) REFERENCES regions(code),
+    CONSTRAINT unique_province_city UNIQUE KEY (province_code, name)
 );
 
 CREATE TABLE barangays (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    city_id INT NOT NULL,
+    code VARCHAR(10) UNIQUE NOT NULL,
     name VARCHAR(100),
-    FOREIGN KEY (city_id) REFERENCES cities(id),
-    CONSTRAINT unique_city_barangay UNIQUE KEY (city_id, name)
+    city_code VARCHAR(10) DEFAULT NULL,
+    FOREIGN KEY (city_code) REFERENCES cities(code),
+    CONSTRAINT unique_city_barangay UNIQUE KEY (city_code, name)
 );
 
 CREATE TABLE genders(

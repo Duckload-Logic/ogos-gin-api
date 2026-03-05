@@ -22,15 +22,17 @@ CREATE TABLE iir_drafts(
 
 CREATE TABLE addresses(
     id INT AUTO_INCREMENT PRIMARY KEY,
-    region_id INT NOT NULL,
-    city_id INT NOT NULL,
-    barangay_id INT NOT NULL,
+    region_code VARCHAR(10) DEFAULT NULL,
+    province_code VARCHAR(10) DEFAULT NULL,
+    city_code VARCHAR(10) DEFAULT NULL,
+    barangay_code VARCHAR(10) NOT NULL,
     street_detail VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (region_id) REFERENCES regions(id),
-    FOREIGN KEY (city_id) REFERENCES cities(id),
-    FOREIGN KEY (barangay_id) REFERENCES barangays(id)
+    FOREIGN KEY (region_code) REFERENCES regions(code),
+    FOREIGN KEY (city_code) REFERENCES cities(code),
+    FOREIGN KEY (province_code) REFERENCES provinces(code),
+    FOREIGN KEY (barangay_code) REFERENCES barangays(code)
 );
 
 -- ============================================================================

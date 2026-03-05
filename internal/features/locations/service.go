@@ -18,12 +18,20 @@ func (s *Service) GetRegions(ctx context.Context) ([]Region, error) {
 	return s.repo.GetRegions(ctx)
 }
 
-func (s *Service) GetCitiesByRegion(ctx context.Context, regionID int) ([]City, error) {
-	return s.repo.GetCitiesByRegion(ctx, regionID)
+func (s *Service) GetProvincesByRegion(ctx context.Context, regionCode string) ([]Province, error) {
+	return s.repo.GetProvincesByRegion(ctx, regionCode)
 }
 
-func (s *Service) GetBarangaysByCity(ctx context.Context, cityID int) ([]Barangay, error) {
-	return s.repo.GetBarangaysByCity(ctx, cityID)
+func (s *Service) GetCitiesByProvince(ctx context.Context, provinceCode string) ([]City, error) {
+	return s.repo.GetCitiesByProvince(ctx, provinceCode)
+}
+
+func (s *Service) GetCitiesByRegion(ctx context.Context, regionCode string) ([]City, error) {
+	return s.repo.GetCitiesByRegion(ctx, regionCode)
+}
+
+func (s *Service) GetBarangaysByCity(ctx context.Context, cityCode string) ([]Barangay, error) {
+	return s.repo.GetBarangaysByCity(ctx, cityCode)
 }
 
 func (s *Service) GetAddressByID(ctx context.Context, addressID int) (AddressDTO, error) {
@@ -32,15 +40,15 @@ func (s *Service) GetAddressByID(ctx context.Context, addressID int) (AddressDTO
 		return AddressDTO{}, err
 	}
 
-	barangay, err := s.repo.GetBarangayByID(ctx, addr.BarangayID)
+	barangay, err := s.repo.GetBarangayByCode(ctx, addr.BarangayCode)
 	if err != nil {
 		return AddressDTO{}, err
 	}
-	city, err := s.repo.GetCityByID(ctx, addr.CityID)
+	city, err := s.repo.GetCityByCode(ctx, addr.CityCode)
 	if err != nil {
 		return AddressDTO{}, err
 	}
-	region, err := s.repo.GetRegionByID(ctx, addr.RegionID)
+	region, err := s.repo.GetRegionByCode(ctx, addr.RegionCode)
 	if err != nil {
 		return AddressDTO{}, err
 	}
@@ -53,19 +61,32 @@ func (s *Service) GetAddressByID(ctx context.Context, addressID int) (AddressDTO
 		Region:       *region,
 	}
 
+	// Province is optional (e.g. NCR has no provinces)
+	if addr.ProvinceCode != nil && *addr.ProvinceCode != "" {
+		province, err := s.repo.GetProvinceByCode(ctx, *addr.ProvinceCode)
+		if err != nil {
+			return AddressDTO{}, err
+		}
+		addrDTO.Province = province
+	}
+
 	return addrDTO, nil
 }
 
-func (s *Service) GetCityByID(ctx context.Context, cityID int) (*City, error) {
-	return s.repo.GetCityByID(ctx, cityID)
+func (s *Service) GetCityByCode(ctx context.Context, cityCode string) (*City, error) {
+	return s.repo.GetCityByCode(ctx, cityCode)
 }
 
-func (s *Service) GetRegionByID(ctx context.Context, regionID int) (*Region, error) {
-	return s.repo.GetRegionByID(ctx, regionID)
+func (s *Service) GetRegionByCode(ctx context.Context, regionCode string) (*Region, error) {
+	return s.repo.GetRegionByCode(ctx, regionCode)
 }
 
-func (s *Service) GetBarangayByID(ctx context.Context, barangayID int) (*Barangay, error) {
-	return s.repo.GetBarangayByID(ctx, barangayID)
+func (s *Service) GetBarangayByCode(ctx context.Context, barangayCode string) (*Barangay, error) {
+	return s.repo.GetBarangayByCode(ctx, barangayCode)
+}
+
+func (s *Service) GetProvinceByCode(ctx context.Context, provinceCode string) (*Province, error) {
+	return s.repo.GetProvinceByCode(ctx, provinceCode)
 }
 
 func (s *Service) SaveAddress(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {

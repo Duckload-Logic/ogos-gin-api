@@ -785,38 +785,43 @@ func insertSelectedReasons(tx *sqlx.Tx, iirID int) {
 }
 
 func insertAddress(tx *sqlx.Tx) int {
-	// Fetch a random region
-	var regionID int
-	err := tx.Get(&regionID, "SELECT id FROM regions ORDER BY RAND() LIMIT 1")
-	if err != nil {
-		log.Fatal("No regions found. Please run the address seeder first (make locations): ", err)
+	// Pick a random city that has at least one barangay, along with its region/province
+	var cityRow struct {
+		CityCode     string         `db:"city_code"`
+		RegionCode   string         `db:"region_code"`
+		ProvinceCode sql.NullString `db:"province_code"`
 	}
-
-	// Fetch a random city in that region that has barangays
-	var cityID int
-	err = tx.Get(&cityID, `
-		SELECT DISTINCT c.id FROM cities c
-		INNER JOIN barangays b ON c.id = b.city_id
-		WHERE c.region_id = ?
+	err := tx.Get(&cityRow, `
+		SELECT c.code AS city_code, c.region_code, c.province_code
+		FROM cities c
+		INNER JOIN barangays b ON c.code = b.city_code
+		WHERE c.region_code IS NOT NULL
+		GROUP BY c.code, c.region_code, c.province_code
 		ORDER BY RAND() LIMIT 1
-	`, regionID)
+	`)
 	if err != nil {
-		log.Fatal("No cities with barangays found for region ID "+fmt.Sprint(regionID)+": ", err)
+		log.Fatal("No cities with barangays found. Please run the address seeder first (make locations): ", err)
 	}
 
 	// Fetch a random barangay in that city
-	var barangayID int
-	err = tx.Get(&barangayID, "SELECT id FROM barangays WHERE city_id = ? ORDER BY RAND() LIMIT 1", cityID)
+	var barangayCode string
+	err = tx.Get(&barangayCode, "SELECT code FROM barangays WHERE city_code = ? ORDER BY RAND() LIMIT 1", cityRow.CityCode)
 	if err != nil {
-		log.Fatal("No barangays found for city ID "+fmt.Sprint(cityID)+": ", err)
+		log.Fatal("No barangays found for city "+cityRow.CityCode+": ", err)
 	}
 
 	street := gofakeit.Street()
 
+	// province_code is nullable (e.g. NCR has no provinces)
+	var provinceCode interface{}
+	if cityRow.ProvinceCode.Valid {
+		provinceCode = cityRow.ProvinceCode.String
+	}
+
 	res, err := tx.Exec(`
-		INSERT INTO addresses (region_id, city_id, barangay_id, street_detail)
-		VALUES (?, ?, ?, ?)
-	`, regionID, cityID, barangayID, street)
+		INSERT INTO addresses (region_code, province_code, city_code, barangay_code, street_detail)
+		VALUES (?, ?, ?, ?, ?)
+	`, cityRow.RegionCode, provinceCode, cityRow.CityCode, barangayCode, street)
 	if err != nil {
 		log.Fatal(err)
 	}
