@@ -47,7 +47,9 @@ CREATE TABLE cities (
     zip_code VARCHAR(10) DEFAULT NULL,
     district VARCHAR(50) DEFAULT NULL,
     province_code VARCHAR(10) DEFAULT NULL,
+    region_code VARCHAR(10) DEFAULT NULL,
     FOREIGN KEY (province_code) REFERENCES provinces(code),
+    FOREIGN KEY (region_code) REFERENCES regions(code),
     CONSTRAINT unique_province_city UNIQUE KEY (province_code, name)
 );
 
