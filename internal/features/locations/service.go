@@ -48,10 +48,6 @@ func (s *Service) GetAddressByID(ctx context.Context, addressID int) (AddressDTO
 	if err != nil {
 		return AddressDTO{}, err
 	}
-	province, err := s.repo.GetProvinceByCode(ctx, addr.ProvinceCode)
-	if err != nil {
-		return AddressDTO{}, err
-	}
 	region, err := s.repo.GetRegionByCode(ctx, addr.RegionCode)
 	if err != nil {
 		return AddressDTO{}, err
@@ -62,8 +58,16 @@ func (s *Service) GetAddressByID(ctx context.Context, addressID int) (AddressDTO
 		StreetDetail: *addr.StreetDetail,
 		Barangay:     *barangay,
 		City:         *city,
-		Province:     province,
 		Region:       *region,
+	}
+
+	// Province is optional (e.g. NCR has no provinces)
+	if addr.ProvinceCode != nil && *addr.ProvinceCode != "" {
+		province, err := s.repo.GetProvinceByCode(ctx, *addr.ProvinceCode)
+		if err != nil {
+			return AddressDTO{}, err
+		}
+		addrDTO.Province = province
 	}
 
 	return addrDTO, nil
