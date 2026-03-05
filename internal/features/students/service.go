@@ -492,32 +492,9 @@ func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*Stude
 		return nil, fmt.Errorf("failed to get emergency contact relationship by ID: %w", err)
 	}
 
-	emergencyContactAddress, err := s.locationsSvc.GetAddressByID(ctx, emergencyContact.AddressID)
+	emergencyAddressDTO, err := s.locationsSvc.GetAddressByID(ctx, emergencyContact.AddressID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get emergency contact address by ID: %w", err)
-	}
-
-	emergencyContactRegion, err := s.locationsSvc.GetRegionByID(ctx, emergencyContactAddress.Region.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get emergency contact region by ID: %w", err)
-	}
-
-	emergencyContactCity, err := s.locationsSvc.GetCityByID(ctx, emergencyContactAddress.City.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get emergency contact city by ID: %w", err)
-	}
-
-	emergencyContactBarangay, err := s.locationsSvc.GetBarangayByID(ctx, emergencyContactAddress.Barangay.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get emergency contact barangay by ID: %w", err)
-	}
-
-	emergencyAddressDTO := locations.AddressDTO{
-		ID:           emergencyContactAddress.ID,
-		StreetDetail: emergencyContactAddress.StreetDetail,
-		Region:       *emergencyContactRegion,
-		City:         *emergencyContactCity,
-		Barangay:     *emergencyContactBarangay,
 	}
 
 	emergencyContactDTO := EmergencyContactDTO{
@@ -569,14 +546,8 @@ func (s *Service) GetStudentAddresses(ctx context.Context, iirID int) ([]Student
 		}
 
 		addresses = append(addresses, StudentAddressDTO{
-			ID: addr.ID,
-			Address: locations.AddressDTO{
-				ID:           addrDTO.ID,
-				Region:       addrDTO.Region,
-				City:         addrDTO.City,
-				Barangay:     addrDTO.Barangay,
-				StreetDetail: addrDTO.StreetDetail,
-			},
+			ID:          addr.ID,
+			Address:     addrDTO,
 			AddressType: addr.AddressType,
 			CreatedAt:   addr.CreatedAt,
 			UpdatedAt:   addr.UpdatedAt,
@@ -974,9 +945,10 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	// 2. Save Emergency Contact
 	ec := req.Student.StudentPersonalInfoDTO.EmergencyContact
 	addressID, err := s.locationsSvc.SaveAddress(ctx, tx, &locations.Address{
-		RegionID:     ec.Address.Region.ID,
-		CityID:       ec.Address.City.ID,
-		BarangayID:   ec.Address.Barangay.ID,
+		RegionCode:   ec.Address.Region.Code,
+		ProvinceCode: ec.Address.Province.Code,
+		CityCode:     ec.Address.City.Code,
+		BarangayCode: ec.Address.Barangay.Code,
 		StreetDetail: &ec.Address.StreetDetail,
 	})
 	if err != nil {
@@ -998,9 +970,10 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	// 3. Save Student Addresses
 	for _, addrDTO := range req.Student.Addresses {
 		addressID, err := s.locationsSvc.SaveAddress(ctx, tx, &locations.Address{
-			RegionID:     addrDTO.Address.Region.ID,
-			CityID:       addrDTO.Address.City.ID,
-			BarangayID:   addrDTO.Address.Barangay.ID,
+			RegionCode:   addrDTO.Address.Region.Code,
+			ProvinceCode: addrDTO.Address.Province.Code,
+			CityCode:     addrDTO.Address.City.Code,
+			BarangayCode: addrDTO.Address.Barangay.Code,
 			StreetDetail: &addrDTO.Address.StreetDetail,
 		})
 		if err != nil {
