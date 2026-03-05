@@ -17,23 +17,37 @@ func NewRepository(db *sqlx.DB) *Repository {
 }
 
 func (r *Repository) GetRegions(ctx context.Context) ([]Region, error) {
-	query := fmt.Sprintf("SELECT %s FROM regions", database.GetColumns(Region{}))
+	query := fmt.Sprintf("SELECT %s FROM regions ORDER BY name", database.GetColumns(Region{}))
 	var regions []Region
 	err := r.db.SelectContext(ctx, &regions, query)
 	return regions, err
 }
 
-func (r *Repository) GetCitiesByRegion(ctx context.Context, regionID int) ([]City, error) {
-	query := fmt.Sprintf("SELECT %s FROM cities WHERE region_id = ?", database.GetColumns(City{}))
+func (r *Repository) GetProvincesByRegion(ctx context.Context, regionCode string) ([]Province, error) {
+	query := fmt.Sprintf("SELECT %s FROM provinces WHERE region_code = ? ORDER BY name", database.GetColumns(Province{}))
+	var provinces []Province
+	err := r.db.SelectContext(ctx, &provinces, query, regionCode)
+	return provinces, err
+}
+
+func (r *Repository) GetCitiesByProvince(ctx context.Context, provinceCode string) ([]City, error) {
+	query := fmt.Sprintf("SELECT %s FROM cities WHERE province_code = ? ORDER BY name", database.GetColumns(City{}))
 	var cities []City
-	err := r.db.SelectContext(ctx, &cities, query, regionID)
+	err := r.db.SelectContext(ctx, &cities, query, provinceCode)
 	return cities, err
 }
 
-func (r *Repository) GetBarangaysByCity(ctx context.Context, cityID int) ([]Barangay, error) {
-	query := fmt.Sprintf("SELECT %s FROM barangays WHERE city_id = ?", database.GetColumns(Barangay{}))
+func (r *Repository) GetCitiesByRegion(ctx context.Context, regionCode string) ([]City, error) {
+	query := fmt.Sprintf("SELECT %s FROM cities WHERE region_code = ? ORDER BY name", database.GetColumns(City{}))
+	var cities []City
+	err := r.db.SelectContext(ctx, &cities, query, regionCode)
+	return cities, err
+}
+
+func (r *Repository) GetBarangaysByCity(ctx context.Context, cityCode string) ([]Barangay, error) {
+	query := fmt.Sprintf("SELECT %s FROM barangays WHERE city_code = ? ORDER BY name", database.GetColumns(Barangay{}))
 	var barangays []Barangay
-	err := r.db.SelectContext(ctx, &barangays, query, cityID)
+	err := r.db.SelectContext(ctx, &barangays, query, cityCode)
 	return barangays, err
 }
 
@@ -47,34 +61,44 @@ func (r *Repository) GetAddressByID(ctx context.Context, addressID int) (*Addres
 	return &address, nil
 }
 
-func (r *Repository) GetCityByID(ctx context.Context, cityID int) (*City, error) {
-	query := fmt.Sprintf("SELECT %s FROM cities WHERE id = ?", database.GetColumns(City{}))
+func (r *Repository) GetCityByCode(ctx context.Context, cityCode string) (*City, error) {
+	query := fmt.Sprintf("SELECT %s FROM cities WHERE code = ?", database.GetColumns(City{}))
 	var city City
-	err := r.db.GetContext(ctx, &city, query, cityID)
+	err := r.db.GetContext(ctx, &city, query, cityCode)
 	if err != nil {
 		return nil, err
 	}
 	return &city, nil
 }
 
-func (r *Repository) GetRegionByID(ctx context.Context, regionID int) (*Region, error) {
-	query := fmt.Sprintf("SELECT %s FROM regions WHERE id = ?", database.GetColumns(Region{}))
+func (r *Repository) GetRegionByCode(ctx context.Context, regionCode string) (*Region, error) {
+	query := fmt.Sprintf("SELECT %s FROM regions WHERE code = ?", database.GetColumns(Region{}))
 	var region Region
-	err := r.db.GetContext(ctx, &region, query, regionID)
+	err := r.db.GetContext(ctx, &region, query, regionCode)
 	if err != nil {
 		return nil, err
 	}
 	return &region, nil
 }
 
-func (r *Repository) GetBarangayByID(ctx context.Context, barangayID int) (*Barangay, error) {
-	query := fmt.Sprintf("SELECT %s FROM barangays WHERE id = ?", database.GetColumns(Barangay{}))
+func (r *Repository) GetBarangayByCode(ctx context.Context, barangayCode string) (*Barangay, error) {
+	query := fmt.Sprintf("SELECT %s FROM barangays WHERE code = ?", database.GetColumns(Barangay{}))
 	var barangay Barangay
-	err := r.db.GetContext(ctx, &barangay, query, barangayID)
+	err := r.db.GetContext(ctx, &barangay, query, barangayCode)
 	if err != nil {
 		return nil, err
 	}
 	return &barangay, nil
+}
+
+func (r *Repository) GetProvinceByCode(ctx context.Context, provinceCode string) (*Province, error) {
+	query := fmt.Sprintf("SELECT %s FROM provinces WHERE code = ?", database.GetColumns(Province{}))
+	var province Province
+	err := r.db.GetContext(ctx, &province, query, provinceCode)
+	if err != nil {
+		return nil, err
+	}
+	return &province, nil
 }
 
 func (r *Repository) UpsertAddress(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
