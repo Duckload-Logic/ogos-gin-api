@@ -231,19 +231,23 @@ func (s *AddressSeeder) seedCities(cities []PSGCCity) error {
 		batch := cities[i:end]
 
 		placeholders := make([]string, 0, len(batch))
-		args := make([]interface{}, 0, len(batch)*7)
+		args := make([]interface{}, 0, len(batch)*8)
 		for _, c := range batch {
 			var provCode interface{}
 			if c.ProvinceCode != "" {
 				provCode = c.ProvinceCode
 			}
-			placeholders = append(placeholders, "(?, ?, ?, ?, ?, ?)")
-			args = append(args, c.Code, c.Name, provCode, c.Type, c.ZipCode, c.District)
+			var regCode interface{}
+			if c.RegionCode != "" {
+				regCode = c.RegionCode
+			}
+			placeholders = append(placeholders, "(?, ?, ?, ?, ?, ?, ?)")
+			args = append(args, c.Code, c.Name, provCode, c.Type, c.ZipCode, c.District, regCode)
 		}
 
-		query := "INSERT INTO cities (code, name, province_code, `type`, zip_code, district) VALUES " +
+		query := "INSERT INTO cities (code, name, province_code, `type`, zip_code, district, region_code) VALUES " +
 			strings.Join(placeholders, ", ") +
-			" ON DUPLICATE KEY UPDATE name=VALUES(name), `type`=VALUES(`type`), zip_code=VALUES(zip_code), district=VALUES(district)"
+			" ON DUPLICATE KEY UPDATE name=VALUES(name), `type`=VALUES(`type`), zip_code=VALUES(zip_code), district=VALUES(district), region_code=VALUES(region_code)"
 		if _, err := s.db.Exec(query, args...); err != nil {
 			return fmt.Errorf("failed to batch insert cities: %w", err)
 		}
