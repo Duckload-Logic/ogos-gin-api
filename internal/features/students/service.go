@@ -944,9 +944,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 
 	// 2. Save Emergency Contact
 	ec := req.Student.StudentPersonalInfoDTO.EmergencyContact
+	var ecProvinceCode *string
+	if ec.Address.Province != nil {
+		ecProvinceCode = &ec.Address.Province.Code
+	}
 	addressID, err := s.locationsSvc.SaveAddress(ctx, tx, &locations.Address{
 		RegionCode:   ec.Address.Region.Code,
-		ProvinceCode: ec.Address.Province.Code,
+		ProvinceCode: ecProvinceCode,
 		CityCode:     ec.Address.City.Code,
 		BarangayCode: ec.Address.Barangay.Code,
 		StreetDetail: &ec.Address.StreetDetail,
@@ -969,9 +973,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 
 	// 3. Save Student Addresses
 	for _, addrDTO := range req.Student.Addresses {
+		var addrProvinceCode *string
+		if addrDTO.Address.Province != nil {
+			addrProvinceCode = &addrDTO.Address.Province.Code
+		}
 		addressID, err := s.locationsSvc.SaveAddress(ctx, tx, &locations.Address{
 			RegionCode:   addrDTO.Address.Region.Code,
-			ProvinceCode: addrDTO.Address.Province.Code,
+			ProvinceCode: addrProvinceCode,
 			CityCode:     addrDTO.Address.City.Code,
 			BarangayCode: addrDTO.Address.Barangay.Code,
 			StreetDetail: &addrDTO.Address.StreetDetail,
