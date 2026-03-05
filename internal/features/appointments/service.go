@@ -9,15 +9,17 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 )
 
 type Service struct {
 	repo         *Repository
 	auditService *trails.Service
+	notifService *notifications.Service
 }
 
-func NewService(repo *Repository, auditService *trails.Service) *Service {
-	return &Service{repo: repo, auditService: auditService}
+func NewService(repo *Repository, auditService *trails.Service, notifService *notifications.Service) *Service {
+	return &Service{repo: repo, auditService: auditService, notifService: notifService,}
 }
 
 func (s *Service) GetConcernCategories(ctx context.Context) ([]AppointmentCategory, error) {
@@ -313,4 +315,13 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Appoi
 	})
 
 	return nil
+}
+
+func (s *Service) ConfirmAppointment(ctx context.Context, appointmentID int, studentID int) error {
+    // 1. Logic to update appointment status in database
+    // ...
+
+    // 2. Trigger the notification
+    err := s.notifService.Send(ctx, studentID, "Appointment Confirmed", "Your session has been approved by the counselor.", "Appointment")
+    return err
 }
