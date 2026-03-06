@@ -3,7 +3,6 @@ package users
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,7 +31,7 @@ func NewHandler(service *Service) *Handler {
 // @Failure      500      {object}  map[string]string     "Failed to get current user"
 // @Router       /users/me [get]
 func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
-	userIDInterface, exists := c.Get("userID")
+	email, exists := c.Get("userEmail")
 	if !exists {
 		c.JSON(
 			http.StatusInternalServerError,
@@ -41,7 +40,7 @@ func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	userID, ok := userIDInterface.(int)
+	userEmail, ok := email.(string)
 	if !ok {
 		c.JSON(
 			http.StatusInternalServerError,
@@ -50,7 +49,7 @@ func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.GetUserByID(c.Request.Context(), userID)
+	resp, err := h.service.GetUserByEmail(c.Request.Context(), userEmail)
 	if err != nil {
 		fmt.Println("Error getting current user:", err)
 		c.JSON(
@@ -63,38 +62,17 @@ func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// HandleGetUserByID godoc
-// @Summary      Get user by ID
-// @Description  Retrieves user information based on the provided user ID.
+// HandleGetUserByEmail godoc
+// @Summary      Get user by email
+// @Description  Retrieves user information based on the provided email.
 // @Tags         Users
 // @Accept       json
 // @Produce      json
-// @Param        userID   path      int true "User ID"
+// @Param        email   query     string true "User Email"
 // @Success      200      {object}  GetUserResponse        "Returns user details"
-// @Failure      400      {object}  map[string]string     "Invalid user ID"
-// @Failure      500      {object}  map[string]string     "Failed to get user by ID"
-// @Router       /users/{userID} [get]
-func (h *Handler) HandleGetUserByID(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("userID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	resp, err := h.service.GetUserByID(c.Request.Context(), userID)
-	if err != nil {
-		fmt.Println("Error getting user by ID:", err)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to get user by ID"},
-		)
-		return
-	}
-
-	c.JSON(http.StatusOK, resp)
-}
-
-// HandleGetUserByEmail
+// @Failure      400      {object}  map[string]string     "Email query parameter is required"
+// @Failure      500      {object}  map[string]string     "Failed to get user by email"
+// @Router       /users [get]
 func (h *Handler) HandleGetUserByEmail(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
