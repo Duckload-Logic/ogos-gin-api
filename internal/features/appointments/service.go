@@ -315,11 +315,8 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Appoi
 	return nil
 }
 
-func (s *Service) ConfirmAppointment(ctx context.Context, appointmentID int, studentID int) error {
-    // 1. Logic to update appointment status in database
-    // ...
+func (s *Service) ConfirmAppointment(ctx context.Context, appointmentID int, studentEmail string) error {
 
-    // 2. Trigger the notification
-    err := s.notifService.Send(ctx, studentID, "Appointment Confirmed", "Your session has been approved by the counselor.", "Appointment")
+    err := s.notifService.Send(ctx, studentEmail, "Appointment Confirmed", "Your session has been approved by the counselor.", "Appointment")
     return err
 }

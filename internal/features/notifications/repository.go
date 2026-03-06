@@ -1,48 +1,54 @@
 package notifications
 
 import (
-    "context"
-    "github.com/jmoiron/sqlx"
+	"context"
+	"fmt"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
 type Repository struct {
-    db *sqlx.DB
+	db *sqlx.DB
 }
 
 func NewRepository(db *sqlx.DB) *Repository {
-    return &Repository{db: db}
-}   
+	return &Repository{db: db}
+}
 
 func (r *Repository) GetByUserID(ctx context.Context, userID string) ([]NotificationModel, error) {
-    query := `SELECT id, user_id, title, message, type, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC`
-    rows, err := r.db.QueryContext(ctx, query, userID)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	query := fmt.Sprintf(`
+		SELECT %s FROM notifications 
+		WHERE user_id = ? 
+		ORDER BY created_at DESC
+	`, database.GetColumns(NotificationModel{}))
 
-    var results []NotificationModel
-    for rows.Next() {
-        var n NotificationModel
-        if err := rows.Scan(&n.ID, &n.UserID, &n.Title, &n.Message, &n.Type, &n.IsRead, &n.CreatedAt); err != nil {
-			return nil, err
-		}
-        results = append(results, n)
-    }
-    return results, nil
+	var results []NotificationModel
+	err := r.db.SelectContext(ctx, &results, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get notifications for user %s: %w", userID, err)
+	}
+
+	return results, nil
 }
 
-func (r *Repository) MarkAsRead(ctx context.Context, id string) error {
-    query := `UPDATE notifications SET is_read = TRUE WHERE id = ?`
-    _, err := r.db.ExecContext(ctx, query, id)
-    return err
+func (r *Repository) MarkAsRead(ctx context.Context, id int) error {
+	query := `UPDATE notifications SET is_read = TRUE WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to mark notification %d as read: %w", id, err)
+	}
+	return nil
 }
 
-func (r *Repository) Create(ctx context.Context, userID int, title, message, notifType string) error {
+func (r *Repository) Create(ctx context.Context, userID string, title, message, notifType string) error {
 	query := `
-		INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
-		VALUES (?, ?, ?, ?, FALSE, NOW())`
-	
+        INSERT INTO notifications (user_id, title, message, type, created_at)
+        VALUES (?, ?, ?, ?, NOW())`
+
 	_, err := r.db.ExecContext(ctx, query, userID, title, message, notifType)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create notification for user %s: %w", userID, err)
+	}
+	return nil
 }
