@@ -75,16 +75,15 @@ type ActivityOption struct {
 }
 
 type StudentBasicInfoView struct {
-	ID         int            `json:"id"`
+	Email      string         `json:"email"`
 	FirstName  string         `json:"firstName"`
 	MiddleName sql.NullString `json:"middleName,omitempty"`
 	LastName   string         `json:"lastName"`
-	Email      string         `json:"email"`
 }
 
 type StudentProfileView struct {
 	IIRID         int            `db:"iir_id" json:"iirId"`
-	UserID        int            `db:"user_id" json:"userId"`
+	UserEmail     string         `db:"user_email" json:"userEmail"`
 	FirstName     string         `db:"first_name" json:"firstName"`
 	MiddleName    sql.NullString `db:"middle_name" json:"middleName,omitempty"`
 	LastName      string         `db:"last_name" json:"lastName"`
@@ -99,7 +98,7 @@ type StudentProfileView struct {
 // Core Student Records
 type IIRDraft struct {
 	ID        int       `db:"id" json:"id"`
-	UserID    int       `db:"user_id" json:"userId"`
+	UserEmail string    `db:"user_email" json:"userEmail"`
 	Data      string    `db:"data" json:"data"` // JSON string of the draft data
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
@@ -107,7 +106,7 @@ type IIRDraft struct {
 
 type IIRRecord struct {
 	ID          int       `db:"id" json:"id"`
-	UserID      int       `db:"user_id" json:"userId"`
+	UserEmail   string    `db:"user_email" json:"userEmail"`
 	IsSubmitted bool      `db:"is_submitted" json:"isSubmitted"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`

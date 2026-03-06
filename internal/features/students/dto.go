@@ -28,7 +28,7 @@ type ListStudentsResponse struct {
 
 type StudentProfileDTO struct {
 	IIRID         int                    `json:"iirId"`
-	UserID        int                    `json:"userId"`
+	UserEmail     string                 `json:"userEmail"`
 	FirstName     string                 `json:"firstName"`
 	MiddleName    structs.NullableString `json:"middleName,omitempty"`
 	LastName      string                 `json:"lastName"`
@@ -82,11 +82,10 @@ type StudentSelectedReasonDTO struct {
 }
 
 type StudentBasicInfoViewDTO struct {
-	ID         int                    `json:"id"`
+	Email      string                 `json:"email"`
 	FirstName  string                 `json:"firstName"`
 	MiddleName structs.NullableString `json:"middleName,omitempty"`
 	LastName   string                 `json:"lastName"`
-	Email      string                 `json:"email"`
 }
 
 type StudentPersonalInfoDTO struct {
