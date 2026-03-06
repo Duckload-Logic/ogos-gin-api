@@ -6,21 +6,21 @@ import (
 )
 
 // AuditContextMiddleware enriches the request context with audit metadata
-// (user ID, IP address, User-Agent). Must be placed after AuthMiddleware
-// so that userID is available.
+// (user email, IP address, User-Agent). Must be placed after AuthMiddleware
+// so that userEmail is available.
 func AuditContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := 0
-		if id, exists := c.Get("userID"); exists {
-			if uid, ok := id.(int); ok {
-				userID = uid
+		userEmail := ""
+		if email, exists := c.Get("userEmail"); exists {
+			if e, ok := email.(string); ok {
+				userEmail = e
 			}
 		}
 
 		ipAddress := c.ClientIP()
 		userAgent := c.GetHeader("User-Agent")
 
-		ctx := audit.WithContext(c.Request.Context(), userID, ipAddress, userAgent)
+		ctx := audit.WithContext(c.Request.Context(), userEmail, ipAddress, userAgent)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()
