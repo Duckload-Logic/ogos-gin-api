@@ -8,12 +8,11 @@ CREATE TABLE user_roles(
 );
 
 CREATE TABLE users(
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE PRIMARY KEY,
     role_id INT NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100) DEFAULT NULL,
     last_name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -153,7 +152,7 @@ CREATE TABLE appointment_categories (
 
 CREATE TABLE appointments (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
+    user_email VARCHAR(100),
     time_slot_id INT NOT NULL,
     when_date DATE NOT NULL,
     reason TEXT,
@@ -163,7 +162,7 @@ CREATE TABLE appointments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE SET NULL,
     FOREIGN KEY (time_slot_id) REFERENCES time_slots(id),
     FOREIGN KEY (status_id) REFERENCES statuses(id),
     FOREIGN KEY (appointment_category_id) REFERENCES appointment_categories(id),
@@ -174,10 +173,10 @@ CREATE TABLE appointments (
 
 CREATE TABLE counselor_profiles(
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL,
+    user_email VARCHAR(100) UNIQUE NOT NULL,
     license_number VARCHAR(50),
     specialization VARCHAR(100),
     is_available BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE
 );

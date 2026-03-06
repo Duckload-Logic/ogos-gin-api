@@ -16,8 +16,4 @@ func RegisterRoutes(db *sqlx.DB, rg *gin.RouterGroup, h *Handler) {
 		int(constants.StudentRoleID),
 	))
 	userRoutes.GET("/me", h.HandleGetCurrentUser)
-	userRoutes.Use(middleware.OwnershipMiddleware(db, "userID"))
-	{
-		userRoutes.GET("/id/:userID", h.HandleGetUserByID)
-	}
 }

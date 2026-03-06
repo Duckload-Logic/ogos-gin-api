@@ -4,12 +4,12 @@
 
 -- Foreign Key Indexes (Critical for JOIN performance)
 CREATE INDEX idx_users_role_id ON users(role_id);
-CREATE INDEX idx_counselor_profiles_user_id ON counselor_profiles(user_id);
-CREATE INDEX idx_appointments_user_id ON appointments(user_id);
+CREATE INDEX idx_counselor_profiles_user_email ON counselor_profiles(user_email);
+CREATE INDEX idx_appointments_user_email ON appointments(user_email);
 
 -- IIR Tables
-CREATE INDEX idx_iir_records_user_id ON iir_records(user_id);
-CREATE INDEX idx_iir_drafts_user_id ON iir_drafts(user_id);
+CREATE INDEX idx_iir_records_user_email ON iir_records(user_email);
+CREATE INDEX idx_iir_drafts_user_email ON iir_drafts(user_email);
 
 -- Addresses
 CREATE INDEX idx_addresses_region_id ON addresses(region_code);
@@ -69,7 +69,7 @@ CREATE INDEX idx_student_financial_supports_sf_id ON student_financial_supports(
 CREATE INDEX idx_student_financial_supports_support_type_id ON student_financial_supports(support_type_id);
 
 -- Administrative
-CREATE INDEX idx_admission_slips_user_id ON admission_slips(user_id);
+CREATE INDEX idx_admission_slips_user_email ON admission_slips(user_email);
 CREATE INDEX idx_admission_slips_attachment ON slip_attachments(admission_slip_id);
 
 -- Commonly Searched Columns

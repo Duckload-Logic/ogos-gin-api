@@ -4,20 +4,20 @@
 
 CREATE TABLE iir_records(
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL,
+    user_email VARCHAR(100) UNIQUE NOT NULL,
     is_submitted BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE
 );
 
 CREATE TABLE iir_drafts(
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL,
+    user_email VARCHAR(100) UNIQUE NOT NULL,
     data JSON NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE
 );
 
 CREATE TABLE addresses(
@@ -328,7 +328,7 @@ CREATE TABLE admission_slip_categories (
 
 CREATE TABLE admission_slips (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_email VARCHAR(100) NOT NULL,
     category_id INT NOT NULL,
     reason TEXT NOT NULL,
     date_of_absence DATE NOT NULL,
@@ -337,7 +337,7 @@ CREATE TABLE admission_slips (
     admin_notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE CASCADE,
     FOREIGN KEY (status_id) REFERENCES statuses(id),
     FOREIGN KEY (category_id) REFERENCES admission_slip_categories(id)
 );

@@ -66,7 +66,6 @@ func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*Li
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:         slips[s].UserID,
 				FirstName:  slips[s].UserFirstName,
 				MiddleName: structs.FromSqlNull(slips[s].UserMiddleName),
 				LastName:   slips[s].UserLastName,
@@ -107,8 +106,8 @@ func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*Li
 	return &listSlipDTO, nil
 }
 
-func (s *Service) GetSlipStats(ctx context.Context, userID *int, req *ListSlipRequest) ([]SlipStatusCount, error) {
-	stats, err := s.repo.GetSlipStats(ctx, userID, req)
+func (s *Service) GetSlipStats(ctx context.Context, userEmail *string, req *ListSlipRequest) ([]SlipStatusCount, error) {
+	stats, err := s.repo.GetSlipStats(ctx, userEmail, req)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +137,6 @@ func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:         slips[s].UserID,
 				FirstName:  slips[s].UserFirstName,
 				MiddleName: structs.FromSqlNull(slips[s].UserMiddleName),
 				LastName:   slips[s].UserLastName,
@@ -178,7 +176,7 @@ func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*
 	return &listSlipsDTO, nil
 }
 
-func (s *Service) GetExcuseSlipsByUserID(ctx context.Context, userID int, req ListSlipRequest) (*ListSlipsDTO, error) {
+func (s *Service) GetExcuseSlipsByUserEmail(ctx context.Context, userEmail string, req ListSlipRequest) (*ListSlipsDTO, error) {
 	// 1. Get raw data from repository
 	if req.Page <= 0 {
 		req.Page = 1
@@ -190,7 +188,7 @@ func (s *Service) GetExcuseSlipsByUserID(ctx context.Context, userID int, req Li
 		req.PageSize = 100
 	}
 
-	slips, err := s.repo.GetByUserID(ctx, userID, &req)
+	slips, err := s.repo.GetByUserEmail(ctx, userEmail, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +198,6 @@ func (s *Service) GetExcuseSlipsByUserID(ctx context.Context, userID int, req Li
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:         slips[s].UserID,
 				FirstName:  slips[s].UserFirstName,
 				MiddleName: structs.FromSqlNull(slips[s].UserMiddleName),
 				LastName:   slips[s].UserLastName,
@@ -275,7 +272,7 @@ func (s *Service) GetAttachmentFile(ctx context.Context, attachmentID int) (*Sli
 }
 
 // SubmitExcuseSlip
-func (s *Service) SubmitExcuseSlip(ctx context.Context, userID int, req CreateSlipRequest, files []*multipart.FileHeader) (*Slip, error) {
+func (s *Service) SubmitExcuseSlip(ctx context.Context, userEmail string, req CreateSlipRequest, files []*multipart.FileHeader) (*Slip, error) {
 
 	// Check File Size
 	if files[0].Size > MaxFileSize {
@@ -302,8 +299,8 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userID int, req CreateSl
 
 	folderHash := hash.GetSHA256Hash(
 		fmt.Sprintf(
-			"%d%s%s%d",
-			userID,
+			"%s%s%s%d",
+			userEmail,
 			req.DateOfAbsence,
 			req.DateNeeded,
 			time.Now().UnixNano()),
@@ -336,7 +333,7 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userID int, req CreateSl
 	}
 
 	slip := &Slip{
-		UserID:        userID,
+		UserEmail:     userEmail,
 		Reason:        req.Reason,
 		DateOfAbsence: req.DateOfAbsence,
 		DateNeeded:    req.DateNeeded,
@@ -364,9 +361,9 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userID int, req CreateSl
 	}
 
 	// Record audit trail
-	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
 	s.auditService.Record(ctx, trails.AuditEntry{
-		UserID:     auditUserID,
+		UserEmail:  auditUserEmail,
 		Action:     trails.ActionCreate,
 		EntityType: "slip",
 		EntityID:   slip.ID,
@@ -415,9 +412,9 @@ func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id int, newStatus 
 		return err
 	}
 
-	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
 	s.auditService.Record(ctx, trails.AuditEntry{
-		UserID:     auditUserID,
+		UserEmail:  auditUserEmail,
 		Action:     trails.ActionUpdate,
 		EntityType: "slip",
 		EntityID:   id,

@@ -26,9 +26,9 @@ func (s *Service) GetConcernCategories(ctx context.Context) ([]AppointmentCatego
 	return s.repo.GetCategories(ctx)
 }
 
-func (s *Service) CreateAppointment(ctx context.Context, userID int, req AppointmentDTO) (*Appointment, error) {
+func (s *Service) CreateAppointment(ctx context.Context, userEmail string, req AppointmentDTO) (*Appointment, error) {
 	appt := &Appointment{
-		UserID:                userID,
+		UserEmail:             userEmail,
 		Reason:                structs.ToSqlNull(req.Reason),
 		WhenDate:              req.WhenDate,
 		TimeSlotID:            req.TimeSlot.ID,
@@ -41,9 +41,9 @@ func (s *Service) CreateAppointment(ctx context.Context, userID int, req Appoint
 	}
 
 	// Record audit trail
-	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
 	s.auditService.Record(ctx, trails.AuditEntry{
-		UserID:     auditUserID,
+		UserEmail:  auditUserEmail,
 		Action:     trails.ActionCreate,
 		EntityType: "appointment",
 		EntityID:   appt.ID,
@@ -111,7 +111,6 @@ func (s *Service) ListAppointments(ctx context.Context, req ListAppointmentsRequ
 	dtos := make([]AppointmentDTO, 0, len(appts))
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
-			ID:         appt.UserID,
 			Role:       users.Role{ID: 0, Name: ""},
 			FirstName:  appt.UserFirstName,
 			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
@@ -156,7 +155,7 @@ func (s *Service) ListAppointments(ctx context.Context, req ListAppointmentsRequ
 	}, nil
 }
 
-func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req ListAppointmentsRequest) (*ListAppointmentsDTO, error) {
+func (s *Service) GetAppointmentsByUserEmail(ctx context.Context, userEmail string, req ListAppointmentsRequest) (*ListAppointmentsDTO, error) {
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -169,9 +168,9 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 		req.OrderBy = "created_at"
 	}
 
-	appts, err := s.repo.ListByUserID(
+	appts, err := s.repo.ListByUserEmail(
 		ctx,
-		userID,
+		userEmail,
 		req.GetOffset(),
 		req.PageSize,
 		req.OrderBy,
@@ -186,7 +185,6 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 	dtos := make([]AppointmentDTO, 0, len(appts))
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
-			ID:         appt.UserID,
 			Role:       users.Role{ID: 0, Name: ""},
 			FirstName:  appt.UserFirstName,
 			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
@@ -217,7 +215,7 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 		})
 	}
 
-	total, err := s.repo.GetTotalAppointmentsCount(ctx, req.StatusID, req.StartDate, req.EndDate, &userID)
+	total, err := s.repo.GetTotalAppointmentsCount(ctx, req.StatusID, req.StartDate, req.EndDate, &userEmail)
 	if err != nil {
 		return nil, err
 	}
@@ -231,8 +229,8 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 	}, nil
 }
 
-func (s *Service) GetAppointmentStats(ctx context.Context, req ListAppointmentsRequest, userID *int) ([]StatusCount, error) {
-	return s.repo.GetAppointmentStats(ctx, req.StatusID, req.StartDate, req.EndDate, userID)
+func (s *Service) GetAppointmentStats(ctx context.Context, req ListAppointmentsRequest, userEmail *string) ([]StatusCount, error) {
+	return s.repo.GetAppointmentStats(ctx, req.StatusID, req.StartDate, req.EndDate, userEmail)
 }
 
 func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) ([]AvailableTimeSlotView, error) {
@@ -267,9 +265,9 @@ func (s *Service) UpdateAppointment(ctx context.Context, id int, req Appointment
 	}
 
 	// Record audit trail
-	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
 	s.auditService.Record(ctx, trails.AuditEntry{
-		UserID:     auditUserID,
+		UserEmail:  auditUserEmail,
 		Action:     trails.ActionUpdate,
 		EntityType: "appointment",
 		EntityID:   id,
@@ -302,9 +300,9 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Appoi
 	}
 
 	// Record audit trail
-	auditUserID, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
 	s.auditService.Record(ctx, trails.AuditEntry{
-		UserID:     auditUserID,
+		UserEmail:  auditUserEmail,
 		Action:     trails.ActionUpdate,
 		EntityType: "appointment",
 		EntityID:   id,

@@ -13,7 +13,7 @@ import (
 // OwnershipMiddleware - Direct database access version
 func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		loggedInUserID := c.MustGet("userID").(int)
+		loggedInUserEmail := c.MustGet("userEmail").(string)
 		roleID := c.MustGet("roleID").(int)
 
 		// Allow counselors to bypass
@@ -24,7 +24,23 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 
 		// For students, check ownership
 		if roleID == int(constants.StudentRoleID) {
-			resourceID, err := strconv.Atoi(c.Param(paramName))
+			paramValue := c.Param(paramName)
+
+			// For email-based params, compare directly
+			if paramName == "userEmail" {
+				if paramValue != loggedInUserEmail {
+					c.AbortWithStatusJSON(
+						http.StatusForbidden,
+						gin.H{"error": "Access denied"},
+					)
+					return
+				}
+				c.Next()
+				return
+			}
+
+			// For int-based params, parse and check ownership
+			resourceID, err := strconv.Atoi(paramValue)
 			if err != nil {
 				c.AbortWithStatusJSON(
 					http.StatusBadRequest,
@@ -33,9 +49,8 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 				return
 			}
 
-			// Direct database query to check ownership
 			owns, err := checkStudentOwnership(
-				db, loggedInUserID, paramName, resourceID,
+				db, loggedInUserEmail, paramName, resourceID,
 			)
 			if err != nil || !owns {
 				c.AbortWithStatusJSON(
@@ -52,23 +67,19 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 
 // Direct database query - ONE function to rule them all
 func checkStudentOwnership(
-	db *sqlx.DB, userID int,
+	db *sqlx.DB, userEmail string,
 	paramName string, resourceID int,
 ) (bool, error) {
 	switch paramName {
-	case "userID":
-		// Simple check: user can only access their own userID
-		return userID == resourceID, nil
-
 	case "iirID":
 		// Check if student_record belongs to user
 		query := `
 			SELECT EXISTS(
 				SELECT 1 FROM iir_records
-				WHERE id = ? AND user_id = ?
+				WHERE id = ? AND user_email = ?
 			)`
 		var exists bool
-		err := db.QueryRow(query, resourceID, userID).Scan(&exists)
+		err := db.QueryRow(query, resourceID, userEmail).Scan(&exists)
 		return exists, err
 	default:
 		return false, nil

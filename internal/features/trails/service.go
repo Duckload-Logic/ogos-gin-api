@@ -24,7 +24,7 @@ func NewService(repo *Repository) *Service {
 // Usage from other services:
 //
 //	auditService.Record(ctx, trails.AuditEntry{
-//	    UserID:     userID,
+//	    UserEmail:  userEmail,
 //	    Action:     trails.ActionCreate,
 //	    EntityType: "appointment",
 //	    EntityID:   appointmentID,
@@ -34,7 +34,7 @@ func NewService(repo *Repository) *Service {
 //	})
 func (s *Service) Record(ctx context.Context, entry AuditEntry) {
 	trail := &AuditTrail{
-		UserID:     sql.NullInt64{Int64: int64(entry.UserID), Valid: entry.UserID != 0},
+		UserEmail:  sql.NullString{String: entry.UserEmail, Valid: entry.UserEmail != ""},
 		Action:     entry.Action,
 		EntityType: entry.EntityType,
 		EntityID:   entry.EntityID,
@@ -68,7 +68,7 @@ func (s *Service) ListAuditTrails(ctx context.Context, req ListAuditTrailsReques
 	trails, err := s.repo.List(
 		ctx,
 		req.GetOffset(), req.PageSize,
-		req.Action, req.EntityType, req.EntityID, req.UserID,
+		req.Action, req.EntityType, req.EntityID, req.UserEmail,
 		req.Search, req.StartDate, req.EndDate, req.OrderBy,
 	)
 	if err != nil {
@@ -79,7 +79,7 @@ func (s *Service) ListAuditTrails(ctx context.Context, req ListAuditTrailsReques
 
 	total, err := s.repo.GetTotalCount(
 		ctx,
-		req.Action, req.EntityType, req.EntityID, req.UserID,
+		req.Action, req.EntityType, req.EntityID, req.UserEmail,
 		req.Search, req.StartDate, req.EndDate,
 	)
 	if err != nil {
@@ -119,8 +119,8 @@ func (s *Service) mapTrailsToDTOs(trails []AuditTrailWithUserView) []AuditTrailD
 			CreatedAt:  t.CreatedAt,
 		}
 
-		if t.UserID.Valid {
-			dto.UserID = int(t.UserID.Int64)
+		if t.UserEmail.Valid {
+			dto.UserEmail = t.UserEmail.String
 		}
 
 		// Build user display name

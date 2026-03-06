@@ -170,20 +170,20 @@ func (s *Service) ListStudents(
 
 			course, err := s.repo.GetCourseByID(ctx, st.CourseID)
 			if err != nil {
-				errChan <- fmt.Errorf("failed to get course for student %d: %w", st.UserID, err)
+				errChan <- fmt.Errorf("failed to get course for student %s: %w", st.UserEmail, err)
 				return
 			}
 
 			gender, err := s.repo.GetGenderByID(ctx, st.GenderID)
 			if err != nil {
-				errChan <- fmt.Errorf("failed to get gender for student %d: %w", st.UserID, err)
+				errChan <- fmt.Errorf("failed to get gender for student %s: %w", st.UserEmail, err)
 				return
 			}
 
 			// Create DTO
 			studentDTOs[i] = StudentProfileDTO{
 				IIRID:         st.IIRID,
-				UserID:        st.UserID,
+				UserEmail:     st.UserEmail,
 				FirstName:     st.FirstName,
 				MiddleName:    structs.FromSqlNull(st.MiddleName),
 				LastName:      st.LastName,
@@ -388,18 +388,17 @@ func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentB
 	}
 
 	basicInfo := &StudentBasicInfoViewDTO{
-		ID:         info.ID,
+		Email:      info.Email,
 		FirstName:  info.FirstName,
 		MiddleName: structs.FromSqlNull(info.MiddleName),
 		LastName:   info.LastName,
-		Email:      info.Email,
 	}
 
 	return basicInfo, nil
 }
 
-func (s *Service) GetIIRDraft(ctx context.Context, userID int) (*ComprehensiveProfileDTO, error) {
-	draft, err := s.repo.GetIIRDraftByUserID(ctx, userID)
+func (s *Service) GetIIRDraft(ctx context.Context, userEmail string) (*ComprehensiveProfileDTO, error) {
+	draft, err := s.repo.GetIIRDraftByUserEmail(ctx, userEmail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get IIR draft: %w", err)
 	}
@@ -416,8 +415,8 @@ func (s *Service) GetIIRDraft(ctx context.Context, userID int) (*ComprehensivePr
 	return &draftData, nil
 }
 
-func (s *Service) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
-	iir, err := s.repo.GetStudentIIRByUserID(ctx, userID)
+func (s *Service) GetStudentIIRByUserEmail(ctx context.Context, userEmail string) (*IIRRecord, error) {
+	iir, err := s.repo.GetStudentIIRByUserEmail(ctx, userEmail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student IIR by user ID: %w", err)
 	}
@@ -881,15 +880,15 @@ func (s *Service) GetStudentSignificantNotes(ctx context.Context, iirID int) ([]
 	return noteDTOs, nil
 }
 
-func (s *Service) SaveIIRDraft(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {
+func (s *Service) SaveIIRDraft(ctx context.Context, userEmail string, req ComprehensiveProfileDTO) (int, error) {
 	jsonData, err := json.Marshal(req)
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode draft data: %w", err)
 	}
 
 	draft := IIRDraft{
-		UserID: userID,
-		Data:   string(jsonData),
+		UserEmail: userEmail,
+		Data:      string(jsonData),
 	}
 
 	draftID, err := s.repo.UpsertIIRDraft(ctx, draft)
@@ -900,7 +899,7 @@ func (s *Service) SaveIIRDraft(ctx context.Context, userID int, req Comprehensiv
 	return draftID, nil
 }
 
-func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {
+func (s *Service) SubmitStudentIIR(ctx context.Context, userEmail string, req ComprehensiveProfileDTO) (int, error) {
 	tx, err := s.repo.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction: %w", err)
@@ -909,7 +908,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	defer tx.Rollback()
 
 	iirRecord := &IIRRecord{
-		UserID:      userID,
+		UserEmail:   userEmail,
 		IsSubmitted: false,
 	}
 	iirID, err := s.repo.UpsertIIRRecord(ctx, tx, iirRecord)
@@ -1214,7 +1213,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 
 	IIRRecordUpdate := &IIRRecord{
 		ID:          iirID,
-		UserID:      userID,
+		UserEmail:   userEmail,
 		IsSubmitted: true,
 	}
 

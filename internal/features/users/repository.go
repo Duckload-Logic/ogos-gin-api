@@ -25,31 +25,18 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 // GetUser
 func (r *Repository) GetUser(
-	ctx context.Context, userID *int, email *string,
+	ctx context.Context, email string,
 ) (*User, error) {
 	var user User
 
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM users
-		WHERE 1=1
+		WHERE email = ?
+		LIMIT 1
 	`, database.GetColumns(User{}))
 
-	var args []interface{}
-
-	if userID != nil {
-		query += " AND id = ?"
-		args = append(args, *userID)
-	}
-
-	if email != nil {
-		query += " AND email = ?"
-		args = append(args, *email)
-	}
-
-	query += " LIMIT 1"
-
-	err := r.db.GetContext(ctx, &user, query, args...)
+	err := r.db.GetContext(ctx, &user, query, email)
 	if err != nil {
 		return nil, err
 	}
@@ -83,9 +70,7 @@ func (r *Repository) GetRoleByID(
 // CreateUser
 func (r *Repository) CreateUser(
 	ctx context.Context, user User,
-) (int, error) {
-	var userID int
-
+) error {
 	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
 		cols, vals := database.GetInsertStatement(User{}, []string{"updated_at"})
 		onDuplicateKeyStmt := database.GetOnDuplicateKeyUpdateStatement(User{}, []string{"updated_at"})
@@ -95,7 +80,7 @@ func (r *Repository) CreateUser(
 			ON DUPLICATE KEY UPDATE %s
 		`, cols, vals, onDuplicateKeyStmt)
 
-		result, err := tx.ExecContext(ctx, query,
+		_, err := tx.ExecContext(ctx, query,
 			user.RoleID,
 			user.FirstName,
 			user.MiddleName,
@@ -107,14 +92,8 @@ func (r *Repository) CreateUser(
 			return err
 		}
 
-		id, err := result.LastInsertId()
-		if err != nil {
-			return err
-		}
-
-		userID = int(id)
 		return nil
 	})
 
-	return userID, err
+	return err
 }

@@ -26,7 +26,7 @@ func NewHandler(service *Service) *Handler {
 // @Param        action      query     string false "Filter by action (CREATE, UPDATE, DELETE)"
 // @Param        entity_type query     string false "Filter by entity type (e.g., appointment, slip)"
 // @Param        entity_id   query     int    false "Filter by entity ID"
-// @Param        user_id     query     int    false "Filter by user ID"
+// @Param        user_email  query     string false "Filter by user email"
 // @Param        start_date  query     string false "Filter from date (YYYY-MM-DD)"
 // @Param        end_date    query     string false "Filter to date (YYYY-MM-DD)"
 // @Param        search      query     string false "Search by user name or entity type"

@@ -42,7 +42,7 @@ func NewHandler(service *Service) *Handler {
 // @Failure      500             {object} map[string]string      "Internal Server Error"
 // @Router       /excuseslips [post]
 func (h *Handler) Submit(c *gin.Context) {
-	userID := c.MustGet("userID").(int)
+	userEmail := c.MustGet("userEmail").(string)
 	var req CreateSlipRequest
 
 	if err := c.ShouldBind(&req); err != nil {
@@ -64,7 +64,7 @@ func (h *Handler) Submit(c *gin.Context) {
 		return
 	}
 
-	slip, err := h.service.SubmitExcuseSlip(c.Request.Context(), userID, req, files)
+	slip, err := h.service.SubmitExcuseSlip(c.Request.Context(), userEmail, req, files)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -100,15 +100,15 @@ func (h *Handler) GetSlipStats(c *gin.Context) {
 		return
 	}
 
-	userID := c.MustGet("userID")
+	userEmail := c.MustGet("userEmail")
 	roleID := c.MustGet("roleID").(int)
 
-	var userIDPtr *int
+	var userEmailPtr *string
 	if roleID == int(constants.StudentRoleID) {
-		id := userID.(int)
-		userIDPtr = &id
+		email := userEmail.(string)
+		userEmailPtr = &email
 	}
-	stats, err := h.service.GetSlipStats(c.Request.Context(), userIDPtr, &req)
+	stats, err := h.service.GetSlipStats(c.Request.Context(), userEmailPtr, &req)
 	if err != nil {
 		log.Println("Error retrieving slip stats:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve slip statistics"})
@@ -166,14 +166,14 @@ func (h *Handler) GetAll(c *gin.Context) {
 }
 
 func (h *Handler) GetUserSlips(c *gin.Context) {
-	userID := c.MustGet("userID").(int)
+	userEmail := c.MustGet("userEmail").(string)
 	var req ListSlipRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	slips, err := h.service.GetExcuseSlipsByUserID(c.Request.Context(), userID, req)
+	slips, err := h.service.GetExcuseSlipsByUserEmail(c.Request.Context(), userEmail, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve excuse slips"})
 		return

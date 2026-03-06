@@ -7,7 +7,7 @@ import (
 
 type AuditTrail struct {
 	ID         int            `db:"id" json:"id"`
-	UserID     sql.NullInt64  `db:"user_id" json:"userId"`
+	UserEmail  sql.NullString `db:"user_email" json:"userEmail"`
 	Action     string         `db:"action" json:"action"`
 	EntityType string         `db:"entity_type" json:"entityType"`
 	EntityID   int            `db:"entity_id" json:"entityId"`
@@ -21,7 +21,7 @@ type AuditTrail struct {
 // AuditTrailWithUserView is a flattened view for listing with user info
 type AuditTrailWithUserView struct {
 	ID             int            `db:"id" json:"id"`
-	UserID         sql.NullInt64  `db:"user_id" json:"userId"`
+	UserEmail      sql.NullString `db:"user_email" json:"userEmail"`
 	UserFirstName  sql.NullString `db:"user_first_name" json:"userFirstName,omitempty"`
 	UserMiddleName sql.NullString `db:"user_middle_name" json:"userMiddleName,omitempty"`
 	UserLastName   sql.NullString `db:"user_last_name" json:"userLastName,omitempty"`
