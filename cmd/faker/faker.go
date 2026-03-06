@@ -410,7 +410,6 @@ func createCounselor() {
 		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
 		VALUES (2, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
-			id = LAST_INSERT_ID(id),
 			first_name = VALUES(first_name),
 			middle_name = VALUES(middle_name),
 			last_name = VALUES(last_name),
@@ -420,16 +419,16 @@ func createCounselor() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	userID, _ := res.LastInsertId()
+	_ = res
 
 	_, err = tx.Exec(`
-		INSERT INTO counselor_profiles (user_id, license_number, specialization, is_available)
+		INSERT INTO counselor_profiles (user_email, license_number, specialization, is_available)
 		VALUES (?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			license_number = VALUES(license_number),
 			specialization = VALUES(specialization),
 			is_available = VALUES(is_available)
-	`, userID, gofakeit.Regex("[A-Z]{3}-[0-9]{6}"), gofakeit.JobTitle(), true)
+	`, email, gofakeit.Regex("[A-Z]{3}-[0-9]{6}"), gofakeit.JobTitle(), true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -454,19 +453,18 @@ func createStudent(index int) {
 	studentEmail := fmt.Sprintf("student%d@university.edu", index+1) // guarantee unique
 
 	// 1. users
-	res, err := tx.Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
 		VALUES (1, ?, ?, ?, ?, ?, ?)
 	`, gofakeit.FirstName(), randomMiddleName(), gofakeit.LastName(), studentEmail, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	userID, _ := res.LastInsertId()
 
 	if rand.Float32() < 0.7 {
-		res, err = tx.Exec(`
-			INSERT INTO iir_records (user_id, is_submitted) VALUES (?, ?)
-		`, userID, true)
+		res, err := tx.Exec(`
+			INSERT INTO iir_records (user_email, is_submitted) VALUES (?, ?)
+		`, studentEmail, true)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -570,7 +568,7 @@ func createStudent(index int) {
 		// 22. appointment (30% chance)
 		if rand.Float32() < 0.3 {
 			for i := 0; i < rand.Intn(5)+1; i++ { // up to 15 appointments per student
-				insertAppointment(tx, int(userID))
+				insertAppointment(tx, studentEmail)
 			}
 		}
 
@@ -1317,11 +1315,11 @@ func insertAdmissionSlip(tx *sqlx.Tx, iirID int) {
 	f.WriteString(content)
 	f.Close()
 
-	// Find user_id from iir_id
-	var userID int
-	err := tx.Get(&userID, "SELECT user_id FROM iir_records WHERE id = ?", iirID)
+	// Find user_email from iir_id
+	var userEmail string
+	err := tx.Get(&userEmail, "SELECT user_email FROM iir_records WHERE id = ?", iirID)
 	if err != nil {
-		log.Fatal("Could not find user_id for iir_id", iirID, err)
+		log.Fatal("Could not find user_email for iir_id", iirID, err)
 	}
 
 	// Admin notes more realistic based on status
@@ -1329,9 +1327,9 @@ func insertAdmissionSlip(tx *sqlx.Tx, iirID int) {
 
 	res, err := tx.Exec(`
 		INSERT INTO admission_slips (
-			user_id, reason, category_id, date_of_absence, date_needed, status_id, admin_notes
+			user_email, reason, category_id, date_of_absence, date_needed, status_id, admin_notes
 		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, userID, reason, categoryID, dateOfAbsence, dateNeeded, statusID, adminNotes)
+	`, userEmail, reason, categoryID, dateOfAbsence, dateNeeded, statusID, adminNotes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1443,9 +1441,9 @@ func generateAdmissionNotes(status string) sql.NullString {
 	}
 }
 
-func insertAppointment(tx *sqlx.Tx, userID int) {
+func insertAppointment(tx *sqlx.Tx, userEmail string) {
 	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 || len(appointmentStatusIDs) == 0 {
-		log.Printf("skipping appointment creation for user %d: missing appointment lookup data", userID)
+		log.Printf("skipping appointment creation for user %s: missing appointment lookup data", userEmail)
 		return
 	}
 
@@ -1470,9 +1468,9 @@ func insertAppointment(tx *sqlx.Tx, userID int) {
 
 	_, err := tx.Exec(`
 		       INSERT INTO appointments (
-			       user_id, reason, admin_notes, when_date, time_slot_id, appointment_category_id, status_id
+			       user_email, reason, admin_notes, when_date, time_slot_id, appointment_category_id, status_id
 		       ) VALUES (?, ?, ?, ?, ?, ?, ?)
-	       `, userID,
+	       `, userEmail,
 		gofakeit.Sentence(rand.Intn(11)+20),
 		adminNotes,
 		whenDate,
