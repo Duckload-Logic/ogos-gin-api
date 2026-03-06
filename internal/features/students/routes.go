@@ -13,7 +13,7 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 	routes.Use(middleware.AuthMiddleware())
 
 	// Define lookups
-	userResourceLookup := middleware.OwnershipMiddleware(db, "userID")
+	userResourceLookup := middleware.OwnershipMiddleware(db, "userEmail")
 	iirResourceLookup := middleware.OwnershipMiddleware(db, "iirID")
 	// inventoryRecordLookup := middleware.OwnershipMiddleware(db, "inventoryRecordID")
 
@@ -48,7 +48,7 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 		int(constants.CounselorRoleID),
 	))
 	{
-		userRoutes.GET("/records/user/:userID", userResourceLookup, h.HandleGetStudentIIRByUserID)
+		userRoutes.GET("/records/user/:userEmail", userResourceLookup, h.HandleGetStudentIIRByUserID)
 		userRoutes.GET("/records/iir/:iirID", iirResourceLookup, h.HandleGetStudentIIRByIIRID)
 		userRoutes.GET("/records/iir/:iirID/profile", iirResourceLookup, h.HandleGetStudentProfile)
 		userRoutes.GET("/records/iir/:iirID/basic-info", iirResourceLookup, h.HandleGetStudentBasicInfo)
