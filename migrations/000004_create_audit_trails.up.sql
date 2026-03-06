@@ -4,7 +4,7 @@
 
 CREATE TABLE audit_trails (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT DEFAULT NULL,
+    user_email VARCHAR(100) DEFAULT NULL,
     action ENUM('CREATE', 'UPDATE', 'DELETE') NOT NULL,
     entity_type VARCHAR(100) NOT NULL,
     entity_id INT NOT NULL,
@@ -14,11 +14,11 @@ CREATE TABLE audit_trails (
     user_agent VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    FOREIGN KEY (user_email) REFERENCES users(email) ON DELETE SET NULL
 );
 
 -- Performance indexes
-CREATE INDEX idx_audit_trails_user_id ON audit_trails(user_id);
+CREATE INDEX idx_audit_trails_user_email ON audit_trails(user_email);
 CREATE INDEX idx_audit_trails_entity ON audit_trails(entity_type, entity_id);
 CREATE INDEX idx_audit_trails_action ON audit_trails(action);
 CREATE INDEX idx_audit_trails_created_at ON audit_trails(created_at);
