@@ -62,7 +62,7 @@ func (h *Handler) HandleGetDailyStatusCount(c *gin.Context) {
 // @Failure      500     {object}  map[string]string          "Internal Server Error"
 // @Router       /appointments [post]
 func (h *Handler) HandleCreateAppointment(c *gin.Context) {
-	userID := c.MustGet("userID")
+	userEmail := c.MustGet("userEmail")
 	var req AppointmentDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.Println(err.Error())
@@ -70,7 +70,7 @@ func (h *Handler) HandleCreateAppointment(c *gin.Context) {
 		return
 	}
 
-	appt, err := h.service.CreateAppointment(c.Request.Context(), userID.(int), req)
+	appt, err := h.service.CreateAppointment(c.Request.Context(), userEmail.(string), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create an appointment"})
 		return
@@ -166,7 +166,7 @@ func (h *Handler) HandleGetAppointmentStatuses(c *gin.Context) {
 
 // GetAppointments gets all appointments for the current user
 func (h *Handler) HandleGetAppointmentsByUserID(c *gin.Context) {
-	userID, exists := c.Get("userID")
+	userEmail, exists := c.Get("userEmail")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -178,7 +178,7 @@ func (h *Handler) HandleGetAppointmentsByUserID(c *gin.Context) {
 		return
 	}
 
-	appointments, err := h.service.GetAppointmentsByUserID(c.Request.Context(), userID.(int), req)
+	appointments, err := h.service.GetAppointmentsByUserEmail(c.Request.Context(), userEmail.(string), req)
 	if err != nil {
 		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch appointments"})
@@ -189,7 +189,7 @@ func (h *Handler) HandleGetAppointmentsByUserID(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetAppointmentStats(c *gin.Context) {
-	userID, exists := c.Get("userID")
+	userEmail, exists := c.Get("userEmail")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
@@ -201,10 +201,10 @@ func (h *Handler) HandleGetAppointmentStats(c *gin.Context) {
 		return
 	}
 
-	var userIDPtr *int
+	var userEmailPtr *string
 	if roleID.(int) == int(constants.StudentRoleID) {
-		id := userID.(int)
-		userIDPtr = &id
+		email := userEmail.(string)
+		userEmailPtr = &email
 	}
 
 	var req ListAppointmentsRequest
@@ -213,7 +213,7 @@ func (h *Handler) HandleGetAppointmentStats(c *gin.Context) {
 		return
 	}
 
-	stats, err := h.service.GetAppointmentStats(c.Request.Context(), req, userIDPtr)
+	stats, err := h.service.GetAppointmentStats(c.Request.Context(), req, userEmailPtr)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch appointment stats"})
 		return
