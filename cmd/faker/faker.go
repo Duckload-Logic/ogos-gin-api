@@ -20,6 +20,8 @@ import (
 
 var db *sqlx.DB
 
+var notificationTypes = []string{"System", "Appointment", "Admission Slip", "Academic"}
+
 // lookup slices (IDs)
 var (
 	genderIDs                   []int
@@ -460,6 +462,8 @@ func createStudent(index int) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	insertNotifications(tx, int(userID))
 
 	if rand.Float32() < 0.7 {
 		res, err := tx.Exec(`
@@ -1695,4 +1699,40 @@ func buildDSNFromEnv() string {
 	name := os.Getenv("DB_NAME")
 
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
+}
+
+
+func createNotification(userID int64) {
+    title := gofakeit.Sentence(3)
+    message := gofakeit.Sentence(10)
+    notifType := notificationTypes[rand.Intn(len(notificationTypes))]
+    isRead := rand.Intn(2) 
+
+    query := `INSERT INTO notifications (user_id, title, message, type, is_read, created_at) 
+              VALUES (?, ?, ?, ?, ?, NOW())`
+    
+    _, err := db.Exec(query, userID, title, message, notifType, isRead)
+    if err != nil {
+        log.Printf("failed to create notification for user %d: %v", userID, err)
+    }
+}
+
+func insertNotifications(tx *sqlx.Tx, userID int) {
+    count := rand.Intn(3) + 3 
+    
+    for i := 0; i < count; i++ {
+        title := gofakeit.Sentence(3)
+        message := gofakeit.Sentence(10)
+        notifType := notificationTypes[rand.Intn(len(notificationTypes))]
+        isRead := rand.Intn(2) 
+
+        _, err := tx.Exec(`
+            INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+        `, userID, title, message, notifType, isRead)
+        
+        if err != nil {
+            log.Printf("failed to insert fake notification: %v", err)
+        }
+    }
 }

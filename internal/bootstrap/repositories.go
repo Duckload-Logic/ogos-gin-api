@@ -10,6 +10,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 )
 
 type Repositories struct {
@@ -21,6 +22,7 @@ type Repositories struct {
 	AnalyticsRepo   *analytics.Repository
 	AuditTrailRepo  *trails.Repository
 	APIKeyRepo      *apikeys.Repository
+	NotificationRepo *notifications.Repository
 }
 
 func getRepositories(db *sqlx.DB) *Repositories {
@@ -33,5 +35,6 @@ func getRepositories(db *sqlx.DB) *Repositories {
 		AnalyticsRepo:   analytics.NewRepository(db),
 		AuditTrailRepo:  trails.NewRepository(db),
 		APIKeyRepo:      apikeys.NewRepository(db),
+		NotificationRepo: notifications.NewRepository(db),
 	}
 }
