@@ -21,12 +21,12 @@ func NewRepository(db *sqlx.DB) *Repository {
 // This is the core method called by the service layer.
 func (r *Repository) Record(ctx context.Context, trail *AuditTrail) error {
 	query := `
-		INSERT INTO audit_trails (user_id, action, entity_type, entity_id, old_values, new_values, ip_address, user_agent)
+		INSERT INTO audit_trails (user_email, action, entity_type, entity_id, old_values, new_values, ip_address, user_agent)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := r.db.ExecContext(ctx, query,
-		trail.UserID,
+		trail.UserEmail,
 		trail.Action,
 		trail.EntityType,
 		trail.EntityID,
@@ -45,13 +45,13 @@ func (r *Repository) Record(ctx context.Context, trail *AuditTrail) error {
 // List retrieves audit trail entries with filtering and pagination
 func (r *Repository) List(
 	ctx context.Context, offset, limit int,
-	action, entityType string, entityID, userID int,
+	action, entityType string, entityID int, userEmail string,
 	search, startDate, endDate, orderBy string,
 ) ([]AuditTrailWithUserView, error) {
 	query := `
 		SELECT
 			at.id,
-			at.user_id,
+			at.user_email,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
@@ -64,7 +64,7 @@ func (r *Repository) List(
 			at.user_agent,
 			at.created_at
 		FROM audit_trails at
-		LEFT JOIN users u ON at.user_id = u.id
+		LEFT JOIN users u ON at.user_email = u.email
 		WHERE 1=1
 	`
 
@@ -85,9 +85,9 @@ func (r *Repository) List(
 		args = append(args, entityID)
 	}
 
-	if userID != 0 {
-		query += " AND at.user_id = ?"
-		args = append(args, userID)
+	if userEmail != "" {
+		query += " AND at.user_email = ?"
+		args = append(args, userEmail)
 	}
 
 	if search != "" {
@@ -124,13 +124,13 @@ func (r *Repository) List(
 // GetTotalCount returns the total count of audit trail entries matching filters
 func (r *Repository) GetTotalCount(
 	ctx context.Context,
-	action, entityType string, entityID, userID int,
+	action, entityType string, entityID int, userEmail string,
 	search, startDate, endDate string,
 ) (int, error) {
 	query := `
 		SELECT COUNT(*)
 		FROM audit_trails at
-		LEFT JOIN users u ON at.user_id = u.id
+		LEFT JOIN users u ON at.user_email = u.email
 		WHERE 1=1
 	`
 
@@ -151,9 +151,9 @@ func (r *Repository) GetTotalCount(
 		args = append(args, entityID)
 	}
 
-	if userID != 0 {
-		query += " AND at.user_id = ?"
-		args = append(args, userID)
+	if userEmail != "" {
+		query += " AND at.user_email = ?"
+		args = append(args, userEmail)
 	}
 
 	if search != "" {
@@ -188,7 +188,7 @@ func (r *Repository) GetByEntityRef(
 	query := `
 		SELECT
 			at.id,
-			at.user_id,
+			at.user_email,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
@@ -201,7 +201,7 @@ func (r *Repository) GetByEntityRef(
 			at.user_agent,
 			at.created_at
 		FROM audit_trails at
-		LEFT JOIN users u ON at.user_id = u.id
+		LEFT JOIN users u ON at.user_email = u.email
 		WHERE at.entity_type = ? AND at.entity_id = ?
 		ORDER BY at.created_at DESC
 	`

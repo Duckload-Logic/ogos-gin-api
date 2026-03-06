@@ -18,7 +18,7 @@ const (
 // AuditEntry is used by other features to record an audit trail entry.
 // This is the reusable struct that services pass when logging actions.
 type AuditEntry struct {
-	UserID     int
+	UserEmail  string
 	Action     string
 	EntityType string
 	EntityID   int
@@ -35,7 +35,7 @@ type ListAuditTrailsRequest struct {
 	Action     string `form:"action,omitempty" binding:"omitempty,oneof=CREATE UPDATE DELETE"`
 	EntityType string `form:"entity_type,omitempty"`
 	EntityID   int    `form:"entity_id,omitempty"`
-	UserID     int    `form:"user_id,omitempty"`
+	UserEmail  string `form:"user_email,omitempty"`
 	StartDate  string `form:"start_date,omitempty"`
 	EndDate    string `form:"end_date,omitempty"`
 	OrderBy    string `form:"order_by,omitempty" binding:"omitempty,oneof=created_at"`
@@ -53,7 +53,7 @@ type ListAuditTrailsDTO struct {
 // AuditTrailDTO is the response DTO for a single audit trail entry
 type AuditTrailDTO struct {
 	ID         int                    `json:"id"`
-	UserID     int                    `json:"userId,omitempty"`
+	UserEmail  string                 `json:"userEmail,omitempty"`
 	UserName   structs.NullableString `json:"userName,omitempty"`
 	Action     string                 `json:"action"`
 	EntityType string                 `json:"entityType"`
