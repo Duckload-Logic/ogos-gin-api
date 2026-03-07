@@ -2,15 +2,17 @@ package notifications
 
 import (
 	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	service *Service // Injected service
+	service *Service
 }
 
-func NewHandler(s *Service) *Handler {
-	return &Handler{service: s}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
 func (h *Handler) GetUserNotifications(c *gin.Context) {
@@ -26,9 +28,41 @@ func (h *Handler) GetUserNotifications(c *gin.Context) {
 		return
 	}
 
+	data := ListNotificationsResponse{
+		Notifications: notifications,
+		Total:         len(notifications),
+		Page:          1, 
+		PageSize:      len(notifications),
+		TotalPages:    1,
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Notifications retrieved successfully",
-		"data":    notifications,
+		"data":    data,
+	})
+}
+
+func (h *Handler) MarkAsRead(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Invalid notification ID",
+		})
+		return
+	}
+
+	if err := h.service.MarkAsRead(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"message": "Failed to mark notification as read",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Notification marked as read",
 	})
 }

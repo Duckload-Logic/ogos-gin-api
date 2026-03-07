@@ -31,7 +31,7 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	corsConfig.AllowOrigins = []string{
 		"http://localhost:8080",
 		"http://127.0.0.1:8080",
-		"http://localhost:5173", // Address for Vite dev server
+		"http://localhost:5173",
 	}
 	corsConfig.AllowCredentials = true
 	corsConfig.AddAllowHeaders("Authorization")
@@ -75,9 +75,8 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
 	trails.RegisterRoutes(apiV1Routes, handlers.AuditTrailHandler)
 	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler)
-	notifications.RegisterRoutes(apiV1Routes, handlers.NotificationsHandler)
+	notifications.RegisterRoutes(db,apiV1Routes, handlers.NotificationsHandler)
 
-	// External API (API-key authenticated, read-only)
 	students.RegisterExternalRoutes(apiV1Routes, handlers.StudentHandler, handlers.APIKeyService.ValidateKeyFunc())
 
 	return g

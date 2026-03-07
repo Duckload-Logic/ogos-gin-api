@@ -463,7 +463,7 @@ func createStudent(index int) {
 		log.Fatal(err)
 	}
 
-	insertNotifications(tx, int(userID))
+	insertNotifications(tx, studentEmail)
 
 	if rand.Float32() < 0.7 {
 		res, err := tx.Exec(`
@@ -1717,22 +1717,24 @@ func createNotification(userID int64) {
     }
 }
 
-func insertNotifications(tx *sqlx.Tx, userID int) {
+func insertNotifications(tx *sqlx.Tx, userID string) { 
+    notificationTypes := []string{"Appointment", "Guidance", "System", "Announcement"}
+    
     count := rand.Intn(3) + 3 
     
     for i := 0; i < count; i++ {
         title := gofakeit.Sentence(3)
         message := gofakeit.Sentence(10)
-        notifType := notificationTypes[rand.Intn(len(notificationTypes))]
+        randomType := notificationTypes[rand.Intn(len(notificationTypes))]
         isRead := rand.Intn(2) 
 
         _, err := tx.Exec(`
             INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
             VALUES (?, ?, ?, ?, ?, NOW())
-        `, userID, title, message, notifType, isRead)
+        `, userID, title, message, randomType, isRead)
         
         if err != nil {
-            log.Printf("failed to insert fake notification: %v", err)
+            log.Printf("failed to insert fake notification for %s with type %s: %v", userID, randomType, err)
         }
     }
 }
