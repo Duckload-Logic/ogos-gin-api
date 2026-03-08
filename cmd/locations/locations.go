@@ -304,5 +304,9 @@ func buildDSNFromEnv() string {
 	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")
 
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
+	if os.Getenv("DB_TLS") == "true" {
+		dsn += "&tls=true"
+	}
+	return dsn
 }
