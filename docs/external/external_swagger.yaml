@@ -1,0 +1,246 @@
+basePath: /api/v1
+definitions:
+  external.OGOSStudentAddressDTO:
+    properties:
+      addressType:
+        type: string
+      barangay:
+        $ref: '#/definitions/locations.Barangay'
+      city:
+        $ref: '#/definitions/locations.City'
+      province:
+        $ref: '#/definitions/locations.ProvinceDTO'
+      region:
+        $ref: '#/definitions/locations.Region'
+      streetDetail:
+        type: string
+      studentNumber:
+        type: string
+    type: object
+  external.OGOSStudentDTO:
+    properties:
+      course:
+        $ref: '#/definitions/students.Course'
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      middleName:
+        $ref: '#/definitions/structs.NullableString'
+      mobileNumber:
+        type: string
+      section:
+        type: string
+      studentNumber:
+        type: string
+      suffixName:
+        type: string
+      yearLevel:
+        type: integer
+    type: object
+  locations.Barangay:
+    properties:
+      cityId:
+        type: integer
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  locations.City:
+    properties:
+      code:
+        type: string
+      district:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      provinceCode:
+        type: string
+      regionCode:
+        type: string
+      type:
+        type: string
+      zipCode:
+        type: string
+    type: object
+  locations.ProvinceDTO:
+    properties:
+      code:
+        $ref: '#/definitions/structs.NullableString'
+      id:
+        type: integer
+      name:
+        $ref: '#/definitions/structs.NullableString'
+      regionCode:
+        $ref: '#/definitions/structs.NullableString'
+    type: object
+  locations.Region:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  structs.NullableString:
+    properties:
+      string:
+        type: string
+      valid:
+        description: Valid is true if String is not NULL
+        type: boolean
+    type: object
+  students.Course:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  title: DuckLoad API
+  version: "1.0"
+paths:
+  /students/external/addresses/{studentNumber}:
+    get:
+      consumes:
+      - application/json
+      description: Get all addresses of a student by their student number
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/external.OGOSStudentAddressDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get student addresses by student number
+      tags:
+      - External Students
+  /students/external/by-email/{email}:
+    get:
+      consumes:
+      - application/json
+      description: Get student information by email address
+      parameters:
+      - description: Email address of the student
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/external.OGOSStudentDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get student by email
+      tags:
+      - External Students
+  /students/external/by-student-number/{studentNumber}:
+    get:
+      consumes:
+      - application/json
+      description: Get personal information of a student by their student number
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/external.OGOSStudentDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get personal information by student number
+      tags:
+      - External Students
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: x-api-key
+    type: apiKey
+swagger: "2.0"
