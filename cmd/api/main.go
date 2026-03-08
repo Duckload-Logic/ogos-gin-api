@@ -34,9 +34,13 @@ func main() {
 		config.DBName,
 	)
 
+	if config.DBTLS {
+		dbUrl += "&tls=true"
+	}
+
 	db, err := database.GetDBConnection(dbUrl)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.Fatal(err)
 		return
 	}
 
