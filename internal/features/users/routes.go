@@ -11,8 +11,8 @@ func RegisterRoutes(db *sqlx.DB, rg *gin.RouterGroup, h *Handler) {
 	userRoutes := rg.Group("/users")
 	userRoutes.Use(middleware.AuthMiddleware())
 	userRoutes.Use(middleware.RoleMiddleware(
+		int(constants.SuperAdminRoleID),
 		int(constants.CounselorRoleID),
-		int(constants.FrontDeskRoleID),
 		int(constants.StudentRoleID),
 	))
 	userRoutes.GET("/me", h.HandleGetCurrentUser)
