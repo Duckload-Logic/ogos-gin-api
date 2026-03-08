@@ -14,19 +14,19 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/builders"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
 const MaxFileSize = 5 * 1024 * 1024 // 5MB limit
 
 type Service struct {
-	repo         *Repository
-	auditService *trails.Service
+	repo       *Repository
+	logService *logs.Service
 }
 
-func NewService(repo *Repository, auditService *trails.Service) *Service {
-	return &Service{repo: repo, auditService: auditService}
+func NewService(repo *Repository, logService *logs.Service) *Service {
+	return &Service{repo: repo, logService: logService}
 }
 
 func (s *Service) GetSlipStatuses(ctx context.Context) ([]SlipStatus, error) {
@@ -360,16 +360,19 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userEmail string, req Cr
 		}
 	}
 
-	// Record audit trail
 	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
-	s.auditService.Record(ctx, trails.AuditEntry{
-		UserEmail:  auditUserEmail,
-		Action:     trails.ActionCreate,
-		EntityType: "slip",
-		EntityID:   slip.ID,
-		NewValues:  req,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
+	s.logService.Record(ctx, logs.LogEntry{
+		Category:  logs.CategoryAudit,
+		Action:    logs.ActionSlipCreated,
+		Message:   fmt.Sprintf("Excuse slip #%d submitted by %s", slip.ID, userEmail),
+		UserEmail: auditUserEmail,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Metadata: map[string]interface{}{
+			"entity_type": "slip",
+			"entity_id":   slip.ID,
+			"new_values":  req,
+		},
 	})
 
 	return slip, nil
@@ -413,18 +416,22 @@ func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id int, newStatus 
 	}
 
 	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
-	s.auditService.Record(ctx, trails.AuditEntry{
-		UserEmail:  auditUserEmail,
-		Action:     trails.ActionUpdate,
-		EntityType: "slip",
-		EntityID:   id,
-		OldValues:  oldSlip,
-		NewValues: map[string]interface{}{
-			"status":     newStatus,
-			"adminNotes": adminNotes,
-		},
+	s.logService.Record(ctx, logs.LogEntry{
+		Category:  logs.CategoryAudit,
+		Action:    logs.ActionSlipStatusUpdated,
+		Message:   fmt.Sprintf("Excuse slip #%d status changed to '%s' by %s", id, newStatus, auditUserEmail),
+		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,
 		UserAgent: userAgent,
+		Metadata: map[string]interface{}{
+			"entity_type": "slip",
+			"entity_id":   id,
+			"old_values":  oldSlip,
+			"new_values": map[string]interface{}{
+				"status":     newStatus,
+				"adminNotes": adminNotes,
+			},
+		},
 	})
 
 	return nil
