@@ -48,8 +48,23 @@ seed-up:
 refresh: migrate-down migrate-up seed-up locations
 
 # Desc: To generate swagger docs
-# Usage: make swagger
-swagger:
+# Usage: make swagger-internal
+swagger-internal:
 	swag init -g main.go \
 	--parseDependency --parseInternal \
-	--dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students
+	--dir ./cmd/api,\
+	./internal/features/auth,\
+	./internal/features/users,\
+	./internal/features/appointments,\
+	./internal/features/excuseslips,\
+	./internal/features/students
+	--output ./docs/internal \
+    --instanceName internal
+
+swagger-external:
+	swag init -g main.go \
+	--parseDependency --parseInternal \
+	--dir ./cmd/api,\
+	./internal/features/students/external \
+	--output ./docs/external \
+	--instanceName external

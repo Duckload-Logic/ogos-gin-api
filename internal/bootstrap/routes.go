@@ -18,11 +18,11 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
-
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
 	_ "github.com/olazo-johnalbert/duckload-api/docs"
+	_ "github.com/olazo-johnalbert/duckload-api/docs/external"
 )
 
 func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
@@ -38,9 +38,6 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	corsConfig.AddAllowHeaders("Authorization")
 
 	g.Use(cors.New(corsConfig))
-
-	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
 	g.Use(func(c *gin.Context) {
 		c.Set(middleware.SecurityLoggerContextKey, handlers.SystemLogService)
 		c.Next()
@@ -50,6 +47,13 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	g.Use(middleware.RateLimitMiddleware(limiter))
 
 	apiV1Routes := g.Group("/api/v1")
+
+	apiV1Routes.GET("/docs/internal/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
+		ginSwagger.InstanceName("internal")),
+	)
+	apiV1Routes.GET("/docs/external/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
+		ginSwagger.InstanceName("external")),
+	)
 
 	// ==============================
 	// |                            |
