@@ -2,8 +2,6 @@ package appointments
 
 import (
 	"database/sql"
-	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -65,7 +63,6 @@ func (h *Handler) HandleCreateAppointment(c *gin.Context) {
 	userEmail := c.MustGet("userEmail")
 	var req AppointmentDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Println(err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -180,7 +177,6 @@ func (h *Handler) HandleGetAppointmentsByUserID(c *gin.Context) {
 
 	appointments, err := h.service.GetAppointmentsByUserEmail(c.Request.Context(), userEmail.(string), req)
 	if err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch appointments"})
 		return
 	}
@@ -246,20 +242,17 @@ func (h *Handler) GetAppointmentByID(c *gin.Context) {
 func (h *Handler) HandleUpdateAppointment(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		log.Printf("Invalid appointment ID: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid appointment ID"})
 		return
 	}
 
 	var req AppointmentDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("Error binding JSON: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	if req.Status.ID == 0 {
-		log.Printf("Status update detected for appointment ID %d\n", id)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Status not provided"})
 		return
 	}
@@ -270,7 +263,6 @@ func (h *Handler) HandleUpdateAppointment(c *gin.Context) {
 			return
 		}
 
-		log.Printf("Error updating appointment status: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
