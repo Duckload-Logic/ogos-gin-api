@@ -52,7 +52,7 @@ var (
 
 func main() {
 	// ---------- CONFIGURATION ----------
-	numStudents := 500 // number of students to generate
+	numStudents := 50  // number of students to generate
 	numCounselors := 1 // number of counselors (admins)
 	numWorkers := 100  // number of concurrent student workers
 	_ = godotenv.Load()
@@ -1332,7 +1332,7 @@ func insertAdmissionSlip(tx *sqlx.Tx, iirID int) {
 	// Use PDF as primary extension (more realistic for official documents)
 	extensions := []string{".pdf", ".pdf", ".pdf", ".jpg", ".jpeg", ".png"}
 	ext := extensions[rand.Intn(len(extensions))]
-	basePath := os.Getenv("UPLOAD_DIR")
+	basePath := "./uploads"
 	subFolder := gofakeit.UUID()
 
 	// More realistic file names for admission documents
@@ -1732,7 +1732,11 @@ func buildDSNFromEnv() string {
 	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")
 
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
+	if os.Getenv("DB_TLS") == "true" {
+		dsn += "&tls=true"
+	}
+	return dsn
 }
 
 func createNotification(userID int64) {
