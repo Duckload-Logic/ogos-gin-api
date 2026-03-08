@@ -11,11 +11,11 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 
@@ -40,6 +40,11 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	g.Use(cors.New(corsConfig))
 
 	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	g.Use(func(c *gin.Context) {
+		c.Set(middleware.SecurityLoggerContextKey, handlers.SystemLogService)
+		c.Next()
+	})
 
 	limiter := middleware.NewIPRateLimiter(5, 30)
 	g.Use(middleware.RateLimitMiddleware(limiter))
@@ -74,9 +79,9 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
 	slips.RegisterRoutes(apiV1Routes, handlers.SlipHandler)
 	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
-	trails.RegisterRoutes(apiV1Routes, handlers.AuditTrailHandler)
 	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler)
 	notifications.RegisterRoutes(db, apiV1Routes, handlers.NotificationsHandler)
+	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler)
 
 	external.RegisterRoutes(apiV1Routes, handlers.ExternalStudentHandler, handlers.APIKeyService.ValidateKeyFunc())
 

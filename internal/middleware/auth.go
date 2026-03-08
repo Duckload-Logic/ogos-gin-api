@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -10,7 +11,8 @@ import (
 
 var tokenService = tokens.NewService()
 
-// AuthMiddleware
+// AuthMiddleware validates JWT tokens and sets user context.
+// Reads the log service from gin context ("logService") to record INVALID_TOKEN events.
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -26,6 +28,13 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		claims, err := tokenService.ValidateToken(tokenString)
 		if err != nil {
+			if logSvc, ok := c.Get(SecurityLoggerContextKey); ok {
+				if svc, ok := logSvc.(SecurityLogger); ok {
+					svc.RecordSecurity(c.Request.Context(), "INVALID_TOKEN",
+						fmt.Sprintf("Invalid or expired token used on %s %s", c.Request.Method, c.Request.URL.Path),
+						"", c.ClientIP(), c.Request.UserAgent())
+				}
+			}
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
 				gin.H{"error": "Invalid or expired token"},

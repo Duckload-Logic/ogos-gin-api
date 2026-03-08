@@ -11,7 +11,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	routes := rg.Group("/api-keys")
 	routes.Use(middleware.AuthMiddleware())
 	routes.Use(middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
+		int(constants.SuperAdminRoleID),
 	))
 	{
 		routes.POST("", h.HandleCreateAPIKey)

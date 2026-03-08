@@ -2,24 +2,25 @@ package appointments
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
 type Service struct {
 	repo         *Repository
-	auditService *trails.Service
 	notifService *notifications.Service
+	logService   *logs.Service
 }
 
-func NewService(repo *Repository, auditService *trails.Service, notifService *notifications.Service) *Service {
-	return &Service{repo: repo, auditService: auditService, notifService: notifService,}
+func NewService(repo *Repository, notifService *notifications.Service, logService *logs.Service) *Service {
+	return &Service{repo: repo, notifService: notifService, logService: logService}
 }
 
 func (s *Service) GetConcernCategories(ctx context.Context) ([]AppointmentCategory, error) {
@@ -40,16 +41,19 @@ func (s *Service) CreateAppointment(ctx context.Context, userEmail string, req A
 		return nil, err
 	}
 
-	// Record audit trail
 	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
-	s.auditService.Record(ctx, trails.AuditEntry{
-		UserEmail:  auditUserEmail,
-		Action:     trails.ActionCreate,
-		EntityType: "appointment",
-		EntityID:   appt.ID,
-		NewValues:  req,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
+	s.logService.Record(ctx, logs.LogEntry{
+		Category:  logs.CategoryAudit,
+		Action:    logs.ActionAppointmentCreated,
+		Message:   fmt.Sprintf("Appointment #%d created by %s", appt.ID, userEmail),
+		UserEmail: auditUserEmail,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Metadata: map[string]interface{}{
+			"entity_type": "appointment",
+			"entity_id":   appt.ID,
+			"new_values":  req,
+		},
 	})
 
 	return appt, nil
@@ -264,17 +268,20 @@ func (s *Service) UpdateAppointment(ctx context.Context, id int, req Appointment
 		return err
 	}
 
-	// Record audit trail
 	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
-	s.auditService.Record(ctx, trails.AuditEntry{
-		UserEmail:  auditUserEmail,
-		Action:     trails.ActionUpdate,
-		EntityType: "appointment",
-		EntityID:   id,
-		OldValues:  oldAppt,
-		NewValues:  req,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
+	s.logService.Record(ctx, logs.LogEntry{
+		Category:  logs.CategoryAudit,
+		Action:    logs.ActionAppointmentUpdated,
+		Message:   fmt.Sprintf("Appointment #%d updated by %s", id, auditUserEmail),
+		UserEmail: auditUserEmail,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Metadata: map[string]interface{}{
+			"entity_type": "appointment",
+			"entity_id":   id,
+			"old_values":  oldAppt,
+			"new_values":  req,
+		},
 	})
 
 	return nil
@@ -299,17 +306,20 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Appoi
 		return err
 	}
 
-	// Record audit trail
 	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
-	s.auditService.Record(ctx, trails.AuditEntry{
-		UserEmail:  auditUserEmail,
-		Action:     trails.ActionUpdate,
-		EntityType: "appointment",
-		EntityID:   id,
-		OldValues:  oldAppt,
-		NewValues:  req,
-		IPAddress:  ipAddress,
-		UserAgent:  userAgent,
+	s.logService.Record(ctx, logs.LogEntry{
+		Category:  logs.CategoryAudit,
+		Action:    logs.ActionAppointmentUpdated,
+		Message:   fmt.Sprintf("Appointment #%d status changed to '%s' by %s", id, req.Status.Name, auditUserEmail),
+		UserEmail: auditUserEmail,
+		IPAddress: ipAddress,
+		UserAgent: userAgent,
+		Metadata: map[string]interface{}{
+			"entity_type": "appointment",
+			"entity_id":   id,
+			"old_values":  oldAppt,
+			"new_values":  req,
+		},
 	})
 
 	return nil
@@ -317,6 +327,6 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Appoi
 
 func (s *Service) ConfirmAppointment(ctx context.Context, appointmentID int, studentEmail string) error {
 
-    err := s.notifService.Send(ctx, studentEmail, "Appointment Confirmed", "Your session has been approved by the counselor.", "Appointment")
-    return err
+	err := s.notifService.Send(ctx, studentEmail, "Appointment Confirmed", "Your session has been approved by the counselor.", "Appointment")
+	return err
 }

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,11 @@ type APIKeyValidator func(ctx context.Context, plaintext string) (id int, name s
 // On success it sets "apiKeyID" and "apiKeyName" in the gin context.
 func APIKeyMiddleware(validate APIKeyValidator) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var logSvc SecurityLogger
+		if svc, ok := c.Get(SecurityLoggerContextKey); ok {
+			logSvc, _ = svc.(SecurityLogger)
+		}
+
 		key := c.GetHeader("X-API-Key")
 
 		if key == "" {
@@ -27,11 +33,26 @@ func APIKeyMiddleware(validate APIKeyValidator) gin.HandlerFunc {
 
 		id, name, err := validate(c.Request.Context(), key)
 		if err != nil {
+			if logSvc != nil {
+				prefix := key
+				if len(prefix) > 8 {
+					prefix = prefix[:8]
+				}
+				logSvc.RecordSecurity(c.Request.Context(), "API_KEY_INVALID",
+					fmt.Sprintf("Invalid API key attempt (prefix: %s...): %s", prefix, err.Error()),
+					"", c.ClientIP(), c.Request.UserAgent())
+			}
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
 				gin.H{"error": err.Error()},
 			)
 			return
+		}
+
+		if logSvc != nil {
+			logSvc.RecordSecurity(c.Request.Context(), "API_KEY_USED",
+				fmt.Sprintf("API key '%s' (ID: %d) used on %s %s", name, id, c.Request.Method, c.Request.URL.Path),
+				"", c.ClientIP(), c.Request.UserAgent())
 		}
 
 		c.Set("apiKeyID", id)

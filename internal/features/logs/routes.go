@@ -1,4 +1,4 @@
-package trails
+package logs
 
 import (
 	"github.com/gin-gonic/gin"
@@ -7,13 +7,16 @@ import (
 )
 
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
-	routes := rg.Group("/audit-trails")
+	routes := rg.Group("/system-logs")
 	routes.Use(middleware.AuthMiddleware())
 	routes.Use(middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
+		int(constants.SuperAdminRoleID),
 	))
 	{
-		routes.GET("", h.HandleListAuditTrails)
-		routes.GET("/:entityType/:entityId", h.HandleGetEntityAuditTrails)
+		routes.GET("", h.HandleListSystemLogs)
+		routes.GET("/audit", h.HandleGetAuditLogs)
+		routes.GET("/system", h.HandleGetSystemLogs)
+		routes.GET("/security", h.HandleGetSecurityLogs)
+		routes.GET("/stats", h.HandleGetLogStats)
 	}
 }
