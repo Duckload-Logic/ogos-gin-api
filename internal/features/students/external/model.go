@@ -9,13 +9,13 @@ type OGOSStudentView struct {
 	MiddleName sql.NullString `db:"middle_name,omitempty"`
 	LastName   string         `db:"last_name"`
 
-	Email         string `db:"email"`
-	ContactNumber string `db:"contact_number"`
+	Email        string `db:"email"`
+	MobileNumber string `db:"mobile_number"`
 
 	CourseID   int    `db:"course_id"`
 	CourseCode string `db:"course_code"`
 	CourseName string `db:"course_name"`
-	Year       int    `db:"year"`
+	YearLevel  int    `db:"year_level"`
 	Section    string `db:"section"`
 }
 
@@ -30,14 +30,16 @@ type OGOSStudentPersonalInfoView struct {
 }
 
 type OGOSStudentAddressView struct {
-	StudentNumber string         `db:"student_number"`
-	StreetDetails string         `db:"street_details"`
-	BarangayCode  string         `db:"barangay"`
-	BarangayName  string         `db:"barangay_name"`
-	CityCode      string         `db:"city_code"`
-	CityName      string         `db:"city_name"`
-	ProvinceCode  sql.NullString `db:"province_code,omitempty"`
-	ProvinceName  sql.NullString `db:"province_name,omitempty"`
-	RegionCode    string         `db:"region_code,omitempty"`
-	RegionName    string         `db:"region_name,omitempty"`
+	StudentNumber string `db:"student_number"`
+
+	AddressType  string         `db:"address_type,omitempty"`
+	StreetDetail string         `db:"street_detail"`
+	BarangayCode string         `db:"barangay_code"`
+	BarangayName string         `db:"barangay_name"`
+	CityCode     string         `db:"city_code"`
+	CityName     string         `db:"city_name"`
+	ProvinceCode sql.NullString `db:"province_code,omitempty"`
+	ProvinceName sql.NullString `db:"province_name,omitempty"`
+	RegionCode   string         `db:"region_code,omitempty"`
+	RegionName   string         `db:"region_name,omitempty"`
 }

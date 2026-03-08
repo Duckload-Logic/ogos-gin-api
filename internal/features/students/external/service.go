@@ -29,14 +29,14 @@ func (s *Service) GetStudentByEmail(ctx context.Context, email string) (*OGOSStu
 		MiddleName:    structs.FromSqlNull(student.MiddleName),
 		LastName:      student.LastName,
 		Email:         student.Email,
-		ContactNumber: student.ContactNumber,
+		MobileNumber:  student.MobileNumber,
 		Course: students.Course{
 			ID:         student.CourseID,
 			Code:       student.CourseCode,
 			CourseName: student.CourseName,
 		},
-		Year:    student.Year,
-		Section: student.Section,
+		YearLevel: student.YearLevel,
+		Section:   student.Section,
 	}, nil
 }
 
@@ -73,7 +73,8 @@ func (s *Service) GetAddressByStudentNumber(ctx context.Context, studentNumber s
 	for _, address := range studentAddresses {
 		addresesDTO = append(addresesDTO, OGOSStudentAddressDTO{
 			StudentNumber: address.StudentNumber,
-			StreetDetails: address.StreetDetails,
+			AddressType:   address.AddressType,
+			StreetDetail:  address.StreetDetail,
 			Barangay:      locations.Barangay{Code: address.BarangayCode, Name: address.BarangayName},
 			City:          locations.City{Code: address.CityCode, Name: address.CityName},
 			Province:      &locations.ProvinceDTO{Code: structs.FromSqlNull(address.ProvinceCode), Name: structs.FromSqlNull(address.ProvinceName)},

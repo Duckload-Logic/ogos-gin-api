@@ -14,12 +14,12 @@ type OGOSStudentDTO struct {
 	LastName   string                 `json:"lastName"`
 	SuffixName string                 `json:"suffixName,omitempty"`
 
-	Email         string `json:"email"`
-	ContactNumber string `json:"contactNumber"`
+	Email        string `json:"email"`
+	MobileNumber string `json:"mobileNumber"`
 
-	Course  students.Course `json:"course"`
-	Year    int             `json:"year"`
-	Section string          `json:"section"`
+	Course    students.Course `json:"course"`
+	YearLevel int             `json:"yearLevel"`
+	Section   string          `json:"section"`
 }
 
 type OGOSStudentPersonalInfoDTO struct {
@@ -33,7 +33,8 @@ type OGOSStudentPersonalInfoDTO struct {
 
 type OGOSStudentAddressDTO struct {
 	StudentNumber string                 `json:"studentNumber"`
-	StreetDetails string                 `json:"streetDetails"`
+	AddressType   string                 `json:"addressType,omitempty"`
+	StreetDetail  string                 `json:"streetDetail"`
 	Barangay      locations.Barangay     `json:"barangay"`
 	City          locations.City         `json:"city"`
 	Province      *locations.ProvinceDTO `json:"province,omitempty"`

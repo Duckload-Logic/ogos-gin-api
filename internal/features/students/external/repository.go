@@ -22,22 +22,22 @@ func (r *Repository) GetStudentByEmail(ctx context.Context, email string) (*OGOS
 			u.middle_name AS middle_name,
 			u.last_name AS last_name,
 			u.email AS email,
-			sp.contact_number AS contact_number,
+			sp.mobile_number AS mobile_number,
 			c.id AS course_id,
 			c.code AS course_code,
-			c.name AS course_name,
-			sp.year AS year,
+			c.course_name AS course_name,
+			sp.year_level AS year_level,
 			sp.section AS section
 		FROM users u
 		JOIN iir_records i ON i.user_email = u.email
 		JOIN student_personal_info sp ON sp.iir_id = i.id
-		JOIN course c ON sp.course_id = c.id
+		JOIN courses c ON sp.course_id = c.id
 		WHERE u.email = ?
 		LIMIT 1
 	`
 
 	var student OGOSStudentView
-	err := r.db.SelectContext(ctx, &student, query, email)
+	err := r.db.GetContext(ctx, &student, query, email)
 	if err != nil {
 		return nil, err
 	}
@@ -56,13 +56,13 @@ func (r *Repository) GetPersonalInfoByStudentNumber(ctx context.Context, student
 			sp.height_ft AS height_ft,
 			sp.weight_kg AS weight_kg
 		FROM student_personal_info sp
-		JOIN gender g ON sp.gender_id = g.id
+		JOIN genders g ON sp.gender_id = g.id
 		WHERE sp.student_number = ?
 		LIMIT 1
 	`
 
 	var student OGOSStudentPersonalInfoView
-	err := r.db.SelectContext(ctx, &student, query, studentNumber)
+	err := r.db.GetContext(ctx, &student, query, studentNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -74,17 +74,22 @@ func (r *Repository) GetAddressByStudentNumber(ctx context.Context, studentNumbe
 	query := `
 		SELECT
 			sp.student_number AS student_number,
-			a.street_details AS street_details,
+			sa.address_type AS address_type,
+			a.street_detail AS street_detail,
 			a.barangay_code AS barangay_code,
-			a.barangay_name AS barangay_name,
+			b.name AS barangay_name,
 			a.city_code AS city_code,
-			a.city_name AS city_name,
+			ci.name AS city_name,
 			a.province_code AS province_code,
-			a.province_name AS province_name,
+			p.name AS province_name,
 			a.region_code AS region_code,
-			a.region_name AS region_name
+			r.name AS region_name
 		FROM student_addresses sa
 		JOIN addresses a ON a.id = sa.address_id
+		JOIN barangays b ON a.barangay_code = b.code
+		JOIN cities ci ON a.city_code = ci.code
+		LEFT JOIN provinces p ON a.province_code = p.code
+		JOIN regions r ON a.region_code = r.code
 		JOIN student_personal_info sp ON sp.iir_id = sa.iir_id
 		WHERE sp.student_number = ?
 	`

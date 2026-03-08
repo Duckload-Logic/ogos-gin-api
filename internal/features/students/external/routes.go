@@ -9,7 +9,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler, validator middleware.APIKey
 	routes := rg.Group("/students/external")
 	routes.Use(middleware.APIKeyMiddleware(validator))
 
-	routes.GET("/by-email", h.GetStudentByEmail)
-	routes.GET("/personal-info", h.GetPersonalInfoByStudentNumber)
-	routes.GET("/addresses", h.GetAddressByStudentNumber)
+	routes.GET("/by-email/:email", h.HandleGetStudentByEmail)
+	routes.GET("/personal-info/:studentNumber", h.HandleGetPersonalInfoByStudentNumber)
+	routes.GET("/addresses/:studentNumber", h.HandleGetAddressByStudentNumber)
 }
