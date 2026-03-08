@@ -7,11 +7,11 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
@@ -25,15 +25,17 @@ type Handlers struct {
 	AppointmentHandler     *appointments.Handler
 	SlipHandler            *slips.Handler
 	AnalyticsHandler       *analytics.Handler
-	AuditTrailHandler      *trails.Handler
 	APIKeyHandler          *apikeys.Handler
 	APIKeyService          *apikeys.Service
 	NotificationsHandler   *notifications.Handler
+	SystemLogHandler       *logs.Handler
+	SystemLogService       *logs.Service
 }
 
 func getHandlers(repos *Repositories) *Handlers {
-	auditTrailService := trails.NewService(repos.AuditTrailRepo)
-	apiKeyService := apikeys.NewService(repos.APIKeyRepo)
+	systemLogService := logs.NewService(repos.SystemLogRepo)
+	systemLogHandler := logs.NewHandler(systemLogService)
+	apiKeyService := apikeys.NewService(repos.APIKeyRepo, systemLogService)
 
 	notificationsService := notifications.NewService(repos.NotificationRepo)
 	notificationsHandler := notifications.NewHandler(notificationsService)
@@ -42,13 +44,13 @@ func getHandlers(repos *Repositories) *Handlers {
 	locationsService := locations.NewService(repos.LocationsRepo)
 	studentService := students.NewService(repos.StudentRepo, locationsService)
 	externalStudentService := external.NewService(repos.ExternalStudentRepo)
-	appointmentService := appointments.NewService(repos.AppointmentRepo, auditTrailService, notificationsService)
-	slipService := slips.NewService(repos.SlipRepo, auditTrailService)
+	appointmentService := appointments.NewService(repos.AppointmentRepo, notificationsService, systemLogService)
+	slipService := slips.NewService(repos.SlipRepo, systemLogService)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo)
 	analyticsHandler := analytics.NewHandler(analyticsService)
 
 	return &Handlers{
-		AuthHandler:            auth.NewHandler(authService),
+		AuthHandler:            auth.NewHandler(authService, systemLogService),
 		UserHandler:            users.NewHandler(userService),
 		LocationsHandler:       locations.NewHandler(locationsService),
 		StudentHandler:         students.NewHandler(studentService),
@@ -56,9 +58,10 @@ func getHandlers(repos *Repositories) *Handlers {
 		AppointmentHandler:     appointments.NewHandler(appointmentService),
 		SlipHandler:            slips.NewHandler(slipService),
 		AnalyticsHandler:       analyticsHandler,
-		AuditTrailHandler:      trails.NewHandler(auditTrailService),
 		APIKeyHandler:          apikeys.NewHandler(apiKeyService),
 		APIKeyService:          apiKeyService,
 		NotificationsHandler:   notificationsHandler,
+		SystemLogHandler:       systemLogHandler,
+		SystemLogService:       systemLogService,
 	}
 }
