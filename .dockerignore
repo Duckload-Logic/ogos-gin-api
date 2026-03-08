@@ -1,4 +1,12 @@
 uploads/
-.env
+certs/
+.env*
 .git
 .air.toml
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
