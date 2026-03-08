@@ -9,14 +9,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 )
 
 type Service struct {
-	repo *Repository
+	repo       *Repository
+	logService *logs.Service
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, logService ...*logs.Service) *Service {
+	s := &Service{repo: repo}
+	if len(logService) > 0 {
+		s.logService = logService[0]
+	}
+	return s
 }
 
 // GenerateKey creates a new API key, stores its hash, and returns the plaintext key (shown once).
@@ -64,6 +71,20 @@ func (s *Service) GenerateKey(ctx context.Context, req CreateAPIKeyRequest) (*Cr
 
 	dto := mapKeyToDTO(apiKey)
 	dto.ID = id
+
+	// Record system log
+	if s.logService != nil {
+		s.logService.Record(ctx, logs.LogEntry{
+			Category: logs.CategorySystem,
+			Action:   logs.ActionAPIKeyCreated,
+			Message:  fmt.Sprintf("API key '%s' created (prefix: %s)", req.Name, prefix),
+			Metadata: map[string]interface{}{
+				"keyName":   req.Name,
+				"keyPrefix": prefix,
+				"scopes":    req.Scopes,
+			},
+		})
+	}
 
 	return &CreateAPIKeyResponse{
 		APIKeyDTO: dto,
@@ -125,7 +146,24 @@ func (s *Service) ListKeys(ctx context.Context, includeRevoked bool) ([]APIKeyDT
 
 // RevokeKey deactivates an API key.
 func (s *Service) RevokeKey(ctx context.Context, id int) error {
-	return s.repo.Revoke(ctx, id)
+	err := s.repo.Revoke(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Record system log
+	if s.logService != nil {
+		s.logService.Record(ctx, logs.LogEntry{
+			Category: logs.CategorySystem,
+			Action:   logs.ActionAPIKeyRevoked,
+			Message:  fmt.Sprintf("API key #%d has been revoked", id),
+			Metadata: map[string]interface{}{
+				"keyId": id,
+			},
+		})
+	}
+
+	return nil
 }
 
 func mapKeyToDTO(key APIKey) APIKeyDTO {
