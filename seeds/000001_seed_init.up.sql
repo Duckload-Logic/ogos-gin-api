@@ -1,7 +1,7 @@
 INSERT INTO genders (id, gender_name)
 VALUES
     (1, 'Male'),
-    (2, 'Female'),
+    (2, 'Female');
 
 INSERT IGNORE INTO user_roles (id, `name`)
 VALUES
