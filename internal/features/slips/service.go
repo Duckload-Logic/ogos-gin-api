@@ -1,18 +1,19 @@
 package slips
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
-	"os"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/builders"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
@@ -23,10 +24,11 @@ const MaxFileSize = 5 * 1024 * 1024 // 5MB limit
 type Service struct {
 	repo       *Repository
 	logService *logs.Service
+	storage    storage.FileStorage
 }
 
-func NewService(repo *Repository, logService *logs.Service) *Service {
-	return &Service{repo: repo, logService: logService}
+func NewService(repo *Repository, logService *logs.Service, storage storage.FileStorage) *Service {
+	return &Service{repo: repo, logService: logService, storage: storage}
 }
 
 func (s *Service) GetSlipStatuses(ctx context.Context) ([]SlipStatus, error) {
@@ -306,14 +308,7 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userEmail string, req Cr
 			time.Now().UnixNano()),
 		8,
 	)
-	uploadDir := builders.BuildFileURL("slips", folderHash)
 
-	// Create Directory If Missing
-	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("internal server error: unable to initialize file storage")
-	}
-
-	var savedPaths []string
 	var fileURLs []string
 
 	for _, file := range files {
@@ -321,14 +316,12 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userEmail string, req Cr
 		fileHash := hash.GetSHA256Hash(fmt.Sprintf("%s%d", file.Filename, time.Now().UnixNano()), 16)
 		uniqueFileName := fileHash + ext
 
-		finalPath := filepath.Join(uploadDir, uniqueFileName)
+		blobPath := fmt.Sprintf("slips/%s/%s", folderHash, uniqueFileName)
 
-		if err := s.saveFileToDisk(file, finalPath); err != nil {
-			os.Remove(uploadDir)
-			return nil, fmt.Errorf("failed to save %s", file.Filename)
+		if err := s.uploadToBlob(ctx, file, blobPath); err != nil {
+			return nil, fmt.Errorf("failed to upload %s: %w", file.Filename, err)
 		}
 
-		savedPaths = append(savedPaths, finalPath)
 		fileURLs = append(fileURLs, fmt.Sprintf("/slips/%s/%s", folderHash, uniqueFileName))
 	}
 
@@ -343,7 +336,6 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userEmail string, req Cr
 
 	slipID, err := s.repo.CreateSlip(ctx, slip) // Gets the slip.ID
 	if err != nil {
-		os.Remove(uploadDir)
 		return nil, err
 	}
 
@@ -355,7 +347,6 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userEmail string, req Cr
 			FileURL:  url,
 		}
 		if err := s.repo.SaveSlipAttachment(ctx, attachment); err != nil {
-			os.Remove(uploadDir)
 			return nil, err
 		}
 	}
@@ -378,21 +369,42 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userEmail string, req Cr
 	return slip, nil
 }
 
-func (s *Service) saveFileToDisk(fileHeader *multipart.FileHeader, destPath string) error {
+func (s *Service) uploadToBlob(ctx context.Context, fileHeader *multipart.FileHeader, blobPath string) error {
 	src, err := fileHeader.Open()
 	if err != nil {
 		return err
 	}
 	defer src.Close()
 
-	dst, err := os.Create(destPath)
+	data, err := io.ReadAll(src)
 	if err != nil {
 		return err
 	}
-	defer dst.Close()
 
-	_, err = io.Copy(dst, src)
-	return err
+	contentType := http.DetectContentType(data)
+	reader := bytes.NewReader(data)
+
+	return s.storage.Upload(ctx, blobPath, reader, contentType)
+}
+
+// DownloadAttachment streams the attachment from Azure Blob Storage.
+func (s *Service) DownloadAttachment(ctx context.Context, attachmentID int, writer io.Writer) (*SlipAttachment, error) {
+	attachment, err := s.repo.GetAttachmentByID(ctx, attachmentID)
+	if err != nil {
+		return nil, err
+	}
+	if attachment == nil {
+		return nil, fmt.Errorf("attachment not found")
+	}
+
+	// Convert URL path "/slips/hash/file" to blob path "slips/hash/file"
+	blobPath := strings.TrimPrefix(attachment.FileURL, "/")
+
+	if err := s.storage.Download(ctx, blobPath, writer); err != nil {
+		return nil, fmt.Errorf("failed to download file: %w", err)
+	}
+
+	return attachment, nil
 }
 
 func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id int, newStatus string, adminNotes string) error {

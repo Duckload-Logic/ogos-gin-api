@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/builders"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 )
 
@@ -209,45 +207,20 @@ func (h *Handler) HandleDownloadAttachment(c *gin.Context) {
 		return
 	}
 
-	file, err := h.service.GetAttachmentFile(c.Request.Context(), attachmentID)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%d\"", attachmentID))
+
+	attachment, err := h.service.DownloadAttachment(c.Request.Context(), attachmentID, c.Writer)
 	if err != nil {
-		log.Println("Error retrieving attachment from DB (ID:", attachmentID, "):", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve attachment metadata"})
-		return
-	}
-
-	if file == nil {
-		log.Println("Error: Attachment not found in DB (ID:", attachmentID, ")")
-		c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
-		return
-	}
-
-	parts := strings.Split(strings.TrimPrefix(file.FileURL, "/slips/"), "/")
-	if len(parts) != 2 {
-		log.Println("Error: Invalid attachment path format:", file.FileURL)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid attachment path format"})
-		return
-	}
-
-	folderHash := parts[0]
-	fileName := parts[1]
-
-	realPath := builders.BuildFileURL("slips", folderHash, fileName)
-
-	_, err = os.Stat(realPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Println("Error: File not found at path:", realPath)
-			c.JSON(http.StatusNotFound, gin.H{"error": "File not found on server"})
+		if strings.Contains(err.Error(), "attachment not found") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
 			return
 		}
-		log.Println("Error: Cannot access file at path:", realPath, "-", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot access file"})
+		log.Println("Error downloading attachment:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to download attachment"})
 		return
 	}
 
-	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", file.FileName))
-	c.File(realPath)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", attachment.FileName))
 }
 
 // GetExcuseSlipByID godoc
