@@ -11,11 +11,12 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/trails"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 
 	swaggerFiles "github.com/swaggo/files"
@@ -75,9 +76,9 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
 	trails.RegisterRoutes(apiV1Routes, handlers.AuditTrailHandler)
 	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler)
-	notifications.RegisterRoutes(db,apiV1Routes, handlers.NotificationsHandler)
+	notifications.RegisterRoutes(db, apiV1Routes, handlers.NotificationsHandler)
 
-	students.RegisterExternalRoutes(apiV1Routes, handlers.StudentHandler, handlers.APIKeyService.ValidateKeyFunc())
+	external.RegisterRoutes(apiV1Routes, handlers.ExternalStudentHandler, handlers.APIKeyService.ValidateKeyFunc())
 
 	return g
 }
