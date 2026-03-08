@@ -8,11 +8,15 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
+	DBTLS      bool
+	DBTLSCA    string
 
 	JWTSecret string
 
-	APIPort   string
-	UploadDir string
+	APIPort string
+
+	AzureStorageConnectionString string
+	AzureContainerName           string
 }
 
 func LoadConfig() *Config {
@@ -22,11 +26,15 @@ func LoadConfig() *Config {
 		DBUser:     os.Getenv("DB_USER"),
 		DBPassword: os.Getenv("DB_PASS"),
 		DBName:     os.Getenv("DB_NAME"),
+		DBTLS:      os.Getenv("DB_TLS") == "true",
+		DBTLSCA:    os.Getenv("DB_TLS_CA"),
 
 		JWTSecret: os.Getenv("JWT_SECRET"),
 
-		APIPort:   os.Getenv("API_PORT"),
-		UploadDir: os.Getenv("UPLOAD_DIR"),
+		APIPort: os.Getenv("API_PORT"),
+
+		AzureStorageConnectionString: os.Getenv("AZURE_STORAGE_CONNECTION_STRING"),
+		AzureContainerName:           os.Getenv("AZURE_CONTAINER_NAME"),
 	}
 
 	validateConfig(config)
@@ -55,8 +63,5 @@ func validateConfig(config *Config) {
 	}
 	if config.APIPort == "" {
 		panic("API_PORT is required")
-	}
-	if config.UploadDir == "" {
-		panic("UPLOAD_DIR is required")
 	}
 }

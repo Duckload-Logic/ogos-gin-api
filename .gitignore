@@ -25,7 +25,8 @@ go.work
 go.work.sum
 
 # env file
-.env
+.env.dev
+.env.prod
 
 # tmp
 tmp/*

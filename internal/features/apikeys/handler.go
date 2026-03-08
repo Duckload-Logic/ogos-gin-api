@@ -1,7 +1,6 @@
 package apikeys
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -26,7 +25,6 @@ func (h *Handler) HandleCreateAPIKey(c *gin.Context) {
 
 	resp, err := h.service.GenerateKey(c.Request.Context(), req)
 	if err != nil {
-		fmt.Println("Error creating API key:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create API key"})
 		return
 	}
@@ -40,7 +38,6 @@ func (h *Handler) HandleListAPIKeys(c *gin.Context) {
 
 	keys, err := h.service.ListKeys(c.Request.Context(), includeRevoked)
 	if err != nil {
-		fmt.Println("Error listing API keys:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list API keys"})
 		return
 	}
@@ -57,7 +54,6 @@ func (h *Handler) HandleRevokeAPIKey(c *gin.Context) {
 	}
 
 	if err := h.service.RevokeKey(c.Request.Context(), id); err != nil {
-		fmt.Println("Error revoking API key:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to revoke API key"})
 		return
 	}

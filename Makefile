@@ -1,8 +1,12 @@
-include .env
+ENV ?= .env.dev
+include $(ENV)
 export
 
 # Define db url
 DB_URL=mysql://$(DB_USER):$(DB_PASS)@tcp($(DB_HOST):$(DB_PORT))/$(DB_NAME)
+ifeq ($(DB_TLS),true)
+DB_URL:=$(DB_URL)?tls=true
+endif
 
 # Desc: To create a new migration
 # Usage: make migration name=create_users
@@ -43,7 +47,7 @@ migrate-down:
 # Usage: make seed-up
 seed-up:
 	migrate -path seeds -database \
-	"$(DB_URL)?x-migrations-table=seed_migrations" up
+	"$(DB_URL)$(if $(filter true,$(DB_TLS)),&,?)x-migrations-table=seed_migrations" up
 
 refresh: migrate-down migrate-up seed-up locations
 
@@ -68,3 +72,6 @@ swagger-external:
 	./internal/features/students/external \
 	--output ./docs/external \
 	--instanceName external
+
+compose-up:
+	docker-compose --env-file $(ENV) up --build
