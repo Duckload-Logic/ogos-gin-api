@@ -76,6 +76,9 @@ func main() {
 	// clear existing student data (optional but keeps the run idempotent)
 	clearStudentData()
 
+	// create super admin
+	createSuperAdmin()
+
 	// create counselors
 	for i := 0; i < numCounselors; i++ {
 		createCounselor()
@@ -387,11 +390,42 @@ func clearStudentData() {
 		// we'll just truncate for simplicity, but you can refine if you need to keep seeded counselor
 		if tbl == "users" {
 			db.Exec("DELETE FROM users WHERE role_id = 1")
+			db.Exec("DELETE FROM users WHERE role_id = 3") // also reset super admin for re-seed
 		} else {
 			db.Exec(fmt.Sprintf("DELETE FROM %s", tbl))
 		}
 	}
 	db.Exec("SET FOREIGN_KEY_CHECKS = 1")
+}
+
+// ----------------------------------------------------------------------
+// CREATE SUPER ADMIN
+// ----------------------------------------------------------------------
+func createSuperAdmin() {
+	tx, err := db.Beginx()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tx.Rollback()
+
+	email := "superadmin@university.edu"
+
+	_, err = tx.Exec(`
+		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
+		VALUES (3, 'Super', '', 'Admin', ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			first_name = VALUES(first_name),
+			middle_name = VALUES(middle_name),
+			last_name = VALUES(last_name),
+			password_hash = VALUES(password_hash),
+			is_active = VALUES(is_active)
+	`, email, fakePasswordHash(), true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tx.Commit()
+	fmt.Println("Created super admin: Super Admin (superadmin@university.edu / SuperAdmin@123)")
 }
 
 // ----------------------------------------------------------------------
@@ -1701,40 +1735,39 @@ func buildDSNFromEnv() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
 }
 
-
 func createNotification(userID int64) {
-    title := gofakeit.Sentence(3)
-    message := gofakeit.Sentence(10)
-    notifType := notificationTypes[rand.Intn(len(notificationTypes))]
-    isRead := rand.Intn(2) 
+	title := gofakeit.Sentence(3)
+	message := gofakeit.Sentence(10)
+	notifType := notificationTypes[rand.Intn(len(notificationTypes))]
+	isRead := rand.Intn(2)
 
-    query := `INSERT INTO notifications (user_id, title, message, type, is_read, created_at) 
+	query := `INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
               VALUES (?, ?, ?, ?, ?, NOW())`
-    
-    _, err := db.Exec(query, userID, title, message, notifType, isRead)
-    if err != nil {
-        log.Printf("failed to create notification for user %d: %v", userID, err)
-    }
+
+	_, err := db.Exec(query, userID, title, message, notifType, isRead)
+	if err != nil {
+		log.Printf("failed to create notification for user %d: %v", userID, err)
+	}
 }
 
-func insertNotifications(tx *sqlx.Tx, userID string) { 
-    notificationTypes := []string{"Appointment", "Guidance", "System", "Announcement"}
-    
-    count := rand.Intn(3) + 3 
-    
-    for i := 0; i < count; i++ {
-        title := gofakeit.Sentence(3)
-        message := gofakeit.Sentence(10)
-        randomType := notificationTypes[rand.Intn(len(notificationTypes))]
-        isRead := rand.Intn(2) 
+func insertNotifications(tx *sqlx.Tx, userID string) {
+	notificationTypes := []string{"Appointment", "Guidance", "System", "Announcement"}
 
-        _, err := tx.Exec(`
+	count := rand.Intn(3) + 3
+
+	for i := 0; i < count; i++ {
+		title := gofakeit.Sentence(3)
+		message := gofakeit.Sentence(10)
+		randomType := notificationTypes[rand.Intn(len(notificationTypes))]
+		isRead := rand.Intn(2)
+
+		_, err := tx.Exec(`
             INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
             VALUES (?, ?, ?, ?, ?, NOW())
         `, userID, title, message, randomType, isRead)
-        
-        if err != nil {
-            log.Printf("failed to insert fake notification for %s with type %s: %v", userID, randomType, err)
-        }
-    }
+
+		if err != nil {
+			log.Printf("failed to insert fake notification for %s with type %s: %v", userID, randomType, err)
+		}
+	}
 }
