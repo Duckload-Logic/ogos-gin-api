@@ -5,7 +5,7 @@ type RoleID int
 const (
 	StudentRoleID RoleID = iota + 1
 	CounselorRoleID
-	FrontDeskRoleID
+	SuperAdminRoleID
 )
 
 type Role struct {
@@ -14,7 +14,7 @@ type Role struct {
 }
 
 var Roles = map[RoleID]Role{
-	StudentRoleID:   {ID: StudentRoleID, Name: "STUDENT"},
-	CounselorRoleID: {ID: CounselorRoleID, Name: "COUNSELOR"},
-	FrontDeskRoleID: {ID: FrontDeskRoleID, Name: "FRONTDESK"},
+	StudentRoleID:    {ID: StudentRoleID, Name: "STUDENT"},
+	CounselorRoleID:  {ID: CounselorRoleID, Name: "COUNSELOR"},
+	SuperAdminRoleID: {ID: SuperAdminRoleID, Name: "SUPERADMIN"},
 }
