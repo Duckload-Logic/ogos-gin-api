@@ -3,7 +3,6 @@ package users
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
@@ -55,7 +54,6 @@ func (r *Repository) GetRoleByID(
 	`, database.GetColumns(Role{}))
 	err := r.db.GetContext(ctx, &role, query, roleID)
 	if err != nil {
-		log.Printf("Error fetching role with ID %d: %v\n", roleID, err)
 		return nil, err
 	}
 	return &role, nil

@@ -1,7 +1,6 @@
 package users
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -51,7 +50,6 @@ func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
 
 	resp, err := h.service.GetUserByEmail(c.Request.Context(), userEmail)
 	if err != nil {
-		fmt.Println("Error getting current user:", err)
 		c.JSON(
 			http.StatusInternalServerError,
 			gin.H{"error": "Failed to get current user"},
@@ -85,7 +83,6 @@ func (h *Handler) HandleGetUserByEmail(c *gin.Context) {
 
 	resp, err := h.service.GetUserByEmail(c.Request.Context(), email)
 	if err != nil {
-		fmt.Println("Error getting user by email:", err)
 		c.JSON(
 			http.StatusInternalServerError,
 			gin.H{"error": "Failed to get user by email"},
