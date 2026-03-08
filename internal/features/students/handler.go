@@ -2,8 +2,6 @@ package students
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -21,7 +19,6 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) HandleGetGenders(c *gin.Context) {
 	genders, err := h.service.GetGenders(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting genders:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get genders"})
 		return
 	}
@@ -32,7 +29,6 @@ func (h *Handler) HandleGetGenders(c *gin.Context) {
 func (h *Handler) HandleGetParentalStatusTypes(c *gin.Context) {
 	statuses, err := h.service.GetParentalStatusTypes(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting parental status types:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get parental status types"})
 		return
 	}
@@ -43,7 +39,6 @@ func (h *Handler) HandleGetParentalStatusTypes(c *gin.Context) {
 func (h *Handler) HandleGetEnrollmentReasons(c *gin.Context) {
 	reasons, err := h.service.GetEnrollmentReasons(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting enrollment reasons:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get enrollment reasons"})
 		return
 	}
@@ -54,7 +49,6 @@ func (h *Handler) HandleGetEnrollmentReasons(c *gin.Context) {
 func (h *Handler) HandleGetIncomeRanges(c *gin.Context) {
 	ranges, err := h.service.GetIncomeRanges(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting income ranges:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get income ranges"})
 		return
 	}
@@ -65,7 +59,6 @@ func (h *Handler) HandleGetIncomeRanges(c *gin.Context) {
 func (h *Handler) HandleGetStudentSupportTypes(c *gin.Context) {
 	supportTypes, err := h.service.GetStudentSupportTypes(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting student support types:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student support types"})
 		return
 	}
@@ -76,7 +69,6 @@ func (h *Handler) HandleGetStudentSupportTypes(c *gin.Context) {
 func (h *Handler) HandleGetSiblingSupportTypes(c *gin.Context) {
 	supportTypes, err := h.service.GetSiblingSupportTypes(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting sibling support types:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get sibling support types"})
 		return
 	}
@@ -87,7 +79,6 @@ func (h *Handler) HandleGetSiblingSupportTypes(c *gin.Context) {
 func (h *Handler) HandleGetEducationalLevels(c *gin.Context) {
 	levels, err := h.service.GetEducationalLevels(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting educational levels:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get educational levels"})
 		return
 	}
@@ -98,7 +89,6 @@ func (h *Handler) HandleGetEducationalLevels(c *gin.Context) {
 func (h *Handler) HandleGetCourses(c *gin.Context) {
 	courses, err := h.service.GetCourses(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting courses:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get courses"})
 		return
 	}
@@ -109,7 +99,6 @@ func (h *Handler) HandleGetCourses(c *gin.Context) {
 func (h *Handler) HandleGetCivilStatusTypes(c *gin.Context) {
 	civilStatusTypes, err := h.service.GetCivilStatusTypes(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting civil status types:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get civil status types"})
 		return
 	}
@@ -120,7 +109,6 @@ func (h *Handler) HandleGetCivilStatusTypes(c *gin.Context) {
 func (h *Handler) HandleGetReligions(c *gin.Context) {
 	religions, err := h.service.GetReligions(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting religions:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get religions"})
 		return
 	}
@@ -131,7 +119,6 @@ func (h *Handler) HandleGetReligions(c *gin.Context) {
 func (h *Handler) HandleGetStudentRelationshipTypes(c *gin.Context) {
 	relationshipTypes, err := h.service.GetStudentRelationshipTypes(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting student relationship types:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student relationship types"})
 		return
 	}
@@ -142,7 +129,6 @@ func (h *Handler) HandleGetStudentRelationshipTypes(c *gin.Context) {
 func (h *Handler) HandleGetNatureOfResidenceTypes(c *gin.Context) {
 	types, err := h.service.GetNatureOfResidenceTypes(c.Request.Context())
 	if err != nil {
-		fmt.Println("Error getting nature of residence types:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get nature of residence types"})
 		return
 	}
@@ -173,7 +159,6 @@ func (h *Handler) HandleListStudents(c *gin.Context) {
 
 	resp, err := h.service.ListStudents(c.Request.Context(), req)
 	if err != nil {
-		fmt.Println("Error listing students:", err)
 		c.JSON(
 			http.StatusInternalServerError,
 			gin.H{"error": "Failed to list students"},
@@ -193,7 +178,6 @@ func (h *Handler) HandleGetStudentProfile(c *gin.Context) {
 
 	profile, err := h.service.GetStudentProfile(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student profile:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student profile"})
 		return
 	}
@@ -210,7 +194,6 @@ func (h *Handler) HandleGetStudentBasicInfo(c *gin.Context) {
 
 	basicInfo, err := h.service.GetStudentBasicInfo(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student basic info:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student basic info"})
 		return
 	}
@@ -222,7 +205,6 @@ func (h *Handler) HandleGetIIRDraft(c *gin.Context) {
 	userEmail := c.MustGet("userEmail").(string)
 	draft, err := h.service.GetIIRDraft(c.Request.Context(), userEmail)
 	if err != nil {
-		fmt.Println("Error getting IIR draft:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get IIR draft"})
 		return
 	}
@@ -239,7 +221,6 @@ func (h *Handler) HandleGetStudentIIRByUserID(c *gin.Context) {
 
 	iir, err := h.service.GetStudentIIRByUserEmail(c.Request.Context(), userEmail)
 	if err != nil {
-		fmt.Println("Error getting student IIR by user ID:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student IIR by user ID"})
 		return
 	}
@@ -256,7 +237,6 @@ func (h *Handler) HandleGetStudentIIRByIIRID(c *gin.Context) {
 
 	iir, err := h.service.GetStudentIIR(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student IIR by IIR ID:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student IIR by IIR ID"})
 		return
 	}
@@ -273,7 +253,6 @@ func (h *Handler) HandleGetStudentEnrollmentReasons(c *gin.Context) {
 
 	reasons, err := h.service.GetStudentEnrollmentReasons(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student enrollment reasons:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student enrollment reasons"})
 		return
 	}
@@ -290,7 +269,6 @@ func (h *Handler) HandleGetStudentPersonalInfo(c *gin.Context) {
 
 	personalInfo, err := h.service.GetStudentPersonalInfo(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student personal info:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student personal info"})
 		return
 	}
@@ -307,7 +285,6 @@ func (h *Handler) HandleGetStudentAddresses(c *gin.Context) {
 
 	addresses, err := h.service.GetStudentAddresses(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student addresses:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student addresses"})
 		return
 	}
@@ -324,7 +301,6 @@ func (h *Handler) HandleGetStudentFamilyBackground(c *gin.Context) {
 
 	familyBackground, err := h.service.GetStudentFamilyBackground(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student family background:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student family background"})
 		return
 	}
@@ -341,7 +317,6 @@ func (h *Handler) HandleGetStudentRelatedPersons(c *gin.Context) {
 
 	relatedPersons, err := h.service.GetStudentRelatedPersons(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student related persons:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student related persons"})
 		return
 	}
@@ -358,7 +333,6 @@ func (h *Handler) HandleGetEducationalBackground(c *gin.Context) {
 
 	educationalBackground, err := h.service.GetEducationalBackground(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting educational background:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get educational background"})
 		return
 	}
@@ -375,7 +349,6 @@ func (h *Handler) HandleGetStudentFinancialInfo(c *gin.Context) {
 
 	financialInfo, err := h.service.GetStudentFinancialInfo(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student financial info:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student financial info"})
 		return
 	}
@@ -392,7 +365,6 @@ func (h *Handler) HandleGetStudentHealthRecord(c *gin.Context) {
 
 	healthRecord, err := h.service.GetStudentHealthRecord(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student health record:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student health record"})
 		return
 	}
@@ -409,7 +381,6 @@ func (h *Handler) HandleGetStudentConsultations(c *gin.Context) {
 
 	consultations, err := h.service.GetStudentConsultations(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student consultations:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student consultations"})
 		return
 	}
@@ -426,7 +397,6 @@ func (h *Handler) HandleGetStudentActivities(c *gin.Context) {
 
 	activities, err := h.service.GetStudentActivities(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student activities:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student activities"})
 		return
 	}
@@ -443,7 +413,6 @@ func (h *Handler) HandleGetStudentSubjectPreferences(c *gin.Context) {
 
 	subjectPreferences, err := h.service.GetStudentSubjectPreferences(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student subject preferences:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student subject preferences"})
 		return
 	}
@@ -460,7 +429,6 @@ func (h *Handler) HandleGetStudentHobbies(c *gin.Context) {
 
 	hobbies, err := h.service.GetStudentHobbies(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student hobbies:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student hobbies"})
 		return
 	}
@@ -477,7 +445,6 @@ func (h *Handler) HandleGetStudentTestResults(c *gin.Context) {
 
 	testResults, err := h.service.GetStudentTestResults(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student test results:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student test results"})
 		return
 	}
@@ -494,7 +461,6 @@ func (h *Handler) HandleGetStudentSignificantNotes(c *gin.Context) {
 
 	significantNotes, err := h.service.GetStudentSignificantNotes(c.Request.Context(), iirID)
 	if err != nil {
-		fmt.Println("Error getting student significant notes:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student significant notes"})
 		return
 	}
@@ -510,11 +476,8 @@ func (h *Handler) HandleSaveIIRDraft(c *gin.Context) {
 		return
 	}
 
-	log.Printf("Received IIR draft save request for userEmail %s: %+v\n", userEmail, req)
-
 	draftID, err := h.service.SaveIIRDraft(c.Request.Context(), userEmail, req)
 	if err != nil {
-		fmt.Println("Error saving IIR draft:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save IIR draft"})
 		return
 	}
@@ -532,7 +495,6 @@ func (h *Handler) HandleSubmitIIR(c *gin.Context) {
 
 	iirID, err := h.service.SubmitStudentIIR(c.Request.Context(), userEmail, req)
 	if err != nil {
-		fmt.Println("Error submitting student IIR:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to submit student IIR"})
 		return
 	}
