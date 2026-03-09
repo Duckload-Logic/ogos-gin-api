@@ -40,6 +40,21 @@ definitions:
       yearLevel:
         type: integer
     type: object
+  external.OGOSStudentPersonalInfoDTO:
+    properties:
+      dateOfBirth:
+        type: string
+      gender:
+        $ref: '#/definitions/students.Gender'
+      heightFt:
+        type: number
+      placeOfBirth:
+        type: string
+      studentNumber:
+        type: string
+      weightKg:
+        type: number
+    type: object
   locations.Barangay:
     properties:
       cityId:
@@ -102,6 +117,13 @@ definitions:
     properties:
       code:
         type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  students.Gender:
+    properties:
       id:
         type: integer
       name:
@@ -197,7 +219,7 @@ paths:
       summary: Get student by email
       tags:
       - External Students
-  /students/external/by-student-number/{studentNumber}:
+  /students/external/personal-info/{studentNumber}:
     get:
       consumes:
       - application/json
@@ -214,7 +236,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/external.OGOSStudentDTO'
+            $ref: '#/definitions/external.OGOSStudentPersonalInfoDTO'
         "400":
           description: Bad Request
           schema:

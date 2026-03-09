@@ -146,7 +146,7 @@ const docTemplateexternal = `{
                 }
             }
         },
-        "/students/external/by-student-number/{studentNumber}": {
+        "/students/external/personal-info/{studentNumber}": {
             "get": {
                 "security": [
                     {
@@ -177,7 +177,7 @@ const docTemplateexternal = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/external.OGOSStudentDTO"
+                            "$ref": "#/definitions/external.OGOSStudentPersonalInfoDTO"
                         }
                     },
                     "400": {
@@ -270,6 +270,29 @@ const docTemplateexternal = `{
                 },
                 "yearLevel": {
                     "type": "integer"
+                }
+            }
+        },
+        "external.OGOSStudentPersonalInfoDTO": {
+            "type": "object",
+            "properties": {
+                "dateOfBirth": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/students.Gender"
+                },
+                "heightFt": {
+                    "type": "number"
+                },
+                "placeOfBirth": {
+                    "type": "string"
+                },
+                "studentNumber": {
+                    "type": "string"
+                },
+                "weightKg": {
+                    "type": "number"
                 }
             }
         },
@@ -368,6 +391,17 @@ const docTemplateexternal = `{
                 "code": {
                     "type": "string"
                 },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "students.Gender": {
+            "type": "object",
+            "properties": {
                 "id": {
                     "type": "integer"
                 },
