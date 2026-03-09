@@ -21,8 +21,8 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "github.com/olazo-johnalbert/duckload-api/docs"
-	_ "github.com/olazo-johnalbert/duckload-api/docs/external"
+	docs "github.com/olazo-johnalbert/duckload-api/docs"
+	externalDocs "github.com/olazo-johnalbert/duckload-api/docs/external"
 )
 
 func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
@@ -48,12 +48,18 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
 
 	apiV1Routes := g.Group("/api/v1")
 
-	apiV1Routes.GET("/docs/internal/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
-		ginSwagger.InstanceName("internal")),
-	)
-	apiV1Routes.GET("/docs/external/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
-		ginSwagger.InstanceName("external")),
-	)
+	apiV1Routes.GET("/docs/internal/*any", func(c *gin.Context) {
+		docs.SwaggerInfo.Host = c.Request.Host
+		ginSwagger.WrapHandler(swaggerFiles.Handler,
+			ginSwagger.InstanceName("internal"),
+		)(c)
+	})
+	apiV1Routes.GET("/docs/external/*any", func(c *gin.Context) {
+		externalDocs.SwaggerInfoexternal.Host = c.Request.Host
+		ginSwagger.WrapHandler(swaggerFiles.Handler,
+			ginSwagger.InstanceName("external"),
+		)(c)
+	})
 
 	// ==============================
 	// |                            |
