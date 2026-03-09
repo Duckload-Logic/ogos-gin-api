@@ -6,6 +6,7 @@ on:
     paths:
       - "cmd/api/**"
       - "internal/features/**"
+      - ".github/workflows/swagger.yml"
 
 jobs:
   swagger:
