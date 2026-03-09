@@ -15,6 +15,48 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// HandleListStudents godoc
+// @Summary List students
+// @Description Get a paginated list of students with optional filters
+// @Tags External Students
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param search query string false "Search term for student name or number"
+// @Param course_id query int false "Filter by course ID"
+// @Param gender_id query int false "Filter by gender ID"
+// @Param year_level query int false "Filter by year level"
+// @Param order_by query string false "Order by field (first_name, last_name, student_number, created_at, updated_at, year_level, course_id)"
+// @Param page query int false "Page number for pagination"
+// @Param page_size query int false "Number of items per page for pagination"
+// @Success 200 {object} OGOSListStudentsResponse
+// @Failure 400 {object} map[string]string "Bad Request"
+// @Failure 500 {object} map[string]string "Internal Server Error"
+// @Router /students/external [get]
+func (h *Handler) ListStudents(c *gin.Context) {
+	var req OGOSListStudentsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid query parameters"})
+		return
+	}
+
+	students, total, err := h.service.ListStudents(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
+		return
+	}
+
+	response := OGOSListStudentsResponse{
+		Students:   students,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		TotalPages: (total + req.PageSize - 1) / req.PageSize,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // HandleGetStudentByEmail godoc
 // @Summary Get student by email
 // @Description Get student information by email address

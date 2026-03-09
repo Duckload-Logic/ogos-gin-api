@@ -17,6 +17,34 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
+func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest) ([]OGOSStudentDTO, int, error) {
+	studentList, total, err := s.repo.ListStudents(ctx, req)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var studentsDTO []OGOSStudentDTO
+	for _, student := range studentList {
+		studentsDTO = append(studentsDTO, OGOSStudentDTO{
+			StudentNumber: student.StudentNumber,
+			FirstName:     student.FirstName,
+			MiddleName:    structs.FromSqlNull(student.MiddleName),
+			LastName:      student.LastName,
+			Email:         student.Email,
+			MobileNumber:  student.MobileNumber,
+			Course: students.Course{
+				ID:         student.CourseID,
+				Code:       student.CourseCode,
+				CourseName: student.CourseName,
+			},
+			YearLevel: student.YearLevel,
+			Section:   student.Section,
+		})
+	}
+
+	return studentsDTO, total, nil
+}
+
 func (s *Service) GetStudentByEmail(ctx context.Context, email string) (*OGOSStudentDTO, error) {
 	student, err := s.repo.GetStudentByEmail(ctx, email)
 	if err != nil {
