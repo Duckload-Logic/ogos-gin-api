@@ -57,11 +57,11 @@ func (h *Handler) HandleGetStudentByEmail(c *gin.Context) {
 // @Produce json
 // @Security ApiKeyAuth
 // @Param studentNumber path string true "Student number of the student"
-// @Success 200 {object} OGOSStudentDTO
+// @Success 200 {object} OGOSStudentPersonalInfoDTO
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
-// @Router /students/external/by-student-number/{studentNumber} [get]
+// @Router /students/external/personal-info/{studentNumber} [get]
 func (h *Handler) HandleGetPersonalInfoByStudentNumber(c *gin.Context) {
 	studentNumber := c.Param("studentNumber")
 	if studentNumber == "" {
