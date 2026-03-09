@@ -40,18 +40,10 @@ func (h *Handler) ListStudents(c *gin.Context) {
 		return
 	}
 
-	students, total, err := h.service.ListStudents(c.Request.Context(), req)
+	response, err := h.service.ListStudents(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
 		return
-	}
-
-	response := OGOSListStudentsResponse{
-		Students:   students,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: (total + req.PageSize - 1) / req.PageSize,
 	}
 
 	c.JSON(http.StatusOK, response)

@@ -17,7 +17,7 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest) ([]OGOSStudentDTO, int, error) {
+func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest) (OGOSListStudentsResponse, error) {
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -36,7 +36,7 @@ func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest)
 
 	studentList, total, err := s.repo.ListStudents(ctx, req)
 	if err != nil {
-		return nil, 0, err
+		return OGOSListStudentsResponse{}, err
 	}
 
 	var studentsDTO []OGOSStudentDTO
@@ -58,7 +58,15 @@ func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest)
 		})
 	}
 
-	return studentsDTO, total, nil
+	listResponse := OGOSListStudentsResponse{
+		Students:   studentsDTO,
+		Total:      total,
+		Page:       req.Page,
+		PageSize:   req.PageSize,
+		TotalPages: (total + req.PageSize - 1) / req.PageSize,
+	}
+
+	return listResponse, nil
 }
 
 func (s *Service) GetStudentByEmail(ctx context.Context, email string) (*OGOSStudentDTO, error) {
