@@ -26,14 +26,6 @@ jobs:
       - name: Install swag
         run: go install github.com/swaggo/swag/cmd/swag@latest
 
-      - name: Generate internal docs
-        run: >-
-          swag init -g main.go
-          --parseDependency --parseInternal
-          --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/slips,./internal/features/students,./internal/features/locations,./internal/features/logs,./internal/features/notifications,./internal/features/analytics,./internal/features/apikeys
-          --output ./docs
-          --instanceName internal
-
       - name: Generate external docs
         run: >-
           swag init -g main.go
