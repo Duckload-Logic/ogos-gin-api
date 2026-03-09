@@ -18,6 +18,22 @@ func NewService(repo *Repository) *Service {
 }
 
 func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest) ([]OGOSStudentDTO, int, error) {
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+
+	if req.PageSize > 50 {
+		req.PageSize = 50
+	}
+
+	if req.OrderBy == "" {
+		req.OrderBy = "created_at"
+	}
+
 	studentList, total, err := s.repo.ListStudents(ctx, req)
 	if err != nil {
 		return nil, 0, err

@@ -1,5 +1,20 @@
 basePath: /api/v1
 definitions:
+  external.OGOSListStudentsResponse:
+    properties:
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      students:
+        items:
+          $ref: '#/definitions/external.OGOSStudentDTO'
+        type: array
+      total:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
   external.OGOSStudentAddressDTO:
     properties:
       addressType:
@@ -129,12 +144,70 @@ definitions:
       name:
         type: string
     type: object
-host: localhost:8080
 info:
   contact: {}
   title: DuckLoad API
   version: "1.0"
 paths:
+  /students/external:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of students with optional filters
+      parameters:
+      - description: Search term for student name or number
+        in: query
+        name: search
+        type: string
+      - description: Filter by course ID
+        in: query
+        name: course_id
+        type: integer
+      - description: Filter by gender ID
+        in: query
+        name: gender_id
+        type: integer
+      - description: Filter by year level
+        in: query
+        name: year_level
+        type: integer
+      - description: Order by field (first_name, last_name, student_number, created_at,
+          updated_at, year_level, course_id)
+        in: query
+        name: order_by
+        type: string
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page for pagination
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/external.OGOSListStudentsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: List students
+      tags:
+      - External Students
   /students/external/addresses/{studentNumber}:
     get:
       consumes:
