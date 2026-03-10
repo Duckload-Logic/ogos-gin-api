@@ -41,6 +41,11 @@ migrate-up:
 # Desc: To undo database migrations
 # Usage: make migrate-down
 migrate-down:
+	migrate -path migrations -database "$(DB_URL)" down
+
+# Desc: To undo all database migrations
+# Usage: make migrate-reset
+migrate-reset:
 	migrate -path migrations -database "$(DB_URL)" drop -f
 
 # Desc: To apply seed data to database
@@ -49,7 +54,7 @@ seed-up:
 	migrate -path seeds -database \
 	"$(DB_URL)$(if $(filter true,$(DB_TLS)),&,?)x-migrations-table=seed_migrations" up
 
-refresh: migrate-down migrate-up seed-up locations
+refresh: migrate-reset migrate-up seed-up locations
 
 # Desc: To generate swagger docs
 # Usage: make swagger-internal
