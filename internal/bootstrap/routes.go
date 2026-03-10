@@ -29,12 +29,6 @@ import (
 func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engine {
 	g := gin.Default()
 
-	if cfg.IsProduction {
-		gin.SetMode(gin.ReleaseMode)
-	} else {
-		gin.SetMode(gin.DebugMode)
-	}
-
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{
 		"http://localhost:8080",
