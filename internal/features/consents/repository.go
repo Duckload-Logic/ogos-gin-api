@@ -3,7 +3,6 @@ package consents
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
@@ -29,48 +28,46 @@ func (r *Repository) GetLatestDocument(ctx context.Context, docType string) (*Le
 		database.GetColumns(LegalDocument{}),
 	)
 
-	log.Printf("Query: %s, DocType: %s", query, docType)
-
 	err := r.db.GetContext(ctx, &doc, query, docType)
 	return &doc, err
 }
 
 // HasUserAccepted checks if the specific user has already signed this specific document ID
-func (r *Repository) HasUserAccepted(ctx context.Context, email string, docID int) (bool, error) {
+func (r *Repository) HasUserAccepted(ctx context.Context, userID int, docID int) (bool, error) {
 	var exists bool
 	query := `
 		SELECT EXISTS(
 			SELECT 1
 			FROM user_consents
-			WHERE user_email = ? AND
+			WHERE user_id = ? AND
 			document_id = ?
 		)`
 
-	err := r.db.GetContext(ctx, &exists, query, email, docID)
+	err := r.db.GetContext(ctx, &exists, query, userID, docID)
 	return exists, err
 }
 
 // SaveConsent records the "State" of the user's agreement
-func (r *Repository) SaveConsent(ctx context.Context, email string, docID int, ip string) error {
+func (r *Repository) SaveConsent(ctx context.Context, userID int, docID int, ip string) error {
 	query := `
-		INSERT INTO user_consents (user_email, document_id, ip_address)
+		INSERT INTO user_consents (user_id, document_id, ip_address)
 		VALUES (?, ?, ?)
 		ON DUPLICATE KEY UPDATE accepted_at = CURRENT_TIMESTAMP`
 
-	_, err := r.db.ExecContext(ctx, query, email, docID, ip)
+	_, err := r.db.ExecContext(ctx, query, userID, docID, ip)
 	return err
 }
 
 // ListUserConsentHistory for an admin "Compliance Dashboard"
-func (r *Repository) ListUserConsentHistory(ctx context.Context, email string) ([]UserConsent, error) {
+func (r *Repository) ListUserConsentHistory(ctx context.Context, userID int) ([]UserConsent, error) {
 	var history []UserConsent
 	query := fmt.Sprintf(`
 		SELECT %s FROM user_consents uc
 		JOIN legal_documents ld ON uc.document_id = ld.id
-		WHERE uc.user_email = ? ORDER BY uc.accepted_at DESC
+		WHERE uc.user_id = ? ORDER BY uc.accepted_at DESC
 	`, database.GetColumns(UserConsent{}))
 
-	err := r.db.SelectContext(ctx, &history, query, email)
+	err := r.db.SelectContext(ctx, &history, query, userID)
 	return history, err
 }
 

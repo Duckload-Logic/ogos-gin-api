@@ -33,28 +33,30 @@ func NewService(repo *Repository) *Service {
 //	})
 func (s *Service) Record(ctx context.Context, entry LogEntry) {
 	sysLog := &SystemLog{
-		Category:    entry.Category,
-		Action:      entry.Action,
-		Message:     entry.Message,
-		UserEmail:   sql.NullString{String: entry.UserEmail, Valid: entry.UserEmail != ""},
-		TargetEmail: sql.NullString{String: entry.TargetEmail, Valid: entry.TargetEmail != ""},
-		IPAddress:   sql.NullString{String: entry.IPAddress, Valid: entry.IPAddress != ""},
-		UserAgent:   sql.NullString{String: entry.UserAgent, Valid: entry.UserAgent != ""},
-		Metadata:    toNullString(entry.Metadata),
+		Category:  entry.Category,
+		Action:    entry.Action,
+		Message:   entry.Message,
+		UserID:    sql.NullInt64{Int64: int64(entry.UserID), Valid: entry.UserID != 0},
+		UserEmail: sql.NullString{String: entry.UserEmail, Valid: entry.UserEmail != ""},
+		IPAddress: sql.NullString{String: entry.IPAddress, Valid: entry.IPAddress != ""},
+		UserAgent: sql.NullString{String: entry.UserAgent, Valid: entry.UserAgent != ""},
+		Metadata:  toNullString(entry.Metadata),
 	}
 
 	if err := s.repo.Record(ctx, sysLog); err != nil {
 		log.Printf("Failed to record system log: %v", err)
+		return
 	}
 }
 
 // RecordSecurity is a convenience method that satisfies the middleware.SecurityLogger interface.
 // It records a security-category log entry with the given fields.
-func (s *Service) RecordSecurity(ctx context.Context, action, message, userEmail, ipAddress, userAgent string) {
+func (s *Service) RecordSecurity(ctx context.Context, userEmail, action, message, ipAddress, userAgent string, userID int) {
 	s.Record(ctx, LogEntry{
 		Category:  CategorySecurity,
 		Action:    action,
 		Message:   message,
+		UserID:    userID,
 		UserEmail: userEmail,
 		IPAddress: ipAddress,
 		UserAgent: userAgent,
@@ -116,15 +118,15 @@ func (s *Service) mapLogsToDTOs(logs []SystemLog) []SystemLogDTO {
 
 	for _, l := range logs {
 		dto := SystemLogDTO{
-			ID:          l.ID,
-			Category:    l.Category,
-			Action:      l.Action,
-			Message:     l.Message,
-			UserEmail:   structs.FromSqlNull(l.UserEmail),
-			TargetEmail: structs.FromSqlNull(l.TargetEmail),
-			IPAddress:   structs.FromSqlNull(l.IPAddress),
-			UserAgent:   structs.FromSqlNull(l.UserAgent),
-			CreatedAt:   l.CreatedAt,
+			ID:        l.ID,
+			Category:  l.Category,
+			Action:    l.Action,
+			Message:   l.Message,
+			UserID:    structs.FromSqlNullInt64(l.UserID),
+			UserEmail: structs.FromSqlNull(l.UserEmail),
+			IPAddress: structs.FromSqlNull(l.IPAddress),
+			UserAgent: structs.FromSqlNull(l.UserAgent),
+			CreatedAt: l.CreatedAt,
 		}
 
 		if l.Metadata.Valid {

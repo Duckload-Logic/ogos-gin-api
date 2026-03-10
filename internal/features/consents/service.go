@@ -34,20 +34,21 @@ func (s *Service) GetLatestDocument(ctx context.Context, docType string) (*Legal
 	return s.repo.GetLatestDocument(ctx, dbDocType)
 }
 
-func (s *Service) HasUserAccepted(ctx context.Context, email string, docID int) (bool, error) {
-	return s.repo.HasUserAccepted(ctx, email, docID)
+func (s *Service) HasUserAccepted(ctx context.Context, userID int, docID int) (bool, error) {
+	return s.repo.HasUserAccepted(ctx, userID, docID)
 }
 
-func (s *Service) SaveConsent(ctx context.Context, email string, docID int) error {
-	_, ipAddress, userAgent := audit.ExtractMeta(ctx)
+func (s *Service) SaveConsent(ctx context.Context, userID int, docID int) error {
+	_, ipAddress, userAgent, userEmail := audit.ExtractMeta(ctx)
 
-	err := s.repo.SaveConsent(ctx, email, docID, ipAddress)
+	err := s.repo.SaveConsent(ctx, userID, docID, ipAddress)
 	if err == nil {
 		s.logService.Record(ctx, logs.LogEntry{
 			Category:  logs.CategoryConsent,
 			Action:    logs.ActionTermsAccepted,
-			Message:   "User accepted legal document",
-			UserEmail: email,
+			Message:   fmt.Sprintf("%s accepted legal document", userEmail),
+			UserID:    userID,
+			UserEmail: userEmail,
 			IPAddress: ipAddress,
 			UserAgent: userAgent,
 		})
@@ -57,8 +58,8 @@ func (s *Service) SaveConsent(ctx context.Context, email string, docID int) erro
 }
 
 // ListUserConsentHistory (Optional) for an admin "Compliance Dashboard"
-func (s *Service) ListUserConsentHistory(ctx context.Context, email string) ([]UserConsent, error) {
-	return s.repo.ListUserConsentHistory(ctx, email)
+func (s *Service) ListUserConsentHistory(ctx context.Context, userID int) ([]UserConsent, error) {
+	return s.repo.ListUserConsentHistory(ctx, userID)
 }
 
 func (s *Service) UploadNewDocument(ctx context.Context, docType string, file io.ReadSeeker, contentType string) error {

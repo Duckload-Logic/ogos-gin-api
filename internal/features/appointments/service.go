@@ -27,9 +27,9 @@ func (s *Service) GetConcernCategories(ctx context.Context) ([]AppointmentCatego
 	return s.repo.GetCategories(ctx)
 }
 
-func (s *Service) CreateAppointment(ctx context.Context, userEmail string, req AppointmentDTO) (*Appointment, error) {
+func (s *Service) CreateAppointment(ctx context.Context, userID int, req AppointmentDTO) (*Appointment, error) {
 	appt := &Appointment{
-		UserEmail:             userEmail,
+		UserID:                userID,
 		Reason:                structs.ToSqlNull(req.Reason),
 		WhenDate:              req.WhenDate,
 		TimeSlotID:            req.TimeSlot.ID,
@@ -41,11 +41,12 @@ func (s *Service) CreateAppointment(ctx context.Context, userEmail string, req A
 		return nil, err
 	}
 
-	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
 	s.logService.Record(ctx, logs.LogEntry{
 		Category:  logs.CategoryAudit,
 		Action:    logs.ActionAppointmentCreated,
-		Message:   fmt.Sprintf("Appointment #%d created by %s", appt.ID, userEmail),
+		Message:   fmt.Sprintf("Appointment #%d created by user %s", appt.ID, auditUserEmail),
+		UserID:    auditUserID,
 		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,
 		UserAgent: userAgent,
@@ -115,11 +116,11 @@ func (s *Service) ListAppointments(ctx context.Context, req ListAppointmentsRequ
 	dtos := make([]AppointmentDTO, 0, len(appts))
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
+			ID:         appt.UserID,
 			Role:       users.Role{ID: 0, Name: ""},
 			FirstName:  appt.UserFirstName,
 			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
 			LastName:   appt.UserLastName,
-			Email:      appt.UserEmail,
 		}
 		dtos = append(dtos, AppointmentDTO{
 			ID:         appt.ID,
@@ -159,7 +160,7 @@ func (s *Service) ListAppointments(ctx context.Context, req ListAppointmentsRequ
 	}, nil
 }
 
-func (s *Service) GetAppointmentsByUserEmail(ctx context.Context, userEmail string, req ListAppointmentsRequest) (*ListAppointmentsDTO, error) {
+func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req ListAppointmentsRequest) (*ListAppointmentsDTO, error) {
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -172,9 +173,9 @@ func (s *Service) GetAppointmentsByUserEmail(ctx context.Context, userEmail stri
 		req.OrderBy = "created_at"
 	}
 
-	appts, err := s.repo.ListByUserEmail(
+	appts, err := s.repo.ListByUserID(
 		ctx,
-		userEmail,
+		userID,
 		req.GetOffset(),
 		req.PageSize,
 		req.OrderBy,
@@ -190,10 +191,10 @@ func (s *Service) GetAppointmentsByUserEmail(ctx context.Context, userEmail stri
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
 			Role:       users.Role{ID: 0, Name: ""},
+			ID:         appt.UserID,
 			FirstName:  appt.UserFirstName,
 			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
 			LastName:   appt.UserLastName,
-			Email:      appt.UserEmail,
 		}
 		dtos = append(dtos, AppointmentDTO{
 			ID:         appt.ID,
@@ -219,7 +220,7 @@ func (s *Service) GetAppointmentsByUserEmail(ctx context.Context, userEmail stri
 		})
 	}
 
-	total, err := s.repo.GetTotalAppointmentsCount(ctx, req.StatusID, req.StartDate, req.EndDate, &userEmail)
+	total, err := s.repo.GetTotalAppointmentsCount(ctx, req.StatusID, req.StartDate, req.EndDate, &userID)
 	if err != nil {
 		return nil, err
 	}
@@ -233,8 +234,8 @@ func (s *Service) GetAppointmentsByUserEmail(ctx context.Context, userEmail stri
 	}, nil
 }
 
-func (s *Service) GetAppointmentStats(ctx context.Context, req ListAppointmentsRequest, userEmail *string) ([]StatusCount, error) {
-	return s.repo.GetAppointmentStats(ctx, req.StatusID, req.StartDate, req.EndDate, userEmail)
+func (s *Service) GetAppointmentStats(ctx context.Context, req ListAppointmentsRequest, userID *int) ([]StatusCount, error) {
+	return s.repo.GetAppointmentStats(ctx, req.StatusID, req.StartDate, req.EndDate, userID)
 }
 
 func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) ([]AvailableTimeSlotView, error) {
@@ -268,11 +269,12 @@ func (s *Service) UpdateAppointment(ctx context.Context, id int, req Appointment
 		return err
 	}
 
-	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
 	s.logService.Record(ctx, logs.LogEntry{
 		Category:  logs.CategoryAudit,
 		Action:    logs.ActionAppointmentUpdated,
 		Message:   fmt.Sprintf("Appointment #%d updated by %s", id, auditUserEmail),
+		UserID:    auditUserID,
 		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,
 		UserAgent: userAgent,
@@ -306,11 +308,12 @@ func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req Appoi
 		return err
 	}
 
-	auditUserEmail, ipAddress, userAgent := audit.ExtractMeta(ctx)
+	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
 	s.logService.Record(ctx, logs.LogEntry{
 		Category:  logs.CategoryAudit,
 		Action:    logs.ActionAppointmentUpdated,
 		Message:   fmt.Sprintf("Appointment #%d status changed to '%s' by %s", id, req.Status.Name, auditUserEmail),
+		UserID:    auditUserID,
 		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,
 		UserAgent: userAgent,

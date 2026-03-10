@@ -192,7 +192,7 @@ func (r *Repository) GetTotalStudentsCount(
 ) (int, error) {
 	// 1. Base query
 	sql := `SELECT COUNT(iir.id) FROM iir_records iir
-            JOIN users u ON iir.user_email = u.email
+            JOIN users u ON iir.user_id = u.id
             JOIN student_personal_info spi ON iir.id = spi.iir_id
             WHERE iir.is_submitted = TRUE`
 
@@ -240,7 +240,7 @@ func (r *Repository) ListStudents(
 	query := `
         SELECT
 			iir.id as iir_id,
-			usr.email as user_email,
+			usr.id as user_id,
 			usr.first_name,
 			usr.middle_name,
 			usr.last_name,
@@ -251,7 +251,7 @@ func (r *Repository) ListStudents(
 			spi.section,
 			spi.year_level
 		FROM iir_records iir
-		JOIN users usr ON iir.user_email = usr.email
+		JOIN users usr ON iir.user_id = usr.id
 		JOIN student_personal_info spi ON iir.id = spi.iir_id
 		WHERE iir.is_submitted = TRUE
 		AND (usr.first_name LIKE ? OR usr.middle_name LIKE ? OR usr.last_name LIKE ? OR spi.student_number LIKE ? OR usr.email LIKE ?)
@@ -309,7 +309,7 @@ func (r *Repository) ListStudents(
 		var student StudentProfileView
 		if err := rows.Scan(
 			&student.IIRID,
-			&student.UserEmail,
+			&student.UserID,
 			&student.FirstName,
 			&student.MiddleName,
 			&student.LastName,
@@ -334,14 +334,15 @@ func (r *Repository) ListStudents(
 
 func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentBasicInfoView, error) {
 	query := `
-		SELECT u.email, u.first_name, u.middle_name, u.last_name
+		SELECT u.id, u.email, u.first_name, u.middle_name, u.last_name
 		FROM users u
-		JOIN iir_records iir ON u.email = iir.user_email
+		JOIN iir_records iir ON u.id = iir.user_id
 		WHERE iir.id = ?
 	`
 
 	var info StudentBasicInfoView
 	err := r.db.QueryRowContext(ctx, query, iirID).Scan(
+		&info.UserID,
 		&info.Email,
 		&info.FirstName,
 		&info.MiddleName,
@@ -354,13 +355,13 @@ func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID int) (*Stude
 	return &info, nil
 }
 
-func (r *Repository) GetIIRDraftByUserEmail(ctx context.Context, userEmail string) (*IIRDraft, error) {
+func (r *Repository) GetIIRDraftByUserID(ctx context.Context, userID int) (*IIRDraft, error) {
 	query := fmt.Sprintf(`
-		SELECT %s FROM iir_drafts WHERE user_email = ? LIMIT 1
+		SELECT %s FROM iir_drafts WHERE user_id = ? LIMIT 1
 	`, database.GetColumns(IIRDraft{}))
 
 	var draft IIRDraft
-	err := r.db.GetContext(ctx, &draft, query, userEmail)
+	err := r.db.GetContext(ctx, &draft, query, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -371,13 +372,13 @@ func (r *Repository) GetIIRDraftByUserEmail(ctx context.Context, userEmail strin
 	return &draft, nil
 }
 
-func (r *Repository) GetStudentIIRByUserEmail(ctx context.Context, userEmail string) (*IIRRecord, error) {
+func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
 	query := fmt.Sprintf(`
-		SELECT %s FROM iir_records WHERE user_email = ? LIMIT 1
+		SELECT %s FROM iir_records WHERE user_id = ? LIMIT 1
 	`, database.GetColumns(IIRRecord{}))
 
 	var iir IIRRecord
-	err := r.db.GetContext(ctx, &iir, query, userEmail)
+	err := r.db.GetContext(ctx, &iir, query, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil

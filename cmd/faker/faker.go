@@ -43,7 +43,7 @@ var (
 	appointmentStatusIDs        []int
 	appointmentStatusByName     map[string]int
 	admissionSlipStatusIDs      []int
-	admissioNSlipStatusesByName map[string]int
+	admissionSlipStatusesByName map[string]int
 	appointmentCategoryIDs      []int
 	admissionSlipCategoryIDs    []int
 	appointmentSlotMu           sync.Mutex
@@ -309,7 +309,7 @@ func loadLookups() {
 		appointmentStatusByName[strings.ToLower(name)] = id
 	}
 
-	admissioNSlipStatusesByName = make(map[string]int)
+	admissionSlipStatusesByName = make(map[string]int)
 	rows, err = db.Query("SELECT id, name FROM statuses WHERE status_type IN ('slip', 'both')")
 	if err != nil {
 		log.Fatal(err)
@@ -323,7 +323,7 @@ func loadLookups() {
 		}
 
 		admissionSlipStatusIDs = append(admissionSlipStatusIDs, id)
-		admissioNSlipStatusesByName[strings.ToLower(name)] = id
+		admissionSlipStatusesByName[strings.ToLower(name)] = id
 	}
 
 	// appointment categories
@@ -380,14 +380,13 @@ func clearStudentData() {
 		"iir_records",
 		"appointments",
 		"counselor_profiles",
+		"notifications", // added because notifications now reference user_id
 		"users",
 	}
 
 	// disable FK checks temporarily
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	for _, tbl := range tables {
-		// delete only rows that belong to students (role_id=1) or their dependents
-		// we'll just truncate for simplicity, but you can refine if you need to keep seeded counselor
 		if tbl == "users" {
 			db.Exec("DELETE FROM users WHERE role_id = 1")
 			db.Exec("DELETE FROM users WHERE role_id = 3") // also reset super admin for re-seed
@@ -410,7 +409,7 @@ func createSuperAdmin() {
 
 	email := "superadmin@university.edu"
 
-	_, err = tx.Exec(`
+	res, err := tx.Exec(`
 		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
 		VALUES (3, 'Super', '', 'Admin', ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
@@ -423,6 +422,8 @@ func createSuperAdmin() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	userID, _ := res.LastInsertId()
+	_ = userID // not needed further
 
 	tx.Commit()
 	fmt.Println("Created super admin: Super Admin (superadmin@university.edu / SuperAdmin@123)")
@@ -455,16 +456,16 @@ func createCounselor() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_ = res
+	userID, _ := res.LastInsertId()
 
 	_, err = tx.Exec(`
-		INSERT INTO counselor_profiles (user_email, license_number, specialization, is_available)
+		INSERT INTO counselor_profiles (user_id, license_number, specialization, is_available)
 		VALUES (?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			license_number = VALUES(license_number),
 			specialization = VALUES(specialization),
 			is_available = VALUES(is_available)
-	`, email, gofakeit.Regex("[A-Z]{3}-[0-9]{6}"), gofakeit.JobTitle(), true)
+	`, userID, gofakeit.Regex("[A-Z]{3}-[0-9]{6}"), gofakeit.JobTitle(), true)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -489,20 +490,21 @@ func createStudent(index int) {
 	studentEmail := fmt.Sprintf("student%d@university.edu", index+1) // guarantee unique
 
 	// 1. users
-	_, err = tx.Exec(`
+	res, err := tx.Exec(`
 		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
 		VALUES (1, ?, ?, ?, ?, ?, ?)
 	`, gofakeit.FirstName(), randomMiddleName(), gofakeit.LastName(), studentEmail, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
 	}
+	userID, _ := res.LastInsertId()
 
-	insertNotifications(tx, studentEmail)
+	insertNotifications(tx, int(userID))
 
 	if rand.Float32() < 0.7 {
 		res, err := tx.Exec(`
-			INSERT INTO iir_records (user_email, is_submitted) VALUES (?, ?)
-		`, studentEmail, true)
+			INSERT INTO iir_records (user_id, is_submitted) VALUES (?, ?)
+		`, userID, true)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -600,13 +602,13 @@ func createStudent(index int) {
 
 		// 21. admission slip (30% chance)
 		if rand.Float32() < 0.3 {
-			insertAdmissionSlip(tx, int(iirID))
+			insertAdmissionSlip(tx, int(userID), int(iirID))
 		}
 
 		// 22. appointment (30% chance)
 		if rand.Float32() < 0.3 {
-			for i := 0; i < rand.Intn(5)+1; i++ { // up to 15 appointments per student
-				insertAppointment(tx, studentEmail)
+			for i := 0; i < rand.Intn(5)+1; i++ { // up to 5 appointments per student
+				insertAppointment(tx, int(userID))
 			}
 		}
 
@@ -1300,10 +1302,10 @@ func insertHobbies(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertAdmissionSlip(tx *sqlx.Tx, iirID int) {
+func insertAdmissionSlip(tx *sqlx.Tx, userID, iirID int) {
 	// More realistic status distribution (pending less likely for historical data)
 	statusName := chooseAdmissionSlipStatus()
-	statusID, ok := admissioNSlipStatusesByName[statusName]
+	statusID, ok := admissionSlipStatusesByName[statusName]
 	if !ok {
 		log.Printf("Admission slip status '%s' not found in lookup, defaulting to random status", statusName)
 		statusID = randomChoice(admissionSlipStatusIDs).(int)
@@ -1353,21 +1355,14 @@ func insertAdmissionSlip(tx *sqlx.Tx, iirID int) {
 	f.WriteString(content)
 	f.Close()
 
-	// Find user_email from iir_id
-	var userEmail string
-	err := tx.Get(&userEmail, "SELECT user_email FROM iir_records WHERE id = ?", iirID)
-	if err != nil {
-		log.Fatal("Could not find user_email for iir_id", iirID, err)
-	}
-
 	// Admin notes more realistic based on status
 	adminNotes := generateAdmissionNotes(statusName)
 
 	res, err := tx.Exec(`
 		INSERT INTO admission_slips (
-			user_email, reason, category_id, date_of_absence, date_needed, status_id, admin_notes
+			user_id, reason, category_id, date_of_absence, date_needed, status_id, admin_notes
 		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, userEmail, reason, categoryID, dateOfAbsence, dateNeeded, statusID, adminNotes)
+	`, userID, reason, categoryID, dateOfAbsence, dateNeeded, statusID, adminNotes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1479,9 +1474,9 @@ func generateAdmissionNotes(status string) sql.NullString {
 	}
 }
 
-func insertAppointment(tx *sqlx.Tx, userEmail string) {
+func insertAppointment(tx *sqlx.Tx, userID int) {
 	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 || len(appointmentStatusIDs) == 0 {
-		log.Printf("skipping appointment creation for user %s: missing appointment lookup data", userEmail)
+		log.Printf("skipping appointment creation for user %d: missing appointment lookup data", userID)
 		return
 	}
 
@@ -1506,9 +1501,9 @@ func insertAppointment(tx *sqlx.Tx, userEmail string) {
 
 	_, err := tx.Exec(`
 		       INSERT INTO appointments (
-			       user_email, reason, admin_notes, when_date, time_slot_id, appointment_category_id, status_id
+			       user_id, reason, admin_notes, when_date, time_slot_id, appointment_category_id, status_id
 		       ) VALUES (?, ?, ?, ?, ?, ?, ?)
-	       `, userEmail,
+	       `, userID,
 		gofakeit.Sentence(rand.Intn(11)+20),
 		adminNotes,
 		whenDate,
@@ -1739,7 +1734,8 @@ func buildDSNFromEnv() string {
 	return dsn
 }
 
-func createNotification(userID int64) {
+// createNotification is kept for potential standalone use, but currently not called.
+func createNotification(userID int) {
 	title := gofakeit.Sentence(3)
 	message := gofakeit.Sentence(10)
 	notifType := notificationTypes[rand.Intn(len(notificationTypes))]
@@ -1754,7 +1750,7 @@ func createNotification(userID int64) {
 	}
 }
 
-func insertNotifications(tx *sqlx.Tx, userID string) {
+func insertNotifications(tx *sqlx.Tx, userID int) {
 	notificationTypes := []string{"Appointment", "Guidance", "System", "Announcement"}
 
 	count := rand.Intn(3) + 3
@@ -1771,7 +1767,7 @@ func insertNotifications(tx *sqlx.Tx, userID string) {
         `, userID, title, message, randomType, isRead)
 
 		if err != nil {
-			log.Printf("failed to insert fake notification for %s with type %s: %v", userID, randomType, err)
+			log.Printf("failed to insert fake notification for %d with type %s: %v", userID, randomType, err)
 		}
 	}
 }

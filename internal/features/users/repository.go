@@ -23,19 +23,19 @@ func NewRepository(db *sqlx.DB) *Repository {
 // =============================================
 
 // GetUser
-func (r *Repository) GetUser(
-	ctx context.Context, email string,
+func (r *Repository) GetUserByID(
+	ctx context.Context, userID int,
 ) (*User, error) {
 	var user User
 
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM users
-		WHERE email = ?
+		WHERE id = ?
 		LIMIT 1
 	`, database.GetColumns(User{}))
 
-	err := r.db.GetContext(ctx, &user, query, email)
+	err := r.db.GetContext(ctx, &user, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,6 +57,26 @@ func (r *Repository) GetRoleByID(
 		return nil, err
 	}
 	return &role, nil
+}
+
+func (r *Repository) GetUserByEmail(
+	ctx context.Context, email string,
+) (*User, error) {
+	var user User
+
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM users
+		WHERE email = ?
+		LIMIT 1
+	`, database.GetColumns(User{}))
+
+	err := r.db.GetContext(ctx, &user, query, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 // =============================================

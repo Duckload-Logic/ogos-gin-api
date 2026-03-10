@@ -2,6 +2,7 @@ package external
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
@@ -49,27 +50,33 @@ func (h *Handler) ListStudents(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// HandleGetStudentByEmail godoc
-// @Summary Get student by email
-// @Description Get student information by email address
+// HandleGetStudentByUserID godoc
+// @Summary Get student by user ID
+// @Description Get student information by user ID
 // @Tags External Students
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param email path string true "Email address of the student"
+// @Param userID path string true "User ID of the student"
 // @Success 200 {object} OGOSStudentDTO
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
-// @Router /students/external/by-email/{email} [get]
-func (h *Handler) HandleGetStudentByEmail(c *gin.Context) {
-	email := c.Param("email")
-	if email == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email parameter is required"})
+// @Router /students/external/by-id/{userID} [get]
+func (h *Handler) HandleGetStudentByUserID(c *gin.Context) {
+	userID := c.Param("userID")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userID parameter is required"})
 		return
 	}
 
-	student, err := h.service.GetStudentByEmail(c.Request.Context(), email)
+	id, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userID must be an integer"})
+		return
+	}
+
+	student, err := h.service.GetStudentByUserID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
 		return

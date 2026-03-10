@@ -18,10 +18,11 @@ type SlipStatus struct {
 
 type SlipWithDetailsView struct {
 	ID             int            `json:"id" db:"id"`
-	UserEmail      string         `json:"userEmail" db:"user_email"`
+	UserID         int            `json:"userId" db:"user_id"`
 	UserFirstName  string         `json:"userFirstName" db:"user_first_name"`
 	UserMiddleName sql.NullString `json:"userMiddleName" db:"user_middle_name"`
 	UserLastName   string         `json:"userLastName" db:"user_last_name"`
+	UserEmail      string         `json:"userEmail" db:"user_email"`
 	Reason         string         `json:"reason" db:"reason"`
 	DateOfAbsence  string         `json:"dateOfAbsence" db:"date_of_absence"`
 	DateNeeded     string         `json:"dateNeeded" db:"date_needed"`
@@ -45,7 +46,7 @@ type SlipStatusCount struct {
 
 type Slip struct {
 	ID            int            `json:"id" db:"id"`
-	UserEmail     string         `json:"userEmail" db:"user_email"`
+	UserID        int            `json:"userId" db:"user_id"`
 	Reason        string         `json:"reason" db:"reason"`
 	DateOfAbsence string         `json:"dateOfAbsence" db:"date_of_absence"`
 	DateNeeded    string         `json:"dateNeeded" db:"date_needed"`

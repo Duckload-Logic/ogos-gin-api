@@ -14,10 +14,21 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
+func (s *Service) GetUserByID(
+	ctx context.Context, userID int,
+) (*GetUserResponse, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.mapUserModelToResponse(user), nil
+}
+
 func (s *Service) GetUserByEmail(
 	ctx context.Context, email string,
 ) (*GetUserResponse, error) {
-	user, err := s.repo.GetUser(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +44,7 @@ func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
 
 	return &GetUserResponse{
 		Role:       *role,
+		ID:         user.ID,
 		FirstName:  user.FirstName,
 		MiddleName: structs.FromSqlNull(user.MiddleName),
 		LastName:   user.LastName,

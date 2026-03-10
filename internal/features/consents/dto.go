@@ -5,6 +5,5 @@ type LatestDocumentRequest struct {
 }
 
 type SaveConsentRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	DocID int    `json:"doc_id" binding:"required"`
+	DocID int `json:"doc_id" binding:"required"`
 }

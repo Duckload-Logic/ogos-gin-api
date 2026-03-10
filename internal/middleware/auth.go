@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 )
 
@@ -42,7 +43,18 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userEmail", claims.UserEmail)
+		newCtx := audit.WithContext(
+			c.Request.Context(),
+			c.ClientIP(),
+			c.Request.UserAgent(),
+			claims.UserID,
+			claims.UserEmail, // Assuming Email exists in your claims
+		)
+
+		c.Request = c.Request.WithContext(newCtx)
+
+		c.Set("userEmail", claims.UserEmail) // Set user email in context for logging
+		c.Set("userID", claims.UserID)
 		c.Set("roleID", claims.RoleID)
 		c.Next()
 	}

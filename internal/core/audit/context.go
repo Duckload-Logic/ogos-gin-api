@@ -7,27 +7,37 @@ type contextKey string
 const (
 	ipAddressKey contextKey = "audit_ip_address"
 	userAgentKey contextKey = "audit_user_agent"
-	userEmailKey contextKey = "audit_user_email"
+	userIDKey    contextKey = "audit_user_id"
+	userEmailKey contextKey = "audit_user_email" // New Key
 )
 
-// WithContext enriches a context with audit metadata (IP, user agent, user email).
-func WithContext(ctx context.Context, userEmail string, ipAddress, userAgent string) context.Context {
-	ctx = context.WithValue(ctx, userEmailKey, userEmail)
-	ctx = context.WithValue(ctx, ipAddressKey, ipAddress)
-	ctx = context.WithValue(ctx, userAgentKey, userAgent)
+// WithContext enriches a context with audit metadata.
+func WithContext(
+	ctx context.Context,
+	ip, ua string,
+	id int,
+	email string,
+) context.Context {
+	ctx = context.WithValue(ctx, ipAddressKey, ip)
+	ctx = context.WithValue(ctx, userAgentKey, ua)
+	ctx = context.WithValue(ctx, userIDKey, id)
+	ctx = context.WithValue(ctx, userEmailKey, email)
 	return ctx
 }
 
 // ExtractMeta reads audit metadata from a context.
-func ExtractMeta(ctx context.Context) (userEmail string, ipAddress, userAgent string) {
-	if v, ok := ctx.Value(userEmailKey).(string); ok {
-		userEmail = v
-	}
+func ExtractMeta(ctx context.Context) (id int, ip, ua, email string) {
 	if v, ok := ctx.Value(ipAddressKey).(string); ok {
-		ipAddress = v
+		ip = v
 	}
 	if v, ok := ctx.Value(userAgentKey).(string); ok {
-		userAgent = v
+		ua = v
+	}
+	if v, ok := ctx.Value(userIDKey).(int); ok {
+		id = v
+	}
+	if v, ok := ctx.Value(userEmailKey).(string); ok {
+		email = v
 	}
 	return
 }

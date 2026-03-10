@@ -52,6 +52,8 @@ definitions:
         type: string
       suffixName:
         type: string
+      userId:
+        type: integer
       yearLevel:
         type: integer
     type: object
@@ -251,15 +253,15 @@ paths:
       summary: Get student addresses by student number
       tags:
       - External Students
-  /students/external/by-email/{email}:
+  /students/external/by-id/{userID}:
     get:
       consumes:
       - application/json
-      description: Get student information by email address
+      description: Get student information by user ID
       parameters:
-      - description: Email address of the student
+      - description: User ID of the student
         in: path
-        name: email
+        name: userID
         required: true
         type: string
       produces:
@@ -289,7 +291,7 @@ paths:
             type: object
       security:
       - ApiKeyAuth: []
-      summary: Get student by email
+      summary: Get student by user ID
       tags:
       - External Students
   /students/external/personal-info/{studentNumber}:

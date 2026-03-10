@@ -1,7 +1,6 @@
 package locations
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -82,7 +81,6 @@ func (h *Handler) HandleGetBarangaysByCity(c *gin.Context) {
 
 	barangays, err := h.service.GetBarangaysByCity(c.Request.Context(), cityCode)
 	if err != nil {
-		log.Printf("Error retrieving barangays for city code %s: %v", cityCode, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve barangays"})
 		return
 	}

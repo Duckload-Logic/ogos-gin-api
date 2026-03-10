@@ -21,7 +21,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	all := routes.Group("")
 	{
 		all.GET("/latest/:type", h.HandleGetLatestDocument)
-		all.GET("/check/email/:userEmail/doc/:docID", h.HandleCheckUserConsent)
+		all.GET("/check/user/id/:userID/doc/:docID", h.HandleCheckUserConsent)
 
 		all.POST("/save", h.HandleSaveConsent)
 	}

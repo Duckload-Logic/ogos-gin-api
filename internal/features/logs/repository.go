@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
 type Repository struct {
@@ -19,21 +20,15 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 // Record inserts a new system log entry
 func (r *Repository) Record(ctx context.Context, log *SystemLog) error {
-	query := `
-		INSERT INTO system_logs (category, action, message, user_email, target_email, ip_address, user_agent, metadata)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`
+	cols, vals := database.GetInsertStatement(log, []string{"created_at"})
+	query := fmt.Sprintf(`
+		INSERT INTO system_logs (%s)
+		VALUES (%s)
+	`, cols, vals)
 
-	_, err := r.db.ExecContext(ctx, query,
-		log.Category,
-		log.Action,
-		log.Message,
-		log.UserEmail,
-		log.TargetEmail,
-		log.IPAddress,
-		log.UserAgent,
-		log.Metadata,
-	)
+	fmt.Printf("Executing query: %s with values: %v\n", query, vals) // Debug log
+
+	_, err := r.db.NamedExecContext(ctx, query, log)
 	if err != nil {
 		return fmt.Errorf("failed to insert system log: %w", err)
 	}
@@ -46,15 +41,11 @@ func (r *Repository) List(
 	ctx context.Context, offset, limit int,
 	category, action, userEmail, search, startDate, endDate, orderBy string,
 ) ([]SystemLog, error) {
-	query := `
-		SELECT
-			id, category, action, message,
-			user_email, target_email,
-			ip_address, user_agent,
-			metadata, created_at
+	query := fmt.Sprintf(`
+		SELECT %s
 		FROM system_logs
 		WHERE 1=1
-	`
+	`, database.GetColumns(&SystemLog{}))
 
 	var args []interface{}
 
