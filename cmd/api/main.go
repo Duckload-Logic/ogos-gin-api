@@ -27,7 +27,7 @@ func main() {
 	dbUrl := fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		config.DBUser,
-		config.DBPassword,
+		config.DBPass,
 		config.DBHost,
 		config.DBPort,
 		config.DBName,
@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// Get application
-	app, err := bootstrap.GetNewApplication(db)
+	app, err := bootstrap.GetNewApplication(db, config)
 	if err != nil {
 		log.Fatal(err)
 	}

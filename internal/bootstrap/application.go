@@ -2,12 +2,11 @@ package bootstrap
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/azure"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
 )
 
@@ -16,38 +15,32 @@ type Application struct {
 	Server *gin.Engine
 }
 
-func GetNewApplication(db *sqlx.DB) (*Application, error) {
-
+func GetNewApplication(db *sqlx.DB, cfg *config.Config) (*Application, error) {
 	var fileStorage storage.FileStorage
 
-	azureConnStr := os.Getenv("AZURE_STORAGE_CONNECTION_STRING")
-	if azureConnStr != "" {
-		blobStorage, err := azure.NewBlobStorage(
-			azureConnStr,
-			os.Getenv("AZURE_CONTAINER_NAME"),
+	if cfg.IsProduction {
+		blobStorage, err := storage.NewBlobStorage(
+			cfg.AzureStorageConnectionString,
+			cfg.AzureContainerName,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize Azure Blob Storage: %w", err)
 		}
 		fileStorage = blobStorage
 	} else {
-		uploadDir := os.Getenv("UPLOAD_DIR")
-		if uploadDir == "" {
-			uploadDir = "./uploads"
-		}
+		uploadDir := cfg.LocalUploadDIR
 		fileStorage = storage.NewDiskStorage(uploadDir)
 	}
 
 	repos := getRepositories(db)
 
-	handlers := getHandlers(repos, fileStorage)
+	handlers := getHandlers(repos, fileStorage, cfg)
 
-	router := SetupRoutes(db, handlers)
+	router := SetupRoutes(db, handlers, cfg)
 
-	portStr := os.Getenv("API_PORT")
-	port, err := strconv.Atoi(portStr)
+	port, err := strconv.Atoi(cfg.WebsitesPort)
 	if err != nil {
-		return nil, fmt.Errorf("invalid port in API_PORT %q: %w", portStr, err)
+		return nil, fmt.Errorf("invalid port in WEBSITES_PORT %q: %w", cfg.WebsitesPort, err)
 	}
 
 	return &Application{
