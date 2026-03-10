@@ -2,7 +2,6 @@ package consents
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -28,7 +27,6 @@ func (h *Handler) HandleGetLatestDocument(c *gin.Context) {
 
 	doc, err := h.service.GetLatestDocument(c.Request.Context(), docReq.Type)
 	if err != nil {
-		log.Println("Error fetching latest document:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch document"})
 		return
 	}
@@ -37,7 +35,12 @@ func (h *Handler) HandleGetLatestDocument(c *gin.Context) {
 }
 
 func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
-	email := c.Param("userEmail")
+	userID, err := strconv.Atoi(c.Param("userID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	docIDStr := c.Param("docID")
 
 	docID, err := strconv.Atoi(docIDStr)
@@ -46,7 +49,7 @@ func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
 		return
 	}
 
-	accepted, err := h.service.HasUserAccepted(c.Request.Context(), email, docID)
+	accepted, err := h.service.HasUserAccepted(c.Request.Context(), userID, docID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user consent"})
 		return
@@ -56,13 +59,19 @@ func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
 }
 
 func (h *Handler) HandleSaveConsent(c *gin.Context) {
+	userID, err := strconv.Atoi(c.Param("userID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	var req SaveConsentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": constants.ErrInvalidRequest})
 		return
 	}
 
-	err := h.service.SaveConsent(c.Request.Context(), req.Email, req.DocID)
+	err = h.service.SaveConsent(c.Request.Context(), userID, req.DocID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save consent"})
 		return
@@ -73,9 +82,13 @@ func (h *Handler) HandleSaveConsent(c *gin.Context) {
 
 // Admin endpoint to view user consent history
 func (h *Handler) HandleListUserConsentHistory(c *gin.Context) {
-	email := c.Param("userEmail")
+	userID, err := strconv.Atoi(c.Param("userID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
 
-	consents, err := h.service.ListUserConsentHistory(c.Request.Context(), email)
+	consents, err := h.service.ListUserConsentHistory(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch consent history"})
 		return
