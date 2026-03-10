@@ -44,7 +44,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		c, req.Email, req.Password,
 	)
 	if err != nil {
-		// Log failed login attempt
+		// Log failed login attempt\
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
 			Action:    logs.ActionLoginFailed,

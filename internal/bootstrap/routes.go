@@ -6,6 +6,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
@@ -25,8 +26,14 @@ import (
 	externalDocs "github.com/olazo-johnalbert/duckload-api/docs/external"
 )
 
-func SetupRoutes(db *sqlx.DB, handlers *Handlers) *gin.Engine {
+func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engine {
 	g := gin.Default()
+
+	if cfg.IsProduction {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
 
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{
