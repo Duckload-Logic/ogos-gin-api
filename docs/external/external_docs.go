@@ -172,14 +172,14 @@ const docTemplateexternal = `{
                 }
             }
         },
-        "/students/external/by-email/{email}": {
+        "/students/external/by-id/{userID}": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Get student information by email address",
+                "description": "Get student information by user ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -189,12 +189,12 @@ const docTemplateexternal = `{
                 "tags": [
                     "External Students"
                 ],
-                "summary": "Get student by email",
+                "summary": "Get student by user ID",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Email address of the student",
-                        "name": "email",
+                        "description": "User ID of the student",
+                        "name": "userID",
                         "in": "path",
                         "required": true
                     }
@@ -380,6 +380,9 @@ const docTemplateexternal = `{
                 },
                 "suffixName": {
                     "type": "string"
+                },
+                "userId": {
+                    "type": "integer"
                 },
                 "yearLevel": {
                     "type": "integer"
