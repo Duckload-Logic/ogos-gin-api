@@ -10,17 +10,24 @@ import (
 // so that userEmail is available.
 func AuditContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userEmail := ""
-		if email, exists := c.Get("userEmail"); exists {
-			if e, ok := email.(string); ok {
-				userEmail = e
+		userID := 0
+		if id, exists := c.Get("userID"); exists {
+			if e, ok := id.(int); ok {
+				userID = e
 			}
+		}
+
+		userEmail, exists := c.Get("userEmail")
+		if !exists {
+			userEmail = ""
+		} else if e, ok := userEmail.(string); ok {
+			userEmail = e
 		}
 
 		ipAddress := c.ClientIP()
 		userAgent := c.GetHeader("User-Agent")
 
-		ctx := audit.WithContext(c.Request.Context(), userEmail, ipAddress, userAgent)
+		ctx := audit.WithContext(c.Request.Context(), ipAddress, userAgent, userID, userEmail.(string))
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()

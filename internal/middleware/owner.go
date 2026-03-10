@@ -13,7 +13,7 @@ import (
 // OwnershipMiddleware - Direct database access version
 func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		loggedInUserEmail := c.MustGet("userEmail").(string)
+		loggedInUserID := c.MustGet("userID").(int)
 		roleID := c.MustGet("roleID").(int)
 
 		// Allow counselors and super admins to bypass
@@ -27,8 +27,8 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 			paramValue := c.Param(paramName)
 
 			// For email-based params, compare directly
-			if paramName == "userEmail" {
-				if paramValue != loggedInUserEmail {
+			if paramName == "userID" {
+				if paramValue != strconv.Itoa(loggedInUserID) {
 					c.AbortWithStatusJSON(
 						http.StatusForbidden,
 						gin.H{"error": "Access denied"},
@@ -50,7 +50,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 			}
 
 			owns, err := checkStudentOwnership(
-				db, loggedInUserEmail, paramName, resourceID,
+				db, loggedInUserID, paramName, resourceID,
 			)
 			if err != nil || !owns {
 				c.AbortWithStatusJSON(
@@ -67,7 +67,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 
 // Direct database query - ONE function to rule them all
 func checkStudentOwnership(
-	db *sqlx.DB, userEmail string,
+	db *sqlx.DB, userID int,
 	paramName string, resourceID int,
 ) (bool, error) {
 	switch paramName {
@@ -76,10 +76,10 @@ func checkStudentOwnership(
 		query := `
 			SELECT EXISTS(
 				SELECT 1 FROM iir_records
-				WHERE id = ? AND user_email = ?
+				WHERE id = ? AND user_id = ?
 			)`
 		var exists bool
-		err := db.QueryRow(query, resourceID, userEmail).Scan(&exists)
+		err := db.QueryRow(query, resourceID, userID).Scan(&exists)
 		return exists, err
 	default:
 		return false, nil
