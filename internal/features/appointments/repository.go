@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -93,7 +92,7 @@ func (r *Repository) GetDailyStatusCount(ctx context.Context, startDate, endDate
 	return dsc, nil
 }
 
-func (r *Repository) GetTotalAppointmentsCount(ctx context.Context, statusID, startDate, endDate string, userEmail *string) (int, error) {
+func (r *Repository) GetTotalAppointmentsCount(ctx context.Context, statusID, startDate, endDate string, userID *int) (int, error) {
 	query := `SELECT COUNT(*) FROM appointments WHERE 1=1`
 	var args []interface{}
 
@@ -109,9 +108,9 @@ func (r *Repository) GetTotalAppointmentsCount(ctx context.Context, statusID, st
 		query += " AND when_date <= ?"
 		args = append(args, endDate)
 	}
-	if userEmail != nil {
-		query += " AND user_email = ?"
-		args = append(args, *userEmail)
+	if userID != nil {
+		query += " AND user_id = ?"
+		args = append(args, *userID)
 	}
 
 	var count int
@@ -128,7 +127,7 @@ func (r *Repository) List(
 	query := (`
 		SELECT
 			a.id,
-			u.email AS user_email,
+			u.id AS user_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
@@ -145,7 +144,7 @@ func (r *Repository) List(
 			as2.name AS status_name,
 			as2.color_key AS status_color_key
 		FROM appointments a
-		JOIN users u ON a.user_email = u.email
+		JOIN users u ON a.user_id = u.id
 		JOIN time_slots ts ON a.time_slot_id = ts.id
 		JOIN appointment_categories ac ON a.appointment_category_id = ac.id
 		JOIN statuses as2 ON a.status_id = as2.id
@@ -267,18 +266,17 @@ func (r *Repository) GetStatuses(ctx context.Context) ([]AppointmentStatus, erro
 	var statuses []AppointmentStatus
 	err := r.db.SelectContext(ctx, &statuses, query)
 	if err != nil {
-		log.Printf("Error fetching appointment statuses: %v", err)
 		return nil, fmt.Errorf("failed to get appointment statuses: %w", err)
 	}
 
 	return statuses, nil
 }
 
-func (r *Repository) ListByUserEmail(ctx context.Context, userEmail string, offset, limit int, orderBy string, statusID, startDate, endDate string) ([]AppointmentWithDetailsView, error) {
+func (r *Repository) ListByUserID(ctx context.Context, userID int, offset, limit int, orderBy string, statusID, startDate, endDate string) ([]AppointmentWithDetailsView, error) {
 	query := `
 		SELECT
 			a.id,
-			u.email AS user_email,
+			u.id AS user_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
@@ -295,13 +293,13 @@ func (r *Repository) ListByUserEmail(ctx context.Context, userEmail string, offs
 			as2.name AS status_name,
 			as2.color_key AS status_color_key
 		FROM appointments a
-		JOIN users u ON a.user_email = u.email
+		JOIN users u ON a.user_id = u.id
 		JOIN time_slots ts ON a.time_slot_id = ts.id
 		JOIN appointment_categories ac ON a.appointment_category_id = ac.id
 		JOIN statuses as2 ON a.status_id = as2.id
-		WHERE a.user_email = ?
+		WHERE a.user_id = ?
 	`
-	args := []interface{}{userEmail}
+	args := []interface{}{userID}
 
 	if statusID != "" {
 		query += " AND a.status_id = ?"
@@ -329,7 +327,7 @@ func (r *Repository) ListByUserEmail(ctx context.Context, userEmail string, offs
 	return appts, nil
 }
 
-func (r *Repository) GetAppointmentStats(ctx context.Context, statusID, startDate, endDate string, userEmail *string) ([]StatusCount, error) {
+func (r *Repository) GetAppointmentStats(ctx context.Context, statusID, startDate, endDate string, userID *int) ([]StatusCount, error) {
 	// Build the JOIN condition - date filters go in ON clause to preserve LEFT JOIN behavior
 	joinCondition := "a.status_id = as2.id"
 	var args []interface{}
@@ -349,9 +347,9 @@ func (r *Repository) GetAppointmentStats(ctx context.Context, statusID, startDat
 		args = append(args, endDate)
 	}
 
-	if userEmail != nil {
-		joinCondition += " AND a.user_email = ?"
-		args = append(args, *userEmail)
+	if userID != nil {
+		joinCondition += " AND a.user_id = ?"
+		args = append(args, *userID)
 	}
 
 	query := fmt.Sprintf(`
@@ -435,8 +433,6 @@ func (r *Repository) UpdateAppointment(ctx context.Context, appt Appointment) er
 
 		query += " WHERE id = ?"
 		args = append(args, appt.ID)
-
-		log.Println("Update query:", query, "Args:", args)
 
 		_, err := txn.ExecContext(ctx, query, args...)
 		if err != nil {
