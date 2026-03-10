@@ -202,8 +202,8 @@ func (h *Handler) HandleGetStudentBasicInfo(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetIIRDraft(c *gin.Context) {
-	userEmail := c.MustGet("userEmail").(string)
-	draft, err := h.service.GetIIRDraft(c.Request.Context(), userEmail)
+	userID := c.MustGet("userID").(int)
+	draft, err := h.service.GetIIRDraft(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get IIR draft"})
 		return
@@ -213,13 +213,19 @@ func (h *Handler) HandleGetIIRDraft(c *gin.Context) {
 }
 
 func (h *Handler) HandleGetStudentIIRByUserID(c *gin.Context) {
-	userEmail := c.Param("userEmail")
-	if userEmail == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User email is required"})
+	userID := c.Param("userID")
+	if userID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
 		return
 	}
 
-	iir, err := h.service.GetStudentIIRByUserEmail(c.Request.Context(), userEmail)
+	id, err := strconv.Atoi(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	iir, err := h.service.GetStudentIIRByUserID(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student IIR by user ID"})
 		return
@@ -469,14 +475,14 @@ func (h *Handler) HandleGetStudentSignificantNotes(c *gin.Context) {
 }
 
 func (h *Handler) HandleSaveIIRDraft(c *gin.Context) {
-	userEmail := c.MustGet("userEmail").(string)
+	userID := c.MustGet("userID").(int)
 	var req ComprehensiveProfileDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
-	draftID, err := h.service.SaveIIRDraft(c.Request.Context(), userEmail, req)
+	draftID, err := h.service.SaveIIRDraft(c.Request.Context(), userID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save IIR draft"})
 		return
@@ -486,14 +492,14 @@ func (h *Handler) HandleSaveIIRDraft(c *gin.Context) {
 }
 
 func (h *Handler) HandleSubmitIIR(c *gin.Context) {
-	userEmail := c.MustGet("userEmail").(string)
+	userID := c.MustGet("userID").(int)
 	var req ComprehensiveProfileDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	iirID, err := h.service.SubmitStudentIIR(c.Request.Context(), userEmail, req)
+	iirID, err := h.service.SubmitStudentIIR(c.Request.Context(), userID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to submit student IIR"})
 		return

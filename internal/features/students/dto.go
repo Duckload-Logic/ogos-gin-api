@@ -28,7 +28,7 @@ type ListStudentsResponse struct {
 
 type StudentProfileDTO struct {
 	IIRID         int                    `json:"iirId"`
-	UserEmail     string                 `json:"userEmail"`
+	UserID        int                    `json:"userId"`
 	FirstName     string                 `json:"firstName"`
 	MiddleName    structs.NullableString `json:"middleName,omitempty"`
 	LastName      string                 `json:"lastName"`
