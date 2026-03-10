@@ -1,4 +1,4 @@
-ENV ?= .env.dev
+ENV ?= .env
 include $(ENV)
 export
 
