@@ -13,6 +13,7 @@ const (
 	CategoryAudit    = "AUDIT"
 	CategorySystem   = "SYSTEM"
 	CategorySecurity = "SECURITY"
+	CategoryConsent  = "CONSENT"
 )
 
 // Audit log actions — track data changes and admin operations
@@ -47,6 +48,17 @@ const (
 	ActionInvalidToken      = "INVALID_TOKEN"
 	ActionAPIKeyUsed        = "API_KEY_USED"
 	ActionAPIKeyInvalid     = "API_KEY_INVALID"
+)
+
+// Consent log actions — track user agreements and legal updates
+const (
+	// User-side events
+	ActionTermsAccepted   = "TERMS_ACCEPTED"
+	ActionPrivacyAccepted = "PRIVACY_ACCEPTED"
+
+	// Admin-side/System events
+	ActionPolicyUpdated  = "POLICY_UPDATED"  // When we upload a new version to Azure
+	ActionConsentRevoked = "CONSENT_REVOKED" // If a user deletes their account or opts out
 )
 
 // LogEntry is the input struct used by other services to record a log.
