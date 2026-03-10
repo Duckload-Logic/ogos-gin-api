@@ -90,7 +90,7 @@ func (r *Repository) GetSlipCategories(ctx context.Context) ([]SlipCategory, err
 	return categories, nil
 }
 
-func (r *Repository) GetSlipStats(ctx context.Context, userEmail *string, req *ListSlipRequest) ([]SlipStatusCount, error) {
+func (r *Repository) GetSlipStats(ctx context.Context, userID *int, req *ListSlipRequest) ([]SlipStatusCount, error) {
 	var args []interface{}
 	filterConditions := "1=1"
 
@@ -114,9 +114,9 @@ func (r *Repository) GetSlipStats(ctx context.Context, userEmail *string, req *L
 		args = append(args, req.EndDate)
 	}
 
-	if userEmail != nil {
-		filterConditions += " AND es.user_email = ?"
-		args = append(args, userEmail)
+	if userID != nil {
+		filterConditions += " AND es.user_id = ?"
+		args = append(args, userID)
 	}
 
 	var counts []SlipStatusCount
@@ -144,7 +144,7 @@ func (r *Repository) GetTotalSlipsCount(ctx context.Context, req *ListSlipReques
 	query := `
 		SELECT COUNT(*)
 		FROM admission_slips es
-		JOIN users u ON es.user_email = u.email
+		JOIN users u ON es.user_id = u.id
 		WHERE 1=1
 	`
 
@@ -213,8 +213,9 @@ func (r *Repository) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (
 	query := `
 		SELECT
 			es.id AS id,
-			es.user_email AS user_email,
+			es.user_id AS user_id,
 			u.first_name AS user_first_name,
+			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
 			u.email AS user_email,
 			es.reason AS reason,
@@ -234,7 +235,7 @@ func (r *Repository) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (
 				CASE WHEN es.category_id = 1 THEN 500 ELSE 0 END
 			) AS urgency_score
 		FROM admission_slips es
-		JOIN users u ON es.user_email = u.email
+		JOIN users u ON es.user_id = u.id
 		JOIN admission_slip_categories c ON es.category_id = c.id
 		JOIN statuses s ON es.status_id = s.id
 		WHERE es.status_id IN (1, 9)
@@ -272,7 +273,7 @@ func (r *Repository) GetAll(ctx context.Context, req *ListSlipRequest) ([]SlipWi
 	query := `
         SELECT
             es.id AS id,
-            es.user_email AS user_email,
+            es.user_id AS user_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
@@ -288,7 +289,7 @@ func (r *Repository) GetAll(ctx context.Context, req *ListSlipRequest) ([]SlipWi
             es.created_at AS created_at,
             es.updated_at AS updated_at
         FROM admission_slips es
-		JOIN users u ON es.user_email = u.email
+		JOIN users u ON es.user_id = u.id
 		JOIN admission_slip_categories c ON es.category_id = c.id
 		JOIN statuses s ON es.status_id = s.id
 		WHERE 1=1
@@ -326,14 +327,14 @@ func (r *Repository) GetAll(ctx context.Context, req *ListSlipRequest) ([]SlipWi
 	return slips, nil
 }
 
-func (r *Repository) GetByUserEmail(ctx context.Context, userEmail string, req *ListSlipRequest) ([]SlipWithDetailsView, error) {
+func (r *Repository) GetByUserID(ctx context.Context, userID int, req *ListSlipRequest) ([]SlipWithDetailsView, error) {
 	var slips []SlipWithDetailsView
 	var args []interface{}
-	args = append(args, userEmail)
+	args = append(args, userID)
 	query := `
 		SELECT
 			es.id AS id,
-			es.user_email AS user_email,
+			es.user_id AS user_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
@@ -349,10 +350,10 @@ func (r *Repository) GetByUserEmail(ctx context.Context, userEmail string, req *
 			es.created_at AS created_at,
 			es.updated_at AS updated_at
 		FROM admission_slips es
-		JOIN users u ON es.user_email = u.email
+		JOIN users u ON es.user_id = u.id
 		JOIN admission_slip_categories c ON es.category_id = c.id
 		JOIN statuses s ON es.status_id = s.id
-		WHERE es.user_email = ?
+		WHERE es.user_id = ?
     `
 
 	if req.StatusID != 0 {

@@ -2,7 +2,6 @@ package slips
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -40,7 +39,7 @@ func NewHandler(service *Service) *Handler {
 // @Failure      500             {object} map[string]string      "Internal Server Error"
 // @Router       /excuseslips [post]
 func (h *Handler) Submit(c *gin.Context) {
-	userEmail := c.MustGet("userEmail").(string)
+	userID := c.MustGet("userID").(int)
 	var req CreateSlipRequest
 
 	if err := c.ShouldBind(&req); err != nil {
@@ -62,7 +61,7 @@ func (h *Handler) Submit(c *gin.Context) {
 		return
 	}
 
-	slip, err := h.service.SubmitExcuseSlip(c.Request.Context(), userEmail, req, files)
+	slip, err := h.service.SubmitExcuseSlip(c.Request.Context(), userID, req, files)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -83,7 +82,6 @@ func (h *Handler) HandleGetUrgentSlips(c *gin.Context) {
 
 	slips, err := h.service.GetUrgentSlips(c.Request.Context(), &req)
 	if err != nil {
-		log.Println("Error retrieving urgent excuse slips:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve urgent excuse slips"})
 		return
 	}
@@ -98,17 +96,17 @@ func (h *Handler) GetSlipStats(c *gin.Context) {
 		return
 	}
 
-	userEmail := c.MustGet("userEmail")
+	userID := c.MustGet("userID")
 	roleID := c.MustGet("roleID").(int)
 
-	var userEmailPtr *string
+	var userIDPtr *int
 	if roleID == int(constants.StudentRoleID) {
-		email := userEmail.(string)
-		userEmailPtr = &email
+		id := userID.(int)
+		userIDPtr = &id
 	}
-	stats, err := h.service.GetSlipStats(c.Request.Context(), userEmailPtr, &req)
+
+	stats, err := h.service.GetSlipStats(c.Request.Context(), userIDPtr, &req)
 	if err != nil {
-		log.Println("Error retrieving slip stats:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve slip statistics"})
 		return
 	}
@@ -155,7 +153,6 @@ func (h *Handler) GetAll(c *gin.Context) {
 
 	slips, err := h.service.GetAllExcuseSlips(c.Request.Context(), req)
 	if err != nil {
-		log.Println("Error retrieving excuse slips:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve excuse slips"})
 		return
 	}
@@ -164,14 +161,14 @@ func (h *Handler) GetAll(c *gin.Context) {
 }
 
 func (h *Handler) GetUserSlips(c *gin.Context) {
-	userEmail := c.MustGet("userEmail").(string)
+	userID := c.MustGet("userID").(int)
 	var req ListSlipRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	slips, err := h.service.GetExcuseSlipsByUserEmail(c.Request.Context(), userEmail, req)
+	slips, err := h.service.GetExcuseSlipsByUserID(c.Request.Context(), userID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve excuse slips"})
 		return
@@ -190,7 +187,6 @@ func (h *Handler) GetSlipAttachments(c *gin.Context) {
 
 	attachments, err := h.service.GetSlipAttachments(c.Request.Context(), id)
 	if err != nil {
-		log.Println("Error retrieving attachments:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve attachments"})
 		return
 	}
@@ -202,7 +198,6 @@ func (h *Handler) HandleDownloadAttachment(c *gin.Context) {
 	attachmentIDParam := c.Param("attachmentId")
 	attachmentID, err := strconv.Atoi(attachmentIDParam)
 	if err != nil {
-		log.Println("Error: Invalid attachment ID format:", attachmentIDParam)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid attachment ID format"})
 		return
 	}
@@ -215,7 +210,6 @@ func (h *Handler) HandleDownloadAttachment(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Attachment not found"})
 			return
 		}
-		log.Println("Error downloading attachment:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to download attachment"})
 		return
 	}
