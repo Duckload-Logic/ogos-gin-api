@@ -8,6 +8,7 @@ type Role struct {
 }
 
 type User struct {
+	ID           int            `db:"id" json:"id"`
 	RoleID       int            `db:"role_id" json:"role_id"`
 	FirstName    string         `db:"first_name" json:"first_name"`
 	MiddleName   sql.NullString `db:"middle_name" json:"middle_name"`

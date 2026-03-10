@@ -30,25 +30,9 @@ func NewHandler(service *Service) *Handler {
 // @Failure      500      {object}  map[string]string     "Failed to get current user"
 // @Router       /users/me [get]
 func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
-	email, exists := c.Get("userEmail")
-	if !exists {
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to get current user"},
-		)
-		return
-	}
+	userID := c.MustGet("userID").(int)
 
-	userEmail, ok := email.(string)
-	if !ok {
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to get current user"},
-		)
-		return
-	}
-
-	resp, err := h.service.GetUserByEmail(c.Request.Context(), userEmail)
+	resp, err := h.service.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
