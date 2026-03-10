@@ -7,6 +7,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
@@ -31,6 +32,7 @@ type Handlers struct {
 	NotificationsHandler   *notifications.Handler
 	SystemLogHandler       *logs.Handler
 	SystemLogService       *logs.Service
+	ConsentHandler         *consents.Handler
 }
 
 func getHandlers(repos *Repositories, fileStorage storage.FileStorage) *Handlers {
@@ -49,6 +51,7 @@ func getHandlers(repos *Repositories, fileStorage storage.FileStorage) *Handlers
 	slipService := slips.NewService(repos.SlipRepo, systemLogService, fileStorage)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo)
 	analyticsHandler := analytics.NewHandler(analyticsService)
+	consentService := consents.NewService(repos.ConsentRepo, systemLogService, fileStorage)
 
 	return &Handlers{
 		AuthHandler:            auth.NewHandler(authService, systemLogService),
@@ -64,5 +67,6 @@ func getHandlers(repos *Repositories, fileStorage storage.FileStorage) *Handlers
 		NotificationsHandler:   notificationsHandler,
 		SystemLogHandler:       systemLogHandler,
 		SystemLogService:       systemLogService,
+		ConsentHandler:         consents.NewHandler(consentService),
 	}
 }
