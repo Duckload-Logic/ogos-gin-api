@@ -32,6 +32,13 @@ func GetNewApplication(db *sqlx.DB, cfg *config.Config) (*Application, error) {
 		fileStorage = storage.NewDiskStorage(uploadDir)
 	}
 
+	// Set Gin mode based on environment
+	if cfg.IsProduction {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
+
 	repos := getRepositories(db)
 
 	handlers := getHandlers(repos, fileStorage)
