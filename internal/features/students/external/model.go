@@ -3,11 +3,11 @@ package external
 import "database/sql"
 
 type OGOSStudentView struct {
-	StudentNumber string `db:"student_number"`
-
-	FirstName  string         `db:"first_name"`
-	MiddleName sql.NullString `db:"middle_name,omitempty"`
-	LastName   string         `db:"last_name"`
+	StudentNumber string         `db:"student_number"`
+	UserID        int            `db:"user_id"`
+	FirstName     string         `db:"first_name"`
+	MiddleName    sql.NullString `db:"middle_name,omitempty"`
+	LastName      string         `db:"last_name"`
 
 	Email        string `db:"email"`
 	MobileNumber string `db:"mobile_number"`

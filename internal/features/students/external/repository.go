@@ -18,6 +18,7 @@ func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsReque
 	query := `
 		SELECT
 			sp.student_number AS student_number,
+			u.id AS user_id,
 			u.first_name AS first_name,
 			u.middle_name AS middle_name,
 			u.last_name AS last_name,
@@ -29,7 +30,7 @@ func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsReque
 			sp.year_level AS year_level,
 			sp.section AS section
 		FROM users u
-		JOIN iir_records i ON i.user_email = u.email
+		JOIN iir_records i ON i.user_id = u.id
 		JOIN student_personal_info sp ON sp.iir_id = i.id
 		JOIN courses c ON sp.course_id = c.id
 		WHERE 1=1
@@ -78,10 +79,11 @@ func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsReque
 	return students, total, nil
 }
 
-func (r *Repository) GetStudentByEmail(ctx context.Context, email string) (*OGOSStudentView, error) {
+func (r *Repository) GetStudentByUserID(ctx context.Context, userID int) (*OGOSStudentView, error) {
 	query := `
 		SELECT
 			sp.student_number AS student_number,
+			u.id AS user_id,
 			u.first_name AS first_name,
 			u.middle_name AS middle_name,
 			u.last_name AS last_name,
@@ -93,15 +95,15 @@ func (r *Repository) GetStudentByEmail(ctx context.Context, email string) (*OGOS
 			sp.year_level AS year_level,
 			sp.section AS section
 		FROM users u
-		JOIN iir_records i ON i.user_email = u.email
+		JOIN iir_records i ON i.user_id = u.id
 		JOIN student_personal_info sp ON sp.iir_id = i.id
 		JOIN courses c ON sp.course_id = c.id
-		WHERE u.email = ?
+		WHERE u.id = ?
 		LIMIT 1
 	`
 
 	var student OGOSStudentView
-	err := r.db.GetContext(ctx, &student, query, email)
+	err := r.db.GetContext(ctx, &student, query, userID)
 	if err != nil {
 		return nil, err
 	}

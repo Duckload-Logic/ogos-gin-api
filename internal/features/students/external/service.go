@@ -43,6 +43,7 @@ func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest)
 	for _, student := range studentList {
 		studentsDTO = append(studentsDTO, OGOSStudentDTO{
 			StudentNumber: student.StudentNumber,
+			UserID:        student.UserID,
 			FirstName:     student.FirstName,
 			MiddleName:    structs.FromSqlNull(student.MiddleName),
 			LastName:      student.LastName,
@@ -69,14 +70,15 @@ func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest)
 	return listResponse, nil
 }
 
-func (s *Service) GetStudentByEmail(ctx context.Context, email string) (*OGOSStudentDTO, error) {
-	student, err := s.repo.GetStudentByEmail(ctx, email)
+func (s *Service) GetStudentByUserID(ctx context.Context, userID int) (*OGOSStudentDTO, error) {
+	student, err := s.repo.GetStudentByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &OGOSStudentDTO{
 		StudentNumber: student.StudentNumber,
+		UserID:        student.UserID,
 		FirstName:     student.FirstName,
 		MiddleName:    structs.FromSqlNull(student.MiddleName),
 		LastName:      student.LastName,
