@@ -25,11 +25,11 @@ const refreshTokenValidityMinutes = 60 * 12 // 60 minutes * 12 hours = 12 hours
 // AuthenticateUser
 func (s *Service) AuthenticateUser(
 	ctx context.Context, email, password string,
-) (string, string, error) {
+) (int, string, string, error) {
 	// Fetch user from database
-	user, err := s.repo.GetUser(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return "", "", errors.New("invalid credentials")
+		return 0, "", "", errors.New("invalid credentials")
 	}
 
 	// Compare hashed password
@@ -38,22 +38,22 @@ func (s *Service) AuthenticateUser(
 		[]byte(password),
 	)
 	if err != nil {
-		return "", "", errors.New("invalid credentials")
+		return 0, "", "", errors.New("invalid credentials")
 	}
 
 	// Generate the token
-	token, err := tokenService.GenerateToken(user.Email, user.RoleID, "access", accessTokenValidityMinutes)
+	token, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "access", accessTokenValidityMinutes)
 	if err != nil {
-		return "", "", errors.New("failed to generate session")
+		return 0, "", "", errors.New("failed to generate session")
 	}
 
 	// Generate refresh token
-	refreshToken, err := tokenService.GenerateToken(user.Email, user.RoleID, "refresh", refreshTokenValidityMinutes)
+	refreshToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "refresh", refreshTokenValidityMinutes)
 	if err != nil {
-		return "", "", errors.New("failed to generate refresh token")
+		return 0, "", "", errors.New("failed to generate refresh token")
 	}
 
-	return token, refreshToken, nil
+	return user.ID, token, refreshToken, nil
 }
 
 func (s *Service) RefreshToken(
@@ -65,17 +65,14 @@ func (s *Service) RefreshToken(
 		return "", "", errors.New("Invalid refresh token")
 	}
 
-	userEmail := claims.UserEmail
-	roleID := claims.RoleID
-
 	// Generate new token
-	newToken, err := tokenService.GenerateToken(userEmail, roleID, "access", accessTokenValidityMinutes)
+	newToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "access", accessTokenValidityMinutes)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new token")
 	}
 
 	// Generate new refresh token
-	newRefreshToken, err := tokenService.GenerateToken(userEmail, roleID, "refresh", refreshTokenValidityMinutes)
+	newRefreshToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "refresh", refreshTokenValidityMinutes)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new refresh token")
 	}

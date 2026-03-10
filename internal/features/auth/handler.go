@@ -40,15 +40,17 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	ua := c.Request.UserAgent()
 
 	// Authenticate user
-	token, refreshToken, err := h.service.AuthenticateUser(
+	userID, token, refreshToken, err := h.service.AuthenticateUser(
 		c, req.Email, req.Password,
 	)
+
 	if err != nil {
-		// Log failed login attempt\
+		// Log failed login attempt
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
 			Action:    logs.ActionLoginFailed,
 			Message:   fmt.Sprintf("Failed login attempt for %s: %s", req.Email, err.Error()),
+			UserID:    userID,
 			UserEmail: req.Email,
 			IPAddress: ip,
 			UserAgent: ua,
@@ -62,6 +64,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		Category:  logs.CategorySecurity,
 		Action:    logs.ActionLoginSuccess,
 		Message:   fmt.Sprintf("User %s logged in successfully", req.Email),
+		UserID:    userID,
 		UserEmail: req.Email,
 		IPAddress: ip,
 		UserAgent: ua,
@@ -138,12 +141,14 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 	// h.service.Logout(c, req.RefreshToken)
 
 	// Log logout event
-	userEmail, exists := c.Get("userEmail")
+	userID, exists := c.Get("userID")
+	userEmail, _ := c.Get("userEmail") // Assuming userEmail is set in context by AuthMiddleware
 	if exists {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
 			Action:    logs.ActionLogout,
-			Message:   fmt.Sprintf("User %s logged out", userEmail.(string)),
+			Message:   fmt.Sprintf("User %s logged out", userEmail),
+			UserID:    userID.(int),
 			UserEmail: userEmail.(string),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
