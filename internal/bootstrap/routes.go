@@ -11,6 +11,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
@@ -68,6 +69,10 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 		)(c)
 	})
 
+	if !cfg.IsProduction {
+		apiV1Routes.Static("./uploads", "./uploads")
+	}
+
 	// ==============================
 	// |                            |
 	// |        HOME ROUTES         |
@@ -99,6 +104,7 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler)
 	notifications.RegisterRoutes(db, apiV1Routes, handlers.NotificationsHandler)
 	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler)
+	consents.RegisterRoutes(apiV1Routes, handlers.ConsentHandler)
 
 	external.RegisterRoutes(apiV1Routes, handlers.ExternalStudentHandler, handlers.APIKeyService.ValidateKeyFunc())
 
