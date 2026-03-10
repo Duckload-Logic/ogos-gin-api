@@ -18,12 +18,8 @@ type Service struct {
 	logService *logs.Service
 }
 
-func NewService(repo *Repository, logService ...*logs.Service) *Service {
-	s := &Service{repo: repo}
-	if len(logService) > 0 {
-		s.logService = logService[0]
-	}
-	return s
+func NewService(repo *Repository, logService *logs.Service) *Service {
+	return &Service{repo: repo, logService: logService}
 }
 
 // GenerateKey creates a new API key, stores its hash, and returns the plaintext key (shown once).
