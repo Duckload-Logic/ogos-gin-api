@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
@@ -35,7 +36,7 @@ type Handlers struct {
 	ConsentHandler         *consents.Handler
 }
 
-func getHandlers(repos *Repositories, fileStorage storage.FileStorage) *Handlers {
+func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *config.Config) *Handlers {
 	systemLogService := logs.NewService(repos.SystemLogRepo)
 	systemLogHandler := logs.NewHandler(systemLogService)
 	apiKeyService := apikeys.NewService(repos.APIKeyRepo, systemLogService)
@@ -54,7 +55,7 @@ func getHandlers(repos *Repositories, fileStorage storage.FileStorage) *Handlers
 	consentService := consents.NewService(repos.ConsentRepo, systemLogService, fileStorage)
 
 	return &Handlers{
-		AuthHandler:            auth.NewHandler(authService, systemLogService),
+		AuthHandler:            auth.NewHandler(authService, systemLogService, cfg),
 		UserHandler:            users.NewHandler(userService),
 		LocationsHandler:       locations.NewHandler(locationsService),
 		StudentHandler:         students.NewHandler(studentService),
