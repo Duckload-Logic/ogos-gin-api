@@ -1,5 +1,12 @@
 package auth
 
+type TTL int
+
+const (
+	AccessTokenTTL  TTL = 60 * 30
+	RefreshTokenTTL TTL = 60 * 60 * 12
+)
+
 type LoginDTO struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
