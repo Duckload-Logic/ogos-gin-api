@@ -1,61 +1,48 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 )
 
-var tokenService = tokens.NewService()
-
-// AuthMiddleware validates JWT tokens and sets user context.
-// Reads the log service from gin context ("logService") to record INVALID_TOKEN events.
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(
-				http.StatusUnauthorized,
-				gin.H{"error": "Authorization header is required"},
-			)
-			return
+		var tokenString string
+
+		// 1. Try to get token from cookie
+		cookie, err := c.Cookie("access_token")
+		if err == nil && cookie != "" {
+			tokenString = cookie
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-
-		claims, err := tokenService.ValidateToken(tokenString)
-		if err != nil {
-			if logSvc, ok := c.Get(SecurityLoggerContextKey); ok {
-				if svc, ok := logSvc.(SecurityLogger); ok {
-					svc.RecordSecurity(c.Request.Context(), "INVALID_TOKEN",
-						fmt.Sprintf("Invalid or expired token used on %s %s", c.Request.Method, c.Request.URL.Path),
-						"", c.ClientIP(), c.Request.UserAgent())
-				}
+		// 2. If not in cookie, try Authorization header
+		if tokenString == "" {
+			authHeader := c.GetHeader("Authorization")
+			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+				tokenString = strings.TrimPrefix(authHeader, "Bearer ")
 			}
-			c.AbortWithStatusJSON(
-				http.StatusUnauthorized,
-				gin.H{"error": "Invalid or expired token"},
-			)
+		}
+
+		if tokenString == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "No authentication token provided"})
 			return
 		}
 
-		newCtx := audit.WithContext(
-			c.Request.Context(),
-			c.ClientIP(),
-			c.Request.UserAgent(),
-			claims.UserID,
-			claims.UserEmail, // Assuming Email exists in your claims
-		)
+		// Validate token
+		claims, err := tokens.NewService().ValidateToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			return
+		}
 
-		c.Request = c.Request.WithContext(newCtx)
-
-		c.Set("userEmail", claims.UserEmail) // Set user email in context for logging
+		// Set user info in context
 		c.Set("userID", claims.UserID)
+		c.Set("userEmail", claims.UserEmail)
 		c.Set("roleID", claims.RoleID)
+
 		c.Next()
 	}
 }

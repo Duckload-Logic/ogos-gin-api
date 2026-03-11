@@ -19,17 +19,16 @@ func NewHandler(s *Service, logService *logs.Service) *Handler {
 
 // HandleLogin godoc
 // @Summary      User login
-// @Description  Authenticates a user and returns JWT tokens.
+// @Description  Authenticates a user and sets JWT cookies.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        request body      LoginRequest true "Login Credentials"
-// @Success      200     {object}  TokenResponse          "Returns {token, refreshToken}"
-// @Failure      400     {object}  map[string]string      "Invalid request format"
-// @Failure      401     {object}  map[string]string      "Unauthorized"
+// @Param        request body      LoginDTO true "Login Credentials"
+// @Success      200     {object}  map[string]interface{} "Returns user info (optional)"
+// @Failure      400     {object}  map[string]string
+// @Failure      401     {object}  map[string]string
 // @Router       /auth/login [post]
 func (h *Handler) HandleLogin(c *gin.Context) {
-	// Map request body to struct
 	var req LoginDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
@@ -39,13 +38,8 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	// Authenticate user
-	userID, token, refreshToken, err := h.service.AuthenticateUser(
-		c, req.Email, req.Password,
-	)
-
+	userID, token, refreshToken, err := h.service.AuthenticateUser(c, req.Email, req.Password)
 	if err != nil {
-		// Log failed login attempt
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
 			Action:    logs.ActionLoginFailed,
@@ -59,7 +53,13 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	// Log successful login
+	// Set cookies
+	// Access token: short-lived, HTTP-only, Secure in production
+	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", false, true) // 1 hour
+	// Refresh token: longer-lived, HTTP-only
+	c.SetCookie("refresh_token", refreshToken, int(RefreshTokenTTL), "/", "", false, true) // 12 hours
+
+	// Log success
 	h.logService.Record(c.Request.Context(), logs.LogEntry{
 		Category:  logs.CategorySecurity,
 		Action:    logs.ActionLoginSuccess,
@@ -70,39 +70,41 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		UserAgent: ua,
 	})
 
-	// Return tokens
-	c.JSON(http.StatusOK, TokenDTO{
-		Token:        token,
-		RefreshToken: refreshToken,
-	})
+	// Optionally return user info (but no tokens)
+	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
 // HandleRefreshToken godoc
 // @Summary      Refresh JWT token
-// @Description  Refreshes the JWT token using a valid refresh token.
+// @Description  Refreshes the JWT token using the refresh token cookie.
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        request body      RefreshTokenRequest true "Refresh Token"
-// @Success      200     {object}  TokenResponse          "Returns {token, refreshToken}"
-// @Failure      400     {object}  map[string]string      "Invalid request format"
-// @Failure      401     {object}  map[string]string      "Unauthorized"
-// @Router       /auth/refresh-token [post]
+// @Success      200 {object} map[string]string "New access token (optional)"
+// @Failure      401 {object} map[string]string
+// @Router       /auth/refresh [post]
 func (h *Handler) HandleRefreshToken(c *gin.Context) {
-	// Map request body to struct
-	var req RefreshTokenDTO
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+	// Try to get refresh token from cookie first
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		// Fallback: read from request body
+		var req RefreshTokenDTO
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+			return
+		}
+		refreshToken = req.RefreshToken
+	}
+
+	if refreshToken == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token missing"})
 		return
 	}
 
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	// Refresh token
-	newToken, newRefreshToken, err := h.service.RefreshToken(
-		c, req.RefreshToken,
-	)
+	newToken, newRefreshToken, err := h.service.RefreshToken(c, refreshToken)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
@@ -115,35 +117,28 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 		return
 	}
 
-	// Return new tokens
-	c.JSON(http.StatusOK, TokenDTO{
-		Token:        newToken,
-		RefreshToken: newRefreshToken,
-	})
+	// Set new cookies
+	c.SetCookie("access_token", newToken, int(AccessTokenTTL), "/", "", false, true)
+	c.SetCookie("refresh_token", newRefreshToken, int(RefreshTokenTTL), "/", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Token refreshed"})
 }
 
 // HandleLogout godoc
 // @Summary      User logout
-// @Description  Invalidates the user's JWT token (if token blacklisting is implemented).
+// @Description  Invalidates the user's tokens by clearing cookies.
 // @Tags         Auth
-// @Accept       json
-// @Produce      json
-// @Success      200     {object}  map[string]string      "Logout successful"
-// @Failure      401     {object}  map[string]string      "Unauthorized"
+// @Success      200 {object} map[string]string
 // @Router       /auth/logout [post]
 func (h *Handler) HandleLogout(c *gin.Context) {
-	// var req RefreshTokenDTO
-	// if err := c.ShouldBindJSON(&req); err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
-	// 	return
-	// }
+	// Clear cookies
+	c.SetCookie("access_token", "", -1, "/", "", false, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
 
-	// h.service.Logout(c, req.RefreshToken)
-
-	// Log logout event
-	userID, exists := c.Get("userID")
-	userEmail, _ := c.Get("userEmail") // Assuming userEmail is set in context by AuthMiddleware
-	if exists {
+	// Log event (if user info available)
+	userID, _ := c.Get("userID")
+	userEmail, _ := c.Get("userEmail")
+	if userID != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
 			Action:    logs.ActionLogout,
