@@ -37,7 +37,6 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 	}
 
 	prodOrigins := []string{
-		"https://agreeable-plant-085d21a00.1.azurestaticapps.net",
 		"https://pupt-ogos.dllbsit2027.com",
 	}
 
