@@ -2,12 +2,12 @@ package consents
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"path/filepath"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 )
 
 type Handler struct {
@@ -19,13 +19,13 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) HandleGetLatestDocument(c *gin.Context) {
-	var docReq LatestDocumentRequest
-	if err := c.ShouldBindUri(&docReq); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": constants.ErrInvalidRequest})
+	docType := c.Param("type")
+	if docType != "terms" && docType != "privacy" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document type"})
 		return
 	}
 
-	doc, err := h.service.GetLatestDocument(c.Request.Context(), docReq.Type)
+	doc, err := h.service.GetLatestDocument(c.Request.Context(), docType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch document"})
 		return
@@ -34,10 +34,26 @@ func (h *Handler) HandleGetLatestDocument(c *gin.Context) {
 	c.JSON(http.StatusOK, doc)
 }
 
-func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("userID"))
+func (h *Handler) HandleGetDocumentContent(c *gin.Context) {
+	docType := c.Param("type")
+	if docType != "terms" && docType != "privacy" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document type"})
+		return
+	}
+
+	content, contentType, err := h.service.GetDocumentContent(c.Request.Context(), docType)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch document content"})
+		return
+	}
+
+	c.Data(http.StatusOK, contentType, content)
+}
+
+func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
+	userID := c.MustGet("userID").(int) // Get userID from context set by AuthMiddleware
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
@@ -59,25 +75,33 @@ func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
 }
 
 func (h *Handler) HandleSaveConsent(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("userID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+	userID := c.MustGet("userID").(int) // Get userID from context set by AuthMiddleware
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
 
-	var req SaveConsentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": constants.ErrInvalidRequest})
+	docType := c.Param("type")
+	if docType != "terms" && docType != "privacy" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document type"})
 		return
 	}
 
-	err = h.service.SaveConsent(c.Request.Context(), userID, req.DocID)
+	docIDStr := c.Param("docID")
+	docID, err := strconv.Atoi(docIDStr)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		return
+	}
+
+	err = h.service.SaveConsent(c.Request.Context(), userID, docID)
+	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save consent"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Consent saved successfully"})
+	c.JSON(http.StatusAccepted, gin.H{"message": "Consent saved successfully"})
 }
 
 // Admin endpoint to view user consent history
