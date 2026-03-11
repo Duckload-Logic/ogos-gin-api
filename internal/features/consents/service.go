@@ -1,15 +1,25 @@
 package consents
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"log"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+)
+
+const (
+	DocPathFormat = "legal/%s/%s.md"
+	VersionPrefix = "_v"
+	FirstVersion  = 1
 )
 
 type Service struct {
@@ -32,6 +42,38 @@ func (s *Service) GetLatestDocument(ctx context.Context, docType string) (*Legal
 	}
 
 	return s.repo.GetLatestDocument(ctx, dbDocType)
+}
+
+func (s *Service) GetLatestDocumentLocked(ctx context.Context, tx *sqlx.Tx, docType string) (*LegalDocument, error) {
+	dbDocType := ""
+	switch docType {
+	case "terms":
+		dbDocType = "TERMS_OF_SERVICE"
+	case "privacy":
+		dbDocType = "PRIVACY_POLICY"
+	}
+
+	return s.repo.GetLatestDocumentLocked(ctx, tx, dbDocType)
+}
+
+// In consents/service.go
+func (s *Service) GetDocumentContent(ctx context.Context, docType string) ([]byte, string, error) {
+	// 1. Fetch latest document metadata
+	doc, err := s.GetLatestDocument(ctx, docType)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// 2. Download the blob content using your storage implementation
+	//    We'll use a bytes.Buffer to capture the output.
+	var buf bytes.Buffer
+	err = s.storage.Download(ctx, doc.FileURL, &buf)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// 3. Return the content and content type (you stored it as "text/markdown")
+	return buf.Bytes(), "text/markdown; charset=utf-8", nil
 }
 
 func (s *Service) HasUserAccepted(ctx context.Context, userID int, docID int) (bool, error) {
@@ -62,13 +104,49 @@ func (s *Service) ListUserConsentHistory(ctx context.Context, userID int) ([]Use
 	return s.repo.ListUserConsentHistory(ctx, userID)
 }
 
-func (s *Service) UploadNewDocument(ctx context.Context, docType string, file io.ReadSeeker, contentType string) error {
-	today := time.Now().Format("2006-01-02")
-	version := strings.Join(strings.Split(today, "-"), ".")
+func (s *Service) UploadNewDocument(
+	ctx context.Context,
+	docType string,
+	file io.ReadSeeker,
+	contentType string,
+) (err error) { // Use named return for the defer check
+	now := time.Now()
+	today := strings.ReplaceAll(now.Format("2006.01.02"), "-", ".")
 
-	filePath := fmt.Sprintf("legal/%s/%s_%d.md", docType, version, time.Now().Unix())
+	tx, err := s.repo.db.BeginTxx(ctx, nil)
+	if err != nil {
+		log.Printf("[PostUploadNewDocument] Begin Transaction: %v", err)
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
 
-	if err := s.storage.Upload(ctx, filePath, file, contentType); err != nil {
+	// Ensure rollback only happens if an error occurred
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	lastDoc, err := s.repo.GetLatestDocumentLocked(ctx, tx, docType)
+	if err != nil {
+		log.Printf("[PostUploadNewDocument] Database Query Locked: %v", err)
+		return fmt.Errorf("failed to get latest document: %w", err)
+	}
+
+	versionCtr := FirstVersion
+	if lastDoc != nil && strings.HasPrefix(lastDoc.Version, today) {
+		parts := strings.Split(lastDoc.Version, VersionPrefix)
+		if len(parts) == 2 {
+			if val, e := strconv.Atoi(parts[1]); e == nil {
+				versionCtr = val + 1
+			}
+		}
+	}
+
+	version := fmt.Sprintf("%s%s%d", today, VersionPrefix, versionCtr)
+	filePath := fmt.Sprintf(DocPathFormat, docType, version)
+
+	if err = s.storage.Upload(ctx, filePath, file, contentType); err != nil {
+		log.Printf("[PostUploadNewDocument] Storage Upload: %v", err)
 		return fmt.Errorf("failed to upload file: %w", err)
 	}
 
@@ -78,5 +156,15 @@ func (s *Service) UploadNewDocument(ctx context.Context, docType string, file io
 		FileURL: filePath,
 	}
 
-	return s.repo.CreateNewVersion(ctx, doc)
+	if err = s.repo.CreateNewVersion(ctx, tx, doc); err != nil {
+		log.Printf("[PostUploadNewDocument] Database Insert: %v", err)
+		return fmt.Errorf("failed to save document record: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		log.Printf("[PostUploadNewDocument] Commit Transaction: %v", err)
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }

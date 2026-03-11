@@ -13,7 +13,7 @@ type LegalDocument struct {
 
 type UserConsent struct {
 	ID         int       `db:"id" json:"id"`
-	UserEmail  string    `db:"user_email" json:"userEmail"`
+	UserID     int       `db:"user_id" json:"userId"`
 	DocumentID int       `db:"document_id" json:"documentId"`
 	AcceptedAt time.Time `db:"accepted_at" json:"acceptedAt"`
 	IPAddress  string    `db:"ip_address" json:"ipAddress"`

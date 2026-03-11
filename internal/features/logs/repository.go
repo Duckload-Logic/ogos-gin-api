@@ -26,8 +26,6 @@ func (r *Repository) Record(ctx context.Context, log *SystemLog) error {
 		VALUES (%s)
 	`, cols, vals)
 
-	fmt.Printf("Executing query: %s with values: %v\n", query, vals) // Debug log
-
 	_, err := r.db.NamedExecContext(ctx, query, log)
 	if err != nil {
 		return fmt.Errorf("failed to insert system log: %w", err)
