@@ -30,25 +30,40 @@ import (
 func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engine {
 	g := gin.Default()
 
-	origins := []string{
+	localOrigins := []string{
 		"http://localhost:8080",
 		"http://127.0.0.1:8080",
 		"http://localhost:5173",
 	}
 
-	if cfg.IsProduction {
-		gin.SetMode(gin.ReleaseMode)
-		origins = []string{
-			"https://guidance-api.azurewebsites.net",
-			"https://agreeable-plant-085d21a00.1.azurestaticapps.net",
-			"https://pupt-ogos.dllbsit2027.com",
-		}
+	prodOrigins := []string{
+		"https://agreeable-plant-085d21a00.1.azurestaticapps.net",
+		"https://pupt-ogos.dllbsit2027.com",
 	}
 
-	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = origins
-	corsConfig.AllowCredentials = true
-	corsConfig.AddAllowHeaders("Authorization")
+	var origins []string
+	if cfg.IsProduction {
+		gin.SetMode(gin.ReleaseMode)
+		origins = prodOrigins
+	} else {
+		gin.SetMode(gin.DebugMode)
+		origins = localOrigins
+	}
+
+	corsConfig := cors.Config{
+		AllowOrigins: origins,
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{
+			"Origin",
+			"Content-Type",
+			"Accept",
+			"Authorization",
+			"X-Requested-With",
+			"x-api-key",
+		},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}
 
 	g.Use(cors.New(corsConfig))
 	g.Use(func(c *gin.Context) {
