@@ -30,24 +30,23 @@ import (
 func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engine {
 	g := gin.Default()
 
-	var allowedOrigins []string
+	origins := []string{
+		"http://localhost:8080",
+		"http://127.0.0.1:8080",
+		"http://localhost:5173",
+	}
+
 	if cfg.IsProduction {
 		gin.SetMode(gin.ReleaseMode)
-		allowedOrigins = append(
-			allowedOrigins,
+		origins = []string{
+			"https://guidance-api.azurewebsites.net",
 			"https://agreeable-plant-085d21a00.1.azurestaticapps.net",
-			"https://pupt-ogos.dllbsit2027.com")
-	} else {
-		gin.SetMode(gin.DebugMode)
-		allowedOrigins = append(
-			allowedOrigins,
-			"http://localhost:8080",
-			"http://127.0.0.1:8080",
-			"http://localhost:5173")
+			"https://pupt-ogos.dllbsit2027.com",
+		}
 	}
 
 	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = allowedOrigins
+	corsConfig.AllowOrigins = origins
 	corsConfig.AllowCredentials = true
 	corsConfig.AddAllowHeaders("Authorization")
 
