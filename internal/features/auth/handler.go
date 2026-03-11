@@ -56,6 +56,11 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	}
 
 	// Set cookies
+	if h.cfg.IsProduction {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
+	}
 	// Access token: short-lived, HTTP-only, Secure in production
 	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true) // 1 hour
 	// Refresh token: longer-lived, HTTP-only
@@ -120,6 +125,11 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	}
 
 	// Set new cookies
+	if h.cfg.IsProduction {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
+	}
 	c.SetCookie("access_token", newToken, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true)
 	c.SetCookie("refresh_token", newRefreshToken, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true)
 
@@ -134,6 +144,12 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 // @Router       /auth/logout [post]
 func (h *Handler) HandleLogout(c *gin.Context) {
 	// Clear cookies
+	if h.cfg.IsProduction {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
+	}
+
 	c.SetCookie("access_token", "", -1, "/", "", h.cfg.IsProduction, true)
 	c.SetCookie("refresh_token", "", -1, "/", "", h.cfg.IsProduction, true)
 
