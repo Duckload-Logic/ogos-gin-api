@@ -5,16 +5,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 )
 
 type Handler struct {
 	service    *Service
 	logService *logs.Service
+	cfg        *config.Config
 }
 
-func NewHandler(s *Service, logService *logs.Service) *Handler {
-	return &Handler{service: s, logService: logService}
+func NewHandler(s *Service, logService *logs.Service, cfg *config.Config) *Handler {
+	return &Handler{service: s, logService: logService, cfg: cfg}
 }
 
 // HandleLogin godoc
@@ -55,9 +57,9 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 
 	// Set cookies
 	// Access token: short-lived, HTTP-only, Secure in production
-	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", false, true) // 1 hour
+	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true) // 1 hour
 	// Refresh token: longer-lived, HTTP-only
-	c.SetCookie("refresh_token", refreshToken, int(RefreshTokenTTL), "/", "", false, true) // 12 hours
+	c.SetCookie("refresh_token", refreshToken, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true) // 12 hours
 
 	// Log success
 	h.logService.Record(c.Request.Context(), logs.LogEntry{
@@ -118,8 +120,8 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	}
 
 	// Set new cookies
-	c.SetCookie("access_token", newToken, int(AccessTokenTTL), "/", "", false, true)
-	c.SetCookie("refresh_token", newRefreshToken, int(RefreshTokenTTL), "/", "", false, true)
+	c.SetCookie("access_token", newToken, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true)
+	c.SetCookie("refresh_token", newRefreshToken, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Token refreshed"})
 }
@@ -132,8 +134,8 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 // @Router       /auth/logout [post]
 func (h *Handler) HandleLogout(c *gin.Context) {
 	// Clear cookies
-	c.SetCookie("access_token", "", -1, "/", "", false, true)
-	c.SetCookie("refresh_token", "", -1, "/", "", false, true)
+	c.SetCookie("access_token", "", -1, "/", "", h.cfg.IsProduction, true)
+	c.SetCookie("refresh_token", "", -1, "/", "", h.cfg.IsProduction, true)
 
 	// Log event (if user info available)
 	userID, _ := c.Get("userID")

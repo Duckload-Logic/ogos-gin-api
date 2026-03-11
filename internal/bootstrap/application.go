@@ -41,7 +41,7 @@ func GetNewApplication(db *sqlx.DB, cfg *config.Config) (*Application, error) {
 
 	repos := getRepositories(db)
 
-	handlers := getHandlers(repos, fileStorage)
+	handlers := getHandlers(repos, fileStorage, cfg)
 
 	router := SetupRoutes(db, handlers, cfg)
 
