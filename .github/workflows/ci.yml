@@ -1,0 +1,28 @@
+name: Backend CI (Go)
+
+on:
+  pull_request:
+    branches: [ "main", "dev" ]
+  push:
+    branches: [ "dev" ]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25.5'
+
+      - name: Run Linter
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+
+      - name: Build Test
+        run: |
+          go build ./... || (echo "[CI-Build] {Go Build}: Failure" && exit 1)
