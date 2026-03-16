@@ -273,9 +273,11 @@ func (h *Handler) finalizeIDPLogin(c *gin.Context, idpUser *IDPUser) {
 }
 
 func (h *Handler) setAuthCookies(c *gin.Context, token, refresh string) {
-	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
-	}
-	c.SetCookie("access_token", token, 3600, "/", "", h.cfg.IsProduction, true)
-	c.SetCookie("refresh_token", refresh, 43200, "/", "", h.cfg.IsProduction, true)
+    if h.cfg.IsProduction {
+        c.SetSameSite(http.SameSiteNoneMode)
+    } else {
+        c.SetSameSite(http.SameSiteLaxMode)
+    }
+    c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true)
+    c.SetCookie("refresh_token", refresh, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true)
 }
