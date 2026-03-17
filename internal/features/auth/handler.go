@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -221,61 +222,81 @@ func (h *Handler) GetAuthCallback(c *gin.Context) {
 
 //exchangeCode
 func (h *Handler) exchangeCode(code string) (string, error) {
-	data := url.Values{}
-	data.Set("grant_type", "authorization_code")
-	data.Set("code", code)
-	data.Set("client_id", h.cfg.IDPClientID)
-	data.Set("client_secret", h.cfg.IDPClientSecret)
-	data.Set("redirect_uri", h.cfg.IDPRedirectURI)
+    payload := map[string]string{
+        "client_id":     h.cfg.IDPClientID,
+        "client_secret": h.cfg.IDPClientSecret,
+        "code":          code,
+		"redirect_uri":  h.cfg.IDPRedirectURI,
+        "grant_type":    "authorization_code",
+    }
+    jsonData, _ := json.Marshal(payload)
 
-	resp, err := http.PostForm("https://idp.pupt.edu/auth/token", data)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("IDP token exchange failed")
-	}
-	defer resp.Body.Close()
+    resp, err := http.Post(
+        "https://idp.pupt.edu/api/v1/auth/token", 
+        "application/json",
+        bytes.NewBuffer(jsonData),
+    )
+    if err != nil || resp.StatusCode != http.StatusOK {
+        return "", fmt.Errorf("exchange failed")
+    }
+    defer resp.Body.Close()
 
-	var res struct {
-		AccessToken string `json:"access_token"`
-	}
-	json.NewDecoder(resp.Body).Decode(&res)
-	return res.AccessToken, nil
+    var res struct {
+        AccessToken string `json:"access_token"`
+    }
+    json.NewDecoder(resp.Body).Decode(&res)
+    return res.AccessToken, nil
 }
 
 func (h *Handler) fetchIDPUser(token string) (*IDPUser, error) {
-	req, _ := http.NewRequest("GET", "https://idp.pupt.edu/auth/me", nil)
+	req, err := http.NewRequest("GET", "https://idp.pupt.edu/api/v1/auth/me", nil)
+	if err != nil {
+		return nil, err
+	}
+	
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("IDP /me request failed")
+	if err != nil {
+		return nil, err
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("IDP /me failed: %d", resp.StatusCode)
+	}
+
 	var user IDPUser
-	json.NewDecoder(resp.Body).Decode(&user)
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		return nil, err
+	}
 	return &user, nil
 }
 
 func (h *Handler) finalizeIDPLogin(c *gin.Context, idpUser *IDPUser) {
-	// Sync user with local DB
 	localUser, err := h.service.SyncIDPUser(c.Request.Context(), idpUser)
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: " + err.Error()})
 		return
 	}
 
-	// Issue local tokens
-	token, refresh, _ := h.service.GenerateTokens(localUser)
+	token, refresh, err := h.service.GenerateTokens(localUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create local session"})
+		return
+	}
 
 	h.setAuthCookies(c, token, refresh)
 	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
 
 func (h *Handler) setAuthCookies(c *gin.Context, token, refresh string) {
-	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
-	}
-	c.SetCookie("access_token", token, 3600, "/", "", h.cfg.IsProduction, true)
-	c.SetCookie("refresh_token", refresh, 43200, "/", "", h.cfg.IsProduction, true)
+    if h.cfg.IsProduction {
+        c.SetSameSite(http.SameSiteNoneMode)
+    } else {
+        c.SetSameSite(http.SameSiteLaxMode)
+    }
+    c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true)
+    c.SetCookie("refresh_token", refresh, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true)
 }

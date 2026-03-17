@@ -13,12 +13,6 @@ type Service struct {
 	repo *users.Repository
 }
 
-type IDPUser struct {
-	Email string   `json:"email"`
-	Name  string   `json:"name"`
-	Roles []string `json:"roles"`
-}
-
 func NewService(repo *users.Repository) *Service {
 	return &Service{repo: repo}
 }
@@ -30,25 +24,37 @@ const (
 	refreshTokenValidity = 60 * 12 // 12 hours
 )
 
-//Role Validation and DB Lookup
 func (s *Service) SyncIDPUser(
 	ctx context.Context, idpUser *IDPUser,
 ) (*users.User, error) {
-	user, err := s.repo.GetUserByEmail(ctx, idpUser.Email)
-	if err != nil {
-		return nil, errors.New("user not found in OGOS system")
+	// Role Gatekeeper
+	var targetRoleID int
+	authorized := false
+	for _, r := range idpUser.Roles {
+		if r == "Student" { targetRoleID = 1; authorized = true; break }
+		if r == "Counselor" { targetRoleID = 2; authorized = true; break }
+	}
+	if !authorized {
+		return nil, errors.New("unauthorized role")
 	}
 
-	//Gatekeeper role check
-	isValid := false
-	for _, role := range idpUser.Roles {
-		if role == "Student" || role == "Counselor" {
-			isValid = true
-			break
+	// DB Lookup
+	user, err := s.repo.GetUserByEmail(ctx, idpUser.Email)
+	if err != nil {
+		newUser := users.User{
+			Email:     idpUser.Email,
+			FirstName: idpUser.Name,
+			LastName:  " ",
+			RoleID:    targetRoleID,
+			PasswordHash: "IDP_AUTH",
 		}
-	}
-	if !isValid {
-		return nil, errors.New("insufficient permissions from IDP")
+
+		createErr := s.repo.CreateUser(ctx, newUser)
+		if createErr != nil {
+			return nil, errors.New("failed to sync IDP user")
+		}
+
+		return s.repo.GetUserByEmail(ctx, idpUser.Email)
 	}
 
 	return user, nil
