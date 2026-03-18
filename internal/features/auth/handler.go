@@ -1,8 +1,12 @@
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
@@ -62,9 +66,13 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
 	}
 	// Access token: short-lived, HTTP-only, Secure in production
-	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true) // 1 hour
+	c.SetCookie(
+		"access_token", token, int(AccessTokenTTL), "/",
+		"", h.cfg.IsProduction, true) // 1 hour
 	// Refresh token: longer-lived, HTTP-only
-	c.SetCookie("refresh_token", refreshToken, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true) // 12 hours
+	c.SetCookie(
+		"refresh_token", refreshToken, int(RefreshTokenTTL), "/",
+		"", h.cfg.IsProduction, true) // 12 hours
 
 	// Log success
 	h.logService.Record(c.Request.Context(), logs.LogEntry{
@@ -169,4 +177,140 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
+}
+
+func (h *Handler) GetAuthRedirect(c *gin.Context) {
+	// HARDCODED BASE URL FOR TESTING
+	const testBaseURL = "https://identity-provider.isaxbsit2027.com"
+
+	// Build the full URL using the hardcoded base
+	authURL := fmt.Sprintf(
+		"%s/auth/authorize?client_id=%s",
+		testBaseURL,
+		h.cfg.IDPClientID,
+	)
+
+	log.Printf("[TEST] Redirecting to: %s", authURL)
+
+	// Using StatusSeeOther (303) is sometimes more reliable for browsers
+	c.Redirect(http.StatusSeeOther, authURL)
+}
+
+func (h *Handler) GetAuthCallback(c *gin.Context) {
+	//Capture code
+	code := c.Query("code")
+	if code == "" {
+		log.Printf("[GetAuthCallback] {Query Parameter}: missing code")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Auth code missing"})
+		return
+	}
+
+	//Token Exchange
+	token, err := h.exchangeCode(code)
+	if err != nil {
+		log.Printf("[GetAuthCallback] {Token Exchange}: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token fail"})
+		return
+	}
+
+	//Fetch Identity
+	user, err := h.fetchIDPUser(token)
+	if err != nil {
+		log.Printf("[GetAuthCallback] {API Request}: fetch /me failed: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ID fail"})
+		return
+	}
+
+	//Finalize Session & Role Check
+	h.finalizeIDPLogin(c, user)
+}
+
+// exchangeCode
+func (h *Handler) exchangeCode(code string) (string, error) {
+	payload := map[string]string{
+		"client_id":     h.cfg.IDPClientID,
+		"client_secret": h.cfg.IDPClientSecret,
+		"code":          code,
+		"redirect_uri":  h.cfg.IDPRedirectURI,
+		"grant_type":    "authorization_code",
+	}
+	jsonData, _ := json.Marshal(payload)
+
+	// DIRECT URL: Bypassing the config bug
+	targetURL := "https://identity-provider.isaxbsit2027.com/api/v1/auth/token"
+
+	resp, err := http.Post(
+		targetURL,
+		"application/json",
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("exchange failed with status: %d", resp.StatusCode)
+	}
+
+	var res struct {
+		AccessToken string `json:"access_token"`
+	}
+	json.NewDecoder(resp.Body).Decode(&res)
+	return res.AccessToken, nil
+}
+
+func (h *Handler) fetchIDPUser(token string) (*IDPUser, error) {
+	targetURL := "https://identity-provider.isaxbsit2027.com/api/v1/auth/me"
+
+	req, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("IDP /me failed: %d", resp.StatusCode)
+	}
+
+	var user IDPUser
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (h *Handler) finalizeIDPLogin(c *gin.Context, idpUser *IDPUser) {
+	localUser, err := h.service.SyncIDPUser(c.Request.Context(), idpUser)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: " + err.Error()})
+		return
+	}
+
+	token, refresh, err := h.service.GenerateTokens(localUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create local session"})
+		return
+	}
+
+	h.setAuthCookies(c, token, refresh)
+	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+}
+
+func (h *Handler) setAuthCookies(c *gin.Context, token, refresh string) {
+	if h.cfg.IsProduction {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true)
+	c.SetCookie("refresh_token", refresh, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true)
 }
