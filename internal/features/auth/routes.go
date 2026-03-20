@@ -8,8 +8,7 @@ import (
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	authRoutes := rg.Group("/auth")
 	{
-		authRoutes.GET("/login", h.GetAuthRedirect)
-		authRoutes.GET("/callback", h.GetAuthCallback)
+		authRoutes.POST("/login", h.HandleLogin)
 		authRoutes.POST("/refresh", h.HandleRefreshToken)
 		authRoutes.POST(
 			"/logout",

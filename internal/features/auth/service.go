@@ -31,61 +31,38 @@ const (
 	refreshTokenValidityMinutes = 60 * 12 // 60 minutes * 12 hours = 12 hours
 )
 
-func (s *Service) SyncIDPUser(
-	ctx context.Context, idpUser *IDPUser,
-) (*users.User, error) {
-	// Role Gatekeeper
-	var targetRoleID int
-	authorized := false
-	for _, r := range idpUser.Roles {
-		if r == "Student" { targetRoleID = 1; authorized = true; break }
-		if r == "Counselor" { targetRoleID = 2; authorized = true; break }
-	}
-	if !authorized {
-		return nil, errors.New("unauthorized role")
-	}
-
-	// DB Lookup
-	user, err := s.repo.GetUserByEmail(ctx, idpUser.Email)
+// AuthenticateUser
+func (s *Service) AuthenticateUser(
+	ctx context.Context, email, password string,
+) (int, string, string, error) {
+	// Fetch user from database
+	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		newUser := users.User{
-			Email:     idpUser.Email,
-			FirstName: idpUser.Name,
-			LastName:  " ",
-			RoleID:    targetRoleID,
-			PasswordHash: "IDP_AUTH",
-		}
-
-		createErr := s.repo.CreateUser(ctx, newUser)
-		if createErr != nil {
-			return nil, errors.New("failed to sync IDP user")
-		}
-
-		return s.repo.GetUserByEmail(ctx, idpUser.Email)
+		return 0, "", "", errors.New("invalid credentials")
 	}
 
-	return user, nil
-}
-
-//JWT Generation
-func (s *Service) GenerateTokens(
-	user *users.User,
-) (string, string, error) {
-	token, err := tokenService.GenerateToken(
-		user.Email, user.ID, user.RoleID, "access", accessTokenValidity,
+	// Compare hashed password
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(user.PasswordHash),
+		[]byte(password),
 	)
 	if err != nil {
-		return "", "", errors.New("failed to generate access token")
+		return 0, "", "", errors.New("invalid credentials")
 	}
 
-	refresh, err := tokenService.GenerateToken(
-		user.Email, user.ID, user.RoleID, "refresh", refreshTokenValidity,
-	)
+	// Generate the token
+	token, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "access", accessTokenValidityMinutes)
 	if err != nil {
-		return "", "", errors.New("failed to generate refresh token")
+		return 0, "", "", errors.New("failed to generate session")
 	}
 
-	return token, refresh, nil
+	// Generate refresh token
+	refreshToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "refresh", refreshTokenValidityMinutes)
+	if err != nil {
+		return 0, "", "", errors.New("failed to generate refresh token")
+	}
+
+	return user.ID, token, refreshToken, nil
 }
 
 func (s *Service) RefreshToken(
@@ -93,29 +70,23 @@ func (s *Service) RefreshToken(
 ) (string, string, error) {
 	claims, err := tokenService.ValidateToken(refreshToken)
 	if err != nil {
-		return "", "", errors.New("invalid refresh token")
+		return "", "", errors.New("Invalid refresh token")
 	}
 
-	return s.GenerateTokens(&users.User{
-		ID:     claims.UserID,
-		Email:  claims.UserEmail,
-		RoleID: claims.RoleID,
-	})
-}
-
-func (s *Service) AuthenticateUser(
-	ctx context.Context, email, password string,
-) (int, string, string, error) {
-	user, err := s.repo.GetUserByEmail(ctx, email)
+	// Generate new token
+	newToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "access", accessTokenValidityMinutes)
 	if err != nil {
-		return 0, "", "", errors.New("invalid credentials")
+		return "", "", errors.New("Failed to generate new token")
 	}
 
-	if err := bcrypt.CompareHashAndPassword(
-		[]byte(user.PasswordHash), []byte(password),
-	); err != nil {
-		return 0, "", "", errors.New("invalid credentials")
+	// Generate new refresh token
+	newRefreshToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "refresh", refreshTokenValidityMinutes)
+	if err != nil {
+		return "", "", errors.New("Failed to generate new refresh token")
 	}
+
+	return newToken, newRefreshToken, nil
+}
 
 func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 	// TODO: Implement token blacklisting if needed
