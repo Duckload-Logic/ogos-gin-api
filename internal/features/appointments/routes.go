@@ -2,13 +2,15 @@ package appointments
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
-func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
+func RegisterRoutes(db *sqlx.DB, rg *gin.RouterGroup, h *Handler) {
 	routes := rg.Group("/appointments")
 	routes.Use(middleware.AuthMiddleware())
+	routes.Use(middleware.HydrateStudentContext(db))
 	routes.Use(middleware.AuditContextMiddleware())
 
 	adminOnly := routes.Group("")
@@ -16,9 +18,11 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 		int(constants.CounselorRoleID),
 	))
 	{
-		adminOnly.GET("", h.HandleListAppointments)
-		adminOnly.PATCH("/:id/status", h.HandleUpdateAppointmentStatus)
-		adminOnly.GET("/calendar/stats", h.HandleGetDailyStatusCount)
+		adminOnly.GET("", h.GetAppointmentList)
+		adminOnly.GET(
+			"/calendar/stats",
+			h.GetDailyStatusCountList,
+		)
 	}
 
 	studentOnly := routes.Group("")
@@ -26,7 +30,8 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 		int(constants.StudentRoleID),
 	))
 	{
-		studentOnly.GET("/me", h.HandleGetAppointmentsByUserID)
+		studentOnly.GET("/me", h.GetAppointmentListByIIR)
+		studentOnly.POST("", h.PostAppointment)
 	}
 
 	sharedRoutes := routes.Group("")
@@ -36,12 +41,22 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	))
 	{
 		sharedRoutes.GET("/id/:id", h.GetAppointmentByID)
-		sharedRoutes.GET("/stats", h.HandleGetAppointmentStats)
-		sharedRoutes.GET("/lookups/categories", h.HandleGetConcernCategories)
-		sharedRoutes.GET("/lookups/slots", h.HandleGetAvailableTimeSlots)
-		sharedRoutes.GET("/lookups/statuses", h.HandleGetAppointmentStatuses)
-
-		sharedRoutes.POST("", h.HandleCreateAppointment)
-		sharedRoutes.PATCH("/id/:id", h.HandleUpdateAppointment)
+		sharedRoutes.GET("/stats", h.GetAppointmentStatsList)
+		sharedRoutes.GET(
+			"/lookups/categories",
+			h.GetAppointmentCategoryList,
+		)
+		sharedRoutes.GET(
+			"/lookups/slots",
+			h.GetAvailableTimeSlotList,
+		)
+		sharedRoutes.GET(
+			"/lookups/statuses",
+			h.GetAppointmentStatusList,
+		)
+		sharedRoutes.PATCH(
+			"/id/:id",
+			h.PatchAppointment,
+		)
 	}
 }
