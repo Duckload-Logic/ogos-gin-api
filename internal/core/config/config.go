@@ -13,6 +13,10 @@ type Config struct {
 
 	JWTSecret string
 
+	IDPClientID     string
+	IDPClientSecret string
+	IDPRedirectURI  string
+
 	WebsitesPort string
 
 	LocalUploadDIR               string
@@ -40,6 +44,10 @@ func LoadConfig() *Config {
 		DBTLSCA: os.Getenv("DB_TLS_CA"),
 
 		JWTSecret: os.Getenv("JWT_SECRET"),
+
+		IDPClientID:     os.Getenv("IDP_CLIENT_ID"),
+		IDPClientSecret: os.Getenv("IDP_CLIENT_SECRET"),
+		IDPRedirectURI:  os.Getenv("IDP_REDIRECT_URI"),
 
 		WebsitesPort: os.Getenv("WEBSITES_PORT"),
 
@@ -86,6 +94,15 @@ func validateConfig(config *Config) {
 	}
 	if config.LocalUploadDIR == "" && !config.IsProduction {
 		panic("UPLOAD_DIR is required for local storage")
+	}
+	if config.IDPClientID == "" {
+		panic("IDP_CLIENT_ID is required")
+	}
+	if config.IDPClientSecret == "" {
+		panic("IDP_CLIENT_SECRET is required")
+	}
+	if config.IDPRedirectURI == "" {
+		panic("IDP_REDIRECT_URI is required")
 	}
 	if config.IsProduction {
 		if config.AzureStorageConnectionString == "" {

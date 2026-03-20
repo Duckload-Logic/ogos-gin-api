@@ -1,9 +1,12 @@
 package auth
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
@@ -64,9 +67,13 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
 	}
 	// Access token: short-lived, HTTP-only, Secure in production
-	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true) // 1 hour
+	c.SetCookie(
+		"access_token", token, int(AccessTokenTTL), "/",
+		"", h.cfg.IsProduction, true) // 1 hour
 	// Refresh token: longer-lived, HTTP-only
-	c.SetCookie("refresh_token", refreshToken, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true) // 12 hours
+	c.SetCookie(
+		"refresh_token", refreshToken, int(RefreshTokenTTL), "/",
+		"", h.cfg.IsProduction, true) // 12 hours
 
 	// Log success
 	h.logService.Record(c.Request.Context(), logs.LogEntry{
