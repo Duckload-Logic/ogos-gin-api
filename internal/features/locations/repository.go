@@ -119,6 +119,10 @@ func (r *Repository) upsertAddressTx(ctx context.Context, tx *sqlx.Tx, addr *Add
 	cols, vals := database.GetInsertStatement(Address{}, []string{"created_at", "updated_at"})
 	updateCols := database.GetOnDuplicateKeyUpdateStatement(Address{}, []string{"created_at", "updated_at"})
 
+	if addr.ProvinceCode != nil && *addr.ProvinceCode == "" {
+		addr.ProvinceCode = nil
+	}
+
 	query := fmt.Sprintf(`
 		INSERT INTO addresses (%s)
 		VALUES (%s)

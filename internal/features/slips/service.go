@@ -68,15 +68,20 @@ func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*Li
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:         slips[s].UserID,
-				FirstName:  slips[s].UserFirstName,
-				MiddleName: structs.FromSqlNull(slips[s].UserMiddleName),
-				LastName:   slips[s].UserLastName,
+				ID:        0,
+				FirstName: slips[s].UserFirstName,
+				MiddleName: structs.FromSqlNull(
+					slips[s].UserMiddleName,
+				),
+				LastName: slips[s].UserLastName,
+				Email:    slips[s].UserEmail,
 			},
 			Reason:        slips[s].Reason,
 			DateOfAbsence: slips[s].DateOfAbsence,
 			DateNeeded:    slips[s].DateNeeded,
-			AdminNotes:    structs.FromSqlNull(slips[s].AdminNotes),
+			AdminNotes: structs.FromSqlNull(
+				slips[s].AdminNotes,
+			),
 			Category: SlipCategory{
 				ID:   slips[s].CategoryID,
 				Name: slips[s].CategoryName,
@@ -108,8 +113,12 @@ func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*Li
 	return &listSlipDTO, nil
 }
 
-func (s *Service) GetSlipStats(ctx context.Context, userID *int, req *ListSlipRequest) ([]SlipStatusCount, error) {
-	stats, err := s.repo.GetSlipStats(ctx, userID, req)
+func (s *Service) GetSlipStats(
+	ctx context.Context,
+	iirID *int,
+	req *ListSlipRequest,
+) ([]SlipStatusCount, error) {
+	stats, err := s.repo.GetSlipStats(ctx, iirID, req)
 	if err != nil {
 		return nil, err
 	}
@@ -139,15 +148,20 @@ func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:         slips[s].UserID,
-				FirstName:  slips[s].UserFirstName,
-				MiddleName: structs.FromSqlNull(slips[s].UserMiddleName),
-				LastName:   slips[s].UserLastName,
+				ID:        0,
+				FirstName: slips[s].UserFirstName,
+				MiddleName: structs.FromSqlNull(
+					slips[s].UserMiddleName,
+				),
+				LastName: slips[s].UserLastName,
+				Email:    slips[s].UserEmail,
 			},
 			Reason:        slips[s].Reason,
 			DateOfAbsence: slips[s].DateOfAbsence,
 			DateNeeded:    slips[s].DateNeeded,
-			AdminNotes:    structs.FromSqlNull(slips[s].AdminNotes),
+			AdminNotes: structs.FromSqlNull(
+				slips[s].AdminNotes,
+			),
 			Category: SlipCategory{
 				ID:   slips[s].CategoryID,
 				Name: slips[s].CategoryName,
@@ -178,8 +192,11 @@ func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*
 	return &listSlipsDTO, nil
 }
 
-func (s *Service) GetExcuseSlipsByUserID(ctx context.Context, userID int, req ListSlipRequest) (*ListSlipsDTO, error) {
-	// 1. Get raw data from repository
+func (s *Service) GetExcuseSlipsByIIRID(
+	ctx context.Context,
+	iirID int,
+	req ListSlipRequest,
+) (*ListSlipsDTO, error) {
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -190,7 +207,7 @@ func (s *Service) GetExcuseSlipsByUserID(ctx context.Context, userID int, req Li
 		req.PageSize = 100
 	}
 
-	slips, err := s.repo.GetByUserID(ctx, userID, &req)
+	slips, err := s.repo.GetByIIRID(ctx, iirID, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -200,15 +217,20 @@ func (s *Service) GetExcuseSlipsByUserID(ctx context.Context, userID int, req Li
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:         slips[s].UserID,
-				FirstName:  slips[s].UserFirstName,
-				MiddleName: structs.FromSqlNull(slips[s].UserMiddleName),
-				LastName:   slips[s].UserLastName,
+				ID:        0,
+				FirstName: slips[s].UserFirstName,
+				MiddleName: structs.FromSqlNull(
+					slips[s].UserMiddleName,
+				),
+				LastName: slips[s].UserLastName,
+				Email:    slips[s].UserEmail,
 			},
 			Reason:        slips[s].Reason,
 			DateOfAbsence: slips[s].DateOfAbsence,
 			DateNeeded:    slips[s].DateNeeded,
-			AdminNotes:    structs.FromSqlNull(slips[s].AdminNotes),
+			AdminNotes: structs.FromSqlNull(
+				slips[s].AdminNotes,
+			),
 			Category: SlipCategory{
 				ID:   slips[s].CategoryID,
 				Name: slips[s].CategoryName,
@@ -225,7 +247,10 @@ func (s *Service) GetExcuseSlipsByUserID(ctx context.Context, userID int, req Li
 
 	total, err := s.repo.GetTotalSlipsCount(ctx, &req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get slips count: %w", err)
+		return nil, fmt.Errorf(
+			"failed to get slips count: %w",
+			err,
+		)
 	}
 
 	var listSlipsDTO ListSlipsDTO
@@ -273,60 +298,104 @@ func (s *Service) GetAttachmentFile(ctx context.Context, attachmentID int) (*Sli
 	return attachment, nil
 }
 
-// SubmitExcuseSlip
-func (s *Service) SubmitExcuseSlip(ctx context.Context, userID int, req CreateSlipRequest, files []*multipart.FileHeader) (*Slip, error) {
-
+// SubmitExcuseSlip creates a new slip with attachments.
+func (s *Service) SubmitExcuseSlip(
+	ctx context.Context,
+	iirID int,
+	req CreateSlipRequest,
+	files []*multipart.FileHeader,
+) (*Slip, error) {
 	// Check File Size
 	if files[0].Size > MaxFileSize {
-		return nil, fmt.Errorf("file too large: maximum allowed size is 5MB")
+		return nil, fmt.Errorf(
+			"file too large: maximum 5MB allowed",
+		)
 	}
 
 	// Check File Type
 	ext := strings.ToLower(filepath.Ext(files[0].Filename))
 	allowedTypes := map[string]bool{
-		".pdf": true, ".jpg": true, ".jpeg": true, ".png": true,
+		".pdf":  true,
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
 	}
 	if !allowedTypes[ext] {
-		return nil, fmt.Errorf("invalid file type: only PDF and images (JPG, PNG) are allowed")
+		return nil, fmt.Errorf(
+			"invalid file type: PDF and images only",
+		)
 	}
 
 	parsedDate, err := time.Parse("2006-01-02", req.DateOfAbsence)
 	if err != nil {
-		return nil, fmt.Errorf("invalid date format: expected YYYY-MM-DD")
+		return nil, fmt.Errorf(
+			"invalid date format: YYYY-MM-DD",
+		)
 	}
 
 	if parsedDate.After(time.Now()) {
-		return nil, fmt.Errorf("absence date cannot be in the future")
+		return nil, fmt.Errorf(
+			"absence date cannot be in future",
+		)
 	}
 
 	folderHash := hash.GetSHA256Hash(
 		fmt.Sprintf(
 			"%d%s%s%d",
-			userID,
+			iirID,
 			req.DateOfAbsence,
 			req.DateNeeded,
-			time.Now().UnixNano()),
+			time.Now().UnixNano(),
+		),
 		8,
 	)
 
 	var fileURLs []string
 
 	for _, file := range files {
-		ext := strings.ToLower(filepath.Ext(file.Filename))
-		fileHash := hash.GetSHA256Hash(fmt.Sprintf("%s%d", file.Filename, time.Now().UnixNano()), 16)
+		ext := strings.ToLower(
+			filepath.Ext(file.Filename),
+		)
+		fileHash := hash.GetSHA256Hash(
+			fmt.Sprintf(
+				"%s%d",
+				file.Filename,
+				time.Now().UnixNano(),
+			),
+			16,
+		)
 		uniqueFileName := fileHash + ext
 
-		blobPath := fmt.Sprintf("slips/%s/%s", folderHash, uniqueFileName)
+		blobPath := fmt.Sprintf(
+			"slips/%s/%s",
+			folderHash,
+			uniqueFileName,
+		)
 
-		if err := s.uploadToBlob(ctx, file, blobPath); err != nil {
-			return nil, fmt.Errorf("failed to upload %s: %w", file.Filename, err)
+		if err := s.uploadToBlob(
+			ctx,
+			file,
+			blobPath,
+		); err != nil {
+			return nil, fmt.Errorf(
+				"failed to upload %s: %w",
+				file.Filename,
+				err,
+			)
 		}
 
-		fileURLs = append(fileURLs, fmt.Sprintf("/slips/%s/%s", folderHash, uniqueFileName))
+		fileURLs = append(
+			fileURLs,
+			fmt.Sprintf(
+				"/slips/%s/%s",
+				folderHash,
+				uniqueFileName,
+			),
+		)
 	}
 
 	slip := &Slip{
-		UserID:        userID,
+		IIRID:         iirID,
 		Reason:        req.Reason,
 		DateOfAbsence: req.DateOfAbsence,
 		DateNeeded:    req.DateNeeded,
@@ -334,28 +403,35 @@ func (s *Service) SubmitExcuseSlip(ctx context.Context, userID int, req CreateSl
 		StatusID:      1,
 	}
 
-	slipID, err := s.repo.CreateSlip(ctx, slip) // Gets the slip.ID
+	slipID, err := s.repo.CreateSlip(ctx, slip)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Loop to create attachment records
+	// Loop to create attachment records
 	for i, url := range fileURLs {
 		attachment := &SlipAttachment{
 			SlipID:   *slipID,
 			FileName: files[i].Filename,
 			FileURL:  url,
 		}
-		if err := s.repo.SaveSlipAttachment(ctx, attachment); err != nil {
+		if err := s.repo.SaveSlipAttachment(
+			ctx,
+			attachment,
+		); err != nil {
 			return nil, err
 		}
 	}
 
 	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
 	s.logService.Record(ctx, logs.LogEntry{
-		Category:  logs.CategoryAudit,
-		Action:    logs.ActionSlipCreated,
-		Message:   fmt.Sprintf("Excuse slip #%d submitted by %s", slip.ID, auditUserEmail),
+		Category: logs.CategoryAudit,
+		Action:   logs.ActionSlipCreated,
+		Message: fmt.Sprintf(
+			"Excuse slip #%d submitted by %s",
+			slip.ID,
+			auditUserEmail,
+		),
 		UserID:    auditUserID,
 		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,

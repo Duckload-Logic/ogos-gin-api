@@ -27,9 +27,13 @@ func (s *Service) GetConcernCategories(ctx context.Context) ([]AppointmentCatego
 	return s.repo.GetCategories(ctx)
 }
 
-func (s *Service) CreateAppointment(ctx context.Context, userID int, req AppointmentDTO) (*Appointment, error) {
+func (s *Service) CreateAppointment(
+	ctx context.Context,
+	iirID int,
+	req AppointmentDTO,
+) (*Appointment, error) {
 	appt := &Appointment{
-		UserID:                userID,
+		IIRID:                 iirID,
 		Reason:                structs.ToSqlNull(req.Reason),
 		WhenDate:              req.WhenDate,
 		TimeSlotID:            req.TimeSlot.ID,
@@ -41,11 +45,15 @@ func (s *Service) CreateAppointment(ctx context.Context, userID int, req Appoint
 		return nil, err
 	}
 
-	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
+	auditUserID, ipAddress, userAgent, auditUserEmail := (audit.ExtractMeta(ctx))
 	s.logService.Record(ctx, logs.LogEntry{
-		Category:  logs.CategoryAudit,
-		Action:    logs.ActionAppointmentCreated,
-		Message:   fmt.Sprintf("Appointment #%d created by user %s", appt.ID, auditUserEmail),
+		Category: logs.CategoryAudit,
+		Action:   logs.ActionAppointmentCreated,
+		Message: fmt.Sprintf(
+			"Appointment #%d created by user %s",
+			appt.ID,
+			auditUserEmail,
+		),
 		UserID:    auditUserID,
 		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,
@@ -116,18 +124,22 @@ func (s *Service) ListAppointments(ctx context.Context, req ListAppointmentsRequ
 	dtos := make([]AppointmentDTO, 0, len(appts))
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
-			ID:         appt.UserID,
-			Role:       users.Role{ID: 0, Name: ""},
-			FirstName:  appt.UserFirstName,
-			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
-			LastName:   appt.UserLastName,
+			ID:        0,
+			Role:      users.Role{ID: 0, Name: ""},
+			FirstName: appt.UserFirstName,
+			MiddleName: structs.FromSqlNull(
+				appt.UserMiddleName,
+			),
+			LastName: appt.UserLastName,
 		}
 		dtos = append(dtos, AppointmentDTO{
-			ID:         appt.ID,
-			User:       userDTO,
-			Reason:     structs.FromSqlNull(appt.Reason),
-			AdminNotes: structs.FromSqlNull(appt.AdminNotes),
-			WhenDate:   appt.WhenDate,
+			ID:     appt.ID,
+			User:   userDTO,
+			Reason: structs.FromSqlNull(appt.Reason),
+			AdminNotes: structs.FromSqlNull(
+				appt.AdminNotes,
+			),
+			WhenDate: appt.WhenDate,
 			TimeSlot: TimeSlot{
 				ID:   appt.TimeSlotID,
 				Time: appt.TimeSlotTime,
@@ -160,7 +172,11 @@ func (s *Service) ListAppointments(ctx context.Context, req ListAppointmentsRequ
 	}, nil
 }
 
-func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req ListAppointmentsRequest) (*ListAppointmentsDTO, error) {
+func (s *Service) GetAppointmentsByUserID(
+	ctx context.Context,
+	userID int,
+	req ListAppointmentsRequest,
+) (*ListAppointmentsDTO, error) {
 	if req.Page <= 0 {
 		req.Page = 1
 	}
@@ -190,18 +206,22 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 	dtos := make([]AppointmentDTO, 0, len(appts))
 	for _, appt := range appts {
 		userDTO := users.GetUserResponse{
-			Role:       users.Role{ID: 0, Name: ""},
-			ID:         appt.UserID,
-			FirstName:  appt.UserFirstName,
-			MiddleName: structs.FromSqlNull(appt.UserMiddleName),
-			LastName:   appt.UserLastName,
+			Role:      users.Role{ID: 0, Name: ""},
+			ID:        0,
+			FirstName: appt.UserFirstName,
+			MiddleName: structs.FromSqlNull(
+				appt.UserMiddleName,
+			),
+			LastName: appt.UserLastName,
 		}
 		dtos = append(dtos, AppointmentDTO{
-			ID:         appt.ID,
-			User:       userDTO,
-			Reason:     structs.FromSqlNull(appt.Reason),
-			AdminNotes: structs.FromSqlNull(appt.AdminNotes),
-			WhenDate:   appt.WhenDate,
+			ID:     appt.ID,
+			User:   userDTO,
+			Reason: structs.FromSqlNull(appt.Reason),
+			AdminNotes: structs.FromSqlNull(
+				appt.AdminNotes,
+			),
+			WhenDate: appt.WhenDate,
 			TimeSlot: TimeSlot{
 				ID:   appt.TimeSlotID,
 				Time: appt.TimeSlotTime,
@@ -220,7 +240,13 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 		})
 	}
 
-	total, err := s.repo.GetTotalAppointmentsCount(ctx, req.StatusID, req.StartDate, req.EndDate, &userID)
+	total, err := s.repo.GetTotalAppointmentsCount(
+		ctx,
+		req.StatusID,
+		req.StartDate,
+		req.EndDate,
+		&userID,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -234,8 +260,106 @@ func (s *Service) GetAppointmentsByUserID(ctx context.Context, userID int, req L
 	}, nil
 }
 
-func (s *Service) GetAppointmentStats(ctx context.Context, req ListAppointmentsRequest, userID *int) ([]StatusCount, error) {
-	return s.repo.GetAppointmentStats(ctx, req.StatusID, req.StartDate, req.EndDate, userID)
+func (s *Service) GetAppointmentsByIIRID(
+	ctx context.Context,
+	iirID int,
+	req ListAppointmentsRequest,
+) (*ListAppointmentsDTO, error) {
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+
+	if req.PageSize <= 0 {
+		req.PageSize = 10
+	}
+
+	if req.OrderBy == "" {
+		req.OrderBy = "created_at"
+	}
+
+	appts, err := s.repo.ListByIIRID(
+		ctx,
+		iirID,
+		req.GetOffset(),
+		req.PageSize,
+		req.OrderBy,
+		req.StatusID,
+		req.StartDate,
+		req.EndDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	dtos := make([]AppointmentDTO, 0, len(appts))
+	for _, appt := range appts {
+		userDTO := users.GetUserResponse{
+			Role:      users.Role{ID: 0, Name: ""},
+			ID:        0,
+			FirstName: appt.UserFirstName,
+			MiddleName: structs.FromSqlNull(
+				appt.UserMiddleName,
+			),
+			LastName: appt.UserLastName,
+		}
+		dtos = append(dtos, AppointmentDTO{
+			ID:     appt.ID,
+			User:   userDTO,
+			Reason: structs.FromSqlNull(appt.Reason),
+			AdminNotes: structs.FromSqlNull(
+				appt.AdminNotes,
+			),
+			WhenDate: appt.WhenDate,
+			TimeSlot: TimeSlot{
+				ID:   appt.TimeSlotID,
+				Time: appt.TimeSlotTime,
+			},
+			AppointmentCategory: AppointmentCategory{
+				ID:   appt.CategoryID,
+				Name: appt.CategoryName,
+			},
+			Status: AppointmentStatus{
+				ID:       appt.StatusID,
+				Name:     appt.StatusName,
+				ColorKey: appt.StatusColorKey,
+			},
+			CreatedAt: appt.CreatedAt,
+			UpdatedAt: appt.UpdatedAt,
+		})
+	}
+
+	total, err := s.repo.GetTotalAppointmentsCount(
+		ctx,
+		req.StatusID,
+		req.StartDate,
+		req.EndDate,
+		&iirID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ListAppointmentsDTO{
+		Appointments: dtos,
+		Total:        total,
+		Page:         req.Page,
+		PageSize:     req.PageSize,
+		TotalPages:   (total + req.PageSize - 1) / req.PageSize,
+	}, nil
+}
+
+func (s *Service) GetAppointmentStats(
+	ctx context.Context,
+	req ListAppointmentsRequest,
+	iirID *int,
+) ([]StatusCount, error) {
+	return s.repo.GetAppointmentStats(
+		ctx,
+		req.StatusID,
+		req.StartDate,
+		req.EndDate,
+		iirID,
+	)
 }
 
 func (s *Service) GetAvailableTimeSlots(ctx context.Context, date string) ([]AvailableTimeSlotView, error) {
@@ -258,6 +382,7 @@ func (s *Service) UpdateAppointment(ctx context.Context, id int, req Appointment
 
 	appt := Appointment{
 		ID:                    id,
+		StatusID:              req.Status.ID,
 		Reason:                structs.ToSqlNull(req.Reason),
 		WhenDate:              req.WhenDate,
 		TimeSlotID:            req.TimeSlot.ID,
@@ -289,47 +414,7 @@ func (s *Service) UpdateAppointment(ctx context.Context, id int, req Appointment
 	return nil
 }
 
-func (s *Service) UpdateAppointmentStatus(ctx context.Context, id int, req AppointmentDTO) error {
-	// Fetch old state for audit trail
-	oldAppt, _ := s.repo.GetAppointment(ctx, id)
-
-	appt := Appointment{
-		ID:                    id,
-		StatusID:              req.Status.ID,
-		Reason:                structs.ToSqlNull(req.Reason),
-		AdminNotes:            structs.ToSqlNull(req.AdminNotes),
-		WhenDate:              req.WhenDate,
-		TimeSlotID:            req.TimeSlot.ID,
-		AppointmentCategoryID: req.AppointmentCategory.ID,
-	}
-
-	err := s.repo.UpdateAppointment(ctx, appt)
-	if err != nil {
-		return err
-	}
-
-	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
-	s.logService.Record(ctx, logs.LogEntry{
-		Category:  logs.CategoryAudit,
-		Action:    logs.ActionAppointmentUpdated,
-		Message:   fmt.Sprintf("Appointment #%d status changed to '%s' by %s", id, req.Status.Name, auditUserEmail),
-		UserID:    auditUserID,
-		UserEmail: auditUserEmail,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		Metadata: map[string]interface{}{
-			"entity_type": "appointment",
-			"entity_id":   id,
-			"old_values":  oldAppt,
-			"new_values":  req,
-		},
-	})
-
-	return nil
-}
-
 func (s *Service) ConfirmAppointment(ctx context.Context, appointmentID int, studentEmail string) error {
-
 	err := s.notifService.Send(ctx, studentEmail, "Appointment Confirmed", "Your session has been approved by the counselor.", "Appointment")
 	return err
 }

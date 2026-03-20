@@ -126,7 +126,8 @@ INSERT INTO activity_options (`name`, category) VALUES
     ('Religious Organizations', 'extra_curricular'),
     ('Chess Club', 'extra_curricular'),
     ('Glee Club', 'extra_curricular'),
-    ('Scouting', 'extra_curricular');
+    ('Scouting', 'extra_curricular'),
+    ("Others", 'both');
 
 INSERT INTO appointment_categories (id, name) VALUES
     (1, 'Academic'),

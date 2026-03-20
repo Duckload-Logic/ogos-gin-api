@@ -90,33 +90,37 @@ func (r *Repository) GetSlipCategories(ctx context.Context) ([]SlipCategory, err
 	return categories, nil
 }
 
-func (r *Repository) GetSlipStats(ctx context.Context, userID *int, req *ListSlipRequest) ([]SlipStatusCount, error) {
+func (r *Repository) GetSlipStats(
+	ctx context.Context,
+	iirID *int,
+	req *ListSlipRequest,
+) ([]SlipStatusCount, error) {
 	var args []interface{}
 	filterConditions := "1=1"
 
 	if req.StatusID != 0 {
-		filterConditions += " AND es.status_id = ?"
+		filterConditions += " AND slp.status_id = ?"
 		args = append(args, req.StatusID)
 	}
 
 	if req.StatusID != 0 {
-		filterConditions += " AND es.status_id = ?"
+		filterConditions += " AND slp.status_id = ?"
 		args = append(args, req.StatusID)
 	}
 
 	if req.StartDate != "" {
-		filterConditions += " AND es.created_at >= ?"
+		filterConditions += " AND slp.created_at >= ?"
 		args = append(args, req.StartDate)
 	}
 
 	if req.EndDate != "" {
-		filterConditions += " AND es.created_at <= ?"
+		filterConditions += " AND slp.created_at <= ?"
 		args = append(args, req.EndDate)
 	}
 
-	if userID != nil {
-		filterConditions += " AND es.user_id = ?"
-		args = append(args, userID)
+	if iirID != nil {
+		filterConditions += " AND slp.iir_id = ?"
+		args = append(args, iirID)
 	}
 
 	var counts []SlipStatusCount
@@ -125,15 +129,19 @@ func (r *Repository) GetSlipStats(ctx context.Context, userID *int, req *ListSli
 			s.id AS id,
 			s.name AS name,
 			s.color_key AS color_key,
-			COUNT(es.id) AS count
+			COUNT(slp.id) AS count
 		FROM statuses s
-		LEFT JOIN admission_slips es ON s.id = es.status_id AND %s
+		LEFT JOIN admission_slips slp
+			ON s.id = slp.status_id AND %s
 		WHERE s.status_type IN ('slip', 'both')
 		GROUP BY s.id, s.name, s.color_key
 	`, filterConditions)
 	err := r.db.SelectContext(ctx, &counts, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get slip status counts: %w", err)
+		return nil, fmt.Errorf(
+			"failed to get slip status counts: %w",
+			err,
+		)
 	}
 
 	return counts, nil
@@ -143,29 +151,30 @@ func (r *Repository) GetTotalSlipsCount(ctx context.Context, req *ListSlipReques
 	var count int
 	query := `
 		SELECT COUNT(*)
-		FROM admission_slips es
-		JOIN users u ON es.user_id = u.id
+		FROM admission_slips slp
+		JOIN iir_records ir ON slp.iir_id = ir.id
+		JOIN users u ON ir.user_id = u.id
 		WHERE 1=1
 	`
 
 	var args []interface{}
 	if req.StatusID != 0 {
-		query += " AND es.status_id = ?"
+		query += " AND slp.status_id = ?"
 		args = append(args, req.StatusID)
 	}
 
 	if req.StartDate != "" {
-		query += " AND es.created_at >= ?"
+		query += " AND slp.created_at >= ?"
 		args = append(args, req.StartDate)
 	}
 
 	if req.EndDate != "" {
-		query += " AND es.created_at <= ?"
+		query += " AND slp.created_at <= ?"
 		args = append(args, req.EndDate)
 	}
 
 	if req.Search != "" {
-		query += " AND (es.reason LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)"
+		query += " AND (slp.reason LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)"
 		searchTerm := "%" + req.Search + "%"
 		args = append(args, searchTerm, searchTerm, searchTerm)
 	}
@@ -183,20 +192,20 @@ func (r *Repository) GetTotalUrgentSlipsCount(ctx context.Context, req *ListSlip
 	// Notice: We must match the JOINs from GetUrgentSlips if they filter the results
 	query := `
         SELECT COUNT(*)
-        FROM admission_slips es
-        JOIN admission_slip_categories c ON es.category_id = c.id
-        WHERE es.status_id IN (1, 9)
+        FROM admission_slips slp
+        JOIN admission_slip_categories c ON slp.category_id = c.id
+        WHERE slp.status_id IN (1, 9)
     `
 
 	var args []interface{}
 
 	if req.StartDate != "" {
-		query += " AND es.date_needed >= ?"
+		query += " AND slp.date_needed >= ?"
 		args = append(args, req.StartDate)
 	}
 
 	if req.EndDate != "" {
-		query += " AND es.date_needed <= ?"
+		query += " AND slp.date_needed <= ?"
 		args = append(args, req.EndDate)
 	}
 
@@ -212,49 +221,50 @@ func (r *Repository) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (
 	var slips []SlipWithDetailsView
 	query := `
 		SELECT
-			es.id AS id,
-			es.user_id AS user_id,
+			slp.id AS id,
+			slp.iir_id AS iir_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
 			u.email AS user_email,
-			es.reason AS reason,
-			es.date_of_absence AS date_of_absence,
-			es.date_needed AS date_needed,
-			es.admin_notes AS admin_notes,
+			slp.reason AS reason,
+			slp.date_of_absence AS date_of_absence,
+			slp.date_needed AS date_needed,
+			slp.admin_notes AS admin_notes,
 			c.id AS category_id,
 			c.name AS category_name,
 			s.id AS status_id,
 			s.name AS status_name,
 			s.color_key AS status_color_key,
-			es.created_at AS created_at,
-			es.updated_at AS updated_at,
+			slp.created_at AS created_at,
+			slp.updated_at AS updated_at,
 			(
-				(1000 - DATEDIFF(es.date_needed, CURRENT_DATE)) * 10
+				(1000 - DATEDIFF(slp.date_needed, CURRENT_DATE)) * 10
 				+
-				CASE WHEN es.category_id = 1 THEN 500 ELSE 0 END
+				CASE WHEN slp.category_id = 1 THEN 500 ELSE 0 END
 			) AS urgency_score
-		FROM admission_slips es
-		JOIN users u ON es.user_id = u.id
-		JOIN admission_slip_categories c ON es.category_id = c.id
-		JOIN statuses s ON es.status_id = s.id
-		WHERE es.status_id IN (1, 9)
+		FROM admission_slips slp
+		JOIN iir_records ir ON slp.iir_id = ir.id
+		JOIN users u ON ir.user_id = u.id
+		JOIN admission_slip_categories c ON slp.category_id = c.id
+		JOIN statuses s ON slp.status_id = s.id
+		WHERE slp.status_id IN (1, 9)
 	`
 
 	var args []interface{}
 	if req.StartDate != "" {
-		query += " AND es.date_needed >= ?"
+		query += " AND slp.date_needed >= ?"
 		args = append(args, req.StartDate)
 	}
 
 	if req.EndDate != "" {
-		query += " AND es.date_needed <= ?"
+		query += " AND slp.date_needed <= ?"
 		args = append(args, req.EndDate)
 	}
 
 	query += `
 		ORDER BY
-			es.date_needed ASC,
+			slp.date_needed ASC,
 			urgency_score DESC
 		LIMIT ? OFFSET ?
 	`
@@ -272,49 +282,51 @@ func (r *Repository) GetAll(ctx context.Context, req *ListSlipRequest) ([]SlipWi
 	var slips []SlipWithDetailsView
 	query := `
         SELECT
-            es.id AS id,
-            es.user_id AS user_id,
+            slp.id AS id,
+            slp.iir_id AS iir_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
-            es.reason AS reason,
-            es.date_of_absence AS date_of_absence,
-            es.date_needed AS date_needed,
-			es.admin_notes AS admin_notes,
+			u.email AS user_email,
+            slp.reason AS reason,
+            slp.date_of_absence AS date_of_absence,
+            slp.date_needed AS date_needed,
+			slp.admin_notes AS admin_notes,
 			c.id AS category_id,
 			c.name AS category_name,
 			s.id AS status_id,
 			s.name AS status_name,
 			s.color_key AS status_color_key,
-            es.created_at AS created_at,
-            es.updated_at AS updated_at
-        FROM admission_slips es
-		JOIN users u ON es.user_id = u.id
-		JOIN admission_slip_categories c ON es.category_id = c.id
-		JOIN statuses s ON es.status_id = s.id
+            slp.created_at AS created_at,
+            slp.updated_at AS updated_at
+        FROM admission_slips slp
+		JOIN iir_records ir ON slp.iir_id = ir.id
+		JOIN users u ON ir.user_id = u.id
+		JOIN admission_slip_categories c ON slp.category_id = c.id
+		JOIN statuses s ON slp.status_id = s.id
 		WHERE 1=1
     `
 	var args []interface{}
 	if req.StatusID != 0 {
-		query += " AND es.status_id = ?"
+		query += " AND slp.status_id = ?"
 		args = append(args, req.StatusID)
 	}
 	if req.StartDate != "" {
-		query += " AND es.created_at >= ?"
+		query += " AND slp.created_at >= ?"
 		args = append(args, req.StartDate)
 	}
 	if req.EndDate != "" {
-		query += " AND es.created_at <= ?"
+		query += " AND slp.created_at <= ?"
 		args = append(args, req.EndDate)
 	}
 	if req.Search != "" {
-		query += " AND (es.reason LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)"
+		query += " AND (slp.reason LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)"
 		searchTerm := "%" + req.Search + "%"
 		args = append(args, searchTerm, searchTerm, searchTerm)
 	}
 
 	query += `
-		ORDER BY es.created_at DESC
+		ORDER BY slp.created_at DESC
 		LIMIT ? OFFSET ?
 	`
 	args = append(args, req.PageSize, req.GetOffset())
@@ -327,59 +339,138 @@ func (r *Repository) GetAll(ctx context.Context, req *ListSlipRequest) ([]SlipWi
 	return slips, nil
 }
 
-func (r *Repository) GetByUserID(ctx context.Context, userID int, req *ListSlipRequest) ([]SlipWithDetailsView, error) {
+func (r *Repository) GetByUserID(
+	ctx context.Context,
+	userID int,
+	req *ListSlipRequest,
+) ([]SlipWithDetailsView, error) {
 	var slips []SlipWithDetailsView
 	var args []interface{}
 	args = append(args, userID)
 	query := `
 		SELECT
-			es.id AS id,
-			es.user_id AS user_id,
+			slp.id AS id,
+			slp.iir_id AS iir_id,
 			u.first_name AS user_first_name,
 			u.middle_name AS user_middle_name,
 			u.last_name AS user_last_name,
-			es.reason AS reason,
-			es.date_of_absence AS date_of_absence,
-			es.date_needed AS date_needed,
-			es.admin_notes AS admin_notes,
+			u.email AS user_email,
+			slp.reason AS reason,
+			slp.date_of_absence AS date_of_absence,
+			slp.date_needed AS date_needed,
+			slp.admin_notes AS admin_notes,
 			c.id AS category_id,
 			c.name AS category_name,
 			s.id AS status_id,
 			s.name AS status_name,
 			s.color_key AS status_color_key,
-			es.created_at AS created_at,
-			es.updated_at AS updated_at
-		FROM admission_slips es
-		JOIN users u ON es.user_id = u.id
-		JOIN admission_slip_categories c ON es.category_id = c.id
-		JOIN statuses s ON es.status_id = s.id
-		WHERE es.user_id = ?
+			slp.created_at AS created_at,
+			slp.updated_at AS updated_at
+		FROM admission_slips slp
+		JOIN iir_records ir ON slp.iir_id = ir.id
+		JOIN users u ON ir.user_id = u.id
+		JOIN admission_slip_categories c
+			ON slp.category_id = c.id
+		JOIN statuses s ON slp.status_id = s.id
+		WHERE u.id = ?
     `
 
 	if req.StatusID != 0 {
-		query += " AND es.status_id = ?"
+		query += " AND slp.status_id = ?"
 		args = append(args, req.StatusID)
 	}
 
 	if req.StartDate != "" {
-		query += " AND es.created_at >= ?"
+		query += " AND slp.created_at >= ?"
 		args = append(args, req.StartDate)
 	}
 
 	if req.EndDate != "" {
-		query += " AND es.created_at <= ?"
+		query += " AND slp.created_at <= ?"
 		args = append(args, req.EndDate)
 	}
 
 	query += `
-		ORDER BY es.created_at DESC
+		ORDER BY slp.created_at DESC
 		LIMIT ? OFFSET ?
 	`
 	args = append(args, req.PageSize, req.GetOffset())
 
 	err := r.db.SelectContext(ctx, &slips, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get excuse slips for user: %w", err)
+		return nil, fmt.Errorf(
+			"failed to get slips for user: %w",
+			err,
+		)
+	}
+
+	return slips, nil
+}
+
+func (r *Repository) GetByIIRID(
+	ctx context.Context,
+	iirID int,
+	req *ListSlipRequest,
+) ([]SlipWithDetailsView, error) {
+	var slips []SlipWithDetailsView
+	var args []interface{}
+	args = append(args, iirID)
+	query := `
+		SELECT
+			slp.id AS id,
+			slp.iir_id AS iir_id,
+			ir.user_id AS user_id,
+			u.first_name AS user_first_name,
+			u.middle_name AS user_middle_name,
+			u.last_name AS user_last_name,
+			u.email AS user_email,
+			slp.reason AS reason,
+			slp.date_of_absence AS date_of_absence,
+			slp.date_needed AS date_needed,
+			slp.admin_notes AS admin_notes,
+			c.id AS category_id,
+			c.name AS category_name,
+			s.id AS status_id,
+			s.name AS status_name,
+			s.color_key AS status_color_key,
+			slp.created_at AS created_at,
+			slp.updated_at AS updated_at
+		FROM admission_slips slp
+		JOIN iir_records ir ON slp.iir_id = ir.id
+		JOIN users u ON ir.user_id = u.id
+		JOIN admission_slip_categories c
+			ON slp.category_id = c.id
+		JOIN statuses s ON slp.status_id = s.id
+		WHERE slp.iir_id = ?
+    `
+
+	if req.StatusID != 0 {
+		query += " AND slp.status_id = ?"
+		args = append(args, req.StatusID)
+	}
+
+	if req.StartDate != "" {
+		query += " AND slp.created_at >= ?"
+		args = append(args, req.StartDate)
+	}
+
+	if req.EndDate != "" {
+		query += " AND slp.created_at <= ?"
+		args = append(args, req.EndDate)
+	}
+
+	query += `
+		ORDER BY slp.created_at DESC
+		LIMIT ? OFFSET ?
+	`
+	args = append(args, req.PageSize, req.GetOffset())
+
+	err := r.db.SelectContext(ctx, &slips, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to get slips for IIR: %w",
+			err,
+		)
 	}
 
 	return slips, nil

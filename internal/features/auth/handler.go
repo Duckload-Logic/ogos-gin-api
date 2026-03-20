@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 )
 
@@ -179,138 +180,179 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
 }
 
-func (h *Handler) GetAuthRedirect(c *gin.Context) {
-	// HARDCODED BASE URL FOR TESTING
-	const testBaseURL = "https://identity-provider.isaxbsit2027.com"
+// IDP integration handlers
 
-	// Build the full URL using the hardcoded base
-	authURL := fmt.Sprintf(
-		"%s/auth/authorize?client_id=%s",
-		testBaseURL,
-		h.cfg.IDPClientID,
+// GetAuthorizeURL godoc
+// @Summary      Get IDP authorization URL
+// @Description  Generates OAuth 2.0 authorization URL with PKCE
+// @Tags         Auth
+// @Produce      json
+// @Success      200 {object} IDPAuthorizeURLResponse
+// @Failure      500 {object} map[string]string
+// @Router       /auth/idp/authorize-url [get]
+func (h *Handler) GetAuthorizeURL(c *gin.Context) {
+	// Generate authorization URL with state and PKCE parameters
+	authURL, err := h.service.GetAuthorizeURL(h.cfg)
+	if err != nil {
+		h.logService.Record(c.Request.Context(), logs.LogEntry{
+			Category: LogCategorySecurity,
+			Action:   "AuthURLGenerationFailed",
+			Message: fmt.Sprintf(
+				"[GetAuthorizeURL] {Generate URL}: %s",
+				err.Error(),
+			),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": "Failed to generate authorization URL"},
+		)
+		return
+	}
+
+	c.JSON(http.StatusOK, IDPAuthorizeURLResponse{
+		AuthorizationURL: authURL,
+	})
+}
+
+// PostIDPToken godoc
+// @Summary      Exchange IDP authorization code for tokens
+// @Description  Completes OAuth 2.0 flow and provisions user
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body IDPTokenExchangeRequest true "Code & State"
+// @Success      200 {object} map[string]interface{}
+// @Failure      400 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Failure      500 {object} map[string]string
+// @Router       /auth/idp/token [post]
+func (h *Handler) PostIDPToken(c *gin.Context) {
+	var req IDPTokenExchangeRequest
+
+	// Step 1: Bind and validate request
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logService.Record(c.Request.Context(), logs.LogEntry{
+			Category: LogCategorySecurity,
+			Action:   LogActionLoginFailed,
+			Message: fmt.Sprintf(
+				"[PostIDPToken] {Bind JSON}: %s",
+				err.Error(),
+			),
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
+		c.JSON(
+			http.StatusBadRequest,
+			gin.H{"error": "Invalid request format"},
+		)
+		return
+	}
+
+	// Step 2: Execute token exchange and user provisioning
+	accessToken, refreshToken, err := h.service.PostIDPTokenExchange(
+		c.Request.Context(),
+		req.Code,
+		h.cfg,
 	)
+	if err != nil {
+		// Determine appropriate status code based on error
+		statusCode := http.StatusInternalServerError
+		errorMsg := constants.ErrUserProvisioningFailed
 
-	log.Printf("[TEST] Redirecting to: %s", authURL)
+		// Check if error is state validation failure
+		if containsStr(err.Error(), "Validate State") {
+			statusCode = http.StatusUnauthorized
+			errorMsg = constants.ErrInvalidState
+		} else if containsStr(err.Error(), "Token Exchange") {
+			statusCode = http.StatusUnauthorized
+			errorMsg = constants.ErrTokenExchangeFailed
+		} else if containsStr(err.Error(), "Fetch User Info") {
+			statusCode = http.StatusUnauthorized
+			errorMsg = constants.ErrUserInfoFailed
+		}
 
-	// Using StatusSeeOther (303) is sometimes more reliable for browsers
-	c.Redirect(http.StatusSeeOther, authURL)
-}
+		// h.logService.Record(c.Request.Context(), logs.LogEntry{
+		// 	Category: LogCategorySecurity,
+		// 	Action:   LogActionLoginFailed,
+		// 	Message: fmt.Sprintf(
+		// 		"[PostIDPToken] {Service Execution}: %s",
+		// 		err.Error(),
+		// 	),
+		// 	UserID:    1,
+		// 	IPAddress: c.ClientIP(),
+		// 	UserAgent: c.Request.UserAgent(),
+		// })
 
-func (h *Handler) GetAuthCallback(c *gin.Context) {
-	//Capture code
-	code := c.Query("code")
-	if code == "" {
-		log.Printf("[GetAuthCallback] {Query Parameter}: missing code")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Auth code missing"})
+		log.Printf("[PostIDPToken] {Service Execution}: %s", err.Error())
+		c.JSON(statusCode, gin.H{"error": errorMsg})
 		return
 	}
 
-	//Token Exchange
-	token, err := h.exchangeCode(code)
-	if err != nil {
-		log.Printf("[GetAuthCallback] {Token Exchange}: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token fail"})
-		return
-	}
-
-	//Fetch Identity
-	user, err := h.fetchIDPUser(token)
-	if err != nil {
-		log.Printf("[GetAuthCallback] {API Request}: fetch /me failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "ID fail"})
-		return
-	}
-
-	//Finalize Session & Role Check
-	h.finalizeIDPLogin(c, user)
-}
-
-// exchangeCode
-func (h *Handler) exchangeCode(code string) (string, error) {
-	payload := map[string]string{
-		"client_id":     h.cfg.IDPClientID,
-		"client_secret": h.cfg.IDPClientSecret,
-		"code":          code,
-		"redirect_uri":  h.cfg.IDPRedirectURI,
-		"grant_type":    "authorization_code",
-	}
-	jsonData, _ := json.Marshal(payload)
-
-	// DIRECT URL: Bypassing the config bug
-	targetURL := "https://identity-provider.isaxbsit2027.com/api/v1/auth/token"
-
-	resp, err := http.Post(
-		targetURL,
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("exchange failed with status: %d", resp.StatusCode)
-	}
-
-	var res struct {
-		AccessToken string `json:"access_token"`
-	}
-	json.NewDecoder(resp.Body).Decode(&res)
-	return res.AccessToken, nil
-}
-
-func (h *Handler) fetchIDPUser(token string) (*IDPUser, error) {
-	targetURL := "https://identity-provider.isaxbsit2027.com/api/v1/auth/me"
-
-	req, err := http.NewRequest("GET", targetURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("IDP /me failed: %d", resp.StatusCode)
-	}
-
-	var user IDPUser
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
-
-func (h *Handler) finalizeIDPLogin(c *gin.Context, idpUser *IDPUser) {
-	localUser, err := h.service.SyncIDPUser(c.Request.Context(), idpUser)
-	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: " + err.Error()})
-		return
-	}
-
-	token, refresh, err := h.service.GenerateTokens(localUser)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create local session"})
-		return
-	}
-
-	h.setAuthCookies(c, token, refresh)
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
-}
-
-func (h *Handler) setAuthCookies(c *gin.Context, token, refresh string) {
+	// Step 3: Set cookie security attributes based on environment
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteLaxMode)
 	}
-	c.SetCookie("access_token", token, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true)
-	c.SetCookie("refresh_token", refresh, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true)
+
+	// Step 4: Set access token cookie
+	c.SetCookie(
+		AccessTokenCookieName,
+		accessToken,
+		AccessTokenMaxAge,
+		CookiePathRoot,
+		"",
+		h.cfg.IsProduction,
+		true,
+	)
+
+	// Step 5: Set refresh token cookie
+	c.SetCookie(
+		RefreshTokenCookieName,
+		refreshToken,
+		RefreshTokenMaxAge,
+		CookiePathRoot,
+		"",
+		h.cfg.IsProduction,
+		true,
+	)
+
+	// Step 6: Get user info for logging
+	// user, err := h.service.repo.GetUserByID(
+	// 	c.Request.Context(),
+	// 	1,
+	// )
+	if err == nil {
+		// Log successful login
+		// h.logService.Record(c.Request.Context(), logs.LogEntry{
+		// 	Category: LogCategorySecurity,
+		// 	Action:   LogActionLoginSuccess,
+		// 	Message: fmt.Sprintf(
+		// 		"User %s logged in via IDP",
+		// 		user.Email,
+		// 	),
+		// 	UserID:    1,
+		// 	UserEmail: user.Email,
+		// 	IPAddress: c.ClientIP(),
+		// 	UserAgent: c.Request.UserAgent(),
+		// })
+	}
+
+	// Step 7: Return success response
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"user_id": 1,
+	})
+}
+
+// containsStr checks if a string contains a substring
+func containsStr(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }

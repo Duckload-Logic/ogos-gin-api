@@ -24,6 +24,13 @@ type Config struct {
 	AzureContainerName           string
 
 	IsProduction bool
+
+	IDPClientID     string
+	IDPClientSecret string
+	IDPRedirectURI  string
+	IDPLoginURL     string
+	IDPTokenURL     string
+	IDPUserinfoURL  string
 }
 
 func LoadConfig() *Config {
@@ -49,6 +56,13 @@ func LoadConfig() *Config {
 		AzureContainerName:           os.Getenv("AZURE_CONTAINER_NAME"),
 
 		IsProduction: os.Getenv("IS_PRODUCTION") == "true",
+
+		IDPClientID:     os.Getenv("IDP_CLIENT_ID"),
+		IDPClientSecret: os.Getenv("IDP_CLIENT_SECRET"),
+		IDPRedirectURI:  os.Getenv("IDP_REDIRECT_URI"),
+		IDPLoginURL:     os.Getenv("IDP_LOGIN_ENDPOINT"),
+		IDPTokenURL:     os.Getenv("IDP_TOKEN_ENDPOINT"),
+		IDPUserinfoURL:  os.Getenv("IDP_USERINFO_ENDPOINT"),
 	}
 
 	validateConfig(config)
@@ -97,5 +111,23 @@ func validateConfig(config *Config) {
 		if config.AzureContainerName == "" {
 			panic("AZURE_CONTAINER_NAME is required for Azure Blob Storage")
 		}
+	}
+	if config.IDPClientID == "" {
+		panic("IDP_CLIENT_ID is required")
+	}
+	if config.IDPClientSecret == "" {
+		panic("IDP_CLIENT_SECRET is required")
+	}
+	if config.IDPRedirectURI == "" {
+		panic("IDP_REDIRECT_URI is required")
+	}
+	if config.IDPLoginURL == "" {
+		panic("IDP_AUTHORIZE_ENDPOINT is required")
+	}
+	if config.IDPTokenURL == "" {
+		panic("IDP_TOKEN_ENDPOINT is required")
+	}
+	if config.IDPUserinfoURL == "" {
+		panic("IDP_USERINFO_ENDPOINT is required")
 	}
 }

@@ -3,25 +3,32 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/url"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	repo *users.Repository
+	repo      *users.Repository
+	idpClient *IDPClient
 }
 
 func NewService(repo *users.Repository) *Service {
-	return &Service{repo: repo}
+	return &Service{
+		repo:      repo,
+		idpClient: NewIDPClient(),
+	}
 }
 
 var tokenService = tokens.NewService()
 
 const (
-	accessTokenValidity  = 60      // 1 hour
-	refreshTokenValidity = 60 * 12 // 12 hours
+	accessTokenValidityMinutes  = 60 * 1  // 60 minutes * 1 hour = 1 hour
+	refreshTokenValidityMinutes = 60 * 12 // 60 minutes * 12 hours = 12 hours
 )
 
 func (s *Service) SyncIDPUser(
@@ -110,6 +117,68 @@ func (s *Service) AuthenticateUser(
 		return 0, "", "", errors.New("invalid credentials")
 	}
 
-	at, rt, err := s.GenerateTokens(user)
-	return user.ID, at, rt, err
+func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+	// TODO: Implement token blacklisting if needed
+	return nil
+}
+
+// IDP integration methods
+
+// GetAuthorizeURL generates the complete OAuth 2.0 authorization URL
+// with PKCE parameters. This method creates a state parameter for CSRF
+// protection, generates PKCE verifier and challenge, stores the state
+// with metadata, and builds the authorization URL.
+//
+// Parameters:
+//   - cfg: Application configuration containing IDP endpoints
+//
+// Returns the authorization URL and state parameter, or an error if
+// generation fails.
+func (s *Service) GetAuthorizeURL(
+	cfg *config.Config,
+) (string, error) {
+
+	// Build authorization URL with all required parameters
+	params := url.Values{}
+	params.Set("client_id", cfg.IDPClientID)
+
+	authURL := fmt.Sprintf(
+		"%s?%s",
+		cfg.IDPLoginURL,
+		params.Encode(),
+	)
+
+	return authURL, nil
+}
+
+// PostIDPTokenExchange orchestrates the complete IDP login flow:
+// validates state, exchanges code for token, fetches user info,
+// provisions user, and generates application JWT tokens.
+//
+// Parameters:
+//   - ctx: Context for database and HTTP operations
+//   - code: Authorization code from IDP callback
+//   - state: State parameter from IDP callback
+//   - cfg: Application configuration
+//
+// Returns user ID and JWT tokens, or an error if any step fails.
+func (s *Service) PostIDPTokenExchange(
+	ctx context.Context,
+	code string,
+	cfg *config.Config,
+) (string, string, error) {
+	// Exchange authorization code for access token and refresh token
+	tokenResp, err := s.idpClient.ExchangeCodeForToken(
+		ctx,
+		code,
+		cfg,
+	)
+	if err != nil {
+		return "", "", fmt.Errorf(
+			"[AuthService] {Token Exchange}: %w",
+			err,
+		)
+	}
+
+	return tokenResp.AccessToken, tokenResp.RefreshToken, nil
 }

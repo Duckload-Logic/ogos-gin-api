@@ -38,7 +38,9 @@ uploads/
 
 # Editor/IDE
 # .idea/
-# .vscode/
+.vscode/
+.github/copilot*
+.kiro
 
 # test slips
 slips/

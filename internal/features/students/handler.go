@@ -2,6 +2,7 @@ package students
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -134,6 +135,16 @@ func (h *Handler) HandleGetNatureOfResidenceTypes(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, types)
+}
+
+func (h *Handler) HandleGetActivityOptions(c *gin.Context) {
+	options, err := h.service.GetActivityOptions(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get activity options"})
+		return
+	}
+
+	c.JSON(http.StatusOK, options)
 }
 
 // HandleListStudents godoc
@@ -458,32 +469,24 @@ func (h *Handler) HandleGetStudentTestResults(c *gin.Context) {
 	c.JSON(http.StatusOK, testResults)
 }
 
-func (h *Handler) HandleGetStudentSignificantNotes(c *gin.Context) {
-	iirID, err := strconv.Atoi(c.Param("iirID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID"})
-		return
-	}
-
-	significantNotes, err := h.service.GetStudentSignificantNotes(c.Request.Context(), iirID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student significant notes"})
-		return
-	}
-
-	c.JSON(http.StatusOK, significantNotes)
-}
-
 func (h *Handler) HandleSaveIIRDraft(c *gin.Context) {
 	userID := c.MustGet("userID").(int)
 	var req ComprehensiveProfileDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
+		log.Printf(
+			"[SaveIIRDraft] {JSON Decode}: %v",
+			err,
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
 	draftID, err := h.service.SaveIIRDraft(c.Request.Context(), userID, req)
 	if err != nil {
+		log.Printf(
+			"[SaveIIRDraft] {Service Error}: %v",
+			err,
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save IIR draft"})
 		return
 	}
@@ -495,12 +498,14 @@ func (h *Handler) HandleSubmitIIR(c *gin.Context) {
 	userID := c.MustGet("userID").(int)
 	var req ComprehensiveProfileDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[PostSubmitIIR] {JSON Decode}: %s", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	iirID, err := h.service.SubmitStudentIIR(c.Request.Context(), userID, req)
 	if err != nil {
+		log.Printf("[PostSubmitIIR] {Service Error}: %s", err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to submit student IIR"})
 		return
 	}

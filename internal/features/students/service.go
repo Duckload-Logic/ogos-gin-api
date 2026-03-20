@@ -122,6 +122,15 @@ func (s *Service) GetNatureOfResidenceTypes(ctx context.Context) ([]NatureOfResi
 	return types, nil
 }
 
+func (s *Service) GetActivityOptions(ctx context.Context) ([]ActivityOption, error) {
+	options, err := s.repo.GetActivityOptions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get activity options: %w", err)
+	}
+
+	return options, nil
+}
+
 func (s *Service) GetStudentRelationshipTypes(ctx context.Context) ([]StudentRelationshipType, error) {
 	types, err := s.repo.GetStudentRelationshipTypes(ctx)
 	if err != nil {
@@ -187,6 +196,7 @@ func (s *Service) ListStudents(
 				FirstName:     st.FirstName,
 				MiddleName:    structs.FromSqlNull(st.MiddleName),
 				LastName:      st.LastName,
+				SuffixName:    structs.FromSqlNull(st.SuffixName),
 				Gender:        *gender,
 				Email:         st.Email,
 				StudentNumber: st.StudentNumber,
@@ -354,25 +364,15 @@ func (s *Service) GetStudentProfile(ctx context.Context, iirID int) (*Comprehens
 		return nil
 	})
 
-	g.Go(func() error {
-		testResults, err := s.GetStudentTestResults(ctx, iirID)
-		if err != nil {
-			return err
-		}
+	// g.Go(func() error {
+	// 	testResults, err := s.GetStudentTestResults(ctx, iirID)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-		profile.TestResults = testResults
-		return nil
-	})
-
-	g.Go(func() error {
-		significantNotes, err := s.GetStudentSignificantNotes(ctx, iirID)
-		if err != nil {
-			return err
-		}
-
-		profile.SignificantNotes = significantNotes
-		return nil
-	})
+	// 	profile.TestResults = testResults
+	// 	return nil
+	// })
 
 	if err := g.Wait(); err != nil {
 		return nil, err
@@ -596,9 +596,9 @@ func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID int) (*F
 		ID:                    studentFamily.ID,
 		ParentalStatus:        *parentalStatus,
 		ParentalStatusDetails: structs.FromSqlNull(studentFamily.ParentalStatusDetails),
-		Brothers:              studentFamily.Brothers,
-		Sisters:               studentFamily.Sisters,
-		EmployedSiblings:      studentFamily.EmployedSiblings,
+		Brothers:              &studentFamily.Brothers,
+		Sisters:               &studentFamily.Sisters,
+		EmployedSiblings:      &studentFamily.EmployedSiblings,
 		OrdinalPosition:       studentFamily.OrdinalPosition,
 		HaveQuietPlaceToStudy: studentFamily.HaveQuietPlaceToStudy,
 		IsSharingRoom:         studentFamily.IsSharingRoom,
@@ -859,27 +859,6 @@ func (s *Service) GetStudentTestResults(ctx context.Context, iirID int) ([]TestR
 	return testResultDTOs, nil
 }
 
-func (s *Service) GetStudentSignificantNotes(ctx context.Context, iirID int) ([]SignificantNoteDTO, error) {
-	notes, err := s.repo.GetStudentSignificantNotes(ctx, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student significant notes: %w", err)
-	}
-
-	var noteDTOs []SignificantNoteDTO
-	for _, n := range notes {
-		noteDTOs = append(noteDTOs, SignificantNoteDTO{
-			ID:                  n.ID,
-			NoteDate:            n.NoteDate,
-			IncidentDescription: n.IncidentDescription,
-			Remarks:             n.Remarks,
-			CreatedAt:           n.CreatedAt,
-			UpdatedAt:           n.UpdatedAt,
-		})
-	}
-
-	return noteDTOs, nil
-}
-
 func (s *Service) SaveIIRDraft(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {
 	jsonData, err := json.Marshal(req)
 	if err != nil {
@@ -919,6 +898,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	// 1. Save Student Personal Info
 	if err := s.repo.UpsertStudentPersonalInfo(ctx, tx, &StudentPersonalInfo{
 		IIRID:           iirID,
+		SuffixName:      structs.ToSqlNull(req.Student.StudentPersonalInfoDTO.SuffixName),
 		StudentNumber:   req.Student.StudentPersonalInfoDTO.StudentNumber,
 		GenderID:        req.Student.StudentPersonalInfoDTO.Gender.ID,
 		CivilStatusID:   req.Student.StudentPersonalInfoDTO.CivilStatus.ID,
@@ -1030,9 +1010,9 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		IIRID:                 iirID,
 		ParentalStatusID:      req.Family.FamilyBackgroundDTO.ParentalStatus.ID,
 		ParentalStatusDetails: structs.ToSqlNull(req.Family.FamilyBackgroundDTO.ParentalStatusDetails),
-		Brothers:              req.Family.FamilyBackgroundDTO.Brothers,
-		Sisters:               req.Family.FamilyBackgroundDTO.Sisters,
-		EmployedSiblings:      req.Family.FamilyBackgroundDTO.EmployedSiblings,
+		Brothers:              *req.Family.FamilyBackgroundDTO.Brothers,
+		Sisters:               *req.Family.FamilyBackgroundDTO.Sisters,
+		EmployedSiblings:      *req.Family.FamilyBackgroundDTO.EmployedSiblings,
 		OrdinalPosition:       req.Family.FamilyBackgroundDTO.OrdinalPosition,
 		HaveQuietPlaceToStudy: req.Family.FamilyBackgroundDTO.HaveQuietPlaceToStudy,
 		IsSharingRoom:         req.Family.FamilyBackgroundDTO.IsSharingRoom,
@@ -1189,27 +1169,22 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	}
 
 	// 12. Save Test Results
-	if err := s.repo.DeleteTestResultsByIIRID(ctx, tx, iirID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing test results: %w", err)
-	}
+	// if err := s.repo.DeleteTestResultsByIIRID(ctx, tx, iirID); err != nil {
+	// 	return 0, fmt.Errorf("failed to delete existing test results: %w", err)
+	// }
 
-	for _, testResultDTO := range req.TestResults {
-		if _, err := s.repo.CreateTestResult(ctx, tx, &TestResult{
-			IIRID:       iirID,
-			TestDate:    testResultDTO.TestDate,
-			TestName:    testResultDTO.TestName,
-			RawScore:    testResultDTO.RawScore,
-			Percentile:  testResultDTO.Percentile,
-			Description: testResultDTO.Description,
-		}); err != nil {
-			return 0, fmt.Errorf("failed to save test result: %w", err)
-		}
-	}
-
-	// 13. Save Significant Notes
-	if err := s.repo.DeleteSignificantNotesByIIRID(ctx, tx, iirID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing significant notes: %w", err)
-	}
+	// for _, testResultDTO := range req.TestResults {
+	// 	if _, err := s.repo.CreateTestResult(ctx, tx, &TestResult{
+	// 		IIRID:       iirID,
+	// 		TestDate:    testResultDTO.TestDate,
+	// 		TestName:    testResultDTO.TestName,
+	// 		RawScore:    testResultDTO.RawScore,
+	// 		Percentile:  testResultDTO.Percentile,
+	// 		Description: testResultDTO.Description,
+	// 	}); err != nil {
+	// 		return 0, fmt.Errorf("failed to save test result: %w", err)
+	// 	}
+	// }
 
 	IIRRecordUpdate := &IIRRecord{
 		ID:          iirID,

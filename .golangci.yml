@@ -1,9 +1,0 @@
-linters-settings:
-  revive:
-    rules:
-      - name: package-comments
-        disabled: true
-
-linters:
-  enable:
-    - revive

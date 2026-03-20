@@ -243,6 +243,7 @@ func (r *Repository) ListStudents(
 			usr.id as user_id,
 			usr.first_name,
 			usr.middle_name,
+			iir.suffix_name,
 			usr.last_name,
 			spi.gender_id,
 			usr.email,
@@ -533,6 +534,7 @@ func (r *Repository) GetCourseByID(ctx context.Context, courseID int) (*Course, 
 
 	return &course, nil
 }
+
 func (r *Repository) GetStudentAddresses(ctx context.Context, iirID int) ([]StudentAddress, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -797,6 +799,20 @@ func (r *Repository) GetStudentHealthRecord(ctx context.Context, iirID int) (*St
 	return &hr, nil
 }
 
+func (r *Repository) GetActivityOptions(ctx context.Context) ([]ActivityOption, error) {
+	query := fmt.Sprintf(`
+		SELECT %s FROM activity_options ORDER BY id
+	`, database.GetColumns(ActivityOption{}))
+
+	var options []ActivityOption
+	err := r.db.SelectContext(ctx, &options, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get activity options: %w", err)
+	}
+
+	return options, nil
+}
+
 func (r *Repository) GetStudentConsultations(ctx context.Context, iirID int) ([]StudentConsultation, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -889,22 +905,6 @@ func (r *Repository) GetStudentTestResults(ctx context.Context, iirID int) ([]Te
 	}
 
 	return results, nil
-}
-
-func (r *Repository) GetStudentSignificantNotes(ctx context.Context, iirID int) ([]SignificantNote, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM significant_notes
-		WHERE iir_id = ?
-	`, database.GetColumns(SignificantNote{}))
-
-	var notes []SignificantNote
-	err := r.db.SelectContext(ctx, &notes, query, iirID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get student significant notes: %w", err)
-	}
-
-	return notes, nil
 }
 
 // Save and Upsert
@@ -1711,40 +1711,6 @@ func (r *Repository) deleteTestResultsByIIRIDTx(ctx context.Context, tx *sqlx.Tx
 		return fmt.Errorf("failed to delete test results: %w", err)
 	}
 	return nil
-}
-
-func (r *Repository) CreateSignificantNote(ctx context.Context, tx *sqlx.Tx, sn *SignificantNote) (int, error) {
-	if tx != nil {
-		return r.createSignificantNoteTx(ctx, tx, sn)
-	}
-
-	var id int
-	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
-		var err error
-		id, err = r.createSignificantNoteTx(ctx, txn, sn)
-		return err
-	})
-	return id, err
-}
-
-func (r *Repository) createSignificantNoteTx(ctx context.Context, tx *sqlx.Tx, sn *SignificantNote) (int, error) {
-	cols, vals := database.GetInsertStatement(SignificantNote{}, []string{"created_at", "updated_at"})
-
-	query := fmt.Sprintf(`
-		INSERT INTO significant_notes (%s)
-		VALUES (%s)
-	`, cols, vals)
-	result, err := tx.NamedExecContext(ctx, query, sn)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create significant note: %w", err)
-	}
-
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert ID for significant note: %w", err)
-	}
-
-	return int(lastID), nil
 }
 
 func (r *Repository) DeleteSignificantNotesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
