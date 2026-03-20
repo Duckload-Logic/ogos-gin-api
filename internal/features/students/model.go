@@ -80,6 +80,7 @@ type StudentBasicInfoView struct {
 	FirstName  string         `json:"firstName"`
 	MiddleName sql.NullString `json:"middleName,omitempty"`
 	LastName   string         `json:"lastName"`
+	SuffixName sql.NullString `json:"suffixName,omitempty"`
 }
 
 type StudentProfileView struct {
@@ -88,6 +89,7 @@ type StudentProfileView struct {
 	FirstName     string         `db:"first_name" json:"firstName"`
 	MiddleName    sql.NullString `db:"middle_name" json:"middleName,omitempty"`
 	LastName      string         `db:"last_name" json:"lastName"`
+	SuffixName    sql.NullString `db:"suffix_name" json:"suffixName,omitempty"`
 	Email         string         `db:"email" json:"email"`
 	StudentNumber string         `db:"student_number" json:"studentNumber"`
 	GenderID      int            `db:"gender_id" json:"genderId"`
@@ -121,9 +123,10 @@ type StudentSelectedReason struct {
 }
 
 type StudentPersonalInfo struct {
-	ID            int    `db:"id" json:"id"`
-	IIRID         int    `db:"iir_id" json:"iirId"`
-	StudentNumber string `db:"student_number" json:"studentNumber"`
+	ID            int            `db:"id" json:"id"`
+	IIRID         int            `db:"iir_id" json:"iirId"`
+	SuffixName    sql.NullString `db:"suffix_name" json:"suffixName,omitempty"`
+	StudentNumber string         `db:"student_number" json:"studentNumber"`
 
 	// Personal Details
 	GenderID      int `db:"gender_id" json:"genderId"`
@@ -159,6 +162,7 @@ type EmergencyContact struct {
 	FirstName      string         `db:"first_name" json:"firstName"`
 	MiddleName     sql.NullString `db:"middle_name" json:"middleName,omitempty"`
 	LastName       string         `db:"last_name" json:"lastName"`
+	SuffixName     sql.NullString `db:"suffix_name" json:"suffixName,omitempty"`
 	ContactNumber  string         `db:"contact_number" json:"contactNumber"`
 	RelationshipID int            `db:"relationship_id" json:"relationshipId"`
 	AddressID      int            `db:"address_id" json:"addressId"`
@@ -184,7 +188,8 @@ type RelatedPerson struct {
 	DateOfBirth      string         `db:"date_of_birth" json:"dateOfBirth"`
 	LastName         string         `db:"last_name" json:"lastName"`
 	FirstName        string         `db:"first_name" json:"firstName"`
-	MiddleName       sql.NullString `db:"middle_name" json:"middleName"`
+	MiddleName       sql.NullString `db:"middle_name" json:"middleName,omitempty"`
+	SuffixName       sql.NullString `db:"suffix_name" json:"suffixName,omitempty"`
 	Occupation       sql.NullString `db:"occupation" json:"occupation"`
 	EmployerName     sql.NullString `db:"employer_name" json:"employerName"`
 	EmployerAddress  sql.NullString `db:"employer_address" json:"employerAddress"`
@@ -340,15 +345,4 @@ type TestResult struct {
 	Description string    `db:"description" json:"description"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
-}
-
-// Significant Notes and Incidents
-type SignificantNote struct {
-	ID                  int       `db:"id" json:"id"`
-	IIRID               int       `db:"iir_id" json:"iirId"`
-	NoteDate            string    `db:"note_date" json:"noteDate"`
-	IncidentDescription string    `db:"incident_description" json:"incidentDescription"`
-	Remarks             string    `db:"remarks" json:"remarks"`
-	CreatedAt           time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt           time.Time `db:"updated_at" json:"updatedAt"`
 }

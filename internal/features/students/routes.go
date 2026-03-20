@@ -11,6 +11,7 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 	// Root group: /api/v1/students
 	routes := r.Group("/students")
 	routes.Use(middleware.AuthMiddleware())
+	routes.Use(middleware.HydrateStudentContext(db))
 
 	// Define lookups
 	userResourceLookup := middleware.OwnershipMiddleware(db, "userID")
@@ -24,6 +25,7 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 		lookupRoutes.GET("/parental-status-types", h.HandleGetParentalStatusTypes)
 		lookupRoutes.GET("/enrollment-reasons", h.HandleGetEnrollmentReasons)
 		lookupRoutes.GET("/income-ranges", h.HandleGetIncomeRanges)
+		lookupRoutes.GET("/activity-options", h.HandleGetActivityOptions)
 		lookupRoutes.GET("/support-types", h.HandleGetStudentSupportTypes)
 		lookupRoutes.GET("/support-types/siblings", h.HandleGetSiblingSupportTypes)
 		lookupRoutes.GET("/courses", h.HandleGetCourses)
@@ -65,7 +67,6 @@ func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
 		userRoutes.GET("/records/iir/:iirID/subject-preferences", iirResourceLookup, h.HandleGetStudentSubjectPreferences)
 		userRoutes.GET("/records/iir/:iirID/hobbies", iirResourceLookup, h.HandleGetStudentHobbies)
 		userRoutes.GET("/records/iir/:iirID/test-results", iirResourceLookup, h.HandleGetStudentTestResults)
-		userRoutes.GET("/records/iir/:iirID/significant-notes", iirResourceLookup, h.HandleGetStudentSignificantNotes)
 	}
 
 	studentRoutes := inventoryRoutes.Group("/")
