@@ -14,6 +14,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
@@ -38,6 +39,7 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 
 	prodOrigins := []string{
 		"https://pupt-ogos.dllbsit2027.com",
+		"https://lemon-field-0c62e2800.1.azurestaticapps.net",
 	}
 
 	var origins []string
@@ -117,15 +119,15 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 	users.RegisterRoutes(db, apiV1Routes, handlers.UserHandler)
 	locations.RegisterRoutes(apiV1Routes, handlers.LocationsHandler)
 	students.RegisterRoutes(db, apiV1Routes, handlers.StudentHandler)
-	appointments.RegisterRoutes(apiV1Routes, handlers.AppointmentHandler)
-	slips.RegisterRoutes(apiV1Routes, handlers.SlipHandler)
+	appointments.RegisterRoutes(db, apiV1Routes, handlers.AppointmentHandler)
+	slips.RegisterRoutes(db, apiV1Routes, handlers.SlipHandler)
 	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
 	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler)
 	notifications.RegisterRoutes(db, apiV1Routes, handlers.NotificationsHandler)
 	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler)
 	consents.RegisterRoutes(apiV1Routes, handlers.ConsentHandler)
+	notes.RegisterRoutes(db, apiV1Routes, handlers.NoteHandler)
 
 	external.RegisterRoutes(apiV1Routes, handlers.ExternalStudentHandler, handlers.APIKeyService.ValidateKeyFunc())
-
 	return g
 }

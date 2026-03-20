@@ -11,6 +11,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
@@ -24,6 +25,7 @@ type Handlers struct {
 	UserHandler            *users.Handler
 	LocationsHandler       *locations.Handler
 	StudentHandler         *students.Handler
+	NoteHandler            *notes.Handler
 	ExternalStudentHandler *external.Handler
 	AppointmentHandler     *appointments.Handler
 	SlipHandler            *slips.Handler
@@ -47,6 +49,7 @@ func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *conf
 	userService := users.NewService(repos.UserRepo)
 	locationsService := locations.NewService(repos.LocationsRepo)
 	studentService := students.NewService(repos.StudentRepo, locationsService)
+	noteService := notes.NewService(repos.NoteRepo)
 	externalStudentService := external.NewService(repos.ExternalStudentRepo)
 	appointmentService := appointments.NewService(repos.AppointmentRepo, notificationsService, systemLogService)
 	slipService := slips.NewService(repos.SlipRepo, systemLogService, fileStorage)
@@ -59,6 +62,7 @@ func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *conf
 		UserHandler:            users.NewHandler(userService),
 		LocationsHandler:       locations.NewHandler(locationsService),
 		StudentHandler:         students.NewHandler(studentService),
+		NoteHandler:            notes.NewHandler(noteService),
 		ExternalStudentHandler: external.NewHandler(externalStudentService),
 		AppointmentHandler:     appointments.NewHandler(appointmentService),
 		SlipHandler:            slips.NewHandler(slipService),

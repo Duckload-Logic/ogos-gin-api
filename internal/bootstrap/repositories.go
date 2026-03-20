@@ -8,6 +8,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
@@ -18,6 +19,7 @@ import (
 type Repositories struct {
 	UserRepo            *users.Repository
 	StudentRepo         *students.Repository
+	NoteRepo            *notes.Repository
 	ExternalStudentRepo *external.Repository
 	AppointmentRepo     *appointments.Repository
 	SlipRepo            *slips.Repository
@@ -33,6 +35,7 @@ func getRepositories(db *sqlx.DB) *Repositories {
 	return &Repositories{
 		UserRepo:            users.NewRepository(db),
 		StudentRepo:         students.NewRepository(db),
+		NoteRepo:            notes.NewRepository(db),
 		ExternalStudentRepo: external.NewRepository(db),
 		AppointmentRepo:     appointments.NewRepository(db),
 		SlipRepo:            slips.NewRepository(db),
