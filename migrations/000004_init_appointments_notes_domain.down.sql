@@ -1,5 +1,6 @@
 -- ============================================================================
--- DROP AUDIT TRAILS (consolidated into system_logs table)
+-- APPOINTMENTS & SIGNIFICANT NOTES DOMAIN - ROLLBACK
 -- ============================================================================
 
-DROP TABLE IF EXISTS audit_trails;
+DROP TABLE IF EXISTS significant_notes;
+DROP TABLE IF EXISTS appointments;
