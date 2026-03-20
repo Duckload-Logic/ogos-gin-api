@@ -2,28 +2,34 @@ package slips
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
-func RegisterRoutes(api *gin.RouterGroup, h *Handler) {
+func RegisterRoutes(db *sqlx.DB, api *gin.RouterGroup, h *Handler) {
 	excuseslipGroup := api.Group("/slips")
 	excuseslipGroup.Use(middleware.AuthMiddleware())
+	excuseslipGroup.Use(middleware.HydrateStudentContext(db))
 	excuseslipGroup.Use(middleware.AuditContextMiddleware())
 
 	adminOnly := excuseslipGroup.Group("")
-	adminOnly.Use(middleware.RoleMiddleware(int(constants.CounselorRoleID)))
+	adminOnly.Use(middleware.RoleMiddleware(
+		int(constants.CounselorRoleID),
+	))
 	{
-		adminOnly.GET("", h.GetAll)
-		adminOnly.GET("/urgent", h.HandleGetUrgentSlips)
-		adminOnly.PATCH("/id/:id/status", h.UpdateStatus)
+		adminOnly.GET("", h.GetSlipList)
+		adminOnly.GET("/urgent", h.GetUrgentSlipList)
+		adminOnly.PATCH("/id/:id/status", h.PatchSlipStatus)
 	}
 
 	studentOnly := excuseslipGroup.Group("")
-	studentOnly.Use(middleware.RoleMiddleware(int(constants.StudentRoleID)))
+	studentOnly.Use(middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+	))
 	{
-		studentOnly.GET("/me", h.GetUserSlips)
-		studentOnly.POST("", h.Submit)
+		studentOnly.GET("/me", h.GetSlipListByIIR)
+		studentOnly.POST("", h.PostSlip)
 	}
 
 	sharedRoutes := excuseslipGroup.Group("")
@@ -32,15 +38,22 @@ func RegisterRoutes(api *gin.RouterGroup, h *Handler) {
 		int(constants.StudentRoleID),
 	))
 	{
-		sharedRoutes.GET("/stats", h.GetSlipStats)
-		sharedRoutes.GET("/id/:id/attachments", h.GetSlipAttachments)
-		sharedRoutes.GET("/id/:id/attachments/:attachmentId", h.HandleDownloadAttachment)
-		sharedRoutes.GET("/lookups/statuses", h.HandleGetSlipStatuses)
-		sharedRoutes.GET("/lookups/categories", h.HandleGetSlipCategories)
+		sharedRoutes.GET("/stats", h.GetSlipStatsList)
+		sharedRoutes.GET(
+			"/id/:id/attachments",
+			h.GetSlipAttachmentList,
+		)
+		sharedRoutes.GET(
+			"/id/:id/attachments/:attachmentId",
+			h.GetAttachmentFile,
+		)
+		sharedRoutes.GET(
+			"/lookups/statuses",
+			h.GetSlipStatusList,
+		)
+		sharedRoutes.GET(
+			"/lookups/categories",
+			h.GetSlipCategoryList,
+		)
 	}
-
-	// excuseslipGroup.DELETE("/:id", middleware.RoleMiddleware(
-	// 	int(constants.CounselorRoleID),
-	// 	int(constants.FrontDeskRoleID),
-	// ), h.Delete)
 }
