@@ -10,6 +10,14 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 	{
 		authRoutes.POST("/login", h.HandleLogin)
 		authRoutes.POST("/refresh", h.HandleRefreshToken)
-		authRoutes.POST("/logout", middleware.AuthMiddleware(), h.HandleLogout)
+		authRoutes.POST(
+			"/logout",
+			middleware.AuthMiddleware(),
+			h.HandleLogout,
+		)
+
+		// IDP OAuth 2.0 routes
+		authRoutes.GET("/idp/authorize-url", h.GetAuthorizeURL)
+		authRoutes.POST("/idp/token", h.PostIDPToken)
 	}
 }
