@@ -485,14 +485,19 @@ func createStudent(index int) {
 	defer tx.Rollback()
 
 	// generate core data needed later
-	dob := gofakeit.DateRange(time.Date(1995, 1, 1, 0, 0, 0, 0, time.UTC), time.Now().AddDate(-18, 0, 0))
+	dob := gofakeit.DateRange(
+		time.Date(1995, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Now().AddDate(-18, 0, 0))
 	birthYear := dob.Year()
-	studentEmail := fmt.Sprintf("student%d@university.edu", index+1) // guarantee unique
+	studentEmail := fmt.Sprintf("student%d@university.edu",
+		index+1) // guarantee unique
 
 	// 1. users
 	res, err := tx.Exec(`
-		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
-		VALUES (1, ?, ?, ?, ?, ?, ?)
+		INSERT INTO users (
+			role_id, first_name, middle_name, last_name, email,
+			password_hash, is_active
+		) VALUES (1, ?, ?, ?, ?, ?, ?)
 	`, gofakeit.FirstName(), randomMiddleName(), gofakeit.LastName(), studentEmail, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
@@ -503,7 +508,8 @@ func createStudent(index int) {
 
 	if rand.Float32() < 0.7 {
 		res, err := tx.Exec(`
-			INSERT INTO iir_records (user_id, is_submitted) VALUES (?, ?)
+			INSERT INTO iir_records (user_id, is_submitted)
+			VALUES (?, ?)
 		`, userID, true)
 		if err != nil {
 			log.Fatal(err)
@@ -542,24 +548,36 @@ func createStudent(index int) {
 		// 6. link related persons
 		switch guardianScenario {
 		case "no_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+				true, false, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+				true, false, true)
 		case "father_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, true, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+				true, true, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+				true, false, true)
 		case "mother_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, true, true)
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+				true, false, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+				true, true, true)
 		case "separate_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father", true, false, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother", true, false, true)
-			linkRelatedPerson(tx, int(iirID), guardian.ID, "Guardian", false, true, true)
+			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+				true, false, true)
+			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+				true, false, true)
+			linkRelatedPerson(tx, int(iirID), guardian.ID,
+				"Guardian", false, true, true)
 		}
 
 		// 7. student_personal_info
-		emergency := deriveEmergencyContact(father, mother, guardian, guardianScenario, resAddr1, resAddr2)
-		emergencyContactID := insertEmergencyContact(tx, int(iirID), emergency)
-		insertPersonalInfo(tx, int(iirID), dob, index, emergencyContactID)
+		emergency := deriveEmergencyContact(father, mother, guardian,
+			guardianScenario, resAddr1, resAddr2)
+		emergencyContactID := insertEmergencyContact(tx, int(iirID),
+			emergency)
+		insertPersonalInfo(tx, int(iirID), dob, index,
+			emergencyContactID)
 
 		// 8. family background
 		familyBgID := insertFamilyBackground(tx, int(iirID))
@@ -582,9 +600,6 @@ func createStudent(index int) {
 		// 14. test results
 		insertTestResults(tx, int(iirID))
 
-		// 15. significant notes
-		insertSignificantNotes(tx, int(iirID))
-
 		// 16. finances
 		sfID := insertStudentFinances(tx, int(iirID))
 
@@ -600,17 +615,34 @@ func createStudent(index int) {
 		// 20. hobbies
 		insertHobbies(tx, int(iirID))
 
+		// Collect appointment and admission slip IDs for notes
+		appointmentIDs := []int{}
+		admissionSlipIDs := []int{}
+
 		// 21. admission slip (30% chance)
 		if rand.Float32() < 0.3 {
-			insertAdmissionSlip(tx, int(userID), int(iirID))
+			slipID := insertAdmissionSlip(tx, int(iirID))
+			if slipID > 0 {
+				admissionSlipIDs = append(admissionSlipIDs,
+					slipID)
+			}
 		}
 
 		// 22. appointment (30% chance)
 		if rand.Float32() < 0.3 {
-			for i := 0; i < rand.Intn(5)+1; i++ { // up to 5 appointments per student
-				insertAppointment(tx, int(userID))
+			for i := 0; i < rand.Intn(5)+1; i++ {
+				// up to 5 appointments per student
+				apptID := insertAppointment(tx, int(iirID))
+				if apptID > 0 {
+					appointmentIDs = append(appointmentIDs,
+						apptID)
+				}
 			}
 		}
+
+		// 15. significant notes (after appointments/slips created)
+		insertSignificantNotes(tx, int(iirID), appointmentIDs,
+			admissionSlipIDs)
 
 		tx.Commit()
 		fmt.Printf("Created student %d (iirID=%d)\n", index+1, iirID)
@@ -782,16 +814,23 @@ func insertPersonalInfo(tx *sqlx.Tx, iirID int, dob time.Time, studentIndex int,
 	}
 
 	civilStatusID := chooseCivilStatusID()
+	genderID := randomChoice(genderIDs)
+	nameSuffix := ""
+	if genderID == 1 {
+		if gofakeit.Bool() {
+			nameSuffix = gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})
+		}
+	}
 
 	_, err := tx.Exec(`
 		INSERT INTO student_personal_info (
-			iir_id, student_number, gender_id, civil_status_id, religion_id,
+			iir_id, suffix_name, student_number, gender_id, civil_status_id, religion_id,
 			height_ft, weight_kg, complexion, high_school_gwa, course_id,
 			year_level, section, place_of_birth, date_of_birth,
 			is_employed, employer_name, employer_address, mobile_number, telephone_number
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, iirID, studentNumber,
-		randomChoice(genderIDs), civilStatusID, randomChoice(religionIDs),
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, iirID, sql.NullString{String: nameSuffix, Valid: true}, studentNumber,
+		genderID, civilStatusID, randomChoice(religionIDs),
 		gofakeit.Float64Range(4.5, 6.5), gofakeit.Float64Range(40, 100), gofakeit.Color(),
 		gofakeit.Float64Range(75, 98), randomChoice(courseIDs),
 		rand.Intn(4)+1, rand.Intn(5)+1,
@@ -799,6 +838,7 @@ func insertPersonalInfo(tx *sqlx.Tx, iirID int, dob time.Time, studentIndex int,
 		isEmployed, employerName, employerAddress, mobileNumber, telephoneNumber,
 	)
 	if err != nil {
+		log.Printf("[IIR]: %s", err)
 		log.Fatal(err)
 	}
 }
@@ -924,7 +964,6 @@ func linkRelatedPerson(tx *sqlx.Tx, iirID, personID int, relType string, isParen
 			is_parent, is_guardian, is_living
 		) VALUES (?, ?, ?, ?, ?, ?)
 	`, iirID, personID, relID, isParent, isGuardian, isLiving)
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -1186,20 +1225,45 @@ func insertTestResults(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertSignificantNotes(tx *sqlx.Tx, iirID int) {
+func insertSignificantNotes(tx *sqlx.Tx, iirID int,
+	appointmentIDs, admissionSlipIDs []int,
+) {
 	if rand.Float32() < 0.3 {
 		num := rand.Intn(3) + 1
 		for i := 0; i < num; i++ {
+			// Randomly decide if this note bridges to an appointment
+			// or admission slip
+			var appointmentID sql.NullInt64
+			var admissionSlipID sql.NullInt64
+
+			// 50% chance to link to appointment if any exist
+			if rand.Float32() < 0.5 && len(appointmentIDs) > 0 {
+				appointmentID = sql.NullInt64{
+					Int64: int64(appointmentIDs[rand.Intn(len(appointmentIDs))]),
+					Valid: true,
+				}
+			}
+
+			// 50% chance to link to admission slip if any exist
+			if rand.Float32() < 0.5 && len(admissionSlipIDs) > 0 {
+				admissionSlipID = sql.NullInt64{
+					Int64: int64(admissionSlipIDs[rand.Intn(len(admissionSlipIDs))]),
+					Valid: true,
+				}
+			}
+
 			_, err := tx.Exec(`
 				INSERT INTO significant_notes (
-					iir_id, note_date, incident_description, remarks
-				) VALUES (?, ?, ?, ?)
-			`, iirID,
-				gofakeit.Date().Format("2006-01-02"),
+					iir_id, appointment_id, admission_slip_id,
+					note, remarks
+				) VALUES (?, ?, ?, ?, ?)
+			`, iirID, appointmentID, admissionSlipID,
 				gofakeit.Sentence(8),
 				gofakeit.Sentence(5))
 			if err != nil {
-				log.Fatal(err)
+				log.Printf("[Seeder] {Insert SignificantNote}: %v",
+					err)
+				return
 			}
 		}
 	}
@@ -1302,12 +1366,15 @@ func insertHobbies(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertAdmissionSlip(tx *sqlx.Tx, userID, iirID int) {
-	// More realistic status distribution (pending less likely for historical data)
+func insertAdmissionSlip(tx *sqlx.Tx, iirID int) int {
+	// More realistic status distribution (pending less likely for
+	// historical data)
 	statusName := chooseAdmissionSlipStatus()
 	statusID, ok := admissionSlipStatusesByName[statusName]
 	if !ok {
-		log.Printf("Admission slip status '%s' not found in lookup, defaulting to random status", statusName)
+		log.Printf(
+			"[Seeder] {Insert AdmissionSlip}: status '%s' not found",
+			statusName)
 		statusID = randomChoice(admissionSlipStatusIDs).(int)
 	}
 	categoryID := randomChoice(admissionSlipCategoryIDs).(int)
@@ -1316,23 +1383,27 @@ func insertAdmissionSlip(tx *sqlx.Tx, userID, iirID int) {
 	reason := generateRealisticAdmissionReason()
 
 	daysAgo := rand.Intn(7) + 2 // 2-8 days ago
-	dateOfAbsence := time.Now().AddDate(0, 0, -daysAgo).Format("2006-01-02")
+	dateOfAbsence := time.Now().AddDate(0, 0, -daysAgo).Format(
+		"2006-01-02")
 
-	// Date needed: submission should be a few days to weeks after absence
+	// Date needed: submission should be a few days to weeks after
+	// absence
 	daysAfterAbsence := rand.Intn(7) + 1
-	// 1. Calculate the target date
 	targetDate := time.Now().AddDate(0, 0, -daysAgo+daysAfterAbsence)
 
-	// 2. If targetDate is before "Now", set it to "Now"
+	// If targetDate is before "Now", set it to "Now"
 	if targetDate.Before(time.Now()) {
 		targetDate = time.Now()
 	}
 
-	// 3. Format for the database
 	dateNeeded := targetDate.Format("2006-01-02")
 
-	// Use PDF as primary extension (more realistic for official documents)
-	extensions := []string{".pdf", ".pdf", ".pdf", ".jpg", ".jpeg", ".png"}
+	// Use PDF as primary extension (more realistic for official
+	// documents)
+	extensions := []string{
+		".pdf", ".pdf", ".pdf", ".jpg", ".jpeg",
+		".png",
+	}
 	ext := extensions[rand.Intn(len(extensions))]
 	basePath := "./uploads"
 	subFolder := gofakeit.UUID()
@@ -1343,7 +1414,8 @@ func insertAdmissionSlip(tx *sqlx.Tx, userID, iirID int) {
 	fileName := hash.GetSHA256Hash(readableFileName, 16) + ext
 
 	// DISK PATH (Where Go writes the bytes)
-	fullStoragePath := filepath.Join(basePath, "slips", subFolder, fileName)
+	fullStoragePath := filepath.Join(basePath, "slips", subFolder,
+		fileName)
 
 	dbURL := fmt.Sprintf("/slips/%s/%s", subFolder, fileName)
 	// Create directory and file
@@ -1351,7 +1423,11 @@ func insertAdmissionSlip(tx *sqlx.Tx, userID, iirID int) {
 	os.MkdirAll(dir, os.ModePerm)
 	f, _ := os.Create(fullStoragePath)
 	// Write realistic dummy content
-	content := fmt.Sprintf("ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %d\nDate: %s\nReason: %s\n\n[Document content created for admission purposes]", iirID, dateOfAbsence, reason)
+	content := fmt.Sprintf(
+		"ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %d\nDate: %s\n"+
+			"Reason: %s\n\n[Document content created for admission "+
+			"purposes]",
+		iirID, dateOfAbsence, reason)
 	f.WriteString(content)
 	f.Close()
 
@@ -1360,21 +1436,28 @@ func insertAdmissionSlip(tx *sqlx.Tx, userID, iirID int) {
 
 	res, err := tx.Exec(`
 		INSERT INTO admission_slips (
-			user_id, reason, category_id, date_of_absence, date_needed, status_id, admin_notes
+			iir_id, reason, category_id, date_of_absence,
+			date_needed, status_id, admin_notes
 		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, userID, reason, categoryID, dateOfAbsence, dateNeeded, statusID, adminNotes)
+	`, iirID, reason, categoryID, dateOfAbsence, dateNeeded, statusID,
+		adminNotes)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("[Seeder] {Insert AdmissionSlip}: %v", err)
+		return 0
 	}
 	slipID, _ := res.LastInsertId()
 
 	_, err = tx.Exec(`
-		INSERT INTO slip_attachments (admission_slip_id, file_name, file_url)
-		VALUES (?, ?, ?)
+		INSERT INTO slip_attachments (
+			admission_slip_id, file_name, file_url
+		) VALUES (?, ?, ?)
 	`, slipID, readableFileName, dbURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("[Seeder] {Insert SlipAttachment}: %v", err)
+		return 0
 	}
+
+	return int(slipID)
 }
 
 func chooseAdmissionSlipStatus() string {
@@ -1474,10 +1557,14 @@ func generateAdmissionNotes(status string) sql.NullString {
 	}
 }
 
-func insertAppointment(tx *sqlx.Tx, userID int) {
-	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 || len(appointmentStatusIDs) == 0 {
-		log.Printf("skipping appointment creation for user %d: missing appointment lookup data", userID)
-		return
+func insertAppointment(tx *sqlx.Tx, iirID int) int {
+	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 ||
+		len(appointmentStatusIDs) == 0 {
+		log.Printf(
+			"[Seeder] {Insert Appointment}: missing lookup data for "+
+				"iir %d",
+			iirID)
+		return 0
 	}
 
 	whenDate, timeSlotID := reserveAppointmentSlot()
@@ -1493,17 +1580,22 @@ func insertAppointment(tx *sqlx.Tx, userID int) {
 			break
 		}
 	}
-	if statusName == "cancelled" || statusName == "rejected" || strings.Contains(statusName, "show") {
-		adminNotes = sql.NullString{String: gofakeit.Sentence(rand.Intn(5) + 5), Valid: true}
+	if statusName == "cancelled" || statusName == "rejected" ||
+		strings.Contains(statusName, "show") {
+		adminNotes = sql.NullString{
+			String: gofakeit.Sentence(rand.Intn(5) + 5),
+			Valid:  true,
+		}
 	} else {
 		adminNotes = sql.NullString{Valid: false}
 	}
 
-	_, err := tx.Exec(`
-		       INSERT INTO appointments (
-			       user_id, reason, admin_notes, when_date, time_slot_id, appointment_category_id, status_id
-		       ) VALUES (?, ?, ?, ?, ?, ?, ?)
-	       `, userID,
+	res, err := tx.Exec(`
+		INSERT INTO appointments (
+			iir_id, reason, admin_notes, when_date, time_slot_id,
+			appointment_category_id, status_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, sql.NullInt64{Int64: int64(iirID), Valid: true},
 		gofakeit.Sentence(rand.Intn(11)+20),
 		adminNotes,
 		whenDate,
@@ -1511,8 +1603,12 @@ func insertAppointment(tx *sqlx.Tx, userID int) {
 		concernCategoryID,
 		statusID)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("[Seeder] {Insert Appointment}: %v", err)
+		return 0
 	}
+
+	appointmentID, _ := res.LastInsertId()
+	return int(appointmentID)
 }
 
 func reserveAppointmentSlot() (string, int) {
@@ -1765,7 +1861,6 @@ func insertNotifications(tx *sqlx.Tx, userID int) {
             INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
             VALUES (?, ?, ?, ?, ?, NOW())
         `, userID, title, message, randomType, isRead)
-
 		if err != nil {
 			log.Printf("failed to insert fake notification for %d with type %s: %v", userID, randomType, err)
 		}
