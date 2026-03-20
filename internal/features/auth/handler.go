@@ -1,12 +1,9 @@
 package auth
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
