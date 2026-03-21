@@ -1,8 +1,11 @@
 package locations
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
+)
 
-func RegisterRoutes(r *gin.RouterGroup, h *Handler) {
+func RegisterRoutes(r *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
 	routes := r.Group("/locations")
 	{
 		routes.GET("/regions", h.HandleGetRegions)
