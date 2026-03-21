@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/clients/idp"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
@@ -14,13 +15,13 @@ import (
 
 type Service struct {
 	repo      *users.Repository
-	idpClient *IDPClient
+	idpClient *idp.IDPClient
 }
 
 func NewService(repo *users.Repository) *Service {
 	return &Service{
 		repo:      repo,
-		idpClient: NewIDPClient(),
+		idpClient: idp.NewIDPClient(),
 	}
 }
 
@@ -34,11 +35,11 @@ const (
 // AuthenticateUser
 func (s *Service) AuthenticateUser(
 	ctx context.Context, email, password string,
-) (int, string, string, error) {
+) (string, string, string, error) {
 	// Fetch user from database
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return 0, "", "", errors.New("invalid credentials")
+		return "", "", "", errors.New("invalid credentials")
 	}
 
 	// Compare hashed password
@@ -47,19 +48,19 @@ func (s *Service) AuthenticateUser(
 		[]byte(password),
 	)
 	if err != nil {
-		return 0, "", "", errors.New("invalid credentials")
+		return "", "", "", errors.New("invalid credentials")
 	}
 
 	// Generate the token
 	token, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "access", accessTokenValidityMinutes)
 	if err != nil {
-		return 0, "", "", errors.New("failed to generate session")
+		return "", "", "", errors.New("failed to generate session")
 	}
 
 	// Generate refresh token
 	refreshToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "refresh", refreshTokenValidityMinutes)
 	if err != nil {
-		return 0, "", "", errors.New("failed to generate refresh token")
+		return "", "", "", errors.New("failed to generate refresh token")
 	}
 
 	return user.ID, token, refreshToken, nil
@@ -108,7 +109,6 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 func (s *Service) GetAuthorizeURL(
 	cfg *config.Config,
 ) (string, error) {
-
 	// Build authorization URL with all required parameters
 	params := url.Values{}
 	params.Set("client_id", cfg.IDPClientID)
@@ -152,4 +152,29 @@ func (s *Service) PostIDPTokenExchange(
 	}
 
 	return tokenResp.AccessToken, tokenResp.RefreshToken, nil
+}
+
+// GetIDPUserInfo fetches user information from the IDP userinfo endpoint
+// using the provided access token. This is typically called after a
+// successful token exchange to retrieve user details for provisioning.
+//
+// Parameters:
+//   - ctx: Context for the HTTP request
+//   - accessToken: Access token obtained from IDP token exchange
+//   - cfg: Application configuration containing IDP endpoints
+//
+// Returns the IDP user information or an error if retrieval fails.
+func (s *Service) GetIDPUserInfo(
+	ctx context.Context,
+	accessToken string,
+	cfg *config.Config,
+) (*idp.IDPUserInfo, error) {
+	userInfo, err := s.idpClient.GetUserInfo(ctx, accessToken, cfg)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"[AuthService] {Get IDP User Info}: %w",
+			err,
+		)
+	}
+	return userInfo, nil
 }
