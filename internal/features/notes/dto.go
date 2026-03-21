@@ -3,7 +3,7 @@ package notes
 import "time"
 
 type SignificantNoteDTO struct {
-	ID        int       `json:"id,omitempty"`
+	ID        string    `json:"id,omitempty"`
 	Note      string    `json:"note" binding:"required"`
 	Remarks   string    `json:"remarks" binding:"required"`
 	CreatedAt time.Time `db:"created_at" json:"createdAt,omitempty"`
