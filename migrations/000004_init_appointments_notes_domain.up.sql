@@ -4,7 +4,7 @@
 
 CREATE TABLE appointments (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NULL DEFAULT NULL,
+    iir_id CHAR(36) NULL DEFAULT NULL,
     time_slot_id INT NOT NULL,
     when_date DATE NOT NULL,
     reason TEXT DEFAULT NULL,

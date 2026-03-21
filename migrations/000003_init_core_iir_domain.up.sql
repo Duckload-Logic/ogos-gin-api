@@ -3,8 +3,8 @@
 -- ============================================================================
 
 CREATE TABLE iir_records (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
     is_submitted TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -16,7 +16,7 @@ CREATE INDEX idx_iir_records_user_id ON iir_records(user_id ASC);
 
 CREATE TABLE educational_backgrounds (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     nature_of_schooling ENUM('Continuous', 'Interrupted') NOT NULL,
     interrupted_details VARCHAR(255) DEFAULT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -47,7 +47,7 @@ CREATE INDEX idx_school_details_educational_level_id ON school_details(education
 
 CREATE TABLE family_backgrounds (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     parental_status_id INT NOT NULL,
     parental_status_details VARCHAR(255) DEFAULT NULL,
     brothers INT NOT NULL,
@@ -83,7 +83,7 @@ CREATE INDEX idx_student_sibling_supports_support_type_id ON student_sibling_sup
 
 CREATE TABLE emergency_contacts (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100) DEFAULT NULL,
     last_name VARCHAR(100) NOT NULL,
@@ -104,7 +104,7 @@ CREATE INDEX idx_emergency_contacts_address_id ON emergency_contacts(address_id 
 
 CREATE TABLE student_personal_info (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     suffix_name VARCHAR(50) DEFAULT NULL,
     student_number VARCHAR(20) NOT NULL UNIQUE,
     gender_id INT NOT NULL,
@@ -142,7 +142,7 @@ CREATE INDEX idx_student_personal_info_religion_id ON student_personal_info(reli
 CREATE INDEX idx_student_personal_info_course_id ON student_personal_info(course_id ASC);
 
 CREATE TABLE student_selected_reasons (
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     reason_id INT NOT NULL,
     other_reason_text VARCHAR(255) DEFAULT NULL,
     PRIMARY KEY (iir_id, reason_id),
@@ -155,7 +155,7 @@ CREATE INDEX idx_student_selected_reasons_reason_id ON student_selected_reasons(
 
 CREATE TABLE student_addresses (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     address_id INT NOT NULL,
     address_type ENUM('Residential', 'Provincial') NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -184,7 +184,7 @@ CREATE TABLE related_persons (
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE TABLE student_related_persons (
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     related_person_id INT NOT NULL,
     relationship_id INT DEFAULT NULL,
     is_parent TINYINT(1) DEFAULT 0,
@@ -204,7 +204,7 @@ CREATE INDEX idx_student_related_persons_relationship_id ON student_related_pers
 
 CREATE TABLE student_activities (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     option_id INT DEFAULT NULL,
     other_specification VARCHAR(255) DEFAULT NULL,
     role ENUM('Officer', 'Member', 'Other') DEFAULT 'Member',
@@ -220,7 +220,7 @@ CREATE INDEX idx_student_activities_option_id ON student_activities(option_id AS
 
 CREATE TABLE student_consultations (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     professional_type ENUM('Psychiatrist', 'Psychologist', 'Counselor') NOT NULL,
     has_consulted TINYINT(1) DEFAULT 0,
     when_date VARCHAR(100) DEFAULT NULL,
@@ -234,7 +234,7 @@ CREATE INDEX idx_student_consultations_iir_id ON student_consultations(iir_id AS
 
 CREATE TABLE student_finances (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     monthly_family_income_range_id INT DEFAULT NULL,
     other_income_details VARCHAR(50) DEFAULT NULL,
     weekly_allowance DECIMAL(10,2) DEFAULT 0.00,
@@ -262,7 +262,7 @@ CREATE INDEX idx_student_financial_supports_support_type_id ON student_financial
 
 CREATE TABLE student_health_records (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     vision_has_problem TINYINT(1) DEFAULT 0,
     vision_details VARCHAR(255) DEFAULT NULL,
     hearing_has_problem TINYINT(1) DEFAULT 0,
@@ -281,7 +281,7 @@ CREATE INDEX idx_student_health_records_iir_id ON student_health_records(iir_id 
 
 CREATE TABLE student_hobbies (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     hobby_name VARCHAR(255) NOT NULL,
     priority_rank INT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -293,7 +293,7 @@ CREATE INDEX idx_student_hobbies_iir_id ON student_hobbies(iir_id ASC);
 
 CREATE TABLE student_subject_preferences (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     subject_name VARCHAR(100) NOT NULL,
     is_favorite TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -307,7 +307,7 @@ CREATE INDEX idx_student_subject_preferences_iir_id ON student_subject_preferenc
 
 CREATE TABLE test_results (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     test_date DATE DEFAULT NULL,
     test_name VARCHAR(255) DEFAULT NULL,
     raw_score VARCHAR(50) DEFAULT NULL,
@@ -322,7 +322,7 @@ CREATE INDEX idx_test_results_iir_id ON test_results(iir_id ASC);
 
 CREATE TABLE iir_drafts (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id CHAR(36) NOT NULL,
     data JSON NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
