@@ -26,7 +26,7 @@ type ListAppointmentsDTO struct {
 }
 
 type AppointmentDTO struct {
-	ID                  int                    `db:"id" json:"id,omitempty"`
+	ID                  string                 `db:"id" json:"id,omitempty"`
 	User                users.GetUserResponse  `db:"user" json:"user,omitempty"`
 	Reason              structs.NullableString `db:"reason" json:"reason,omitempty"`
 	WhenDate            string                 `db:"when_date" json:"whenDate,omitempty"`
