@@ -3,20 +3,22 @@ package auth
 type TTL int
 
 const (
-	AccessTokenTTL  TTL = 60 * 30
-	RefreshTokenTTL TTL = 60 * 60 * 12
+	AccessTokenTTL  TTL = 60 * 60     // 1 hour
+	RefreshTokenTTL TTL = 60 * 60 * 12 // 12 hours
 )
 
-type IDPUser struct {
-	Email string   `json:"email"`
-	Name  string   `json:"name"`
-	Roles []string `json:"roles"`
+type MeResponse struct {
+	ID         string   `json:"id"`
+	Email      string   `json:"email"`
+	FirstName  string   `json:"first_name"`
+	LastName   string   `json:"last_name"`
+	MiddleName string   `json:"middle_name,omitempty"`
+	Roles      []string `json:"roles"`
+	Type       string   `json:"type"` // "native" or "idp"
 }
 
-type ExchangeRequest struct {
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-	Code         string `json:"code"`
+type IDPRefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
 type LoginDTO struct {
