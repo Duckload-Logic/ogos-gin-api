@@ -179,13 +179,13 @@ func (s *Service) ListStudents(
 
 			course, err := s.repo.GetCourseByID(ctx, st.CourseID)
 			if err != nil {
-				errChan <- fmt.Errorf("failed to get course for student %d: %w", st.UserID, err)
+				errChan <- fmt.Errorf("failed to get course for student %s: %w", st.UserID, err)
 				return
 			}
 
 			gender, err := s.repo.GetGenderByID(ctx, st.GenderID)
 			if err != nil {
-				errChan <- fmt.Errorf("failed to get gender for student %d: %w", st.UserID, err)
+				errChan <- fmt.Errorf("failed to get gender for student %s: %w", st.UserID, err)
 				return
 			}
 
@@ -240,7 +240,7 @@ func (s *Service) ListStudents(
 	}, nil
 }
 
-func (s *Service) GetStudentProfile(ctx context.Context, iirID int) (*ComprehensiveProfileDTO, error) {
+func (s *Service) GetStudentProfile(ctx context.Context, iirID string) (*ComprehensiveProfileDTO, error) {
 	profile := &ComprehensiveProfileDTO{IIRID: iirID}
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -381,7 +381,7 @@ func (s *Service) GetStudentProfile(ctx context.Context, iirID int) (*Comprehens
 	return profile, nil
 }
 
-func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentBasicInfoViewDTO, error) {
+func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID string) (*StudentBasicInfoViewDTO, error) {
 	info, err := s.repo.GetStudentBasicInfo(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student basic info: %w", err)
@@ -397,7 +397,7 @@ func (s *Service) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentB
 	return basicInfo, nil
 }
 
-func (s *Service) GetIIRDraft(ctx context.Context, userID int) (*ComprehensiveProfileDTO, error) {
+func (s *Service) GetIIRDraft(ctx context.Context, userID string) (*ComprehensiveProfileDTO, error) {
 	draft, err := s.repo.GetIIRDraftByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get IIR draft: %w", err)
@@ -415,7 +415,7 @@ func (s *Service) GetIIRDraft(ctx context.Context, userID int) (*ComprehensivePr
 	return &draftData, nil
 }
 
-func (s *Service) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
+func (s *Service) GetStudentIIRByUserID(ctx context.Context, userID string) (*IIRRecord, error) {
 	iir, err := s.repo.GetStudentIIRByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student IIR by user ID: %w", err)
@@ -424,7 +424,7 @@ func (s *Service) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRe
 	return iir, nil
 }
 
-func (s *Service) GetStudentIIR(ctx context.Context, iirID int) (*IIRRecord, error) {
+func (s *Service) GetStudentIIR(ctx context.Context, iirID string) (*IIRRecord, error) {
 	iir, err := s.repo.GetStudentIIR(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student IIR: %w", err)
@@ -433,7 +433,7 @@ func (s *Service) GetStudentIIR(ctx context.Context, iirID int) (*IIRRecord, err
 	return iir, nil
 }
 
-func (s *Service) GetStudentEnrollmentReasons(ctx context.Context, iirID int) ([]StudentSelectedReasonDTO, error) {
+func (s *Service) GetStudentEnrollmentReasons(ctx context.Context, iirID string) ([]StudentSelectedReasonDTO, error) {
 	selectedReasons, err := s.repo.GetStudentEnrollmentReasons(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student enrollment reasons: %w", err)
@@ -455,7 +455,7 @@ func (s *Service) GetStudentEnrollmentReasons(ctx context.Context, iirID int) ([
 	return reasons, nil
 }
 
-func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*StudentPersonalInfoDTO, error) {
+func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID string) (*StudentPersonalInfoDTO, error) {
 	personalInfo, err := s.repo.GetStudentPersonalInfo(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student personal info: %w", err)
@@ -530,7 +530,7 @@ func (s *Service) GetStudentPersonalInfo(ctx context.Context, iirID int) (*Stude
 	}, nil
 }
 
-func (s *Service) GetStudentAddresses(ctx context.Context, iirID int) ([]StudentAddressDTO, error) {
+func (s *Service) GetStudentAddresses(ctx context.Context, iirID string) ([]StudentAddressDTO, error) {
 	studentAddresses, err := s.repo.GetStudentAddresses(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student addresses: %w", err)
@@ -556,7 +556,7 @@ func (s *Service) GetStudentAddresses(ctx context.Context, iirID int) ([]Student
 	return addresses, nil
 }
 
-func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID int) (*FamilyBackgroundDTO, error) {
+func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID string) (*FamilyBackgroundDTO, error) {
 	studentFamily, err := s.repo.GetStudentFamilyBackground(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get family background: %w", err)
@@ -610,7 +610,7 @@ func (s *Service) GetStudentFamilyBackground(ctx context.Context, iirID int) (*F
 	return family, nil
 }
 
-func (s *Service) GetStudentRelatedPersons(ctx context.Context, iirID int) ([]RelatedPersonDTO, error) {
+func (s *Service) GetStudentRelatedPersons(ctx context.Context, iirID string) ([]RelatedPersonDTO, error) {
 	studentRelatedPersons, err := s.repo.GetStudentRelatedPersons(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student related persons: %w", err)
@@ -649,7 +649,7 @@ func (s *Service) GetStudentRelatedPersons(ctx context.Context, iirID int) ([]Re
 	return related, nil
 }
 
-func (s *Service) GetEducationalBackground(ctx context.Context, iirID int) (*EducationalBackgroundDTO, error) {
+func (s *Service) GetEducationalBackground(ctx context.Context, iirID string) (*EducationalBackgroundDTO, error) {
 	educationalBackground, err := s.repo.GetStudentEducationalBackground(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get educational background: %w", err)
@@ -690,7 +690,7 @@ func (s *Service) GetEducationalBackground(ctx context.Context, iirID int) (*Edu
 	}, nil
 }
 
-func (s *Service) GetStudentFinancialInfo(ctx context.Context, iirID int) (*StudentFinanceDTO, error) {
+func (s *Service) GetStudentFinancialInfo(ctx context.Context, iirID string) (*StudentFinanceDTO, error) {
 	financialInfo, err := s.repo.GetStudentFinancialInfo(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student financial info: %w", err)
@@ -724,7 +724,7 @@ func (s *Service) GetStudentFinancialInfo(ctx context.Context, iirID int) (*Stud
 	}, nil
 }
 
-func (s *Service) GetStudentHealthRecord(ctx context.Context, iirID int) (*StudentHealthRecordDTO, error) {
+func (s *Service) GetStudentHealthRecord(ctx context.Context, iirID string) (*StudentHealthRecordDTO, error) {
 	healthRecord, err := s.repo.GetStudentHealthRecord(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student health record: %w", err)
@@ -743,7 +743,7 @@ func (s *Service) GetStudentHealthRecord(ctx context.Context, iirID int) (*Stude
 	}, nil
 }
 
-func (s *Service) GetStudentConsultations(ctx context.Context, iirID int) ([]StudentConsultationDTO, error) {
+func (s *Service) GetStudentConsultations(ctx context.Context, iirID string) ([]StudentConsultationDTO, error) {
 	consultations, err := s.repo.GetStudentConsultations(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student consultations: %w", err)
@@ -763,7 +763,7 @@ func (s *Service) GetStudentConsultations(ctx context.Context, iirID int) ([]Stu
 	return consultationDTOs, nil
 }
 
-func (s *Service) GetStudentActivities(ctx context.Context, iirID int) ([]StudentActivityDTO, error) {
+func (s *Service) GetStudentActivities(ctx context.Context, iirID string) ([]StudentActivityDTO, error) {
 	activities, err := s.repo.GetStudentActivities(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student activities: %w", err)
@@ -802,7 +802,7 @@ func (s *Service) GetStudentActivities(ctx context.Context, iirID int) ([]Studen
 	return activityDTOs, nil
 }
 
-func (s *Service) GetStudentSubjectPreferences(ctx context.Context, iirID int) ([]StudentSubjectPreferenceDTO, error) {
+func (s *Service) GetStudentSubjectPreferences(ctx context.Context, iirID string) ([]StudentSubjectPreferenceDTO, error) {
 	preferences, err := s.repo.GetStudentSubjectPreferences(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student subject preferences: %w", err)
@@ -820,7 +820,7 @@ func (s *Service) GetStudentSubjectPreferences(ctx context.Context, iirID int) (
 	return preferenceDTOs, nil
 }
 
-func (s *Service) GetStudentHobbies(ctx context.Context, iirID int) ([]StudentHobbyDTO, error) {
+func (s *Service) GetStudentHobbies(ctx context.Context, iirID string) ([]StudentHobbyDTO, error) {
 	hobbies, err := s.repo.GetStudentHobbies(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student hobbies: %w", err)
@@ -838,7 +838,7 @@ func (s *Service) GetStudentHobbies(ctx context.Context, iirID int) ([]StudentHo
 	return hobbyDTOs, nil
 }
 
-func (s *Service) GetStudentTestResults(ctx context.Context, iirID int) ([]TestResultDTO, error) {
+func (s *Service) GetStudentTestResults(ctx context.Context, iirID string) ([]TestResultDTO, error) {
 	testResults, err := s.repo.GetStudentTestResults(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student test results: %w", err)
@@ -859,7 +859,7 @@ func (s *Service) GetStudentTestResults(ctx context.Context, iirID int) ([]TestR
 	return testResultDTOs, nil
 }
 
-func (s *Service) SaveIIRDraft(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {
+func (s *Service) SaveIIRDraft(ctx context.Context, userID string, req ComprehensiveProfileDTO) (int, error) {
 	jsonData, err := json.Marshal(req)
 	if err != nil {
 		return 0, fmt.Errorf("failed to encode draft data: %w", err)
@@ -878,10 +878,10 @@ func (s *Service) SaveIIRDraft(ctx context.Context, userID int, req Comprehensiv
 	return draftID, nil
 }
 
-func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req ComprehensiveProfileDTO) (int, error) {
+func (s *Service) SubmitStudentIIR(ctx context.Context, userID string, req ComprehensiveProfileDTO) (string, error) {
 	tx, err := s.repo.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+		return "", fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	defer tx.Rollback()
@@ -892,7 +892,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	}
 	iirID, err := s.repo.UpsertIIRRecord(ctx, tx, iirRecord)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create IIR record: %w", err)
+		return "", fmt.Errorf("failed to create IIR record: %w", err)
 	}
 
 	// 1. Save Student Personal Info
@@ -918,7 +918,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		MobileNumber:    req.Student.StudentPersonalInfoDTO.MobileNumber,
 		TelephoneNumber: structs.ToSqlNull(req.Student.StudentPersonalInfoDTO.TelephoneNumber),
 	}); err != nil {
-		return 0, fmt.Errorf("failed to upsert student personal info: %w", err)
+		return "", fmt.Errorf("failed to upsert student personal info: %w", err)
 	}
 
 	// 2. Save Emergency Contact
@@ -935,7 +935,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		StreetDetail: &ec.Address.StreetDetail,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to upsert emergency contact address: %w", err)
+		return "", fmt.Errorf("failed to upsert emergency contact address: %w", err)
 	}
 
 	if _, err := s.repo.UpsertEmergencyContact(ctx, tx, &EmergencyContact{
@@ -947,7 +947,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		RelationshipID: ec.Relationship.ID,
 		AddressID:      addressID,
 	}); err != nil {
-		return 0, fmt.Errorf("failed to upsert emergency contact: %w", err)
+		return "", fmt.Errorf("failed to upsert emergency contact: %w", err)
 	}
 
 	// 3. Save Student Addresses
@@ -964,7 +964,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			StreetDetail: &addrDTO.Address.StreetDetail,
 		})
 		if err != nil {
-			return 0, fmt.Errorf("failed to upsert student address: %w", err)
+			return "", fmt.Errorf("failed to upsert student address: %w", err)
 		}
 
 		if _, err := s.repo.UpsertStudentAddress(ctx, tx, &StudentAddress{
@@ -972,7 +972,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			AddressID:   addressID,
 			AddressType: addrDTO.AddressType,
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save student address relation: %w", err)
+			return "", fmt.Errorf("failed to save student address relation: %w", err)
 		}
 	}
 
@@ -983,11 +983,11 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		InterruptedDetails: structs.ToSqlNull(req.Education.InterruptedDetails),
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to upsert educational background: %w", err)
+		return "", fmt.Errorf("failed to upsert educational background: %w", err)
 	}
 
 	if err := s.repo.DeleteSchoolDetailsByEBID(ctx, tx, ebID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing school details: %w", err)
+		return "", fmt.Errorf("failed to delete existing school details: %w", err)
 	}
 
 	for _, schoolDTO := range req.Education.School {
@@ -1001,7 +1001,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			YearCompleted:      schoolDTO.YearCompleted,
 			Awards:             structs.ToSqlNull(schoolDTO.Awards),
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save school details: %w", err)
+			return "", fmt.Errorf("failed to save school details: %w", err)
 		}
 	}
 
@@ -1020,12 +1020,12 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		NatureOfResidenceId:   req.Family.FamilyBackgroundDTO.NatureOfResidence.ID,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to upsert family background: %w", err)
+		return "", fmt.Errorf("failed to upsert family background: %w", err)
 	}
 
 	// Save Sibling Supports
 	if err := s.repo.DeleteStudentSiblingSupportsByFamilyID(ctx, tx, fbID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing sibling supports: %w", err)
+		return "", fmt.Errorf("failed to delete existing sibling supports: %w", err)
 	}
 
 	for _, supportType := range req.Family.FamilyBackgroundDTO.SiblingSupportTypes {
@@ -1033,13 +1033,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			FamilyBackgroundID: fbID,
 			SupportTypeID:      supportType.ID,
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save sibling support: %w", err)
+			return "", fmt.Errorf("failed to save sibling support: %w", err)
 		}
 	}
 
 	// Save Related Persons
 	if err := s.repo.DeleteStudentRelatedPersons(ctx, tx, iirID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing related persons: %w", err)
+		return "", fmt.Errorf("failed to delete existing related persons: %w", err)
 	}
 
 	for _, relPersonDTO := range req.Family.RelatedPersons {
@@ -1054,7 +1054,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			EmployerAddress:  structs.ToSqlNull(relPersonDTO.EmployerAddress),
 		})
 		if err != nil {
-			return 0, fmt.Errorf("failed to save related person: %w", err)
+			return "", fmt.Errorf("failed to save related person: %w", err)
 		}
 
 		if err := s.repo.UpsertStudentRelatedPerson(ctx, tx, &StudentRelatedPerson{
@@ -1065,7 +1065,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			IsGuardian:      relPersonDTO.IsGuardian,
 			IsLiving:        relPersonDTO.IsLiving,
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save student related person relation: %w", err)
+			return "", fmt.Errorf("failed to save student related person relation: %w", err)
 		}
 	}
 
@@ -1081,7 +1081,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		GeneralHealthHasProblem: req.Health.StudentHealthRecordDTO.GeneralHealthHasProblem,
 		GeneralHealthDetails:    structs.ToSqlNull(req.Health.StudentHealthRecordDTO.GeneralHealthDetails),
 	}); err != nil {
-		return 0, fmt.Errorf("failed to upsert student health record: %w", err)
+		return "", fmt.Errorf("failed to upsert student health record: %w", err)
 	}
 
 	// 7. Save Consultations
@@ -1093,7 +1093,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			WhenDate:         structs.ToSqlNull(consultationDTO.WhenDate),
 			ForWhat:          structs.ToSqlNull(consultationDTO.ForWhat),
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save student consultation: %w", err)
+			return "", fmt.Errorf("failed to save student consultation: %w", err)
 		}
 	}
 
@@ -1105,11 +1105,11 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 		WeeklyAllowance:            req.Family.Finance.WeeklyAllowance,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("failed to upsert student finance: %w", err)
+		return "", fmt.Errorf("failed to upsert student finance: %w", err)
 	}
 
 	if err := s.repo.DeleteStudentFinancialSupportsByFinanceID(ctx, tx, sfID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing financial supports: %w", err)
+		return "", fmt.Errorf("failed to delete existing financial supports: %w", err)
 	}
 
 	for _, supportType := range req.Family.Finance.FinancialSupportTypes {
@@ -1117,13 +1117,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			StudentFinanceID: sfID,
 			SupportTypeID:    supportType.ID,
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save student financial support: %w", err)
+			return "", fmt.Errorf("failed to save student financial support: %w", err)
 		}
 	}
 
 	// 9. Save Activities
 	if err := s.repo.DeleteStudentActivitiesByIIRID(ctx, tx, iirID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing activities: %w", err)
+		return "", fmt.Errorf("failed to delete existing activities: %w", err)
 	}
 
 	for _, activityDTO := range req.Interests.Activities {
@@ -1134,13 +1134,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			Role:               activityDTO.Role,
 			RoleSpecification:  structs.ToSqlNull(activityDTO.RoleSpecification),
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save student activity: %w", err)
+			return "", fmt.Errorf("failed to save student activity: %w", err)
 		}
 	}
 
 	// 10. Save Subject Preferences
 	if err := s.repo.DeleteStudentSubjectPreferencesByIIRID(ctx, tx, iirID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing subject preferences: %w", err)
+		return "", fmt.Errorf("failed to delete existing subject preferences: %w", err)
 	}
 
 	for _, prefDTO := range req.Interests.SubjectPreferences {
@@ -1149,13 +1149,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			SubjectName: prefDTO.SubjectName,
 			IsFavorite:  prefDTO.IsFavorite,
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save student subject preference: %w", err)
+			return "", fmt.Errorf("failed to save student subject preference: %w", err)
 		}
 	}
 
 	// 11. Save Hobbies
 	if err := s.repo.DeleteStudentHobbiesByIIRID(ctx, tx, iirID); err != nil {
-		return 0, fmt.Errorf("failed to delete existing hobbies: %w", err)
+		return "", fmt.Errorf("failed to delete existing hobbies: %w", err)
 	}
 
 	for _, hobbyDTO := range req.Interests.Hobbies {
@@ -1164,13 +1164,13 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 			HobbyName:    hobbyDTO.HobbyName,
 			PriorityRank: hobbyDTO.PriorityRank,
 		}); err != nil {
-			return 0, fmt.Errorf("failed to save student hobby: %w", err)
+			return "", fmt.Errorf("failed to save student hobby: %w", err)
 		}
 	}
 
 	// 12. Save Test Results
 	// if err := s.repo.DeleteTestResultsByIIRID(ctx, tx, iirID); err != nil {
-	// 	return 0, fmt.Errorf("failed to delete existing test results: %w", err)
+	// 	return "", fmt.Errorf("failed to delete existing test results: %w", err)
 	// }
 
 	// for _, testResultDTO := range req.TestResults {
@@ -1182,7 +1182,7 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	// 		Percentile:  testResultDTO.Percentile,
 	// 		Description: testResultDTO.Description,
 	// 	}); err != nil {
-	// 		return 0, fmt.Errorf("failed to save test result: %w", err)
+	// 		return "", fmt.Errorf("failed to save test result: %w", err)
 	// 	}
 	// }
 
@@ -1193,12 +1193,12 @@ func (s *Service) SubmitStudentIIR(ctx context.Context, userID int, req Comprehe
 	}
 
 	if _, err := s.repo.UpsertIIRRecord(ctx, tx, IIRRecordUpdate); err != nil {
-		return 0, fmt.Errorf("failed to update IIR record as submitted: %w", err)
+		return "", fmt.Errorf("failed to update IIR record as submitted: %w", err)
 	}
 
 	// All operations succeeded - commit transaction
 	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return iirID, nil

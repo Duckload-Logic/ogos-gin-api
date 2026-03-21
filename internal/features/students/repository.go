@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
+    "github.com/google/uuid"
 )
 
 type Repository struct {
@@ -243,7 +244,7 @@ func (r *Repository) ListStudents(
 			usr.id as user_id,
 			usr.first_name,
 			usr.middle_name,
-			iir.suffix_name,
+			spi.suffix_name,
 			usr.last_name,
 			spi.gender_id,
 			usr.email,
@@ -314,6 +315,7 @@ func (r *Repository) ListStudents(
 			&student.FirstName,
 			&student.MiddleName,
 			&student.LastName,
+			&student.SuffixName,
 			&student.GenderID,
 			&student.Email,
 			&student.StudentNumber,
@@ -333,7 +335,7 @@ func (r *Repository) ListStudents(
 	return students, nil
 }
 
-func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID int) (*StudentBasicInfoView, error) {
+func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID string) (*StudentBasicInfoView, error) {
 	query := `
 		SELECT u.id, u.email, u.first_name, u.middle_name, u.last_name
 		FROM users u
@@ -356,7 +358,7 @@ func (r *Repository) GetStudentBasicInfo(ctx context.Context, iirID int) (*Stude
 	return &info, nil
 }
 
-func (r *Repository) GetIIRDraftByUserID(ctx context.Context, userID int) (*IIRDraft, error) {
+func (r *Repository) GetIIRDraftByUserID(ctx context.Context, userID string) (*IIRDraft, error) {
 	query := fmt.Sprintf(`
 		SELECT %s FROM iir_drafts WHERE user_id = ? LIMIT 1
 	`, database.GetColumns(IIRDraft{}))
@@ -373,7 +375,7 @@ func (r *Repository) GetIIRDraftByUserID(ctx context.Context, userID int) (*IIRD
 	return &draft, nil
 }
 
-func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*IIRRecord, error) {
+func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID string) (*IIRRecord, error) {
 	query := fmt.Sprintf(`
 		SELECT %s FROM iir_records WHERE user_id = ? LIMIT 1
 	`, database.GetColumns(IIRRecord{}))
@@ -391,7 +393,7 @@ func (r *Repository) GetStudentIIRByUserID(ctx context.Context, userID int) (*II
 	return &iir, nil
 }
 
-func (r *Repository) GetStudentIIR(ctx context.Context, iirID int) (*IIRRecord, error) {
+func (r *Repository) GetStudentIIR(ctx context.Context, iirID string) (*IIRRecord, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM iir_records
@@ -411,7 +413,7 @@ func (r *Repository) GetStudentIIR(ctx context.Context, iirID int) (*IIRRecord, 
 	return &iir, nil
 }
 
-func (r *Repository) GetStudentEnrollmentReasons(ctx context.Context, iirID int) ([]StudentSelectedReason, error) {
+func (r *Repository) GetStudentEnrollmentReasons(ctx context.Context, iirID string) ([]StudentSelectedReason, error) {
 	query := `
 		SELECT iir_id, reason_id, other_reason_text
 		FROM student_selected_reasons
@@ -447,7 +449,7 @@ func (r *Repository) GetEnrollmentReasonByID(ctx context.Context, reasonID int) 
 	return &er, nil
 }
 
-func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID int) (*StudentPersonalInfo, error) {
+func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID string) (*StudentPersonalInfo, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_personal_info
@@ -463,7 +465,7 @@ func (r *Repository) GetStudentPersonalInfo(ctx context.Context, iirID int) (*St
 	return &info, nil
 }
 
-func (r *Repository) GetEmergencyContactByIIRID(ctx context.Context, iirID int) (*EmergencyContact, error) {
+func (r *Repository) GetEmergencyContactByIIRID(ctx context.Context, iirID string) (*EmergencyContact, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM emergency_contacts
@@ -535,7 +537,7 @@ func (r *Repository) GetCourseByID(ctx context.Context, courseID int) (*Course, 
 	return &course, nil
 }
 
-func (r *Repository) GetStudentAddresses(ctx context.Context, iirID int) ([]StudentAddress, error) {
+func (r *Repository) GetStudentAddresses(ctx context.Context, iirID string) ([]StudentAddress, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_addresses
@@ -551,7 +553,7 @@ func (r *Repository) GetStudentAddresses(ctx context.Context, iirID int) ([]Stud
 	return addresses, nil
 }
 
-func (r *Repository) GetStudentEducationalBackground(ctx context.Context, iirID int) (*EducationalBackground, error) {
+func (r *Repository) GetStudentEducationalBackground(ctx context.Context, iirID string) (*EducationalBackground, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM educational_backgrounds
@@ -598,7 +600,7 @@ func (r *Repository) GetEducationalLevelByID(ctx context.Context, levelID int) (
 }
 
 func (r *Repository) GetStudentRelatedPersons(
-	ctx context.Context, iirID int,
+	ctx context.Context, iirID string,
 ) ([]StudentRelatedPerson, error) {
 	query := fmt.Sprintf(`
 		SELECT %s FROM student_related_persons WHERE iir_id = ?
@@ -649,7 +651,7 @@ func (r *Repository) GetStudentRelationshipByID(
 	return &srt, nil
 }
 
-func (r *Repository) GetStudentFamilyBackground(ctx context.Context, iirID int) (*FamilyBackground, error) {
+func (r *Repository) GetStudentFamilyBackground(ctx context.Context, iirID string) (*FamilyBackground, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM family_backgrounds
@@ -723,7 +725,7 @@ func (r *Repository) GetSiblingSupportTypeByID(ctx context.Context, supportID in
 	return &sst, nil
 }
 
-func (r *Repository) GetStudentFinancialInfo(ctx context.Context, iirID int) (*StudentFinance, error) {
+func (r *Repository) GetStudentFinancialInfo(ctx context.Context, iirID string) (*StudentFinance, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_finances
@@ -783,7 +785,7 @@ func (r *Repository) GetStudentSupportByID(ctx context.Context, supportID int) (
 	return &sst, nil
 }
 
-func (r *Repository) GetStudentHealthRecord(ctx context.Context, iirID int) (*StudentHealthRecord, error) {
+func (r *Repository) GetStudentHealthRecord(ctx context.Context, iirID string) (*StudentHealthRecord, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_health_records
@@ -813,7 +815,7 @@ func (r *Repository) GetActivityOptions(ctx context.Context) ([]ActivityOption, 
 	return options, nil
 }
 
-func (r *Repository) GetStudentConsultations(ctx context.Context, iirID int) ([]StudentConsultation, error) {
+func (r *Repository) GetStudentConsultations(ctx context.Context, iirID string) ([]StudentConsultation, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_consultations
@@ -829,7 +831,7 @@ func (r *Repository) GetStudentConsultations(ctx context.Context, iirID int) ([]
 	return consultations, nil
 }
 
-func (r *Repository) GetStudentActivities(ctx context.Context, iirID int) ([]StudentActivity, error) {
+func (r *Repository) GetStudentActivities(ctx context.Context, iirID string) ([]StudentActivity, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_activities
@@ -859,7 +861,7 @@ func (r *Repository) GetActivityOptionByID(ctx context.Context, optionID int) (*
 	return &ao, nil
 }
 
-func (r *Repository) GetStudentSubjectPreferences(ctx context.Context, iirID int) ([]StudentSubjectPreference, error) {
+func (r *Repository) GetStudentSubjectPreferences(ctx context.Context, iirID string) ([]StudentSubjectPreference, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_subject_preferences
@@ -875,7 +877,7 @@ func (r *Repository) GetStudentSubjectPreferences(ctx context.Context, iirID int
 	return preferences, nil
 }
 
-func (r *Repository) GetStudentHobbies(ctx context.Context, iirID int) ([]StudentHobby, error) {
+func (r *Repository) GetStudentHobbies(ctx context.Context, iirID string) ([]StudentHobby, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM student_hobbies
@@ -891,7 +893,7 @@ func (r *Repository) GetStudentHobbies(ctx context.Context, iirID int) ([]Studen
 	return hobbies, nil
 }
 
-func (r *Repository) GetStudentTestResults(ctx context.Context, iirID int) ([]TestResult, error) {
+func (r *Repository) GetStudentTestResults(ctx context.Context, iirID string) ([]TestResult, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM test_results
@@ -939,12 +941,12 @@ func (r *Repository) upsertIIRDraftTx(ctx context.Context, tx *sqlx.Tx, draft II
 	return int(lastID), nil
 }
 
-func (r *Repository) UpsertIIRRecord(ctx context.Context, tx *sqlx.Tx, iir *IIRRecord) (int, error) {
+func (r *Repository) UpsertIIRRecord(ctx context.Context, tx *sqlx.Tx, iir *IIRRecord) (string, error) {
 	if tx != nil {
 		return r.upsertIIRRecordTx(ctx, tx, iir)
 	}
 
-	var id int
+	var id string
 	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
 		var err error
 		id, err = r.upsertIIRRecordTx(ctx, txn, iir)
@@ -953,7 +955,15 @@ func (r *Repository) UpsertIIRRecord(ctx context.Context, tx *sqlx.Tx, iir *IIRR
 	return id, err
 }
 
-func (r *Repository) upsertIIRRecordTx(ctx context.Context, tx *sqlx.Tx, iir *IIRRecord) (int, error) {
+func (r *Repository) upsertIIRRecordTx(ctx context.Context, tx *sqlx.Tx, iir *IIRRecord) (string, error) {
+	if iir.ID == "" {
+		existing, err := r.GetStudentIIRByUserID(ctx, iir.UserID)
+		if err == nil && existing != nil {
+			iir.ID = existing.ID
+		} else {
+			iir.ID = uuid.New().String()
+		}
+	}
 	cols, vals := database.GetInsertStatement(IIRRecord{}, []string{"created_at", "updated_at"})
 	onDuplicateKey := database.GetOnDuplicateKeyUpdateStatement(IIRRecord{}, []string{"created_at", "updated_at"})
 	query := fmt.Sprintf(`
@@ -961,17 +971,12 @@ func (r *Repository) upsertIIRRecordTx(ctx context.Context, tx *sqlx.Tx, iir *II
 		VALUES (%s)
 		ON DUPLICATE KEY UPDATE %s
 	`, cols, vals, onDuplicateKey)
-	result, err := tx.NamedExecContext(ctx, query, iir)
+	_, err := tx.NamedExecContext(ctx, query, iir)
 	if err != nil {
-		return 0, fmt.Errorf("failed to upsert IIR record: %w", err)
+		return "", fmt.Errorf("failed to upsert IIR record: %w", err)
 	}
 
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert ID for IIR record: %w", err)
-	}
-
-	return int(lastID), nil
+	return iir.ID, nil
 }
 
 func (r *Repository) UpsertStudentPersonalInfo(ctx context.Context, tx *sqlx.Tx, info *StudentPersonalInfo) error {
@@ -1092,7 +1097,7 @@ func (r *Repository) createStudentSelectedReasonTx(ctx context.Context, tx *sqlx
 	return nil
 }
 
-func (r *Repository) DeleteStudentSelectedReasons(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) DeleteStudentSelectedReasons(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	if tx != nil {
 		return r.deleteStudentSelectedReasonsTx(ctx, tx, iirID)
 	}
@@ -1102,7 +1107,7 @@ func (r *Repository) DeleteStudentSelectedReasons(ctx context.Context, tx *sqlx.
 	})
 }
 
-func (r *Repository) deleteStudentSelectedReasonsTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) deleteStudentSelectedReasonsTx(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	query := `DELETE FROM student_selected_reasons WHERE iir_id = ?`
 	_, err := tx.ExecContext(ctx, query, iirID)
 	if err != nil {
@@ -1174,7 +1179,7 @@ func (r *Repository) upsertStudentRelatedPersonTx(ctx context.Context, tx *sqlx.
 	return nil
 }
 
-func (r *Repository) DeleteStudentRelatedPersons(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) DeleteStudentRelatedPersons(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	if tx != nil {
 		return r.deleteStudentRelatedPersonsTx(ctx, tx, iirID)
 	}
@@ -1184,7 +1189,7 @@ func (r *Repository) DeleteStudentRelatedPersons(ctx context.Context, tx *sqlx.T
 	})
 }
 
-func (r *Repository) deleteStudentRelatedPersonsTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) deleteStudentRelatedPersonsTx(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	query := `DELETE FROM student_related_persons WHERE iir_id = ?`
 	_, err := tx.ExecContext(ctx, query, iirID)
 	if err != nil {
@@ -1535,7 +1540,7 @@ func (r *Repository) createStudentActivityTx(ctx context.Context, tx *sqlx.Tx, s
 	return int(lastID), nil
 }
 
-func (r *Repository) DeleteStudentActivitiesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) DeleteStudentActivitiesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	if tx != nil {
 		return r.deleteStudentActivitiesByIIRIDTx(ctx, tx, iirID)
 	}
@@ -1545,7 +1550,7 @@ func (r *Repository) DeleteStudentActivitiesByIIRID(ctx context.Context, tx *sql
 	})
 }
 
-func (r *Repository) deleteStudentActivitiesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) deleteStudentActivitiesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	query := `DELETE FROM student_activities WHERE iir_id = ?`
 	_, err := tx.ExecContext(ctx, query, iirID)
 	if err != nil {
@@ -1588,7 +1593,7 @@ func (r *Repository) createStudentSubjectPreferenceTx(ctx context.Context, tx *s
 	return int(lastID), nil
 }
 
-func (r *Repository) DeleteStudentSubjectPreferencesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) DeleteStudentSubjectPreferencesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	if tx != nil {
 		return r.deleteStudentSubjectPreferencesByIIRIDTx(ctx, tx, iirID)
 	}
@@ -1598,7 +1603,7 @@ func (r *Repository) DeleteStudentSubjectPreferencesByIIRID(ctx context.Context,
 	})
 }
 
-func (r *Repository) deleteStudentSubjectPreferencesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) deleteStudentSubjectPreferencesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	query := `DELETE FROM student_subject_preferences WHERE iir_id = ?`
 	_, err := tx.ExecContext(ctx, query, iirID)
 	if err != nil {
@@ -1641,7 +1646,7 @@ func (r *Repository) createStudentHobbyTx(ctx context.Context, tx *sqlx.Tx, sh *
 	return int(lastID), nil
 }
 
-func (r *Repository) DeleteStudentHobbiesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) DeleteStudentHobbiesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	if tx != nil {
 		return r.deleteStudentHobbiesByIIRIDTx(ctx, tx, iirID)
 	}
@@ -1651,7 +1656,7 @@ func (r *Repository) DeleteStudentHobbiesByIIRID(ctx context.Context, tx *sqlx.T
 	})
 }
 
-func (r *Repository) deleteStudentHobbiesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) deleteStudentHobbiesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	query := `DELETE FROM student_hobbies WHERE iir_id = ?`
 	_, err := tx.ExecContext(ctx, query, iirID)
 	if err != nil {
@@ -1694,7 +1699,7 @@ func (r *Repository) createTestResultTx(ctx context.Context, tx *sqlx.Tx, tr *Te
 	return int(lastID), nil
 }
 
-func (r *Repository) DeleteTestResultsByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) DeleteTestResultsByIIRID(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	if tx != nil {
 		return r.deleteTestResultsByIIRIDTx(ctx, tx, iirID)
 	}
@@ -1704,7 +1709,7 @@ func (r *Repository) DeleteTestResultsByIIRID(ctx context.Context, tx *sqlx.Tx, 
 	})
 }
 
-func (r *Repository) deleteTestResultsByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) deleteTestResultsByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	query := `DELETE FROM test_results WHERE iir_id = ?`
 	_, err := tx.ExecContext(ctx, query, iirID)
 	if err != nil {
@@ -1713,7 +1718,7 @@ func (r *Repository) deleteTestResultsByIIRIDTx(ctx context.Context, tx *sqlx.Tx
 	return nil
 }
 
-func (r *Repository) DeleteSignificantNotesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) DeleteSignificantNotesByIIRID(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	if tx != nil {
 		return r.deleteSignificantNotesByIIRIDTx(ctx, tx, iirID)
 	}
@@ -1723,7 +1728,7 @@ func (r *Repository) DeleteSignificantNotesByIIRID(ctx context.Context, tx *sqlx
 	})
 }
 
-func (r *Repository) deleteSignificantNotesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID int) error {
+func (r *Repository) deleteSignificantNotesByIIRIDTx(ctx context.Context, tx *sqlx.Tx, iirID string) error {
 	query := `DELETE FROM significant_notes WHERE iir_id = ?`
 	_, err := tx.ExecContext(ctx, query, iirID)
 	if err != nil {

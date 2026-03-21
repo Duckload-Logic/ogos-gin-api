@@ -27,8 +27,8 @@ type ListStudentsResponse struct {
 }
 
 type StudentProfileDTO struct {
-	IIRID         int                    `json:"iirId"`
-	UserID        int                    `json:"userId"`
+	IIRID string                    `json:"iirId"`
+	UserID        string                 `json:"userId"`
 	FirstName     string                 `json:"firstName"`
 	MiddleName    structs.NullableString `json:"middleName,omitempty"`
 	LastName      string                 `json:"lastName"`
@@ -47,7 +47,7 @@ type GetStudentRequest struct {
 }
 
 type ComprehensiveProfileDTO struct {
-	IIRID   int `json:"iirId,omitempty"`
+	IIRID string `json:"iirId,omitempty"`
 	Student struct {
 		BasicInfo              StudentBasicInfoViewDTO `json:"basicInfo"`
 		StudentPersonalInfoDTO `json:"personalInfo"`
@@ -91,7 +91,7 @@ type StudentBasicInfoViewDTO struct {
 
 type StudentPersonalInfoDTO struct {
 	ID               int                    `json:"id,omitempty"`
-	IIRID            int                    `json:"iirId,omitempty"`
+	IIRID string                    `json:"iirId,omitempty"`
 	SuffixName       structs.NullableString `json:"suffixName,omitempty"`
 	StudentNumber    string                 `json:"studentNumber" binding:"required"`
 	Gender           Gender                 `json:"gender" binding:"required"`
