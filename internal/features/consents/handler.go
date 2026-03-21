@@ -51,8 +51,8 @@ func (h *Handler) HandleGetDocumentContent(c *gin.Context) {
 }
 
 func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
-	userID := c.MustGet("userID").(int) // Get userID from context set by AuthMiddleware
-	if userID == 0 {
+	userID := c.MustGet("userID").(string) // Get userID from context set by AuthMiddleware
+	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
@@ -75,8 +75,8 @@ func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
 }
 
 func (h *Handler) HandleSaveConsent(c *gin.Context) {
-	userID := c.MustGet("userID").(int) // Get userID from context set by AuthMiddleware
-	if userID == 0 {
+	userID := c.MustGet("userID").(string) // Get userID from context set by AuthMiddleware
+	if userID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 		return
 	}
@@ -106,8 +106,8 @@ func (h *Handler) HandleSaveConsent(c *gin.Context) {
 
 // Admin endpoint to view user consent history
 func (h *Handler) HandleListUserConsentHistory(c *gin.Context) {
-	userID, err := strconv.Atoi(c.Param("userID"))
-	if err != nil {
+	userID := c.Param("userID")
+	if userID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
