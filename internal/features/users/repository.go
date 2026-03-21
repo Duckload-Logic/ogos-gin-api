@@ -24,7 +24,7 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 // GetUser
 func (r *Repository) GetUserByID(
-	ctx context.Context, userID int,
+	ctx context.Context, userID string,
 ) (*User, error) {
 	var user User
 

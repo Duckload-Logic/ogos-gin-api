@@ -1,8 +1,8 @@
 CREATE TABLE significant_notes (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NULL DEFAULT NULL,
-    appointment_id INT NULL DEFAULT NULL,
-    admission_slip_id INT NULL DEFAULT NULL,
+    id CHAR(36) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    iir_id CHAR(36) NULL DEFAULT NULL,
+    appointment_id CHAR(36) NULL DEFAULT NULL,
+    admission_slip_id CHAR(36) NULL DEFAULT NULL,
     note TEXT DEFAULT NULL,
     remarks TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

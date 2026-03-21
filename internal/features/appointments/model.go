@@ -35,8 +35,8 @@ type AvailableTimeSlotView struct {
 }
 
 type Appointment struct {
-	ID                    int            `db:"id" json:"id,omitempty"`
-	IIRID                 int  `db:"iir_id" json:"iirId,omitempty"`
+	ID                    string         `db:"id" json:"id,omitempty"`
+	IIRID string            `db:"iir_id" json:"iirId,omitempty"`
 	Reason                sql.NullString `db:"reason" json:"reason,omitempty"`
 	AdminNotes            sql.NullString `db:"admin_notes" json:"adminNotes,omitempty"`
 	WhenDate              string         `db:"when_date" json:"whenDate"`
@@ -49,7 +49,7 @@ type Appointment struct {
 
 // AppointmentWithDetailsView holds appointment data with joined time slot, category, and status
 type AppointmentWithDetailsView struct {
-	ID             int            `db:"id"`
+	ID             string         `db:"id"`
 	IIRID          sql.NullInt64  `db:"iir_id"`
 	UserFirstName  string         `db:"user_first_name"`
 	UserMiddleName sql.NullString `db:"user_middle_name"`

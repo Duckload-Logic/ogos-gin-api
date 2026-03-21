@@ -53,7 +53,7 @@ definitions:
       suffixName:
         type: string
       userId:
-        type: integer
+        type: string
       yearLevel:
         type: integer
     type: object

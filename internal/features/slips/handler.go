@@ -20,7 +20,7 @@ func NewHandler(service *Service) *Handler {
 }
 
 // getIIRIDFromContext extracts iirID from context or aborts with Forbidden status if not found.
-func getIIRIDFromContext(c *gin.Context) (int, bool) {
+func getIIRIDFromContext(c *gin.Context) (string, bool) {
 	iirIDVal, exists := c.Get("iirID")
 	if !exists {
 		c.JSON(
@@ -29,16 +29,16 @@ func getIIRIDFromContext(c *gin.Context) (int, bool) {
 				"error": "Please complete your IIR profile",
 			},
 		)
-		return 0, false
+		return "", false
 	}
 
-	iirID, ok := iirIDVal.(int)
+	iirID, ok := iirIDVal.(string)
 	if !ok {
 		c.JSON(
 			http.StatusInternalServerError,
 			gin.H{"error": "Internal server error"},
 		)
-		return 0, false
+		return "", false
 	}
 
 	return iirID, true
@@ -176,7 +176,7 @@ func (h *Handler) GetSlipStatsList(c *gin.Context) {
 	}
 
 	roleID := c.MustGet("roleID").(int)
-	var iirIDPtr *int
+	var iirIDPtr *string
 
 	if roleID == int(constants.StudentRoleID) {
 		iirID, ok := getIIRIDFromContext(c)

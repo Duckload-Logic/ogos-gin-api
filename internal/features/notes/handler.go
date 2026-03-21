@@ -3,8 +3,6 @@ package notes
 import (
 	"log"
 	"net/http"
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,7 +17,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) HandleGetStudentSignificantNotes(
 	c *gin.Context,
 ) {
-	iirID := c.GetInt("iirID")
+	iirID := c.GetString("iirID")
 
 	significantNotes, err := h.service.GetStudentSignificantNotes(
 		c.Request.Context(),
@@ -45,8 +43,8 @@ func (h *Handler) HandleGetStudentSignificantNotes(
 func (h *Handler) HandlePostStudentSignificantNote(
 	c *gin.Context,
 ) {
-	iirID, err := strconv.Atoi(c.Param("iirID"))
-	if err != nil {
+	iirID := c.Param("iirID")
+	if iirID == "" {
 		c.JSON(
 			http.StatusUnauthorized,
 			gin.H{"error": "IIR ID not found"},
@@ -67,7 +65,7 @@ func (h *Handler) HandlePostStudentSignificantNote(
 		return
 	}
 
-	err = h.service.CreateSignificantNote(
+	err := h.service.CreateSignificantNote(
 		c.Request.Context(),
 		iirID,
 		noteReq,

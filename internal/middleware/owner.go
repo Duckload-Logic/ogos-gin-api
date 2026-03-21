@@ -13,7 +13,7 @@ import (
 // OwnershipMiddleware - Direct database access version
 func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		loggedInUserID := c.MustGet("userID").(int)
+		loggedInUserID := c.MustGet("userID").(string)
 		roleID := c.MustGet("roleID").(int)
 
 		// Allow counselors and super admins to bypass
@@ -28,7 +28,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 
 			// For email-based params, compare directly
 			if paramName == "userID" {
-				if paramValue != strconv.Itoa(loggedInUserID) {
+				if paramValue != loggedInUserID {
 					c.AbortWithStatusJSON(
 						http.StatusForbidden,
 						gin.H{"error": "Access denied"},
@@ -67,7 +67,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 
 // Direct database query - ONE function to rule them all
 func checkStudentOwnership(
-	db *sqlx.DB, userID int,
+	db *sqlx.DB, userID string,
 	paramName string, resourceID int,
 ) (bool, error) {
 	switch paramName {

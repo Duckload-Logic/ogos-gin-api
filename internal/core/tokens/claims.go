@@ -5,7 +5,7 @@ import (
 )
 
 type Claims struct {
-	UserID    int
+	UserID    string
 	UserEmail string
 	RoleID    int
 	jwt.RegisteredClaims

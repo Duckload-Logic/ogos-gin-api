@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/brianvoe/gofakeit/v6"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -409,20 +411,20 @@ func createSuperAdmin() {
 
 	email := "superadmin@university.edu"
 
-	res, err := tx.Exec(`
-		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
-		VALUES (3, 'Super', '', 'Admin', ?, ?, ?)
+	userID := uuid.New().String()
+	_, err = tx.Exec(`
+		INSERT INTO users (id, role_id, first_name, middle_name, last_name, email, password_hash, is_active)
+		VALUES (?, 3, 'Super', '', 'Admin', ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			first_name = VALUES(first_name),
 			middle_name = VALUES(middle_name),
 			last_name = VALUES(last_name),
 			password_hash = VALUES(password_hash),
 			is_active = VALUES(is_active)
-	`, email, fakePasswordHash(), true)
+	`, userID, email, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	userID, _ := res.LastInsertId()
 	_ = userID // not needed further
 
 	tx.Commit()
@@ -443,20 +445,20 @@ func createCounselor() {
 	lastName := gofakeit.LastName()
 	email := "counselor@university.edu"
 
-	res, err := tx.Exec(`
-		INSERT INTO users (role_id, first_name, middle_name, last_name, email, password_hash, is_active)
-		VALUES (2, ?, ?, ?, ?, ?, ?)
+	userID := uuid.New().String()
+	_, err = tx.Exec(`
+		INSERT INTO users (id, role_id, first_name, middle_name, last_name, email, password_hash, is_active)
+		VALUES (?, 2, ?, ?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			first_name = VALUES(first_name),
 			middle_name = VALUES(middle_name),
 			last_name = VALUES(last_name),
 			password_hash = VALUES(password_hash),
 			is_active = VALUES(is_active)
-	`, firstName, randomMiddleName(), lastName, email, fakePasswordHash(), true)
+	`, userID, firstName, randomMiddleName(), lastName, email, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	userID, _ := res.LastInsertId()
 
 	_, err = tx.Exec(`
 		INSERT INTO counselor_profiles (user_id, license_number, specialization, is_available)
@@ -493,37 +495,37 @@ func createStudent(index int) {
 		index+1) // guarantee unique
 
 	// 1. users
-	res, err := tx.Exec(`
+	userID := uuid.New().String()
+	_, err = tx.Exec(`
 		INSERT INTO users (
-			role_id, first_name, middle_name, last_name, email,
+			id, role_id, first_name, middle_name, last_name, email,
 			password_hash, is_active
-		) VALUES (1, ?, ?, ?, ?, ?, ?)
-	`, gofakeit.FirstName(), randomMiddleName(), gofakeit.LastName(), studentEmail, fakePasswordHash(), true)
+		) VALUES (?, 1, ?, ?, ?, ?, ?, ?)
+	`, userID, gofakeit.FirstName(), randomMiddleName(), gofakeit.LastName(), studentEmail, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	userID, _ := res.LastInsertId()
 
-	insertNotifications(tx, int(userID))
+	insertNotifications(tx, userID)
 
 	if rand.Float32() < 0.7 {
-		res, err := tx.Exec(`
-			INSERT INTO iir_records (user_id, is_submitted)
-			VALUES (?, ?)
-		`, userID, true)
+		iirID := uuid.New().String()
+		_, err = tx.Exec(`
+			INSERT INTO iir_records (id, user_id, is_submitted)
+			VALUES (?, ?, ?)
+		`, iirID, userID, true)
 		if err != nil {
 			log.Fatal(err)
 		}
-		iirID, _ := res.LastInsertId()
 
 		// 3. selected reasons
-		insertSelectedReasons(tx, int(iirID))
+		insertSelectedReasons(tx, iirID)
 
 		// 4. addresses (residential & provincial)
 		resAddr1 := insertAddress(tx)
 		resAddr2 := insertAddress(tx)
-		insertStudentAddress(tx, int(iirID), resAddr1, "Residential")
-		insertStudentAddress(tx, int(iirID), resAddr2, "Provincial")
+		insertStudentAddress(tx, iirID, resAddr1, "Residential")
+		insertStudentAddress(tx, iirID, resAddr2, "Provincial")
 
 		// 5. related persons (father, mother, optional guardian)
 		father := insertRelatedPerson(tx)
@@ -548,72 +550,72 @@ func createStudent(index int) {
 		// 6. link related persons
 		switch guardianScenario {
 		case "no_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+			linkRelatedPerson(tx, iirID, father.ID, "Father",
 				true, false, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+			linkRelatedPerson(tx, iirID, mother.ID, "Mother",
 				true, false, true)
 		case "father_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+			linkRelatedPerson(tx, iirID, father.ID, "Father",
 				true, true, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+			linkRelatedPerson(tx, iirID, mother.ID, "Mother",
 				true, false, true)
 		case "mother_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+			linkRelatedPerson(tx, iirID, father.ID, "Father",
 				true, false, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+			linkRelatedPerson(tx, iirID, mother.ID, "Mother",
 				true, true, true)
 		case "separate_guardian":
-			linkRelatedPerson(tx, int(iirID), father.ID, "Father",
+			linkRelatedPerson(tx, iirID, father.ID, "Father",
 				true, false, true)
-			linkRelatedPerson(tx, int(iirID), mother.ID, "Mother",
+			linkRelatedPerson(tx, iirID, mother.ID, "Mother",
 				true, false, true)
-			linkRelatedPerson(tx, int(iirID), guardian.ID,
+			linkRelatedPerson(tx, iirID, guardian.ID,
 				"Guardian", false, true, true)
 		}
 
 		// 7. student_personal_info
 		emergency := deriveEmergencyContact(father, mother, guardian,
 			guardianScenario, resAddr1, resAddr2)
-		emergencyContactID := insertEmergencyContact(tx, int(iirID),
+		emergencyContactID := insertEmergencyContact(tx, iirID,
 			emergency)
-		insertPersonalInfo(tx, int(iirID), dob, index,
+		insertPersonalInfo(tx, iirID, dob, index,
 			emergencyContactID)
 
 		// 8. family background
-		familyBgID := insertFamilyBackground(tx, int(iirID))
+		familyBgID := insertFamilyBackground(tx, iirID)
 
 		// 9. sibling supports (if employed siblings > 0)
 		insertSiblingSupports(tx, familyBgID)
 
 		// 10. educational background
-		ebID := insertEducationalBackground(tx, int(iirID))
+		ebID := insertEducationalBackground(tx, iirID)
 
 		// 11. school details for each educational level
 		insertSchoolDetails(tx, ebID, birthYear, index)
 
 		// 12. health records
-		insertHealthRecords(tx, int(iirID))
+		insertHealthRecords(tx, iirID)
 
 		// 13. consultations
-		insertConsultations(tx, int(iirID))
+		insertConsultations(tx, iirID)
 
 		// 14. test results
-		insertTestResults(tx, int(iirID))
+		insertTestResults(tx, iirID)
 
 		// 16. finances
-		sfID := insertStudentFinances(tx, int(iirID))
+		sfID := insertStudentFinances(tx, iirID)
 
 		// 17. financial supports
 		insertFinancialSupports(tx, sfID)
 
 		// 18. activities
-		insertActivities(tx, int(iirID))
+		insertActivities(tx, iirID)
 
 		// 19. subject preferences
-		insertSubjectPreferences(tx, int(iirID))
+		insertSubjectPreferences(tx, iirID)
 
 		// 20. hobbies
-		insertHobbies(tx, int(iirID))
+		insertHobbies(tx, iirID)
 
 		// Collect appointment and admission slip IDs for notes
 		appointmentIDs := []int{}
@@ -621,7 +623,7 @@ func createStudent(index int) {
 
 		// 21. admission slip (30% chance)
 		if rand.Float32() < 0.3 {
-			slipID := insertAdmissionSlip(tx, int(iirID))
+			slipID := insertAdmissionSlip(tx, iirID)
 			if slipID > 0 {
 				admissionSlipIDs = append(admissionSlipIDs,
 					slipID)
@@ -632,7 +634,7 @@ func createStudent(index int) {
 		if rand.Float32() < 0.3 {
 			for i := 0; i < rand.Intn(5)+1; i++ {
 				// up to 5 appointments per student
-				apptID := insertAppointment(tx, int(iirID))
+				apptID := insertAppointment(tx, iirID)
 				if apptID > 0 {
 					appointmentIDs = append(appointmentIDs,
 						apptID)
@@ -641,7 +643,7 @@ func createStudent(index int) {
 		}
 
 		// 15. significant notes (after appointments/slips created)
-		insertSignificantNotes(tx, int(iirID), appointmentIDs,
+		insertSignificantNotes(tx, iirID, appointmentIDs,
 			admissionSlipIDs)
 
 		tx.Commit()
@@ -761,7 +763,7 @@ func validContact(contact sql.NullString) string {
 	return gofakeit.Phone()
 }
 
-func insertEmergencyContact(tx *sqlx.Tx, iirID int, emergency emergencyContactSeed) int {
+func insertEmergencyContact(tx *sqlx.Tx, iirID string, emergency emergencyContactSeed) int {
 	res, err := tx.Exec(`
 		INSERT INTO emergency_contacts (
 			iir_id, first_name, middle_name, last_name,
@@ -795,10 +797,10 @@ func fakePasswordHash() string {
 	return "$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq"
 }
 
-func insertPersonalInfo(tx *sqlx.Tx, iirID int, dob time.Time, studentIndex int, emergencyContactID int) {
+func insertPersonalInfo(tx *sqlx.Tx, iirID string, dob time.Time, studentIndex int, emergencyContactID int) {
 	studentStatus := rand.Intn(2) % 2 // 0 or 1
 	isEmployed := studentIndex%2 == 0
-	studentNumber := fmt.Sprintf("%d-%05d-TG-%d", time.Now().Year(), iirID, studentStatus)
+	studentNumber := fmt.Sprintf("%d-%05d-TG-%d", time.Now().Year(), rand.Intn(100000), studentStatus)
 	var employerName, employerAddress sql.NullString
 	if isEmployed {
 		empName := gofakeit.Company()
@@ -843,7 +845,7 @@ func insertPersonalInfo(tx *sqlx.Tx, iirID int, dob time.Time, studentIndex int,
 	}
 }
 
-func insertSelectedReasons(tx *sqlx.Tx, iirID int) {
+func insertSelectedReasons(tx *sqlx.Tx, iirID string) {
 	// pick 1-3 random reasons
 	num := rand.Intn(3) + 1
 	selected := make(map[int]bool)
@@ -907,7 +909,7 @@ func insertAddress(tx *sqlx.Tx) int {
 	return int(id)
 }
 
-func insertStudentAddress(tx *sqlx.Tx, iirID, addressID int, addrType string) {
+func insertStudentAddress(tx *sqlx.Tx, iirID string, addressID int, addrType string) {
 	_, err := tx.Exec(`
 		INSERT INTO student_addresses (iir_id, address_id, address_type)
 		VALUES (?, ?, ?)
@@ -956,7 +958,7 @@ func randomEducationalAttainment() string {
 	return levels[rand.Intn(len(levels))]
 }
 
-func linkRelatedPerson(tx *sqlx.Tx, iirID, personID int, relType string, isParent, isGuardian, isLiving bool) {
+func linkRelatedPerson(tx *sqlx.Tx, iirID string, personID int, relType string, isParent, isGuardian, isLiving bool) {
 	relID := relationshipID(relType)
 	_, err := tx.Exec(`
 		INSERT INTO student_related_persons (
@@ -969,7 +971,7 @@ func linkRelatedPerson(tx *sqlx.Tx, iirID, personID int, relType string, isParen
 	}
 }
 
-func insertFamilyBackground(tx *sqlx.Tx, iirID int) int {
+func insertFamilyBackground(tx *sqlx.Tx, iirID string) int {
 	brothers := rand.Intn(4)
 	sisters := rand.Intn(4)
 	employedSibs := rand.Intn(brothers + sisters + 1)
@@ -1026,7 +1028,7 @@ func insertSiblingSupports(tx *sqlx.Tx, familyBgID int) {
 	}
 }
 
-func insertEducationalBackground(tx *sqlx.Tx, iirID int) int {
+func insertEducationalBackground(tx *sqlx.Tx, iirID string) int {
 	nature := "Continuous"
 	var details sql.NullString
 	if rand.Float32() < 0.1 { // 10% interrupted
@@ -1124,7 +1126,7 @@ func insertSchoolDetails(tx *sqlx.Tx, ebID, birthYear, studentIndex int) {
 	}
 }
 
-func insertHealthRecords(tx *sqlx.Tx, iirID int) {
+func insertHealthRecords(tx *sqlx.Tx, iirID string) {
 	visionProb := false
 	hearingProb := false
 	speechProb := false
@@ -1186,7 +1188,7 @@ func nullStringIf(cond bool, val string) sql.NullString {
 	return sql.NullString{Valid: false}
 }
 
-func insertConsultations(tx *sqlx.Tx, iirID int) {
+func insertConsultations(tx *sqlx.Tx, iirID string) {
 	if rand.Float32() < 0.55 { // 55% have prior consultations
 		num := rand.Intn(3) + 1
 		for i := 0; i < num; i++ {
@@ -1206,7 +1208,7 @@ func insertConsultations(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertTestResults(tx *sqlx.Tx, iirID int) {
+func insertTestResults(tx *sqlx.Tx, iirID string) {
 	numOfTests := 2
 	for i := 0; i < numOfTests; i++ {
 		_, err := tx.Exec(`
@@ -1225,7 +1227,7 @@ func insertTestResults(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertSignificantNotes(tx *sqlx.Tx, iirID int,
+func insertSignificantNotes(tx *sqlx.Tx, iirID string,
 	appointmentIDs, admissionSlipIDs []int,
 ) {
 	if rand.Float32() < 0.3 {
@@ -1269,7 +1271,7 @@ func insertSignificantNotes(tx *sqlx.Tx, iirID int,
 	}
 }
 
-func insertStudentFinances(tx *sqlx.Tx, iirID int) int {
+func insertStudentFinances(tx *sqlx.Tx, iirID string) int {
 	incRangeID := randomChoice(incomeRangeIDs)
 	var otherInc sql.NullString
 	if incRangeID == 10 { // Above 50k, maybe other details
@@ -1307,7 +1309,7 @@ func insertFinancialSupports(tx *sqlx.Tx, sfID int) {
 	}
 }
 
-func insertActivities(tx *sqlx.Tx, iirID int) {
+func insertActivities(tx *sqlx.Tx, iirID string) {
 	if len(activityOptionIDs) == 0 {
 		return
 	}
@@ -1330,7 +1332,7 @@ func insertActivities(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertSubjectPreferences(tx *sqlx.Tx, iirID int) {
+func insertSubjectPreferences(tx *sqlx.Tx, iirID string) {
 	if rand.Float32() < 0.2 {
 		return
 	}
@@ -1351,7 +1353,7 @@ func insertSubjectPreferences(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertHobbies(tx *sqlx.Tx, iirID int) {
+func insertHobbies(tx *sqlx.Tx, iirID string) {
 	num := rand.Intn(4) + 1 // 1-4 hobbies
 	for i := 1; i <= num; i++ {
 		// ensure unique priority rank
@@ -1366,7 +1368,7 @@ func insertHobbies(tx *sqlx.Tx, iirID int) {
 	}
 }
 
-func insertAdmissionSlip(tx *sqlx.Tx, iirID int) int {
+func insertAdmissionSlip(tx *sqlx.Tx, iirID string) int {
 	// More realistic status distribution (pending less likely for
 	// historical data)
 	statusName := chooseAdmissionSlipStatus()
@@ -1557,7 +1559,7 @@ func generateAdmissionNotes(status string) sql.NullString {
 	}
 }
 
-func insertAppointment(tx *sqlx.Tx, iirID int) int {
+func insertAppointment(tx *sqlx.Tx, iirID string) int {
 	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 ||
 		len(appointmentStatusIDs) == 0 {
 		log.Printf(
@@ -1595,7 +1597,7 @@ func insertAppointment(tx *sqlx.Tx, iirID int) int {
 			iir_id, reason, admin_notes, when_date, time_slot_id,
 			appointment_category_id, status_id
 		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sql.NullInt64{Int64: int64(iirID), Valid: true},
+	`, sql.NullString{String: iirID, Valid: iirID != ""},
 		gofakeit.Sentence(rand.Intn(11)+20),
 		adminNotes,
 		whenDate,
@@ -1831,7 +1833,7 @@ func buildDSNFromEnv() string {
 }
 
 // createNotification is kept for potential standalone use, but currently not called.
-func createNotification(userID int) {
+func createNotification(userID string) {
 	title := gofakeit.Sentence(3)
 	message := gofakeit.Sentence(10)
 	notifType := notificationTypes[rand.Intn(len(notificationTypes))]
@@ -1846,7 +1848,7 @@ func createNotification(userID int) {
 	}
 }
 
-func insertNotifications(tx *sqlx.Tx, userID int) {
+func insertNotifications(tx *sqlx.Tx, userID string) {
 	notificationTypes := []string{"Appointment", "Guidance", "System", "Announcement"}
 
 	count := rand.Intn(3) + 3

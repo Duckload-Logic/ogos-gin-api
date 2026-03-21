@@ -1,8 +1,6 @@
-package auth
+package constants
 
-import (
-	"time"
-)
+import "time"
 
 // OAuth 2.0 parameter constants for IDP integration
 const (

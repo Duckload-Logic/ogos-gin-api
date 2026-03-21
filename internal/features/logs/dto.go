@@ -67,7 +67,7 @@ type LogEntry struct {
 	Category  string
 	Action    string
 	Message   string
-	UserID    int // 0 means no user (system event)
+	UserID    string // "" means no user (system event)
 	UserEmail string
 	IPAddress string
 	UserAgent string
@@ -101,7 +101,7 @@ type SystemLogDTO struct {
 	Category  string                 `json:"category"`
 	Action    string                 `json:"action"`
 	Message   string                 `json:"message"`
-	UserID    structs.NullableInt64  `json:"userId,omitempty"`
+	UserID    structs.NullableString `json:"userId,omitempty"`
 	UserEmail structs.NullableString `json:"userEmail,omitempty"`
 	IPAddress structs.NullableString `json:"ipAddress,omitempty"`
 	UserAgent structs.NullableString `json:"userAgent,omitempty"`

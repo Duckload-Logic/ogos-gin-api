@@ -2,7 +2,6 @@ package external
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
@@ -70,13 +69,7 @@ func (h *Handler) HandleGetStudentByUserID(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.Atoi(userID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "userID must be an integer"})
-		return
-	}
-
-	student, err := h.service.GetStudentByUserID(c.Request.Context(), id)
+	student, err := h.service.GetStudentByUserID(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
 		return

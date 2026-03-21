@@ -4,7 +4,7 @@
 
 CREATE TABLE admission_slips (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    iir_id INT NOT NULL,
+    iir_id CHAR(36) NOT NULL,
     category_id INT NOT NULL,
     reason TEXT NOT NULL,
     date_of_absence DATE NOT NULL,

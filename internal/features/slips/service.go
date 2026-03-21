@@ -68,7 +68,7 @@ func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*Li
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:        0,
+				ID:        "",
 				FirstName: slips[s].UserFirstName,
 				MiddleName: structs.FromSqlNull(
 					slips[s].UserMiddleName,
@@ -115,7 +115,7 @@ func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*Li
 
 func (s *Service) GetSlipStats(
 	ctx context.Context,
-	iirID *int,
+	iirID *string,
 	req *ListSlipRequest,
 ) ([]SlipStatusCount, error) {
 	stats, err := s.repo.GetSlipStats(ctx, iirID, req)
@@ -148,7 +148,7 @@ func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:        0,
+				ID:        "",
 				FirstName: slips[s].UserFirstName,
 				MiddleName: structs.FromSqlNull(
 					slips[s].UserMiddleName,
@@ -194,7 +194,7 @@ func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*
 
 func (s *Service) GetExcuseSlipsByIIRID(
 	ctx context.Context,
-	iirID int,
+	iirID string,
 	req ListSlipRequest,
 ) (*ListSlipsDTO, error) {
 	if req.Page <= 0 {
@@ -217,7 +217,7 @@ func (s *Service) GetExcuseSlipsByIIRID(
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
 			User: users.GetUserResponse{
-				ID:        0,
+				ID:        "",
 				FirstName: slips[s].UserFirstName,
 				MiddleName: structs.FromSqlNull(
 					slips[s].UserMiddleName,
@@ -301,7 +301,7 @@ func (s *Service) GetAttachmentFile(ctx context.Context, attachmentID int) (*Sli
 // SubmitExcuseSlip creates a new slip with attachments.
 func (s *Service) SubmitExcuseSlip(
 	ctx context.Context,
-	iirID int,
+	iirID string,
 	req CreateSlipRequest,
 	files []*multipart.FileHeader,
 ) (*Slip, error) {
@@ -341,7 +341,7 @@ func (s *Service) SubmitExcuseSlip(
 
 	folderHash := hash.GetSHA256Hash(
 		fmt.Sprintf(
-			"%d%s%s%d",
+			"%s%s%s%d",
 			iirID,
 			req.DateOfAbsence,
 			req.DateNeeded,

@@ -29,7 +29,7 @@ func HydrateStudentContext(db *sqlx.DB) gin.HandlerFunc {
 			return
 		}
 
-		userID, ok := userIDVal.(int)
+		userID, ok := userIDVal.(string)
 		if !ok {
 			c.Next()
 			return
@@ -49,7 +49,7 @@ func HydrateStudentContext(db *sqlx.DB) gin.HandlerFunc {
 		}
 
 		// Query iir_records table to find IIR ID by user_id
-		var iirID int
+		var iirID string
 		err := db.QueryRow(`
 			SELECT id FROM iir_records WHERE user_id = ?
 		`, userID).Scan(&iirID)

@@ -26,7 +26,7 @@ type OGOSListStudentsResponse struct {
 
 type OGOSStudentDTO struct {
 	StudentNumber string `json:"studentNumber"`
-	UserID        int    `json:"userId"`
+	UserID        string `json:"userId"`
 
 	FirstName  string                 `json:"firstName"`
 	MiddleName structs.NullableString `json:"middleName,omitempty"`

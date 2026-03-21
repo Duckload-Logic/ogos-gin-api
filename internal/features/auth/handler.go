@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/clients/idp"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
@@ -35,6 +36,7 @@ func NewHandler(s *Service, logService *logs.Service, cfg *config.Config) *Handl
 func (h *Handler) HandleLogin(c *gin.Context) {
 	var req LoginDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("[HandleLogin] {Bind JSON}: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 		return
 	}
@@ -53,6 +55,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 			IPAddress: ip,
 			UserAgent: ua,
 		})
+		log.Printf("[HandleLogin] {AuthenticateUser}: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
@@ -103,6 +106,7 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 		// Fallback: read from request body
 		var req RefreshTokenDTO
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[HandleRefreshToken] {Bind JSON}: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 			return
 		}
@@ -110,6 +114,7 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	}
 
 	if refreshToken == "" {
+		log.Printf("[HandleRefreshToken] {Check Token}: Refresh token missing")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token missing"})
 		return
 	}
@@ -126,6 +131,7 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 			IPAddress: ip,
 			UserAgent: ua,
 		})
+		log.Printf("[HandleRefreshToken] {RefreshToken}: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
@@ -167,7 +173,7 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 			Category:  logs.CategorySecurity,
 			Action:    logs.ActionLogout,
 			Message:   fmt.Sprintf("User %s logged out", userEmail),
-			UserID:    userID.(int),
+			UserID:    userID.(string),
 			UserEmail: userEmail.(string),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
@@ -192,8 +198,8 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 	authURL, err := h.service.GetAuthorizeURL(h.cfg)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: LogCategorySecurity,
-			Action:   "AuthURLGenerationFailed",
+			Category: constants.LogCategorySecurity,
+			Action:   constants.LogActionLoginFailed,
 			Message: fmt.Sprintf(
 				"[GetAuthorizeURL] {Generate URL}: %s",
 				err.Error(),
@@ -208,7 +214,7 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, IDPAuthorizeURLResponse{
+	c.JSON(http.StatusOK, idp.IDPAuthorizeURLResponse{
 		AuthorizationURL: authURL,
 	})
 }
@@ -226,13 +232,13 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 // @Failure      500 {object} map[string]string
 // @Router       /auth/idp/token [post]
 func (h *Handler) PostIDPToken(c *gin.Context) {
-	var req IDPTokenExchangeRequest
+	var req idp.IDPTokenExchangeRequest
 
 	// Step 1: Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: LogCategorySecurity,
-			Action:   LogActionLoginFailed,
+			Category: constants.LogCategorySecurity,
+			Action:   constants.LogActionLoginFailed,
 			Message: fmt.Sprintf(
 				"[PostIDPToken] {Bind JSON}: %s",
 				err.Error(),
@@ -271,13 +277,13 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		}
 
 		// h.logService.Record(c.Request.Context(), logs.LogEntry{
-		// 	Category: LogCategorySecurity,
-		// 	Action:   LogActionLoginFailed,
+		// 	Category: constants.LogCategorySecurity,
+		// 	Action:   constants.LogActionLoginFailed,
 		// 	Message: fmt.Sprintf(
 		// 		"[PostIDPToken] {Service Execution}: %s",
 		// 		err.Error(),
 		// 	),
-		// 	UserID:    1,
+		// 	// UserID:    1,
 		// 	IPAddress: c.ClientIP(),
 		// 	UserAgent: c.Request.UserAgent(),
 		// })
@@ -296,10 +302,10 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 
 	// Step 4: Set access token cookie
 	c.SetCookie(
-		AccessTokenCookieName,
+		constants.AccessTokenCookieName,
 		accessToken,
-		AccessTokenMaxAge,
-		CookiePathRoot,
+		constants.AccessTokenMaxAge,
+		constants.CookiePathRoot,
 		"",
 		h.cfg.IsProduction,
 		true,
@@ -307,14 +313,16 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 
 	// Step 5: Set refresh token cookie
 	c.SetCookie(
-		RefreshTokenCookieName,
+		constants.RefreshTokenCookieName,
 		refreshToken,
-		RefreshTokenMaxAge,
-		CookiePathRoot,
+		constants.RefreshTokenMaxAge,
+		constants.CookiePathRoot,
 		"",
 		h.cfg.IsProduction,
 		true,
 	)
+
+	user, err := h.service.GetIDPUserInfo(c, accessToken, h.cfg)
 
 	// Step 6: Get user info for logging
 	// user, err := h.service.repo.GetUserByID(
@@ -338,10 +346,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	}
 
 	// Step 7: Return success response
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful",
-		"user_id": 1,
-	})
+	c.JSON(http.StatusOK, user)
 }
 
 // containsStr checks if a string contains a substring

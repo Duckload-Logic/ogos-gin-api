@@ -18,7 +18,7 @@ func NewService() *Service {
 }
 
 func (s *Service) GenerateToken(
-	userEmail string, userID int, roleID int, roleName string, expireMinutes int,
+	userEmail string, userID string, roleID int, roleName string, expireMinutes int,
 ) (string, error) {
 	claims := &Claims{
 		UserEmail: userEmail,

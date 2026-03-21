@@ -51,7 +51,7 @@ func (r *Repository) GetCategories(ctx context.Context) ([]AppointmentCategory, 
 
 func (r *Repository) GetAppointment(
 	ctx context.Context,
-	id int,
+	id string,
 ) (*Appointment, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -99,7 +99,7 @@ func (r *Repository) GetDailyStatusCount(ctx context.Context, startDate, endDate
 func (r *Repository) GetTotalAppointmentsCount(
 	ctx context.Context,
 	statusID, startDate, endDate string,
-	iirID *int,
+	iirID *string,
 ) (int, error) {
 	query := `SELECT COUNT(*) FROM appointments WHERE 1=1`
 	var args []interface{}
@@ -307,7 +307,7 @@ func (r *Repository) GetStatuses(ctx context.Context) ([]AppointmentStatus, erro
 
 func (r *Repository) ListByUserID(
 	ctx context.Context,
-	userID int,
+	userID string,
 	offset, limit int,
 	orderBy string,
 	statusID, startDate, endDate string,
@@ -378,7 +378,7 @@ func (r *Repository) ListByUserID(
 
 func (r *Repository) ListByIIRID(
 	ctx context.Context,
-	iirID int,
+	iirID string,
 	offset, limit int,
 	orderBy string,
 	statusID, startDate, endDate string,
@@ -450,7 +450,7 @@ func (r *Repository) ListByIIRID(
 func (r *Repository) GetAppointmentStats(
 	ctx context.Context,
 	statusID, startDate, endDate string,
-	iirID *int,
+	iirID *string,
 ) ([]StatusCount, error) {
 	joinCondition := "a.status_id = as2.id"
 	var args []interface{}
@@ -511,23 +511,14 @@ func (r *Repository) CreateAppointment(
 		VALUES (%s)
 	`, cols, vals)
 
-	result, err := r.db.NamedExecContext(ctx, query, appt)
+	_, err := r.db.NamedExecContext(ctx, query, appt)
 	if err != nil {
 		return fmt.Errorf(
-			"failed to upsert appointment: %w",
+			"failed to insert appointment: %w",
 			err,
 		)
 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf(
-			"failed to get last insert id: %w",
-			err,
-		)
-	}
-
-	appt.ID = int(id)
 	return nil
 }
 
@@ -542,7 +533,7 @@ func (r *Repository) UpdateAppointment(
 			var args []interface{}
 			var setQuery []string
 
-			if appt.IIRID != 0 {
+			if appt.IIRID != "" {
 				setQuery = append(setQuery, "iir_id = ?")
 				args = append(args, appt.IIRID)
 			}

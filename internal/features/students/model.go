@@ -75,7 +75,7 @@ type ActivityOption struct {
 }
 
 type StudentBasicInfoView struct {
-	UserID     int            `json:"userId"`
+	UserID     string         `json:"userId"`
 	Email      string         `json:"email"`
 	FirstName  string         `json:"firstName"`
 	MiddleName sql.NullString `json:"middleName,omitempty"`
@@ -84,8 +84,8 @@ type StudentBasicInfoView struct {
 }
 
 type StudentProfileView struct {
-	IIRID         int            `db:"iir_id" json:"iirId"`
-	UserID        int            `db:"user_id" json:"userId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
+	UserID        string         `db:"user_id" json:"userId"`
 	FirstName     string         `db:"first_name" json:"firstName"`
 	MiddleName    sql.NullString `db:"middle_name" json:"middleName,omitempty"`
 	LastName      string         `db:"last_name" json:"lastName"`
@@ -101,15 +101,15 @@ type StudentProfileView struct {
 // Core Student Records
 type IIRDraft struct {
 	ID        int       `db:"id" json:"id"`
-	UserID    int       `db:"user_id" json:"userId"`
+	UserID    string    `db:"user_id" json:"userId"`
 	Data      string    `db:"data" json:"data"` // JSON string of the draft data
 	CreatedAt time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type IIRRecord struct {
-	ID          int       `db:"id" json:"id"`
-	UserID      int       `db:"user_id" json:"userId"`
+	ID          string    `db:"id" json:"id"`
+	UserID      string    `db:"user_id" json:"userId"`
 	IsSubmitted bool      `db:"is_submitted" json:"isSubmitted"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updatedAt"`
@@ -117,14 +117,14 @@ type IIRRecord struct {
 
 // Enrollment and Reasons
 type StudentSelectedReason struct {
-	IIRID           int     `db:"iir_id" json:"iirId"`
+	IIRID string     `db:"iir_id" json:"iirId"`
 	ReasonID        int     `db:"reason_id" json:"reasonId"`
 	OtherReasonText *string `db:"other_reason_text" json:"otherReasonText"`
 }
 
 type StudentPersonalInfo struct {
 	ID            int            `db:"id" json:"id"`
-	IIRID         int            `db:"iir_id" json:"iirId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
 	SuffixName    sql.NullString `db:"suffix_name" json:"suffixName,omitempty"`
 	StudentNumber string         `db:"student_number" json:"studentNumber"`
 
@@ -158,7 +158,7 @@ type StudentPersonalInfo struct {
 
 type EmergencyContact struct {
 	ID             int            `db:"id" json:"id"`
-	IIRID          int            `db:"iir_id" json:"iirId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
 	FirstName      string         `db:"first_name" json:"firstName"`
 	MiddleName     sql.NullString `db:"middle_name" json:"middleName,omitempty"`
 	LastName       string         `db:"last_name" json:"lastName"`
@@ -174,7 +174,7 @@ type EmergencyContact struct {
 
 type StudentAddress struct {
 	ID          int       `db:"id" json:"id"`
-	IIRID       int       `db:"iir_id" json:"iirId"`
+	IIRID string       `db:"iir_id" json:"iirId"`
 	AddressID   int       `db:"address_id" json:"addressId"`
 	AddressType string    `db:"address_type" json:"addressType"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
@@ -198,7 +198,7 @@ type RelatedPerson struct {
 }
 
 type StudentRelatedPerson struct {
-	IIRID           int `db:"iir_id" json:"iirId"`
+	IIRID string `db:"iir_id" json:"iirId"`
 	RelatedPersonID int `db:"related_person_id" json:"relatedPersonId"`
 
 	// "Father", "Mother", "Guardian", "Uncle", "Aunt", "Sibling", "Other"
@@ -215,7 +215,7 @@ type StudentRelatedPerson struct {
 
 type FamilyBackground struct {
 	ID                    int            `db:"id" json:"id"`
-	IIRID                 int            `db:"iir_id" json:"iirId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
 	ParentalStatusID      int            `db:"parental_status_id" json:"parentalStatusId"`
 	ParentalStatusDetails sql.NullString `db:"parental_status_details" json:"parentalStatusDetails"`
 	Brothers              int            `db:"brothers" json:"brothers"`
@@ -238,7 +238,7 @@ type StudentSiblingSupport struct {
 // Education and Background
 type EducationalBackground struct {
 	ID                 int            `db:"id" json:"id"`
-	IIRID              int            `db:"iir_id" json:"iirId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
 	NatureOfSchooling  string         `db:"nature_of_schooling" json:"natureOfSchooling"`
 	InterruptedDetails sql.NullString `db:"interrupted_details" json:"interruptedDetails,omitempty"`
 	CreatedAt          time.Time      `db:"created_at" json:"createdAt"`
@@ -262,7 +262,7 @@ type SchoolDetails struct {
 // Health and Wellness
 type StudentHealthRecord struct {
 	ID                      int            `db:"id" json:"id"`
-	IIRID                   int            `db:"iir_id" json:"iirID"`
+	IIRID string            `db:"iir_id" json:"iirID"`
 	VisionHasProblem        bool           `db:"vision_has_problem" json:"visionHasProblem"`
 	VisionDetails           sql.NullString `db:"vision_details" json:"visionDetails"`
 	HearingHasProblem       bool           `db:"hearing_has_problem" json:"hearingHasProblem"`
@@ -277,7 +277,7 @@ type StudentHealthRecord struct {
 
 type StudentConsultation struct {
 	ID               int            `db:"id" json:"id"`
-	IIRID            int            `db:"iir_id" json:"iirId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
 	ProfessionalType string         `db:"professional_type" json:"professionalType"` // e.g., "Psychiatrist", "Psychologist", "Counselor"
 	HasConsulted     bool           `db:"has_consulted" json:"hasConsulted"`
 	WhenDate         sql.NullString `db:"when_date" json:"whenDate"`
@@ -289,7 +289,7 @@ type StudentConsultation struct {
 // Financial Support
 type StudentFinance struct {
 	ID                         int            `db:"id" json:"id"`
-	IIRID                      int            `db:"iir_id" json:"iirId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
 	MonthlyFamilyIncomeRangeID int            `db:"monthly_family_income_range_id" json:"monthlyFamilyIncomeRangeId"`
 	OtherIncomeDetails         sql.NullString `db:"other_income_details" json:"otherIncomeDetails"`
 	WeeklyAllowance            float64        `db:"weekly_allowance" json:"weeklyAllowance"`
@@ -307,7 +307,7 @@ type StudentFinancialSupport struct {
 // Interests and Activities
 type StudentActivity struct {
 	ID                 int            `db:"id" json:"id"`
-	IIRID              int            `db:"iir_id" json:"iirId"`
+	IIRID string            `db:"iir_id" json:"iirId"`
 	OptionID           int            `db:"option_id" json:"optionId,omitempty"`                     // FK to interest_options for standardized activities
 	OtherSpecification sql.NullString `db:"other_specification" json:"otherSpecification,omitempty"` // For "Other" category
 	Role               string         `db:"role" json:"role"`                                        // "Officer", "Member", "Other"
@@ -318,7 +318,7 @@ type StudentActivity struct {
 
 type StudentSubjectPreference struct {
 	ID          int       `db:"id" json:"id"`
-	IIRID       int       `db:"iir_id" json:"iirId"`
+	IIRID string       `db:"iir_id" json:"iirId"`
 	SubjectName string    `db:"subject_name" json:"subjectName"`
 	IsFavorite  bool      `db:"is_favorite" json:"isFavorite"`
 	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
@@ -327,7 +327,7 @@ type StudentSubjectPreference struct {
 
 type StudentHobby struct {
 	ID           int       `db:"id" json:"id"`
-	IIRID        int       `db:"iir_id" json:"iirId"`
+	IIRID string       `db:"iir_id" json:"iirId"`
 	HobbyName    string    `db:"hobby_name" json:"hobbyName"`
 	PriorityRank int       `db:"priority_rank" json:"priorityRank"` // 1 = most favorite, higher numbers = less favorite
 	CreatedAt    time.Time `db:"created_at" json:"createdAt"`
@@ -337,7 +337,7 @@ type StudentHobby struct {
 // Test Results and Assessments
 type TestResult struct {
 	ID          int       `db:"id" json:"id"`
-	IIRID       int       `db:"iir_id" json:"iirId"`
+	IIRID string       `db:"iir_id" json:"iirId"`
 	TestDate    string    `db:"test_date" json:"testDate"`
 	TestName    string    `db:"test_name" json:"testName"`
 	RawScore    string    `db:"raw_score" json:"rawScore"`

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -16,7 +18,7 @@ func NewService(repo *Repository) *Service {
 
 func (s *Service) GetStudentSignificantNotes(
 	ctx context.Context,
-	iirID int,
+	iirID string,
 ) ([]SignificantNoteDTO, error) {
 	notes, err := s.repo.GetStudentSignificantNotes(
 		ctx,
@@ -45,11 +47,12 @@ func (s *Service) GetStudentSignificantNotes(
 
 func (s *Service) CreateSignificantNote(
 	ctx context.Context,
-	iirID int,
+	iirID string,
 	noteReq SignificantNoteDTO,
 ) error {
 	note := &SignificantNote{
-		IIRID:   sql.NullInt64{Int64: int64(iirID), Valid: true},
+		ID:      uuid.New().String(),
+		IIRID:   sql.NullString{String: iirID, Valid: true},
 		Note:    noteReq.Note,
 		Remarks: noteReq.Remarks,
 	}

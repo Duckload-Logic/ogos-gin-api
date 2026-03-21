@@ -21,7 +21,7 @@ CREATE INDEX idx_api_keys_is_active ON api_keys(is_active ASC);
 
 CREATE TABLE notifications (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id CHAR(36) NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
     type ENUM('Appointment', 'Guidance', 'System', 'Announcement') DEFAULT 'System',
@@ -37,7 +37,7 @@ CREATE TABLE system_logs (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     action VARCHAR(100) NOT NULL,
     message TEXT NOT NULL,
-    user_id INT NULL DEFAULT NULL,
+    user_id CHAR(36) NULL DEFAULT NULL,
     user_email VARCHAR(100) NULL DEFAULT NULL,
     ip_address VARCHAR(45) NULL DEFAULT NULL,
     user_agent VARCHAR(255) NULL DEFAULT NULL,
@@ -55,7 +55,7 @@ CREATE INDEX idx_system_logs_user_id ON system_logs(user_id ASC);
 
 CREATE TABLE counselor_profiles (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    user_id CHAR(36) NOT NULL,
     license_number VARCHAR(50) DEFAULT NULL,
     specialization VARCHAR(100) DEFAULT NULL,
     is_available TINYINT(1) DEFAULT 1,

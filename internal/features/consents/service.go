@@ -76,11 +76,11 @@ func (s *Service) GetDocumentContent(ctx context.Context, docType string) ([]byt
 	return buf.Bytes(), "text/markdown; charset=utf-8", nil
 }
 
-func (s *Service) HasUserAccepted(ctx context.Context, userID int, docID int) (bool, error) {
+func (s *Service) HasUserAccepted(ctx context.Context, userID string, docID int) (bool, error) {
 	return s.repo.HasUserAccepted(ctx, userID, docID)
 }
 
-func (s *Service) SaveConsent(ctx context.Context, userID int, docID int) error {
+func (s *Service) SaveConsent(ctx context.Context, userID string, docID int) error {
 	_, ipAddress, userAgent, userEmail := audit.ExtractMeta(ctx)
 
 	err := s.repo.SaveConsent(ctx, userID, docID, ipAddress)
@@ -100,7 +100,7 @@ func (s *Service) SaveConsent(ctx context.Context, userID int, docID int) error 
 }
 
 // ListUserConsentHistory (Optional) for an admin "Compliance Dashboard"
-func (s *Service) ListUserConsentHistory(ctx context.Context, userID int) ([]UserConsent, error) {
+func (s *Service) ListUserConsentHistory(ctx context.Context, userID string) ([]UserConsent, error) {
 	return s.repo.ListUserConsentHistory(ctx, userID)
 }
 

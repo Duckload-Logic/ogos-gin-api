@@ -64,7 +64,7 @@ func (r *Repository) GetLatestDocumentLocked(ctx context.Context, tx *sqlx.Tx, d
 }
 
 // HasUserAccepted checks if the specific user has already signed this specific document ID
-func (r *Repository) HasUserAccepted(ctx context.Context, userID int, docID int) (bool, error) {
+func (r *Repository) HasUserAccepted(ctx context.Context, userID string, docID int) (bool, error) {
 	var exists bool
 	query := `
 		SELECT EXISTS(
@@ -79,13 +79,13 @@ func (r *Repository) HasUserAccepted(ctx context.Context, userID int, docID int)
 }
 
 // SaveConsent records the "State" of the user's agreement
-func (r *Repository) SaveConsent(ctx context.Context, userID int, docID int, ip string) error {
+func (r *Repository) SaveConsent(ctx context.Context, userID string, docID int, ip string) error {
 	cols, vals := database.GetInsertStatement(UserConsent{}, []string{"created_at", "email", "accepted_at"})
 	query := fmt.Sprintf(`
 		INSERT INTO user_consents (%s)
 		VALUES (%s)`, cols, vals)
 
-	log.Printf("Query: %s, Vals: %d %d %s", query, userID, docID, ip)
+	log.Printf("Query: %s, Vals: %s %d %s", query, userID, docID, ip)
 
 	_, err := r.db.NamedExecContext(ctx, query, UserConsent{
 		UserID:     userID,
@@ -100,7 +100,7 @@ func (r *Repository) SaveConsent(ctx context.Context, userID int, docID int, ip 
 }
 
 // ListUserConsentHistory for an admin "Compliance Dashboard"
-func (r *Repository) ListUserConsentHistory(ctx context.Context, userID int) ([]UserConsent, error) {
+func (r *Repository) ListUserConsentHistory(ctx context.Context, userID string) ([]UserConsent, error) {
 	var history []UserConsent
 	query := fmt.Sprintf(`
 		SELECT %s FROM user_consents uc

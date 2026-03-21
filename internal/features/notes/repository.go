@@ -18,7 +18,7 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) GetStudentSignificantNotes(
 	ctx context.Context,
-	iirID int,
+	iirID string,
 ) ([]SignificantNote, error) {
 	query := fmt.Sprintf(`
 		SELECT %s

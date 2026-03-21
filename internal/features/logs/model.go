@@ -11,7 +11,7 @@ type SystemLog struct {
 	Category  string         `db:"category"`
 	Action    string         `db:"action"`
 	Message   string         `db:"message"`
-	UserID    sql.NullInt64  `db:"user_id"`
+	UserID    sql.NullString `db:"user_id"`
 	UserEmail sql.NullString `db:"user_email"`
 	IPAddress sql.NullString `db:"ip_address"`
 	UserAgent sql.NullString `db:"user_agent"`

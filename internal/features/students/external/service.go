@@ -70,7 +70,7 @@ func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest)
 	return listResponse, nil
 }
 
-func (s *Service) GetStudentByUserID(ctx context.Context, userID int) (*OGOSStudentDTO, error) {
+func (s *Service) GetStudentByUserID(ctx context.Context, userID string) (*OGOSStudentDTO, error) {
 	student, err := s.repo.GetStudentByUserID(ctx, userID)
 	if err != nil {
 		return nil, err

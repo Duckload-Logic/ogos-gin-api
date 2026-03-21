@@ -15,7 +15,7 @@ const (
 func WithContext(
 	ctx context.Context,
 	ip, ua string,
-	id int,
+	id string,
 	email string,
 ) context.Context {
 	ctx = context.WithValue(ctx, ipAddressKey, ip)
@@ -26,14 +26,14 @@ func WithContext(
 }
 
 // ExtractMeta reads audit metadata from a context.
-func ExtractMeta(ctx context.Context) (id int, ip, ua, email string) {
+func ExtractMeta(ctx context.Context) (id string, ip, ua, email string) {
 	if v, ok := ctx.Value(ipAddressKey).(string); ok {
 		ip = v
 	}
 	if v, ok := ctx.Value(userAgentKey).(string); ok {
 		ua = v
 	}
-	if v, ok := ctx.Value(userIDKey).(int); ok {
+	if v, ok := ctx.Value(userIDKey).(string); ok {
 		id = v
 	}
 	if v, ok := ctx.Value(userEmailKey).(string); ok {

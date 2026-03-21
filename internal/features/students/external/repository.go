@@ -79,7 +79,7 @@ func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsReque
 	return students, total, nil
 }
 
-func (r *Repository) GetStudentByUserID(ctx context.Context, userID int) (*OGOSStudentView, error) {
+func (r *Repository) GetStudentByUserID(ctx context.Context, userID string) (*OGOSStudentView, error) {
 	query := `
 		SELECT
 			sp.student_number AS student_number,

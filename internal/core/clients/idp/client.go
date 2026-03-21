@@ -1,4 +1,4 @@
-package auth
+package idp
 
 import (
 	"bytes"
@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 )
 
 // IDPClient handles HTTP communication with the Identity Provider
@@ -21,7 +21,7 @@ type IDPClient struct {
 func NewIDPClient() *IDPClient {
 	return &IDPClient{
 		httpClient: &http.Client{
-			Timeout: IDPRequestTimeout,
+			Timeout: constants.IDPRequestTimeout,
 		},
 	}
 }
@@ -77,12 +77,6 @@ func (c *IDPClient) ExchangeCodeForToken(
 		return nil, fmt.Errorf("[IDPClient] {Read Response Body}: %w", err)
 	}
 
-	log.Printf(
-		"[IDPClient] {PostToken}: Status %d, Body: %s",
-		resp.StatusCode,
-		string(bodyBytes),
-	)
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf(
 			"[IDPClient] {Token Exchange Failed}: status %d, body: %s",
@@ -127,14 +121,6 @@ func (c *IDPClient) GetUserInfo(
 		)
 	}
 
-	// Set Authorization header with Bearer token
-	authHeader := fmt.Sprintf(
-		"%s %s",
-		"Bearer",
-		accessToken,
-	)
-	req.Header.Set("Authorization", authHeader)
-
 	// Execute request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -144,8 +130,6 @@ func (c *IDPClient) GetUserInfo(
 		)
 	}
 	defer resp.Body.Close()
-
-	log.Printf("[IDPClient] {UserInfo Resp Body and Status}: %d, %v", resp.StatusCode, json.NewDecoder(resp.Body))
 
 	// Check response status
 	if resp.StatusCode != http.StatusOK {
