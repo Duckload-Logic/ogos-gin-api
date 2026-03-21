@@ -8,6 +8,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 )
 
 type Application struct {
@@ -41,7 +42,12 @@ func GetNewApplication(db *sqlx.DB, cfg *config.Config) (*Application, error) {
 
 	repos := getRepositories(db)
 
-	handlers := getHandlers(repos, fileStorage, cfg)
+	redis, err := database.NewRedisClient(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis: %w", err)
+	}
+
+	handlers := getHandlers(repos, fileStorage, cfg, redis)
 
 	router := SetupRoutes(db, handlers, cfg)
 

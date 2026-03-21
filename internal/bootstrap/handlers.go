@@ -4,6 +4,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
@@ -36,16 +37,17 @@ type Handlers struct {
 	SystemLogHandler       *logs.Handler
 	SystemLogService       *logs.Service
 	ConsentHandler         *consents.Handler
+	Redis                  *database.RedisClient
 }
 
-func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *config.Config) *Handlers {
+func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *config.Config, redis *database.RedisClient) *Handlers {
 	systemLogService := logs.NewService(repos.SystemLogRepo)
 	systemLogHandler := logs.NewHandler(systemLogService)
 	apiKeyService := apikeys.NewService(repos.APIKeyRepo, systemLogService)
 
 	notificationsService := notifications.NewService(repos.NotificationRepo)
 	notificationsHandler := notifications.NewHandler(notificationsService)
-	authService := auth.NewService(repos.UserRepo)
+	authService := auth.NewService(repos.UserRepo, redis)
 	userService := users.NewService(repos.UserRepo)
 	locationsService := locations.NewService(repos.LocationsRepo)
 	studentService := students.NewService(repos.StudentRepo, locationsService)
@@ -73,5 +75,6 @@ func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *conf
 		SystemLogHandler:       systemLogHandler,
 		SystemLogService:       systemLogService,
 		ConsentHandler:         consents.NewHandler(consentService),
+		Redis:                  redis,
 	}
 }

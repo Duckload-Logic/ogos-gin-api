@@ -115,19 +115,19 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 	// |                            |
 	// ==============================
 
-	auth.RegisterRoutes(apiV1Routes, handlers.AuthHandler)
-	users.RegisterRoutes(db, apiV1Routes, handlers.UserHandler)
-	locations.RegisterRoutes(apiV1Routes, handlers.LocationsHandler)
-	students.RegisterRoutes(db, apiV1Routes, handlers.StudentHandler)
-	appointments.RegisterRoutes(db, apiV1Routes, handlers.AppointmentHandler)
-	slips.RegisterRoutes(db, apiV1Routes, handlers.SlipHandler)
-	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler)
-	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler)
-	notifications.RegisterRoutes(db, apiV1Routes, handlers.NotificationsHandler)
-	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler)
-	consents.RegisterRoutes(apiV1Routes, handlers.ConsentHandler)
-	notes.RegisterRoutes(db, apiV1Routes, handlers.NoteHandler)
+	auth.RegisterRoutes(apiV1Routes, handlers.AuthHandler, handlers.Redis)
+	users.RegisterRoutes(db, apiV1Routes, handlers.UserHandler, handlers.Redis)
+	locations.RegisterRoutes(apiV1Routes, handlers.LocationsHandler, handlers.Redis)
+	students.RegisterRoutes(db, apiV1Routes, handlers.StudentHandler, handlers.Redis)
+	appointments.RegisterRoutes(db, apiV1Routes, handlers.AppointmentHandler, handlers.Redis)
+	slips.RegisterRoutes(db, apiV1Routes, handlers.SlipHandler, handlers.Redis)
+	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler, handlers.Redis)
+	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler, handlers.Redis)
+	notifications.RegisterRoutes(db, apiV1Routes, handlers.NotificationsHandler, handlers.Redis)
+	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler, handlers.Redis)
+	consents.RegisterRoutes(apiV1Routes, handlers.ConsentHandler, handlers.Redis)
+	notes.RegisterRoutes(db, apiV1Routes, handlers.NoteHandler, handlers.Redis)
 
-	external.RegisterRoutes(apiV1Routes, handlers.ExternalStudentHandler, handlers.APIKeyService.ValidateKeyFunc())
+	external.RegisterRoutes(apiV1Routes, handlers.ExternalStudentHandler, handlers.APIKeyService.ValidateKeyFunc(), handlers.Redis)
 	return g
 }
