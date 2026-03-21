@@ -10,9 +10,9 @@ import (
 // so that userEmail is available.
 func AuditContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userID := 0
+		userID := ""
 		if id, exists := c.Get("userID"); exists {
-			if e, ok := id.(int); ok {
+			if e, ok := id.(string); ok {
 				userID = e
 			}
 		}
