@@ -36,7 +36,7 @@ func (s *Service) Record(ctx context.Context, entry LogEntry) {
 		Category:  entry.Category,
 		Action:    entry.Action,
 		Message:   entry.Message,
-		UserID:    sql.NullInt64{Int64: int64(entry.UserID), Valid: entry.UserID != 0},
+		UserID:    sql.NullString{String: entry.UserID, Valid: entry.UserID != ""},
 		UserEmail: sql.NullString{String: entry.UserEmail, Valid: entry.UserEmail != ""},
 		IPAddress: sql.NullString{String: entry.IPAddress, Valid: entry.IPAddress != ""},
 		UserAgent: sql.NullString{String: entry.UserAgent, Valid: entry.UserAgent != ""},
@@ -51,7 +51,7 @@ func (s *Service) Record(ctx context.Context, entry LogEntry) {
 
 // RecordSecurity is a convenience method that satisfies the middleware.SecurityLogger interface.
 // It records a security-category log entry with the given fields.
-func (s *Service) RecordSecurity(ctx context.Context, userEmail, action, message, ipAddress, userAgent string, userID int) {
+func (s *Service) RecordSecurity(ctx context.Context, userEmail, action, message, ipAddress, userAgent string, userID string) {
 	s.Record(ctx, LogEntry{
 		Category:  CategorySecurity,
 		Action:    action,
@@ -122,7 +122,7 @@ func (s *Service) mapLogsToDTOs(logs []SystemLog) []SystemLogDTO {
 			Category:  l.Category,
 			Action:    l.Action,
 			Message:   l.Message,
-			UserID:    structs.FromSqlNullInt64(l.UserID),
+			UserID:    structs.FromSqlNull(l.UserID),
 			UserEmail: structs.FromSqlNull(l.UserEmail),
 			IPAddress: structs.FromSqlNull(l.IPAddress),
 			UserAgent: structs.FromSqlNull(l.UserAgent),
