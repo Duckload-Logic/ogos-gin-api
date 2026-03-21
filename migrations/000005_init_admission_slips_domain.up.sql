@@ -3,7 +3,7 @@
 -- ============================================================================
 
 CREATE TABLE admission_slips (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id CHAR(36) NOT NULL PRIMARY KEY,
     iir_id CHAR(36) NOT NULL,
     category_id INT NOT NULL,
     reason TEXT NOT NULL,
@@ -23,8 +23,8 @@ CREATE INDEX idx_admission_slips_category_id ON admission_slips(category_id ASC)
 CREATE INDEX idx_admission_slips_iir_id ON admission_slips(iir_id ASC);
 
 CREATE TABLE slip_attachments (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    admission_slip_id INT NOT NULL,
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    admission_slip_id CHAR(36) NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_url VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
