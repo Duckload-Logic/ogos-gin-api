@@ -341,7 +341,7 @@ func (s *Service) SubmitExcuseSlip(
 
 	folderHash := hash.GetSHA256Hash(
 		fmt.Sprintf(
-			"%d%s%s%d",
+			"%s%s%s%d",
 			iirID,
 			req.DateOfAbsence,
 			req.DateNeeded,
