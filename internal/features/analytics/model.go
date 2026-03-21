@@ -14,7 +14,7 @@ type AggregatedStatModel struct {
 // StudentPersonalInfo 
 type StudentPersonalInfo struct {
 	ID            int       `db:"id"`
-	IIRID         int       `db:"iir_id"`
+	IIRID string       `db:"iir_id"`
 	StudentNumber string    `db:"student_number"`
 	GenderID      int       `db:"gender_id"`
 	CivilStatusID int       `db:"civil_status_id"`
@@ -39,14 +39,14 @@ type StudentPersonalInfo struct {
 // StudentFinances 
 type StudentFinances struct {
 	ID                         int     `db:"id"`
-	IIRID                      int     `db:"iir_id"`
+	IIRID string     `db:"iir_id"`
 	MonthlyFamilyIncomeRangeID *int    `db:"monthly_family_income_range_id"`
 	WeeklyAllowance            float64 `db:"weekly_allowance"`
 }
 
 // FamilyBackground 
 type FamilyBackground struct {
-	IIRID                 int  `db:"iir_id"`
+	IIRID string  `db:"iir_id"`
 	ParentalStatusID      int  `db:"parental_status_id"` 
 	OrdinalPosition       int  `db:"ordinal_position"`
 	HaveQuietPlaceToStudy bool `db:"have_quiet_place_to_study"`
@@ -55,7 +55,7 @@ type FamilyBackground struct {
 // EducationalBackground 
 type EducationalBackground struct {
 	ID              int     `db:"id"`
-	IIRID           int     `db:"iir_id"`
+	IIRID string     `db:"iir_id"`
 	EducationLevelID int     `db:"education_level_id"` 
 	SchoolDetailID   int     `db:"school_detail_id"`  
 	GWA             float64 `db:"gwa"`
