@@ -382,7 +382,7 @@ const docTemplateexternal = `{
                     "type": "string"
                 },
                 "userId": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "yearLevel": {
                     "type": "integer"
