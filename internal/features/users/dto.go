@@ -3,7 +3,7 @@ package users
 import "github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 
 type GetUserResponse struct {
-	ID         int                    `json:"id"`
+	ID         string                 `json:"id"`
 	Role       Role                   `json:"role"`
 	FirstName  string                 `json:"firstName"`
 	MiddleName structs.NullableString `json:"middleName,omitempty"`

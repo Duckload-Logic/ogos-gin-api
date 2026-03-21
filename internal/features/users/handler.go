@@ -1,6 +1,7 @@
 package users
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -30,10 +31,11 @@ func NewHandler(service *Service) *Handler {
 // @Failure      500      {object}  map[string]string     "Failed to get current user"
 // @Router       /users/me [get]
 func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
-	userID := c.MustGet("userID").(int)
+	userID := c.MustGet("userID").(string)
 
 	resp, err := h.service.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
+		log.Printf("[HandleGetCurrentUser] {GetUserByID}: %v", err)
 		c.JSON(
 			http.StatusInternalServerError,
 			gin.H{"error": "Failed to get current user"},
@@ -58,6 +60,7 @@ func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
 func (h *Handler) HandleGetUserByEmail(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
+		log.Printf("[HandleGetUserByEmail] {Check Query Email}: Email query parameter is required")
 		c.JSON(
 			http.StatusBadRequest,
 			gin.H{"error": "Email query parameter is required"},
@@ -67,6 +70,7 @@ func (h *Handler) HandleGetUserByEmail(c *gin.Context) {
 
 	resp, err := h.service.GetUserByEmail(c.Request.Context(), email)
 	if err != nil {
+		log.Printf("[HandleGetUserByEmail] {GetUserByEmail}: %v", err)
 		c.JSON(
 			http.StatusInternalServerError,
 			gin.H{"error": "Failed to get user by email"},
