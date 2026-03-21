@@ -3,17 +3,18 @@ package slips
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
-func RegisterRoutes(db *sqlx.DB, api *gin.RouterGroup, h *Handler) {
-	excuseslipGroup := api.Group("/slips")
-	excuseslipGroup.Use(middleware.AuthMiddleware())
-	excuseslipGroup.Use(middleware.HydrateStudentContext(db))
-	excuseslipGroup.Use(middleware.AuditContextMiddleware())
+func RegisterRoutes(db *sqlx.DB, rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
+	routes := rg.Group("/slips")
+	routes.Use(middleware.AuthMiddleware(redis))
+	routes.Use(middleware.HydrateStudentContext(db))
+	routes.Use(middleware.AuditContextMiddleware())
 
-	adminOnly := excuseslipGroup.Group("")
+	adminOnly := routes.Group("")
 	adminOnly.Use(middleware.RoleMiddleware(
 		int(constants.CounselorRoleID),
 	))
@@ -23,7 +24,7 @@ func RegisterRoutes(db *sqlx.DB, api *gin.RouterGroup, h *Handler) {
 		adminOnly.PATCH("/id/:id/status", h.PatchSlipStatus)
 	}
 
-	studentOnly := excuseslipGroup.Group("")
+	studentOnly := routes.Group("")
 	studentOnly.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 	))
@@ -32,7 +33,7 @@ func RegisterRoutes(db *sqlx.DB, api *gin.RouterGroup, h *Handler) {
 		studentOnly.POST("", h.PostSlip)
 	}
 
-	sharedRoutes := excuseslipGroup.Group("")
+	sharedRoutes := routes.Group("")
 	sharedRoutes.Use(middleware.RoleMiddleware(
 		int(constants.CounselorRoleID),
 		int(constants.StudentRoleID),

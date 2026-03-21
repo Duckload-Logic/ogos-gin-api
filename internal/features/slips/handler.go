@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -353,18 +352,9 @@ func (h *Handler) GetSlipListByIIR(c *gin.Context) {
 // @Router       /slips/id/{id}/attachments [get]
 func (h *Handler) GetSlipAttachmentList(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid ID format"},
-		)
-		return
-	}
-
 	attachments, err := h.service.GetSlipAttachments(
 		c.Request.Context(),
-		id,
+		idParam,
 	)
 	if err != nil {
 		log.Printf(
@@ -393,18 +383,9 @@ func (h *Handler) GetSlipAttachmentList(c *gin.Context) {
 // @Router       /slips/id/{id}/attachments/{attachmentId} [get]
 func (h *Handler) GetAttachmentFile(c *gin.Context) {
 	attachmentIDParam := c.Param("attachmentId")
-	attachmentID, err := strconv.Atoi(attachmentIDParam)
-	if err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid attachment ID format"},
-		)
-		return
-	}
-
 	attachment, err := h.service.DownloadAttachment(
 		c.Request.Context(),
-		attachmentID,
+		attachmentIDParam,
 		c.Writer,
 	)
 	if err != nil {
@@ -450,15 +431,6 @@ func (h *Handler) GetAttachmentFile(c *gin.Context) {
 // @Router       /slips/id/{id}/status [patch]
 func (h *Handler) PatchSlipStatus(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := strconv.Atoi(idParam)
-	if err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid ID format"},
-		)
-		return
-	}
-
 	var req UpdateStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(
@@ -468,9 +440,9 @@ func (h *Handler) PatchSlipStatus(c *gin.Context) {
 		return
 	}
 
-	err = h.service.UpdateExcuseSlipStatus(
+	err := h.service.UpdateExcuseSlipStatus(
 		c.Request.Context(),
-		id,
+		idParam,
 		req.Status,
 		req.AdminNotes,
 	)
