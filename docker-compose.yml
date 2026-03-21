@@ -22,6 +22,33 @@ services:
       UPLOAD_DIR: ${UPLOAD_DIR}
       AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
       AZURE_CONTAINER_NAME: ${AZURE_CONTAINER_NAME}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASS: ${REDIS_PASS}
+      REDIS_DB: ${REDIS_DB}
+      IDP_CLIENT_ID: ${IDP_CLIENT_ID}
+      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
+      IDP_REDIRECT_URI: ${IDP_REDIRECT_URI}
+      IDP_LOGIN_ENDPOINT: ${IDP_LOGIN_ENDPOINT}
+      IDP_TOKEN_ENDPOINT: ${IDP_TOKEN_ENDPOINT}
+      IDP_USERINFO_ENDPOINT: ${IDP_USERINFO_ENDPOINT}
+      IDP_REFRESH_ENDPOINT: ${IDP_REFRESH_ENDPOINT}
+    depends_on:
+      - redis
+    networks:
+      - app-network
     volumes:
       - .:/app
       - ./uploads:/app/uploads
+
+  redis:
+    image: redis:alpine
+    container_name: pupt-ogos-redis
+    ports:
+      - "6380:6379"
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
