@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strconv"
+)
 
 type Config struct {
 	DBHost  string
@@ -27,6 +30,12 @@ type Config struct {
 	IDPLoginURL     string
 	IDPTokenURL     string
 	IDPUserinfoURL  string
+	IDPRefreshURL   string
+
+	RedisHost string
+	RedisPort string
+	RedisPass string
+	RedisDB   int
 }
 
 func LoadConfig() *Config {
@@ -55,6 +64,18 @@ func LoadConfig() *Config {
 		IDPLoginURL:     os.Getenv("IDP_LOGIN_ENDPOINT"),
 		IDPTokenURL:     os.Getenv("IDP_TOKEN_ENDPOINT"),
 		IDPUserinfoURL:  os.Getenv("IDP_USERINFO_ENDPOINT"),
+		IDPRefreshURL:   os.Getenv("IDP_REFRESH_ENDPOINT"),
+
+		RedisHost: os.Getenv("REDIS_HOST"),
+		RedisPort: os.Getenv("REDIS_PORT"),
+		RedisPass: os.Getenv("REDIS_PASS"),
+		RedisDB: func() int {
+			db, err := strconv.Atoi(os.Getenv("REDIS_DB"))
+			if err != nil {
+				return 0
+			}
+			return db
+		}(),
 	}
 
 	validateConfig(config)
@@ -112,5 +133,14 @@ func validateConfig(config *Config) {
 	}
 	if config.IDPUserinfoURL == "" {
 		panic("IDP_USERINFO_ENDPOINT is required")
+	}
+	if config.IDPRefreshURL == "" {
+		panic("IDP_REFRESH_ENDPOINT is required")
+	}
+	if config.RedisHost == "" {
+		panic("REDIS_HOST is required")
+	}
+	if config.RedisPort == "" {
+		panic("REDIS_PORT is required")
 	}
 }
