@@ -17,24 +17,18 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) CreateSlip(ctx context.Context, slip *Slip) (*int, error) {
+func (r *Repository) CreateSlip(ctx context.Context, slip *Slip) (*string, error) {
 	cols, vals := database.GetInsertStatement(slip, []string{"id", "updated_at"})
 	query := fmt.Sprintf(`
 		INSERT INTO admission_slips (%s)
 		VALUES (%s)
 	`, cols, vals)
 
-	result, err := r.db.NamedExecContext(ctx, query, slip)
+	_, err := r.db.NamedExecContext(ctx, query, slip)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert excuse slip: %w", err)
 	}
 
-	id, err := result.LastInsertId()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get last insert id: %w", err)
-	}
-
-	slip.ID = int(id)
 	return &slip.ID, nil
 }
 

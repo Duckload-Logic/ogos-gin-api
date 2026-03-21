@@ -3,7 +3,7 @@
 -- ============================================================================
 
 CREATE TABLE appointments (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id CHAR(36) NOT NULL PRIMARY KEY,
     iir_id CHAR(36) NULL DEFAULT NULL,
     time_slot_id INT NOT NULL,
     when_date DATE NOT NULL,

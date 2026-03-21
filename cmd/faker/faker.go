@@ -389,11 +389,8 @@ func clearStudentData() {
 	// disable FK checks temporarily
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	for _, tbl := range tables {
-		if tbl == "users" {
-			db.Exec("DELETE FROM users WHERE role_id = 1")
-			db.Exec("DELETE FROM users WHERE role_id = 3") // also reset super admin for re-seed
-		} else {
-			db.Exec(fmt.Sprintf("DELETE FROM %s", tbl))
+		if _, err := db.Exec(fmt.Sprintf("TRUNCATE TABLE %s", tbl)); err != nil {
+			log.Fatal(err)
 		}
 	}
 	db.Exec("SET FOREIGN_KEY_CHECKS = 1")
@@ -618,13 +615,13 @@ func createStudent(index int) {
 		insertHobbies(tx, iirID)
 
 		// Collect appointment and admission slip IDs for notes
-		appointmentIDs := []int{}
-		admissionSlipIDs := []int{}
+		appointmentIDs := []string{}
+		admissionSlipIDs := []string{}
 
 		// 21. admission slip (30% chance)
 		if rand.Float32() < 0.3 {
 			slipID := insertAdmissionSlip(tx, iirID)
-			if slipID > 0 {
+			if slipID != "" {
 				admissionSlipIDs = append(admissionSlipIDs,
 					slipID)
 			}
@@ -635,7 +632,7 @@ func createStudent(index int) {
 			for i := 0; i < rand.Intn(5)+1; i++ {
 				// up to 5 appointments per student
 				apptID := insertAppointment(tx, iirID)
-				if apptID > 0 {
+				if apptID != "" {
 					appointmentIDs = append(appointmentIDs,
 						apptID)
 				}
@@ -1228,38 +1225,38 @@ func insertTestResults(tx *sqlx.Tx, iirID string) {
 }
 
 func insertSignificantNotes(tx *sqlx.Tx, iirID string,
-	appointmentIDs, admissionSlipIDs []int,
+	appointmentIDs, admissionSlipIDs []string,
 ) {
 	if rand.Float32() < 0.3 {
 		num := rand.Intn(3) + 1
 		for i := 0; i < num; i++ {
 			// Randomly decide if this note bridges to an appointment
 			// or admission slip
-			var appointmentID sql.NullInt64
-			var admissionSlipID sql.NullInt64
+			var appointmentID sql.NullString
+			var admissionSlipID sql.NullString
 
 			// 50% chance to link to appointment if any exist
 			if rand.Float32() < 0.5 && len(appointmentIDs) > 0 {
-				appointmentID = sql.NullInt64{
-					Int64: int64(appointmentIDs[rand.Intn(len(appointmentIDs))]),
-					Valid: true,
+				appointmentID = sql.NullString{
+					String: appointmentIDs[rand.Intn(len(appointmentIDs))],
+					Valid:  true,
 				}
 			}
 
 			// 50% chance to link to admission slip if any exist
 			if rand.Float32() < 0.5 && len(admissionSlipIDs) > 0 {
-				admissionSlipID = sql.NullInt64{
-					Int64: int64(admissionSlipIDs[rand.Intn(len(admissionSlipIDs))]),
-					Valid: true,
+				admissionSlipID = sql.NullString{
+					String: admissionSlipIDs[rand.Intn(len(admissionSlipIDs))],
+					Valid:  true,
 				}
 			}
 
 			_, err := tx.Exec(`
 				INSERT INTO significant_notes (
-					iir_id, appointment_id, admission_slip_id,
+					id, iir_id, appointment_id, admission_slip_id,
 					note, remarks
-				) VALUES (?, ?, ?, ?, ?)
-			`, iirID, appointmentID, admissionSlipID,
+				) VALUES (?, ?, ?, ?, ?, ?)
+			`, uuid.New().String(), iirID, appointmentID, admissionSlipID,
 				gofakeit.Sentence(8),
 				gofakeit.Sentence(5))
 			if err != nil {
@@ -1368,7 +1365,7 @@ func insertHobbies(tx *sqlx.Tx, iirID string) {
 	}
 }
 
-func insertAdmissionSlip(tx *sqlx.Tx, iirID string) int {
+func insertAdmissionSlip(tx *sqlx.Tx, iirID string) string {
 	// More realistic status distribution (pending less likely for
 	// historical data)
 	statusName := chooseAdmissionSlipStatus()
@@ -1426,7 +1423,7 @@ func insertAdmissionSlip(tx *sqlx.Tx, iirID string) int {
 	f, _ := os.Create(fullStoragePath)
 	// Write realistic dummy content
 	content := fmt.Sprintf(
-		"ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %d\nDate: %s\n"+
+		"ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %s\nDate: %s\n"+
 			"Reason: %s\n\n[Document content created for admission "+
 			"purposes]",
 		iirID, dateOfAbsence, reason)
@@ -1435,31 +1432,31 @@ func insertAdmissionSlip(tx *sqlx.Tx, iirID string) int {
 
 	// Admin notes more realistic based on status
 	adminNotes := generateAdmissionNotes(statusName)
+	admssionSlipID := uuid.New().String()
 
-	res, err := tx.Exec(`
+	_, err := tx.Exec(`
 		INSERT INTO admission_slips (
-			iir_id, reason, category_id, date_of_absence,
+			id, iir_id, reason, category_id, date_of_absence,
 			date_needed, status_id, admin_notes
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, iirID, reason, categoryID, dateOfAbsence, dateNeeded, statusID,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, admssionSlipID, iirID, reason, categoryID, dateOfAbsence, dateNeeded, statusID,
 		adminNotes)
 	if err != nil {
 		log.Printf("[Seeder] {Insert AdmissionSlip}: %v", err)
-		return 0
+		return ""
 	}
-	slipID, _ := res.LastInsertId()
 
 	_, err = tx.Exec(`
 		INSERT INTO slip_attachments (
-			admission_slip_id, file_name, file_url
-		) VALUES (?, ?, ?)
-	`, slipID, readableFileName, dbURL)
+			id, admission_slip_id, file_name, file_url
+		) VALUES (?, ?, ?, ?)
+	`, uuid.New().String(), admssionSlipID, readableFileName, dbURL)
 	if err != nil {
 		log.Printf("[Seeder] {Insert SlipAttachment}: %v", err)
-		return 0
+		return ""
 	}
 
-	return int(slipID)
+	return admssionSlipID
 }
 
 func chooseAdmissionSlipStatus() string {
@@ -1559,14 +1556,14 @@ func generateAdmissionNotes(status string) sql.NullString {
 	}
 }
 
-func insertAppointment(tx *sqlx.Tx, iirID string) int {
+func insertAppointment(tx *sqlx.Tx, iirID string) string {
 	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 ||
 		len(appointmentStatusIDs) == 0 {
 		log.Printf(
 			"[Seeder] {Insert Appointment}: missing lookup data for "+
-				"iir %d",
+				"iir %s",
 			iirID)
-		return 0
+		return ""
 	}
 
 	whenDate, timeSlotID := reserveAppointmentSlot()
@@ -1592,12 +1589,14 @@ func insertAppointment(tx *sqlx.Tx, iirID string) int {
 		adminNotes = sql.NullString{Valid: false}
 	}
 
-	res, err := tx.Exec(`
+	appointmentID := uuid.New().String()
+
+	_, err := tx.Exec(`
 		INSERT INTO appointments (
-			iir_id, reason, admin_notes, when_date, time_slot_id,
+			id, iir_id, reason, admin_notes, when_date, time_slot_id,
 			appointment_category_id, status_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, sql.NullString{String: iirID, Valid: iirID != ""},
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, appointmentID, sql.NullString{String: iirID, Valid: iirID != ""},
 		gofakeit.Sentence(rand.Intn(11)+20),
 		adminNotes,
 		whenDate,
@@ -1606,11 +1605,10 @@ func insertAppointment(tx *sqlx.Tx, iirID string) int {
 		statusID)
 	if err != nil {
 		log.Printf("[Seeder] {Insert Appointment}: %v", err)
-		return 0
+		return ""
 	}
 
-	appointmentID, _ := res.LastInsertId()
-	return int(appointmentID)
+	return appointmentID
 }
 
 func reserveAppointmentSlot() (string, int) {

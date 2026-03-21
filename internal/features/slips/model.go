@@ -17,8 +17,8 @@ type SlipStatus struct {
 }
 
 type SlipWithDetailsView struct {
-	ID             int            `json:"id" db:"id"`
-	IIRID string            `json:"iirId" db:"iir_id"`
+	ID             string         `json:"id" db:"id"`
+	IIRID          string         `json:"iirId" db:"iir_id"`
 	UserFirstName  string         `json:"userFirstName" db:"user_first_name"`
 	UserMiddleName sql.NullString `json:"userMiddleName" db:"user_middle_name"`
 	UserLastName   string         `json:"userLastName" db:"user_last_name"`
@@ -45,8 +45,8 @@ type SlipStatusCount struct {
 }
 
 type Slip struct {
-	ID            int            `json:"id" db:"id"`
-	IIRID string            `json:"iirId" db:"iir_id"`
+	ID            string         `json:"id" db:"id"`
+	IIRID         string         `json:"iirId" db:"iir_id"`
 	Reason        string         `json:"reason" db:"reason"`
 	DateOfAbsence string         `json:"dateOfAbsence" db:"date_of_absence"`
 	DateNeeded    string         `json:"dateNeeded" db:"date_needed"`
@@ -58,8 +58,8 @@ type Slip struct {
 }
 
 type SlipAttachment struct {
-	ID       int    `json:"id" db:"id"`
-	SlipID   int    `json:"slipId" db:"admission_slip_id"`
-	FileName string `json:"fileName" db:"file_name"`
-	FileURL  string `json:"fileUrl" db:"file_url"`
+	ID       string  `json:"id" db:"id"`
+	SlipID   *string `json:"slipId" db:"admission_slip_id"`
+	FileName string  `json:"fileName" db:"file_name"`
+	FileURL  string  `json:"fileUrl" db:"file_url"`
 }

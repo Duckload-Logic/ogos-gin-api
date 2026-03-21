@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
@@ -395,6 +396,7 @@ func (s *Service) SubmitExcuseSlip(
 	}
 
 	slip := &Slip{
+		ID:            uuid.New().String(),
 		IIRID:         iirID,
 		Reason:        req.Reason,
 		DateOfAbsence: req.DateOfAbsence,
@@ -411,7 +413,8 @@ func (s *Service) SubmitExcuseSlip(
 	// Loop to create attachment records
 	for i, url := range fileURLs {
 		attachment := &SlipAttachment{
-			SlipID:   *slipID,
+			ID:       uuid.New().String(),
+			SlipID:   slipID,
 			FileName: files[i].Filename,
 			FileURL:  url,
 		}

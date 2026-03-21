@@ -1,5 +1,5 @@
 CREATE TABLE significant_notes (
-    id CHAR(36) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    id CHAR(36) NOT NULL PRIMARY KEY,
     iir_id CHAR(36) NULL DEFAULT NULL,
     appointment_id CHAR(36) NULL DEFAULT NULL,
     admission_slip_id CHAR(36) NULL DEFAULT NULL,

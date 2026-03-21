@@ -26,7 +26,7 @@ type ListSlipsDTO struct {
 }
 
 type SlipDTO struct {
-	ID            int                    `json:"id,omitempty"`
+	ID            string                 `json:"id,omitempty"`
 	User          users.GetUserResponse  `json:"user,omitempty"`
 	Reason        string                 `json:"reason" form:"reason" binding:"required"`
 	DateOfAbsence string                 `json:"dateOfAbsence" form:"dateOfAbsence" binding:"required"`
@@ -39,7 +39,7 @@ type SlipDTO struct {
 }
 
 type AttachmentDTO struct {
-	ID       int    `json:"id"`
+	ID       string `json:"id"`
 	FileName string `json:"fileName"`
 	FileURL  string `json:"fileUrl"`
 }
