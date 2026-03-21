@@ -92,7 +92,7 @@ func (r *Repository) GetSlipCategories(ctx context.Context) ([]SlipCategory, err
 
 func (r *Repository) GetSlipStats(
 	ctx context.Context,
-	iirID *int,
+	iirID *string,
 	req *ListSlipRequest,
 ) ([]SlipStatusCount, error) {
 	var args []interface{}
@@ -341,7 +341,7 @@ func (r *Repository) GetAll(ctx context.Context, req *ListSlipRequest) ([]SlipWi
 
 func (r *Repository) GetByUserID(
 	ctx context.Context,
-	userID int,
+	userID string,
 	req *ListSlipRequest,
 ) ([]SlipWithDetailsView, error) {
 	var slips []SlipWithDetailsView
@@ -409,7 +409,7 @@ func (r *Repository) GetByUserID(
 
 func (r *Repository) GetByIIRID(
 	ctx context.Context,
-	iirID int,
+	iirID string,
 	req *ListSlipRequest,
 ) ([]SlipWithDetailsView, error) {
 	var slips []SlipWithDetailsView
