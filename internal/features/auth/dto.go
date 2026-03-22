@@ -10,9 +10,9 @@ const (
 type MeResponse struct {
 	ID         string   `json:"id"`
 	Email      string   `json:"email"`
-	FirstName  string   `json:"first_name"`
-	LastName   string   `json:"last_name"`
-	MiddleName string   `json:"middle_name,omitempty"`
+	FirstName  string   `json:"firstName"`
+	LastName   string   `json:"lastName"`
+	MiddleName string   `json:"middleName,omitempty"`
 	Roles      []string `json:"roles"`
 	Type       string   `json:"type"` // "native" or "idp"
 }
