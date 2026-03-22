@@ -26,9 +26,13 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/capstone-gin-api:latest
 
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'guidance-api'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           configuration-file: docker-compose.prod.yml
