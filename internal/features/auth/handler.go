@@ -106,17 +106,14 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	if err != nil {
 		// Fallback: read from request body
 		var req RefreshTokenDTO
-		if err := c.ShouldBindJSON(&req); err != nil {
-			log.Printf("[HandleRefreshToken] {Bind JSON}: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
-			return
+		if err := c.ShouldBindJSON(&req); err == nil {
+			refreshToken = req.RefreshToken
 		}
-		refreshToken = req.RefreshToken
 	}
 
 	if refreshToken == "" {
 		log.Printf("[HandleRefreshToken] {Check Token}: Refresh token missing")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token missing"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication session missing or expired"})
 		return
 	}
 
@@ -179,7 +176,7 @@ func (h *Handler) HandleGetMe(c *gin.Context) {
 		tType = tt
 	}
 
-	if tokenType == "native" {
+	if tType == "native" {
 		resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
 		if err != nil {
 			log.Printf("[HandleGetMe] {GetMe}: %v", err)
@@ -189,10 +186,18 @@ func (h *Handler) HandleGetMe(c *gin.Context) {
 
 		c.JSON(http.StatusOK, resp)
 	} else {
-		resp, err := h.service.idpClient.GetUserInfo(c.Request.Context(), accessToken, h.cfg)
+		// Retrieve IDP Access Token from context (set by AuthMiddleware from Redis)
+		idpAccessToken, ok := c.Get("idpAccessToken")
+		if !ok || idpAccessToken == "" {
+			log.Printf("[HandleGetMe] {Check IDP Token}: IDP access token missing from session")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "IDP session expired"})
+			return
+		}
+
+		resp, err := h.service.idpClient.GetUserInfo(c.Request.Context(), idpAccessToken.(string), h.cfg)
 		if err != nil {
 			log.Printf("[HandleGetMe] {Get IDP UserInfo}: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info from IDP"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user info from IDP"})
 			return
 		}
 

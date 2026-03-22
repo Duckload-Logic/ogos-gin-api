@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -41,10 +42,18 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 		// Validate against Redis
 		if redis != nil {
 			tokenKey := "session:" + tokenString
-			_, err := redis.Get(c.Request.Context(), tokenKey)
+			val, err := redis.Get(c.Request.Context(), tokenKey)
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token has been revoked or expired"})
 				return
+			}
+
+			// Parse session data
+			var sessionData map[string]string
+			if err := json.Unmarshal([]byte(val), &sessionData); err == nil {
+				if idpToken, ok := sessionData["idpAccessToken"]; ok {
+					c.Set("idpAccessToken", idpToken)
+				}
 			}
 		}
 

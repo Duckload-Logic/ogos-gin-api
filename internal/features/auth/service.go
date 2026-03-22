@@ -55,19 +55,19 @@ func (s *Service) AuthenticateUser(
 	}
 
 	// Generate the token
-	token, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.AccessTokenMaxAge)
+	token, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.AccessTokenMaxAge/60)
 	if err != nil {
 		return "", "", "", errors.New("failed to generate session")
 	}
 
 	// Generate refresh token
-	refreshToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.RefreshTokenMaxAge)
+	refreshToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.RefreshTokenMaxAge/60)
 	if err != nil {
 		return "", "", "", errors.New("failed to generate refresh token")
 	}
 
 	// Store in Redis
-	err = s.storeTokenInRedis(ctx, user.ID, token, "native", nil, constants.AccessTokenMaxAge)
+	err = s.storeTokenInRedis(ctx, user.ID, token, "native", nil, constants.AccessTokenMaxAge/60)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to store token in redis: %v", err)
 	}
@@ -86,33 +86,78 @@ func (s *Service) RefreshToken(
 
 	// Check token type
 	if claims.TokenType == "idp" {
-		newAccessToken, newRefreshToken, err := s.RefreshIDPToken(ctx, refreshToken, cfg)
+		// Get IDP refresh token from Redis
+		idpRefreshKey := fmt.Sprintf("idp_refresh:%s", refreshToken)
+		idpRefreshToken, err := s.redis.Get(ctx, idpRefreshKey)
 		if err != nil {
-			return "", "", fmt.Errorf("[AuthService] {Refresh IDP Token}: %w", err)
+			return "", "", fmt.Errorf("[AuthService] {Get IDP Refresh Token}: token missing or expired in Redis")
 		}
 
-		err = s.storeTokenInRedis(ctx, claims.UserID, newAccessToken, "native", &newAccessToken, constants.AccessTokenMaxAge)
+		// Call IDP refresh endpoint
+		tokenResp, err := s.idpClient.RefreshToken(ctx, idpRefreshToken, cfg)
 		if err != nil {
-			return "", "", fmt.Errorf("failed to update token in redis: %v", err)
+			return "", "", fmt.Errorf("[AuthService] {IDP Refresh}: %w", err)
 		}
 
-		return newAccessToken, newRefreshToken, nil
+		// Generate NEW App Tokens
+		newAppAccessToken, err := tokenService.GenerateToken(
+			claims.UserEmail,
+			claims.UserID,
+			claims.RoleID,
+			"",
+			"idp",
+			constants.AccessTokenMaxAge/60,
+		)
+		if err != nil {
+			return "", "", fmt.Errorf("[AuthService] {Generate App Access Token}: %w", err)
+		}
+
+		newAppRefreshToken, err := tokenService.GenerateToken(
+			claims.UserEmail,
+			claims.UserID,
+			claims.RoleID,
+			"",
+			"idp",
+			constants.RefreshTokenMaxAge/60,
+		)
+		if err != nil {
+			return "", "", fmt.Errorf("[AuthService] {Generate App Refresh Token}: %w", err)
+		}
+
+		// Update Redis: App Access session
+		idpAccess := tokenResp.AccessToken
+		err = s.storeTokenInRedis(ctx, claims.UserID, newAppAccessToken, "idp", &idpAccess, constants.AccessTokenMaxAge/60)
+		if err != nil {
+			return "", "", fmt.Errorf("[AuthService] {Store Access in Redis}: %w", err)
+		}
+
+		// Update Redis: IDP Refresh linked to NEW App Refresh Token
+		newIdpRefreshKey := fmt.Sprintf("idp_refresh:%s", newAppRefreshToken)
+		err = s.redis.Set(ctx, newIdpRefreshKey, tokenResp.RefreshToken, time.Duration(constants.RefreshTokenMaxAge)*time.Second)
+		if err != nil {
+			return "", "", fmt.Errorf("[AuthService] {Store IDP Refresh in Redis}: %w", err)
+		}
+
+		// Optional: Clean up old refresh key
+		_ = s.redis.Del(ctx, idpRefreshKey)
+
+		return newAppAccessToken, newAppRefreshToken, nil
 	}
 
 	// Generate new token
-	newToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.AccessTokenMaxAge)
+	newToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.AccessTokenMaxAge/60)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new token")
 	}
 
 	// Generate new refresh token
-	newRefreshToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.RefreshTokenMaxAge)
+	newRefreshToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.RefreshTokenMaxAge/60)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new refresh token")
 	}
 
 	// Update Redis
-	err = s.storeTokenInRedis(ctx, claims.UserID, newToken, "native", nil, constants.AccessTokenMaxAge)
+	err = s.storeTokenInRedis(ctx, claims.UserID, newToken, "native", nil, constants.AccessTokenMaxAge/60)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to update token in redis: %v", err)
 	}
@@ -178,24 +223,20 @@ func (s *Service) ParseIDPRoles(roles []string) []string {
 	return parsedRoles
 }
 
-func (s *Service) storeTokenInRedis(ctx context.Context, userID, token, tokenType string, idpToken *string, expiryMinutes int) error {
+func (s *Service) storeTokenInRedis(ctx context.Context, userID, token, tokenType string, idpAccessToken *string, expiryMinutes int) error {
 	key := fmt.Sprintf("session:%s", token)
 	val := map[string]string{
 		"userID":    userID,
 		"tokenType": tokenType,
+	}
+	if idpAccessToken != nil {
+		val["idpAccessToken"] = *idpAccessToken
 	}
 	valJSON, _ := json.Marshal(val)
 
 	err := s.redis.Set(ctx, key, valJSON, time.Duration(expiryMinutes)*time.Minute)
 	if err != nil {
 		return fmt.Errorf("failed to store token in redis: %v", err)
-	}
-
-	if idpToken != nil {
-		err := s.redis.Set(ctx, fmt.Sprintf("idp_cred:%s", userID), *idpToken, time.Duration(expiryMinutes)*time.Minute)
-		if err != nil {
-			return fmt.Errorf("failed to store IDP token in redis: %v", err)
-		}
 	}
 
 	return nil
@@ -267,15 +308,48 @@ func (s *Service) PostIDPTokenExchange(
 	}
 
 	// Parse Tokens
-	accessToken := tokenResp.AccessToken
-	refreshToken := tokenResp.RefreshToken
+	idpAccessToken := tokenResp.AccessToken
+	idpRefreshToken := tokenResp.RefreshToken
 
-	// Store tokens in Redis
-	if err := s.storeTokenInRedis(ctx, userInfo.ID, accessToken, "idp", &accessToken, constants.AccessTokenMaxAge); err != nil {
-		return "", "", nil, fmt.Errorf("[AuthService] {Store in Redis}: %w", err)
+	// Generate internal App Tokens
+	appAccessToken, err := tokenService.GenerateToken(
+		userInfo.Email,
+		userInfo.ID,
+		0, // Guest/IDP role initially
+		"",
+		"idp",
+		constants.AccessTokenMaxAge/60, // convert seconds to minutes for GenerateToken
+	)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("[AuthService] {Generate App Access Token}: %w", err)
 	}
 
-	return accessToken, refreshToken, userInfo, nil
+	appRefreshToken, err := tokenService.GenerateToken(
+		userInfo.Email,
+		userInfo.ID,
+		0,
+		"",
+		"idp",
+		constants.RefreshTokenMaxAge/60,
+	)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("[AuthService] {Generate App Refresh Token}: %w", err)
+	}
+
+	// Store App Access Token in Redis as the active session
+	if err := s.storeTokenInRedis(ctx, userInfo.ID, appAccessToken, "idp", &idpAccessToken, constants.AccessTokenMaxAge/60); err != nil {
+		return "", "", nil, fmt.Errorf("[AuthService] {Store Access in Redis}: %w", err)
+	}
+
+	// Store IDP Refresh Token in Redis associated with the App Refresh Token
+	// Using the app refresh token string as part of the key to link them
+	idpRefreshKey := fmt.Sprintf("idp_refresh:%s", appRefreshToken)
+	err = s.redis.Set(ctx, idpRefreshKey, idpRefreshToken, time.Duration(constants.RefreshTokenMaxAge)*time.Second)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("[AuthService] {Store IDP Refresh in Redis}: %w", err)
+	}
+
+	return appAccessToken, appRefreshToken, userInfo, nil
 }
 
 // GetIDPUserInfo fetches user information from the IDP userinfo endpoint
