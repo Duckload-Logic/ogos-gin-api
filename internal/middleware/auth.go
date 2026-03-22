@@ -60,8 +60,6 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 			}
 		}
 
-		log.Printf("[AuthMiddleware] {Success}: Authenticated UserID: %s (Type: %s)", claims.UserID, claims.TokenType)
-
 		// Set user info in context
 		c.Set("userID", claims.UserID)
 		c.Set("userEmail", claims.UserEmail)

@@ -3,7 +3,6 @@ package middleware
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
@@ -40,14 +39,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 			}
 
 			// For int-based params, parse and check ownership
-			resourceID, err := strconv.Atoi(paramValue)
-			if err != nil {
-				c.AbortWithStatusJSON(
-					http.StatusBadRequest,
-					gin.H{"error": "Invalid resource ID"},
-				)
-				return
-			}
+			resourceID := paramValue
 
 			owns, err := checkStudentOwnership(
 				db, loggedInUserID, paramName, resourceID,
@@ -68,7 +60,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 // Direct database query - ONE function to rule them all
 func checkStudentOwnership(
 	db *sqlx.DB, userID string,
-	paramName string, resourceID int,
+	paramName string, resourceID string,
 ) (bool, error) {
 	switch paramName {
 	case "iirID":
