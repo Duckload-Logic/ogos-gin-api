@@ -1,6 +1,6 @@
 uploads/
 certs/
-.env*
+.env
 .git
 .air.toml
 
