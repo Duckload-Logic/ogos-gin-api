@@ -186,6 +186,7 @@ func (s *Service) RefreshIDPToken(
 }
 
 func (s *Service) GetMe(ctx context.Context, userID, tokenType string) (*MeResponse, error) {
+	log.Printf("[GetMe] {Start}: UserID='%s', Type='%s'", userID, tokenType)
 	// only fetch user info for native tokens
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
