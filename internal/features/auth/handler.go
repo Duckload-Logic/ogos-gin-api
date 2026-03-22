@@ -176,33 +176,14 @@ func (h *Handler) HandleGetMe(c *gin.Context) {
 		tType = tt
 	}
 
-	if tType == "native" {
-		resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
-		if err != nil {
-			log.Printf("[HandleGetMe] {GetMe}: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
-			return
-		}
-
-		c.JSON(http.StatusOK, resp)
-	} else {
-		// Retrieve IDP Access Token from context (set by AuthMiddleware from Redis)
-		idpAccessToken, ok := c.Get("idpAccessToken")
-		if !ok || idpAccessToken == "" {
-			log.Printf("[HandleGetMe] {Check IDP Token}: IDP access token missing from session")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "IDP session expired"})
-			return
-		}
-
-		resp, err := h.service.idpClient.GetUserInfo(c.Request.Context(), idpAccessToken.(string), h.cfg)
-		if err != nil {
-			log.Printf("[HandleGetMe] {Get IDP UserInfo}: %v", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Failed to get user info from IDP"})
-			return
-		}
-
-		c.JSON(http.StatusOK, resp)
+	resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
+	if err != nil {
+		log.Printf("[HandleGetMe] {GetMe}: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
+		return
 	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // HandleLogout godoc

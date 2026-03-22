@@ -91,7 +91,7 @@ func (s *Service) RefreshToken(
 	// Check token type
 	if claims.TokenType == "idp" {
 		// Get IDP refresh token from Redis
-		idpRefreshKey := fmt.Sprintf("idp_refresh:%s", refreshToken)
+		idpRefreshKey := fmt.Sprintf("idp_refresh:%s", claims.ID)
 		idpRefreshToken, err := s.redis.Get(ctx, idpRefreshKey)
 		if err != nil {
 			return "", "", fmt.Errorf("[AuthService] {Get IDP Refresh Token}: token missing or expired in Redis")
