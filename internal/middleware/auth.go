@@ -32,19 +32,19 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 			return
 		}
 
-		// Validate JWT
+		// Validate JWT signature and expiration first
 		claims, err := tokens.NewService().ValidateToken(tokenString)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 			return
 		}
 
-		// Validate against Redis
+		// Validate against Redis using the Token ID (jti)
 		if redis != nil {
-			tokenKey := "session:" + tokenString
+			tokenKey := "session:" + claims.ID
 			val, err := redis.Get(c.Request.Context(), tokenKey)
 			if err != nil {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token has been revoked or expired"})
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session has been revoked or expired"})
 				return
 			}
 

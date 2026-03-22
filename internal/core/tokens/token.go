@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -22,7 +23,7 @@ func NewService() *Service {
 
 func (s *Service) GenerateToken(
 	userEmail string, userID string, roleID int, roleName string, tokenType string, expireMinutes int,
-) (string, error) {
+) (string, *Claims, error) {
 	claims := &Claims{
 		UserEmail: userEmail,
 		UserID:    userID,
@@ -34,12 +35,14 @@ func (s *Service) GenerateToken(
 			),
 			IssuedAt: jwt.NewNumericDate(time.Now()),
 			Issuer:   "pupt-ogos-api",
+			ID:       uuid.New().String(),
 		},
 	}
 
 	// Create the token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.secret)
+	signed, err := token.SignedString(s.secret)
+	return signed, claims, err
 }
 
 func (s *Service) ValidateToken(tokenString string) (
