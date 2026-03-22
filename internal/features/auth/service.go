@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/clients/idp"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
