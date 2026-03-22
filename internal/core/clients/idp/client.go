@@ -121,6 +121,10 @@ func (c *IDPClient) GetUserInfo(
 		)
 	}
 
+	// Set Authorization header
+	headerValue := fmt.Sprintf("Bearer %s", accessToken)
+	req.Header.Set("Authorization", headerValue)
+
 	// Execute request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -167,7 +171,7 @@ func (c *IDPClient) RefreshToken(
 		return nil, fmt.Errorf("[IDPClient] {Marshal JSON}: %w", err)
 	}
 
-	// Use IDPRefreshURL if provided, else fall back to something? 
+	// Use IDPRefreshURL if provided, else fall back to something?
 	// The requirement said /auth/refresh is called.
 	url := cfg.IDPRefreshURL
 	if url == "" {
