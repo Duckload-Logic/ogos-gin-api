@@ -35,6 +35,7 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 		// Validate JWT signature and expiration first
 		claims, err := tokens.NewService().ValidateToken(tokenString)
 		if err != nil {
+			log.Printf("[AuthMiddleware] {Token}: Invalid or expired token: %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
 			return
 		}
@@ -44,6 +45,7 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 			tokenKey := "session:" + claims.ID
 			val, err := redis.Get(c.Request.Context(), tokenKey)
 			if err != nil {
+				log.Printf("[AuthMiddleware] {Redis}: Session %s missing or expired for UserID: %s", claims.ID, claims.UserID)
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session has been revoked or expired"})
 				return
 			}
@@ -56,6 +58,8 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 				}
 			}
 		}
+
+		log.Printf("[AuthMiddleware] {Success}: Authenticated UserID: %s (Type: %s)", claims.UserID, claims.TokenType)
 
 		// Set user info in context
 		c.Set("userID", claims.UserID)

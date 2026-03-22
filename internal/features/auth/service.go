@@ -303,6 +303,7 @@ func (s *Service) PostIDPTokenExchange(
 	code string,
 	cfg *config.Config,
 ) (string, string, string, string, string, error) {
+	log.Printf("[PostIDPTokenExchange] {Start}: Received code exchange request")
 	// Exchange authorization code for IDP tokens
 	tokenResp, err := s.idpClient.ExchangeCodeForToken(ctx, code, cfg)
 	if err != nil {
@@ -348,6 +349,8 @@ func (s *Service) PostIDPTokenExchange(
 		roleName = role.Name
 	}
 
+	log.Printf("[PostIDPTokenExchange] {IDP User}: Found/Created User %s (ID: %s) with Role: %s", userInfo.Email, appUserID, roleName)
+
 	// Generate internal App Tokens using the actual app IDs
 	appAccessToken, accessClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
@@ -388,6 +391,8 @@ func (s *Service) PostIDPTokenExchange(
 	if err != nil {
 		return "", "", "", "", "", fmt.Errorf("[AuthService] {Store IDP Refresh in Redis}: %w", err)
 	}
+
+	log.Printf("[PostIDPTokenExchange] {Success}: Generated Tokens for UserID: %s", appUserID)
 
 	return appAccessToken, appRefreshToken, appUserID, userInfo.Email, roleName, nil
 }
@@ -430,7 +435,16 @@ func (s *Service) mapIDPRolesToInternalID(roles []string) int {
 			continue
 		}
 
-		switch strings.ToLower(strings.Split(r, ":")[1]) {
+		// Safely split and check for parts to avoid panics on missing colon
+		parts := strings.Split(r, ":")
+		rolePart := ""
+		if len(parts) > 1 {
+			rolePart = strings.ToLower(parts[1])
+		} else {
+			rolePart = strings.ToLower(parts[0])
+		}
+
+		switch rolePart {
 		case "superadmin":
 			hasSuper = true
 		case "admin":

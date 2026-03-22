@@ -5,9 +5,9 @@ import (
 )
 
 type Claims struct {
-	UserID    string
-	UserEmail string
-	RoleID    int
-	TokenType string // "native" or "idp"
+	UserID    string `json:"user_id"`
+	UserEmail string `json:"user_email"`
+	RoleID    int    `json:"role_id"`
+	TokenType string `json:"token_type"` // "native" or "idp"
 	jwt.RegisteredClaims
 }
