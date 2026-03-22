@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 )
 
 // RoleMiddleware checks if the user's role is in the allowed list.
@@ -26,6 +27,12 @@ func RoleMiddleware(allowedRoles ...int) gin.HandlerFunc {
 				http.StatusForbidden,
 				gin.H{"error": "Invalid role type"},
 			)
+			return
+		}
+
+		// Always allow super admin to bypass role checks
+		if rid == int(constants.SuperAdminRoleID) {
+			c.Next()
 			return
 		}
 

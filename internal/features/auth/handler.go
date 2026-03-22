@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -185,10 +184,6 @@ func (h *Handler) HandleGetMe(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
-
-	// Diagnostic log to see the actual JSON structure sent to frontend
-	respJSON, _ := json.Marshal(resp)
-	log.Printf("[HandleGetMe] {ResponseJSON}: %s", string(respJSON))
 }
 
 // HandleLogout godoc
@@ -389,7 +384,6 @@ func (h *Handler) HandleValidateIDPSession(c *gin.Context) {
 
 // containsStr checks if a string contains a substring
 func containsStr(s, substr string) bool {
-
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
 			return true

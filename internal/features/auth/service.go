@@ -186,7 +186,6 @@ func (s *Service) RefreshIDPToken(
 }
 
 func (s *Service) GetMe(ctx context.Context, userID, tokenType string) (*MeResponse, error) {
-	log.Printf("[GetMe] {Start}: UserID='%s', Type='%s'", userID, tokenType)
 	// only fetch user info for native tokens
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
@@ -304,7 +303,6 @@ func (s *Service) PostIDPTokenExchange(
 	code string,
 	cfg *config.Config,
 ) (string, string, string, string, string, error) {
-	log.Printf("[PostIDPTokenExchange] {Start}: Received code exchange request")
 	// Exchange authorization code for IDP tokens
 	tokenResp, err := s.idpClient.ExchangeCodeForToken(ctx, code, cfg)
 	if err != nil {
@@ -350,8 +348,6 @@ func (s *Service) PostIDPTokenExchange(
 		roleName = role.Name
 	}
 
-	log.Printf("[PostIDPTokenExchange] {IDP User}: Found/Created User %s (ID: %s) with Role: %s", userInfo.Email, appUserID, roleName)
-
 	// Generate internal App Tokens using the actual app IDs
 	appAccessToken, accessClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
@@ -392,8 +388,6 @@ func (s *Service) PostIDPTokenExchange(
 	if err != nil {
 		return "", "", "", "", "", fmt.Errorf("[AuthService] {Store IDP Refresh in Redis}: %w", err)
 	}
-
-	log.Printf("[PostIDPTokenExchange] {Success}: Generated Tokens for UserID: %s", appUserID)
 
 	return appAccessToken, appRefreshToken, appUserID, userInfo.Email, roleName, nil
 }
