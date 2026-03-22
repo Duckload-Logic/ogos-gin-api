@@ -37,7 +37,7 @@ services:
 
   redis:
     image: redis:alpine
-    container_name: pupt-ogos-redis-prod
+    container_name: capstone-redis
     restart: always
     networks:
       - app-network

@@ -35,7 +35,10 @@ services:
       IDP_USERINFO_ENDPOINT: ${IDP_USERINFO_ENDPOINT}
       IDP_REFRESH_ENDPOINT: ${IDP_REFRESH_ENDPOINT}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     networks:
       - app-network
     volumes:
@@ -44,12 +47,49 @@ services:
 
   redis:
     image: redis:alpine
-    container_name: pupt-ogos-redis
+    container_name: capstone-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     ports:
-      - "6380:6379"
+      - "${REDIS_PORT}:6379"
     networks:
       - app-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: capstone-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "${DB_USER}",
+          "ping",
+          "-h",
+          "${DB_HOST}",
+          "-u${DB_USER}",
+          "-p${DB_PASS}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "3307:3306"
+    networks:
+      - app-network
+    volumes:
+      - mysql-data:/var/lib/mysql
 
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  mysql-data:
