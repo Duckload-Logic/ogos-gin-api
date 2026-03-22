@@ -2,34 +2,9 @@ version: "3.8"
 
 services:
   api:
-    image: ${DOCKER_HUB_USERNAME}/capstone-gin-api:latest
+    image: olazojohnalbert/capstone-gin-api:latest
     ports:
-      - "${WEBSITES_PORT}:8080"
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-      DB_NAME: ${DB_NAME}
-      DB_TLS: ${DB_TLS}
-      DB_TLS_CA: ${DB_TLS_CA}
-      WEBSITES_PORT: ${WEBSITES_PORT}
-      JWT_SECRET: ${JWT_SECRET}
-      UPLOAD_DIR: /app/uploads
-      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
-      AZURE_CONTAINER_NAME: ${AZURE_CONTAINER_NAME}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
-      REDIS_PASS: ${REDIS_PASS}
-      REDIS_DB: ${REDIS_DB}
-      IDP_CLIENT_ID: ${IDP_CLIENT_ID}
-      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
-      IDP_REDIRECT_URI: ${IDP_REDIRECT_URI}
-      IDP_LOGIN_ENDPOINT: ${IDP_LOGIN_ENDPOINT}
-      IDP_TOKEN_ENDPOINT: ${IDP_TOKEN_ENDPOINT}
-      IDP_USERINFO_ENDPOINT: ${IDP_USERINFO_ENDPOINT}
-      IDP_REFRESH_ENDPOINT: ${IDP_REFRESH_ENDPOINT}
-      IS_PRODUCTION: "true"
+      - "80:8080"
     depends_on:
       - redis
     networks:
