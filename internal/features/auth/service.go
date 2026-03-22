@@ -67,7 +67,7 @@ func (s *Service) AuthenticateUser(
 	}
 
 	// Store in Redis
-	err = s.storeTokenInRedis(ctx, user.ID, token, "native", constants.AccessTokenMaxAge)
+	err = s.storeTokenInRedis(ctx, user.ID, token, "native", nil, constants.AccessTokenMaxAge)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to store token in redis: %v", err)
 	}
@@ -77,7 +77,7 @@ func (s *Service) AuthenticateUser(
 }
 
 func (s *Service) RefreshToken(
-	ctx context.Context, refreshToken string,
+	ctx context.Context, refreshToken string, cfg *config.Config,
 ) (string, string, error) {
 	claims, err := tokenService.ValidateToken(refreshToken)
 	if err != nil {
@@ -86,8 +86,17 @@ func (s *Service) RefreshToken(
 
 	// Check token type
 	if claims.TokenType == "idp" {
-		// Handle IDP refresh logic if needed or just return error if not supported this way
-		return "", "", errors.New("IDP refresh not supported via this endpoint, use /auth/idp/refresh")
+		newAccessToken, newRefreshToken, err := s.RefreshIDPToken(ctx, refreshToken, cfg)
+		if err != nil {
+			return "", "", fmt.Errorf("[AuthService] {Refresh IDP Token}: %w", err)
+		}
+
+		err = s.storeTokenInRedis(ctx, claims.UserID, newAccessToken, "native", &newAccessToken, constants.AccessTokenMaxAge)
+		if err != nil {
+			return "", "", fmt.Errorf("failed to update token in redis: %v", err)
+		}
+
+		return newAccessToken, newRefreshToken, nil
 	}
 
 	// Generate new token
@@ -103,7 +112,7 @@ func (s *Service) RefreshToken(
 	}
 
 	// Update Redis
-	err = s.storeTokenInRedis(ctx, claims.UserID, newToken, "native", constants.AccessTokenMaxAge)
+	err = s.storeTokenInRedis(ctx, claims.UserID, newToken, "native", nil, constants.AccessTokenMaxAge)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to update token in redis: %v", err)
 	}
@@ -169,18 +178,31 @@ func (s *Service) ParseIDPRoles(roles []string) []string {
 	return parsedRoles
 }
 
-func (s *Service) storeTokenInRedis(ctx context.Context, userID, token, tokenType string, expiryMinutes int) error {
-	key := fmt.Sprintf("token:%s:%s", tokenType, token)
+func (s *Service) storeTokenInRedis(ctx context.Context, userID, token, tokenType string, idpToken *string, expiryMinutes int) error {
+	key := fmt.Sprintf("session:%s", token)
 	val := map[string]string{
 		"userID":    userID,
 		"tokenType": tokenType,
 	}
 	valJSON, _ := json.Marshal(val)
-	return s.redis.Set(ctx, key, valJSON, time.Duration(expiryMinutes)*time.Minute)
+
+	err := s.redis.Set(ctx, key, valJSON, time.Duration(expiryMinutes)*time.Minute)
+	if err != nil {
+		return fmt.Errorf("failed to store token in redis: %v", err)
+	}
+
+	if idpToken != nil {
+		err := s.redis.Set(ctx, fmt.Sprintf("idp_cred:%s", userID), *idpToken, time.Duration(expiryMinutes)*time.Minute)
+		if err != nil {
+			return fmt.Errorf("failed to store IDP token in redis: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *Service) Logout(ctx context.Context, token string, tokenType string) error {
-	key := fmt.Sprintf("token:%s:%s", tokenType, token)
+	key := fmt.Sprintf("session:%s", token)
 	return s.redis.Del(ctx, key)
 }
 
@@ -202,6 +224,10 @@ func (s *Service) GetAuthorizeURL(
 	// Build authorization URL with all required parameters
 	params := url.Values{}
 	params.Set("client_id", cfg.IDPClientID)
+	params.Set("redirect_uri", cfg.IDPRedirectURI)
+	params.Set("response_type", "code")
+	params.Set("state", "random_state_string") // In production, this should be generated per-request and validated
+	params.Set("scope", "openid profile email")
 
 	authURL := fmt.Sprintf(
 		"%s?%s",
@@ -245,7 +271,7 @@ func (s *Service) PostIDPTokenExchange(
 	refreshToken := tokenResp.RefreshToken
 
 	// Store tokens in Redis
-	if err := s.storeTokenInRedis(ctx, userInfo.ID, accessToken, "idp", constants.AccessTokenMaxAge); err != nil {
+	if err := s.storeTokenInRedis(ctx, userInfo.ID, accessToken, "idp", &accessToken, constants.AccessTokenMaxAge); err != nil {
 		return "", "", nil, fmt.Errorf("[AuthService] {Store in Redis}: %w", err)
 	}
 
@@ -275,4 +301,14 @@ func (s *Service) GetIDPUserInfo(
 		)
 	}
 	return userInfo, nil
+}
+
+
+// ValidateIDPSession checks if the provided session ID is valid on the IDP.
+func (s *Service) ValidateIDPSession(
+	ctx context.Context,
+	sessionID string,
+	cfg *config.Config,
+) (*idp.IDPSessionResponse, error) {
+	return s.idpClient.ValidateSession(ctx, sessionID, cfg)
 }

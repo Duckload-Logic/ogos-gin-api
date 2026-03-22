@@ -123,7 +123,7 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	newToken, newRefreshToken, err := h.service.RefreshToken(c, refreshToken)
+	newToken, newRefreshToken, err := h.service.RefreshToken(c, refreshToken, h.cfg)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
@@ -399,8 +399,34 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	})
 }
 
+
+// HandleValidateIDPSession godoc
+// @Summary      Validate IDP session
+// @Description  Validates the current IDP session using the idp_session cookie.
+// @Tags         Auth
+// @Produce      json
+// @Success      200 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Router       /auth/idp/session [get]
+func (h *Handler) HandleValidateIDPSession(c *gin.Context) {
+	sessionID, err := c.Cookie("idp_session")
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "IDP session cookie missing"})
+		return
+	}
+
+	resp, err := h.service.ValidateIDPSession(c, sessionID, h.cfg)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid IDP session"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": resp.Message})
+}
+
 // containsStr checks if a string contains a substring
 func containsStr(s, substr string) bool {
+
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {
 			return true

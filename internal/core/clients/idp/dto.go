@@ -4,14 +4,17 @@ type IDPAuthorizeURLResponse struct {
 	AuthorizationURL string `json:"authorizationUrl"`
 }
 
-type IDPLoginRequest struct {
-	AccessToken  string `json:"access_token" binding:"required"`
-	RefreshToken string `json:"refresh_token"` // optional, but we may need it
-}
 
 type IDPTokenExchangeRequest struct {
-	Code string `json:"code" binding:"required"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret"`
+	Code         string `json:"code"`
 }
+
+type IDPSessionResponse struct {
+	Message string `json:"message"`
+}
+
 
 // IDPTokenResponse represents the response from IDP token endpoint
 type IDPTokenResponse struct {

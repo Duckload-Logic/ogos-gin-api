@@ -40,7 +40,7 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 
 		// Validate against Redis
 		if redis != nil {
-			tokenKey := "token:" + tokenString
+			tokenKey := "session:" + tokenString
 			_, err := redis.Get(c.Request.Context(), tokenKey)
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Token has been revoked or expired"})

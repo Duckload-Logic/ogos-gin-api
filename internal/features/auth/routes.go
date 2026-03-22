@@ -25,5 +25,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler, redis *database.RedisClient
 		// IDP OAuth 2.0 routes
 		authRoutes.GET("/idp/authorize-url", h.GetAuthorizeURL)
 		authRoutes.POST("/idp/token", h.PostIDPToken)
+		authRoutes.GET("/idp/session", h.HandleValidateIDPSession)
 	}
 }
+

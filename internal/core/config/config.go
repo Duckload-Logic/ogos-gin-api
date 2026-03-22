@@ -31,6 +31,8 @@ type Config struct {
 	IDPTokenURL     string
 	IDPUserinfoURL  string
 	IDPRefreshURL   string
+	IDPSessionURL   string
+
 
 	RedisHost string
 	RedisPort string
@@ -65,6 +67,8 @@ func LoadConfig() *Config {
 		IDPTokenURL:     os.Getenv("IDP_TOKEN_ENDPOINT"),
 		IDPUserinfoURL:  os.Getenv("IDP_USERINFO_ENDPOINT"),
 		IDPRefreshURL:   os.Getenv("IDP_REFRESH_ENDPOINT"),
+		IDPSessionURL:   os.Getenv("IDP_SESSION_ENDPOINT"),
+
 
 		RedisHost: os.Getenv("REDIS_HOST"),
 		RedisPort: os.Getenv("REDIS_PORT"),
@@ -137,6 +141,10 @@ func validateConfig(config *Config) {
 	if config.IDPRefreshURL == "" {
 		panic("IDP_REFRESH_ENDPOINT is required")
 	}
+	if config.IDPSessionURL == "" {
+		panic("IDP_SESSION_ENDPOINT is required")
+	}
+
 	if config.RedisHost == "" {
 		panic("REDIS_HOST is required")
 	}
