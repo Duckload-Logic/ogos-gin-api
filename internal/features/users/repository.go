@@ -96,8 +96,8 @@ func (r *Repository) CreateUser(
 		cols, vals := database.GetInsertStatement(User{}, exclude)
 		onDuplicateKeyStmt := database.GetOnDuplicateKeyUpdateStatement(User{}, exclude)
 		query := fmt.Sprintf(`
-			INSERT INTO users (%s)
-			VALUES (%s)
+			INSERT INTO users (id, %s)
+			VALUES (:id, %s)
 			ON DUPLICATE KEY UPDATE %s
 		`, cols, vals, onDuplicateKeyStmt)
 
