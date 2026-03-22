@@ -470,7 +470,7 @@ func (r *Repository) GetByIIRID(
 	return slips, nil
 }
 
-func (r *Repository) GetSlipByID(ctx context.Context, id int) (*Slip, error) {
+func (r *Repository) GetSlipByID(ctx context.Context, id string) (*Slip, error) {
 	var slip Slip
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -487,7 +487,7 @@ func (r *Repository) GetSlipByID(ctx context.Context, id int) (*Slip, error) {
 	return &slip, nil
 }
 
-func (r *Repository) GetSlipAttachments(ctx context.Context, slipID int) ([]SlipAttachment, error) {
+func (r *Repository) GetSlipAttachments(ctx context.Context, slipID string) ([]SlipAttachment, error) {
 	var attachments []SlipAttachment
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -502,7 +502,7 @@ func (r *Repository) GetSlipAttachments(ctx context.Context, slipID int) ([]Slip
 	return attachments, nil
 }
 
-func (r *Repository) GetAttachmentByID(ctx context.Context, attachmentID int) (*SlipAttachment, error) {
+func (r *Repository) GetAttachmentByID(ctx context.Context, attachmentID string) (*SlipAttachment, error) {
 	var attachment SlipAttachment
 	query := fmt.Sprintf(`
 		SELECT %s
@@ -520,7 +520,7 @@ func (r *Repository) GetAttachmentByID(ctx context.Context, attachmentID int) (*
 	return &attachment, nil
 }
 
-func (r *Repository) UpdateStatus(ctx context.Context, id int, statusName string, adminNotes string) error {
+func (r *Repository) UpdateStatus(ctx context.Context, id string, statusName string, adminNotes string) error {
 	// First, get the status ID from the status name
 	var statusID int
 	query := `SELECT id FROM statuses WHERE name = ?`
@@ -557,7 +557,7 @@ func (r *Repository) UpdateStatus(ctx context.Context, id int, statusName string
 	return nil
 }
 
-func (r *Repository) Delete(ctx context.Context, id int) error {
+func (r *Repository) Delete(ctx context.Context, id string) error {
 	query := `DELETE FROM excuse_slips WHERE excuse_slip_id = ?`
 
 	result, err := r.db.ExecContext(ctx, query, id)

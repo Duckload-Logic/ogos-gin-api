@@ -3,14 +3,15 @@ package consents
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
-func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
-	routes := rg.Group("/consents")
-	routes.Use(middleware.AuthMiddleware())
+func RegisterRoutes(rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
+	consentRoutes := rg.Group("/consents")
+	consentRoutes.Use(middleware.AuthMiddleware(redis))
 
-	superAdminOnly := routes.Group("")
+	superAdminOnly := consentRoutes.Group("")
 	superAdminOnly.Use(middleware.RoleMiddleware(
 		int(constants.SuperAdminRoleID),
 	))
@@ -18,7 +19,7 @@ func RegisterRoutes(rg *gin.RouterGroup, h *Handler) {
 		superAdminOnly.POST("/upload", h.HandleUploadDocument)
 	}
 
-	all := routes.Group("")
+	all := consentRoutes.Group("")
 	{
 		all.GET("/latest/:type", h.HandleGetLatestDocument)
 		all.GET("/latest/:type/content", h.HandleGetDocumentContent)

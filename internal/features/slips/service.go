@@ -266,7 +266,7 @@ func (s *Service) GetExcuseSlipsByIIRID(
 	return &listSlipsDTO, nil
 }
 
-func (s *Service) GetSlipAttachments(ctx context.Context, slipID int) ([]AttachmentDTO, error) {
+func (s *Service) GetSlipAttachments(ctx context.Context, slipID string) ([]AttachmentDTO, error) {
 	attachments, err := s.repo.GetSlipAttachments(ctx, slipID)
 	if err != nil {
 		return nil, err
@@ -286,7 +286,7 @@ func (s *Service) GetSlipAttachments(ctx context.Context, slipID int) ([]Attachm
 	return attachmentDTOs, nil
 }
 
-func (s *Service) GetAttachmentFile(ctx context.Context, attachmentID int) (*SlipAttachment, error) {
+func (s *Service) GetAttachmentFile(ctx context.Context, attachmentID string) (*SlipAttachment, error) {
 	attachment, err := s.repo.GetAttachmentByID(ctx, attachmentID)
 	if err != nil {
 		return nil, err
@@ -431,7 +431,7 @@ func (s *Service) SubmitExcuseSlip(
 		Category: logs.CategoryAudit,
 		Action:   logs.ActionSlipCreated,
 		Message: fmt.Sprintf(
-			"Excuse slip #%d submitted by %s",
+			"Excuse slip #%s submitted by %s",
 			slip.ID,
 			auditUserEmail,
 		),
@@ -468,7 +468,7 @@ func (s *Service) uploadToBlob(ctx context.Context, fileHeader *multipart.FileHe
 }
 
 // DownloadAttachment streams the attachment from Azure Blob Storage.
-func (s *Service) DownloadAttachment(ctx context.Context, attachmentID int, writer io.Writer) (*SlipAttachment, error) {
+func (s *Service) DownloadAttachment(ctx context.Context, attachmentID string, writer io.Writer) (*SlipAttachment, error) {
 	attachment, err := s.repo.GetAttachmentByID(ctx, attachmentID)
 	if err != nil {
 		return nil, err
@@ -487,7 +487,7 @@ func (s *Service) DownloadAttachment(ctx context.Context, attachmentID int, writ
 	return attachment, nil
 }
 
-func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id int, newStatus string, adminNotes string) error {
+func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id string, newStatus string, adminNotes string) error {
 	validStatuses := map[string]bool{
 		"Pending":      true,
 		"Approved":     true,
@@ -511,7 +511,7 @@ func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id int, newStatus 
 	s.logService.Record(ctx, logs.LogEntry{
 		Category:  logs.CategoryAudit,
 		Action:    logs.ActionSlipStatusUpdated,
-		Message:   fmt.Sprintf("Excuse slip #%d status changed to '%s' by %s", id, newStatus, auditUserEmail),
+		Message:   fmt.Sprintf("Excuse slip #%s status changed to '%s' by %s", id, newStatus, auditUserEmail),
 		UserID:    auditUserID,
 		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,

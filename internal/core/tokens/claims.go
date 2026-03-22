@@ -8,5 +8,6 @@ type Claims struct {
 	UserID    string
 	UserEmail string
 	RoleID    int
+	TokenType string // "native" or "idp"
 	jwt.RegisteredClaims
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/clients/idp"
@@ -148,6 +149,32 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Token refreshed"})
 }
 
+// HandleGetMe godoc
+// @Summary      Get current user info
+// @Description  Retrieves information about the currently authenticated user (native or IDP).
+// @Tags         Auth
+// @Produce      json
+// @Success      200 {object} MeResponse
+// @Failure      401 {object} map[string]string
+// @Router       /auth/me [get]
+func (h *Handler) HandleGetMe(c *gin.Context) {
+	userID := c.MustGet("userID").(string)
+	tokenType, _ := c.Get("tokenType")
+	tType := "native"
+	if tt, ok := tokenType.(string); ok {
+		tType = tt
+	}
+
+	resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
+	if err != nil {
+		log.Printf("[HandleGetMe] {GetMe}: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
 // HandleLogout godoc
 // @Summary      User logout
 // @Description  Invalidates the user's tokens by clearing cookies.
@@ -155,17 +182,34 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 // @Success      200 {object} map[string]string
 // @Router       /auth/logout [post]
 func (h *Handler) HandleLogout(c *gin.Context) {
+	// Extract token to invalidate in Redis
+	var tokenString string
+	cookie, err := c.Cookie("access_token")
+	if err == nil && cookie != "" {
+		tokenString = cookie
+	}
+	if tokenString == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	if tokenString != "" {
+		_ = h.service.Logout(c.Request.Context(), tokenString)
+	}
+
 	// Clear cookies
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
-		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
+		c.SetSameSite(http.SameSiteLaxMode)
 	}
 
 	c.SetCookie("access_token", "", -1, "/", "", h.cfg.IsProduction, true)
 	c.SetCookie("refresh_token", "", -1, "/", "", h.cfg.IsProduction, true)
 
-	// Log event (if user info available)
+	// Log event
 	userID, _ := c.Get("userID")
 	userEmail, _ := c.Get("userEmail")
 	if userID != nil {
@@ -234,7 +278,7 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 func (h *Handler) PostIDPToken(c *gin.Context) {
 	var req idp.IDPTokenExchangeRequest
 
-	// Step 1: Bind and validate request
+	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category: constants.LogCategorySecurity,
@@ -253,7 +297,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		return
 	}
 
-	// Step 2: Execute token exchange and user provisioning
+	// Execute token exchange and user provisioning
 	accessToken, refreshToken, err := h.service.PostIDPTokenExchange(
 		c.Request.Context(),
 		req.Code,
@@ -293,14 +337,14 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		return
 	}
 
-	// Step 3: Set cookie security attributes based on environment
+	// Set cookie security attributes based on environment
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteLaxMode)
 	}
 
-	// Step 4: Set access token cookie
+	// Set access token cookie
 	c.SetCookie(
 		constants.AccessTokenCookieName,
 		accessToken,
@@ -311,7 +355,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		true,
 	)
 
-	// Step 5: Set refresh token cookie
+	// Set refresh token cookie
 	c.SetCookie(
 		constants.RefreshTokenCookieName,
 		refreshToken,
@@ -322,31 +366,10 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		true,
 	)
 
-	user, err := h.service.GetIDPUserInfo(c, accessToken, h.cfg)
-
-	// Step 6: Get user info for logging
-	// user, err := h.service.repo.GetUserByID(
-	// 	c.Request.Context(),
-	// 	1,
-	// )
-	if err == nil {
-		// Log successful login
-		// h.logService.Record(c.Request.Context(), logs.LogEntry{
-		// 	Category: LogCategorySecurity,
-		// 	Action:   LogActionLoginSuccess,
-		// 	Message: fmt.Sprintf(
-		// 		"User %s logged in via IDP",
-		// 		user.Email,
-		// 	),
-		// 	UserID:    1,
-		// 	UserEmail: user.Email,
-		// 	IPAddress: c.ClientIP(),
-		// 	UserAgent: c.Request.UserAgent(),
-		// })
-	}
-
-	// Step 7: Return success response
-	c.JSON(http.StatusOK, user)
+	// Return Message
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+	})
 }
 
 // containsStr checks if a string contains a substring

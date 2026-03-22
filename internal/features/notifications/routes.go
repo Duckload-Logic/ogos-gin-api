@@ -4,12 +4,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/database"
 	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 )
 
-func RegisterRoutes(db *sqlx.DB, r *gin.RouterGroup, h *Handler) {
-    routes := r.Group("/notifications")
-    routes.Use(middleware.AuthMiddleware())
+func RegisterRoutes(db *sqlx.DB, rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
+    routes := rg.Group("/notifications")
+    routes.Use(middleware.AuthMiddleware(redis))
 
     userResourceLookup := middleware.OwnershipMiddleware(db, "userId")
 

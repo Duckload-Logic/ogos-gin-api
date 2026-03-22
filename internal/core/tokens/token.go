@@ -18,12 +18,13 @@ func NewService() *Service {
 }
 
 func (s *Service) GenerateToken(
-	userEmail string, userID string, roleID int, roleName string, expireMinutes int,
+	userEmail string, userID string, roleID int, roleName string, tokenType string, expireMinutes int,
 ) (string, error) {
 	claims := &Claims{
 		UserEmail: userEmail,
 		UserID:    userID,
 		RoleID:    roleID,
+		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(
 				time.Duration(expireMinutes) * time.Minute),

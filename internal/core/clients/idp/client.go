@@ -153,3 +153,59 @@ func (c *IDPClient) GetUserInfo(
 
 	return &userInfo, nil
 }
+
+func (c *IDPClient) RefreshToken(
+	ctx context.Context,
+	refreshToken string,
+	cfg *config.Config,
+) (*IDPTokenResponse, error) {
+	payload := map[string]string{
+		"refresh_token": refreshToken,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Marshal JSON}: %w", err)
+	}
+
+	// Use IDPRefreshURL if provided, else fall back to something? 
+	// The requirement said /auth/refresh is called.
+	url := cfg.IDPRefreshURL
+	if url == "" {
+		// Fallback to TokenURL if RefreshURL is not set (legacy behavior or generic)
+		url = cfg.IDPTokenURL
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Create Refresh Request}: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Execute Refresh Request}: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf(
+			"[IDPClient] {Refresh Failed}: status %d, body: %s",
+			resp.StatusCode,
+			string(bodyBytes),
+		)
+	}
+
+	var tokenResp IDPTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Parse Refresh Response}: %w", err)
+	}
+
+	return &tokenResp, nil
+}
