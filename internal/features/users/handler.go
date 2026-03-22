@@ -68,7 +68,9 @@ func (h *Handler) HandleGetUserByEmail(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.GetUserByEmail(c.Request.Context(), email)
+	authType := c.DefaultQuery("auth_type", "native")
+
+	resp, err := h.service.GetUserByEmail(c.Request.Context(), email, authType)
 	if err != nil {
 		log.Printf("[HandleGetUserByEmail] {GetUserByEmail}: %v", err)
 		c.JSON(

@@ -26,9 +26,9 @@ func (s *Service) GetUserByID(
 }
 
 func (s *Service) GetUserByEmail(
-	ctx context.Context, email string,
+	ctx context.Context, email string, authType string,
 ) (*GetUserResponse, error) {
-	user, err := s.repo.GetUserByEmail(ctx, email)
+	user, err := s.repo.GetUserByEmail(ctx, email, authType)
 	if err != nil {
 		return nil, err
 	}

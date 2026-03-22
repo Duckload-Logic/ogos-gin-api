@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,15 +40,18 @@ func NewService(repo *users.Repository, redis *database.RedisClient) *Service {
 func (s *Service) AuthenticateUser(
 	ctx context.Context, email, password string,
 ) (string, string, string, error) {
-	// Fetch user from database
-	user, err := s.repo.GetUserByEmail(ctx, email)
+	// Fetch user from database (Native only)
+	user, err := s.repo.GetUserByEmail(ctx, email, "native")
 	if err != nil {
 		return "", "", "", errors.New("invalid credentials")
 	}
 
 	// Compare hashed password
+	if !user.PasswordHash.Valid {
+		return "", "", "", errors.New("invalid credentials")
+	}
 	err = bcrypt.CompareHashAndPassword(
-		[]byte(user.PasswordHash),
+		[]byte(user.PasswordHash.String),
 		[]byte(password),
 	)
 	if err != nil {
@@ -315,16 +319,27 @@ func (s *Service) PostIDPTokenExchange(
 	idpAccessToken := tokenResp.AccessToken
 	idpRefreshToken := tokenResp.RefreshToken
 
-	// Strict user lookup (No auto-provisioning)
-	// We lookup by the IDP Subject (oid/sub) which is stored as the user's ID
-	dbUser, err := s.repo.GetUserByID(ctx, userInfo.ID)
+	// Dynamic Role Mapping from IDP Tags
+	// Logic: Identify tag:admin, tag:student, tag:superadmin at runtime
+	appRoleID := s.mapIDPRolesToInternalID(userInfo.Roles)
+
+	// Upsert IDP user into native database
+	// This ensures non-existing users are added and existing ones are synchronized
+	err = s.repo.CreateUser(ctx, users.User{
+		ID:           userInfo.ID,
+		RoleID:       appRoleID,
+		FirstName:    userInfo.FirstName,
+		LastName:     userInfo.LastName,
+		Email:        userInfo.Email,
+		AuthType:     "idp",
+		PasswordHash: sql.NullString{Valid: false},
+		IsActive:     1,
+	})
 	if err != nil {
-		log.Printf("[AuthService] {IDP Login}: User %s (ID: %s) not found in registration table", userInfo.Email, userInfo.ID)
-		return "", "", "", "", "", fmt.Errorf("[AuthService] {IDP Login}: unauthorized user - please register with an administrator")
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Provision IDP User}: %w", err)
 	}
 
-	appUserID := dbUser.ID
-	appRoleID := dbUser.RoleID
+	appUserID := userInfo.ID
 
 	// Map Role ID to Name for frontend redirection
 	role, err := s.repo.GetRoleByID(ctx, appRoleID)
@@ -400,6 +415,42 @@ func (s *Service) GetIDPUserInfo(
 		)
 	}
 	return userInfo, nil
+}
+
+// mapIDPRolesToInternalID translates IDP tags to internal role IDs.
+// Tags format: tag:student, tag:admin, tag:superadmin
+func (s *Service) mapIDPRolesToInternalID(roles []string) int {
+	// Priority order: superadmin > admin > student
+	hasAdmin := false
+	hasSuper := false
+	hasStudent := false
+
+	for _, r := range roles {
+		if r == "" {
+			continue
+		}
+
+		switch strings.ToLower(strings.Split(r, ":")[1]) {
+		case "superadmin":
+			hasSuper = true
+		case "admin":
+			hasAdmin = true
+		case "student":
+			hasStudent = true
+		}
+	}
+
+	if hasSuper {
+		return 3
+	}
+	if hasAdmin {
+		return 2
+	}
+	if hasStudent {
+		return 1
+	}
+
+	return 1 // Default to Student
 }
 
 // ValidateIDPSession checks if the provided session ID is valid on the IDP.

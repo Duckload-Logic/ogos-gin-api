@@ -410,8 +410,8 @@ func createSuperAdmin() {
 
 	userID := uuid.New().String()
 	_, err = tx.Exec(`
-		INSERT INTO users (id, role_id, first_name, middle_name, last_name, email, password_hash, is_active)
-		VALUES (?, 3, 'Super', '', 'Admin', ?, ?, ?)
+		INSERT INTO users (id, role_id, first_name, middle_name, last_name, email, password_hash, auth_type, is_active)
+		VALUES (?, 3, 'Super', '', 'Admin', ?, ?, 'native', ?)
 		ON DUPLICATE KEY UPDATE
 			first_name = VALUES(first_name),
 			middle_name = VALUES(middle_name),
@@ -444,8 +444,8 @@ func createCounselor() {
 
 	userID := uuid.New().String()
 	_, err = tx.Exec(`
-		INSERT INTO users (id, role_id, first_name, middle_name, last_name, email, password_hash, is_active)
-		VALUES (?, 2, ?, ?, ?, ?, ?, ?)
+		INSERT INTO users (id, role_id, first_name, middle_name, last_name, email, password_hash, auth_type, is_active)
+		VALUES (?, 2, ?, ?, ?, ?, ?, 'native', ?)
 		ON DUPLICATE KEY UPDATE
 			first_name = VALUES(first_name),
 			middle_name = VALUES(middle_name),
@@ -496,8 +496,8 @@ func createStudent(index int) {
 	_, err = tx.Exec(`
 		INSERT INTO users (
 			id, role_id, first_name, middle_name, last_name, email,
-			password_hash, is_active
-		) VALUES (?, 1, ?, ?, ?, ?, ?, ?)
+			password_hash, auth_type, is_active
+		) VALUES (?, 1, ?, ?, ?, ?, ?, 'native', ?)
 	`, userID, gofakeit.FirstName(), randomMiddleName(), gofakeit.LastName(), studentEmail, fakePasswordHash(), true)
 	if err != nil {
 		log.Fatal(err)
@@ -644,7 +644,7 @@ func createStudent(index int) {
 			admissionSlipIDs)
 
 		tx.Commit()
-		fmt.Printf("Created student %d (iirID=%d)\n", index+1, iirID)
+		fmt.Printf("Created student %d (iirID=%s)\n", index+1, iirID)
 		return
 	}
 
@@ -1842,7 +1842,7 @@ func createNotification(userID string) {
 
 	_, err := db.Exec(query, userID, title, message, notifType, isRead)
 	if err != nil {
-		log.Printf("failed to create notification for user %d: %v", userID, err)
+		log.Printf("[createNotification] {Insert}: failed to create notification for user %s: %v", userID, err)
 	}
 }
 
@@ -1862,7 +1862,7 @@ func insertNotifications(tx *sqlx.Tx, userID string) {
             VALUES (?, ?, ?, ?, ?, NOW())
         `, userID, title, message, randomType, isRead)
 		if err != nil {
-			log.Printf("failed to insert fake notification for %d with type %s: %v", userID, randomType, err)
+			log.Printf("failed to insert fake notification for %s with type %s: %v", userID, randomType, err)
 		}
 	}
 }

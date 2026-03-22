@@ -60,18 +60,18 @@ func (r *Repository) GetRoleByID(
 }
 
 func (r *Repository) GetUserByEmail(
-	ctx context.Context, email string,
+	ctx context.Context, email string, authType string,
 ) (*User, error) {
 	var user User
 
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM users
-		WHERE email = ?
+		WHERE email = ? AND auth_type = ?
 		LIMIT 1
 	`, database.GetColumns(User{}))
 
-	err := r.db.GetContext(ctx, &user, query, email)
+	err := r.db.GetContext(ctx, &user, query, email, authType)
 	if err != nil {
 		return nil, err
 	}
