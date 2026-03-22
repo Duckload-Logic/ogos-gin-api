@@ -246,9 +246,13 @@ func (s *Service) PostIDPTokenExchange(
 	roleID := int(constants.StudentRoleID) // Default
 	for _, r := range parsedRoles {
 		lowerR := strings.ToLower(r)
-		if lowerR == "admin" || lowerR == "superadmin" {
+		switch {
+		case lowerR == "superadmin":
+			roleID = int(constants.SuperAdminRoleID)
+		case lowerR == "admin":
 			roleID = int(constants.CounselorRoleID)
-			break
+		case lowerR == "student":
+			roleID = int(constants.StudentRoleID)
 		}
 	}
 
@@ -269,15 +273,9 @@ func (s *Service) PostIDPTokenExchange(
 	}
 
 	// 5. Generate OUR tokens
-	accessToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "idp", constants.AccessTokenMaxAge)
-	if err != nil {
-		return "", "", fmt.Errorf("[AuthService] {Gen Access Token}: %w", err)
-	}
+	accessToken := tokenResp.AccessToken
 
-	refreshToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "idp", constants.RefreshTokenMaxAge)
-	if err != nil {
-		return "", "", fmt.Errorf("[AuthService] {Gen Refresh Token}: %w", err)
-	}
+	refreshToken := tokenResp.RefreshToken
 
 	// 6. Store tokens in Redis
 	if err := s.storeTokenInRedis(ctx, user.ID, accessToken, "idp", constants.AccessTokenMaxAge); err != nil {

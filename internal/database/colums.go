@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var excludeOnUpsert = []string{"id", "created_at"}
+var excludeOnUpsert = []string{"created_at"}
 
 func GetColumns(s interface{}) string {
 	t := reflect.TypeOf(s)
@@ -27,6 +27,7 @@ func GetColumns(s interface{}) string {
 	}
 	return strings.Join(columns, ", ")
 }
+
 func GetInsertStatement(s interface{}, exclude []string) (string, string) {
 	cols := strings.Split(GetColumns(s), ", ")
 	var filteredCols []string
