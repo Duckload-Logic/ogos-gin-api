@@ -159,20 +159,45 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 // @Router       /auth/me [get]
 func (h *Handler) HandleGetMe(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
+	accessToken, _ := c.Cookie("access_token")
+	if accessToken == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			accessToken = strings.TrimPrefix(authHeader, "Bearer ")
+		}
+	}
+
+	if accessToken == "" {
+		log.Printf("[HandleGetMe] {Check Token}: Access token missing")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Access token missing"})
+		return
+	}
+
 	tokenType, _ := c.Get("tokenType")
 	tType := "native"
 	if tt, ok := tokenType.(string); ok {
 		tType = tt
 	}
 
-	resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
-	if err != nil {
-		log.Printf("[HandleGetMe] {GetMe}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
-		return
-	}
+	if tokenType == "native" {
+		resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
+		if err != nil {
+			log.Printf("[HandleGetMe] {GetMe}: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
+			return
+		}
 
-	c.JSON(http.StatusOK, resp)
+		c.JSON(http.StatusOK, resp)
+	} else {
+		resp, err := h.service.idpClient.GetUserInfo(c.Request.Context(), accessToken, h.cfg)
+		if err != nil {
+			log.Printf("[HandleGetMe] {Get IDP UserInfo}: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info from IDP"})
+			return
+		}
+
+		c.JSON(http.StatusOK, resp)
+	}
 }
 
 // HandleLogout godoc
@@ -195,8 +220,10 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 		}
 	}
 
+	tokenType, _ := c.Get("tokenType")
+
 	if tokenString != "" {
-		_ = h.service.Logout(c.Request.Context(), tokenString)
+		_ = h.service.Logout(c.Request.Context(), tokenString, tokenType.(string))
 	}
 
 	// Clear cookies
@@ -298,7 +325,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	}
 
 	// Execute token exchange and user provisioning
-	accessToken, refreshToken, err := h.service.PostIDPTokenExchange(
+	accessToken, refreshToken, userInfo, err := h.service.PostIDPTokenExchange(
 		c.Request.Context(),
 		req.Code,
 		h.cfg,
@@ -320,17 +347,17 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 			errorMsg = constants.ErrUserInfoFailed
 		}
 
-		// h.logService.Record(c.Request.Context(), logs.LogEntry{
-		// 	Category: constants.LogCategorySecurity,
-		// 	Action:   constants.LogActionLoginFailed,
-		// 	Message: fmt.Sprintf(
-		// 		"[PostIDPToken] {Service Execution}: %s",
-		// 		err.Error(),
-		// 	),
-		// 	// UserID:    1,
-		// 	IPAddress: c.ClientIP(),
-		// 	UserAgent: c.Request.UserAgent(),
-		// })
+		h.logService.Record(c.Request.Context(), logs.LogEntry{
+			Category: constants.LogCategorySecurity,
+			Action:   constants.LogActionLoginFailed,
+			Message: fmt.Sprintf(
+				"[PostIDPToken] {Service Execution}: %s",
+				err.Error(),
+			),
+			UserID:    userInfo.ID,
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		})
 
 		log.Printf("[PostIDPToken] {Service Execution}: %s", err.Error())
 		c.JSON(statusCode, gin.H{"error": errorMsg})

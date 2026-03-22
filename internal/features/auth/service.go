@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -125,7 +124,7 @@ func (s *Service) RefreshIDPToken(
 }
 
 func (s *Service) GetMe(ctx context.Context, userID, tokenType string) (*MeResponse, error) {
-	// Both native and IDP users should be in our DB
+	// only fetch user info for native tokens
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -171,7 +170,7 @@ func (s *Service) ParseIDPRoles(roles []string) []string {
 }
 
 func (s *Service) storeTokenInRedis(ctx context.Context, userID, token, tokenType string, expiryMinutes int) error {
-	key := fmt.Sprintf("token:%s", token)
+	key := fmt.Sprintf("token:%s:%s", tokenType, token)
 	val := map[string]string{
 		"userID":    userID,
 		"tokenType": tokenType,
@@ -180,8 +179,8 @@ func (s *Service) storeTokenInRedis(ctx context.Context, userID, token, tokenTyp
 	return s.redis.Set(ctx, key, valJSON, time.Duration(expiryMinutes)*time.Minute)
 }
 
-func (s *Service) Logout(ctx context.Context, token string) error {
-	key := fmt.Sprintf("token:%s", token)
+func (s *Service) Logout(ctx context.Context, token string, tokenType string) error {
+	key := fmt.Sprintf("token:%s:%s", tokenType, token)
 	return s.redis.Del(ctx, key)
 }
 
@@ -228,61 +227,29 @@ func (s *Service) PostIDPTokenExchange(
 	ctx context.Context,
 	code string,
 	cfg *config.Config,
-) (string, string, error) {
-	// 1. Exchange authorization code for IDP tokens
+) (string, string, *idp.IDPUserInfo, error) {
+	// Exchange authorization code for IDP tokens
 	tokenResp, err := s.idpClient.ExchangeCodeForToken(ctx, code, cfg)
 	if err != nil {
-		return "", "", fmt.Errorf("[AuthService] {Token Exchange}: %w", err)
+		return "", "", nil, fmt.Errorf("[AuthService] {Token Exchange}: %w", err)
 	}
 
-	// 2. Fetch User Info from IDP
+	// Fetch User Info from IDP
 	userInfo, err := s.GetIDPUserInfo(ctx, tokenResp.AccessToken, cfg)
 	if err != nil {
-		return "", "", fmt.Errorf("[AuthService] {Fetch User Info}: %w", err)
+		return "", "", nil, fmt.Errorf("[AuthService] {Fetch User Info}: %w", err)
 	}
 
-	// 3. Map IDP roles to our RoleID
-	parsedRoles := s.ParseIDPRoles(userInfo.Roles)
-	roleID := int(constants.StudentRoleID) // Default
-	for _, r := range parsedRoles {
-		lowerR := strings.ToLower(r)
-		switch {
-		case lowerR == "superadmin":
-			roleID = int(constants.SuperAdminRoleID)
-		case lowerR == "admin":
-			roleID = int(constants.CounselorRoleID)
-		case lowerR == "student":
-			roleID = int(constants.StudentRoleID)
-		}
-	}
-
-	// 4. Provision User in our DB
-	user := users.User{
-		ID:         userInfo.ID,
-		Email:      userInfo.Email,
-		FirstName:  userInfo.FirstName,
-		LastName:   userInfo.LastName,
-		MiddleName: sql.NullString{String: userInfo.MiddleName, Valid: userInfo.MiddleName != ""},
-		RoleID:     roleID,
-		IsActive:   1,
-	}
-
-	// Create or update user
-	if err := s.repo.CreateUser(ctx, user); err != nil {
-		return "", "", fmt.Errorf("[AuthService] {Provision User}: %w", err)
-	}
-
-	// 5. Generate OUR tokens
+	// Parse Tokens
 	accessToken := tokenResp.AccessToken
-
 	refreshToken := tokenResp.RefreshToken
 
-	// 6. Store tokens in Redis
-	if err := s.storeTokenInRedis(ctx, user.ID, accessToken, "idp", constants.AccessTokenMaxAge); err != nil {
-		return "", "", fmt.Errorf("[AuthService] {Store in Redis}: %w", err)
+	// Store tokens in Redis
+	if err := s.storeTokenInRedis(ctx, userInfo.ID, accessToken, "idp", constants.AccessTokenMaxAge); err != nil {
+		return "", "", nil, fmt.Errorf("[AuthService] {Store in Redis}: %w", err)
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, refreshToken, userInfo, nil
 }
 
 // GetIDPUserInfo fetches user information from the IDP userinfo endpoint
