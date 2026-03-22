@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/clients/idp"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
@@ -315,11 +316,36 @@ func (s *Service) PostIDPTokenExchange(
 	idpAccessToken := tokenResp.AccessToken
 	idpRefreshToken := tokenResp.RefreshToken
 
-	// Generate internal App Tokens
+	// Provision user if not exists
+	var appUserID string
+	var appRoleID int
+	dbUser, err := s.repo.GetUserByEmail(ctx, userInfo.Email)
+	if err != nil {
+		// New user from IDP
+		appUserID = uuid.New().String()
+		appRoleID = 1 // Default to Student role
+		err = s.repo.CreateUser(ctx, users.User{
+			ID:        appUserID,
+			RoleID:    appRoleID,
+			FirstName: userInfo.FirstName,
+			LastName:  userInfo.LastName,
+			Email:     userInfo.Email,
+			IsActive:  1,
+		})
+		if err != nil {
+			return "", "", nil, fmt.Errorf("[AuthService] {Provision User}: %w", err)
+		}
+	} else {
+		// Existing user
+		appUserID = dbUser.ID
+		appRoleID = dbUser.RoleID
+	}
+
+	// Generate internal App Tokens using the actual app IDs
 	appAccessToken, accessClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
-		userInfo.ID,
-		0, // Guest/IDP role initially
+		appUserID,
+		appRoleID,
 		"",
 		"idp",
 		constants.AccessTokenMaxAge/60, // convert seconds to minutes for GenerateToken
@@ -330,8 +356,8 @@ func (s *Service) PostIDPTokenExchange(
 
 	appRefreshToken, refreshClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
-		userInfo.ID,
-		0,
+		appUserID,
+		appRoleID,
 		"",
 		"idp",
 		constants.RefreshTokenMaxAge/60,
@@ -341,7 +367,7 @@ func (s *Service) PostIDPTokenExchange(
 	}
 
 	// Store App Access Token in Redis using its ID (jti)
-	if err := s.storeTokenInRedis(ctx, userInfo.ID, accessClaims.ID, "idp", &idpAccessToken, constants.AccessTokenMaxAge/60); err != nil {
+	if err := s.storeTokenInRedis(ctx, appUserID, accessClaims.ID, "idp", &idpAccessToken, constants.AccessTokenMaxAge/60); err != nil {
 		return "", "", nil, fmt.Errorf("[AuthService] {Store Access in Redis}: %w", err)
 	}
 

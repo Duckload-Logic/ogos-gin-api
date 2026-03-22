@@ -90,22 +90,18 @@ func (r *Repository) CreateUser(
 	ctx context.Context, user User,
 ) error {
 	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		cols, vals := database.GetInsertStatement(User{}, []string{"updated_at"})
-		onDuplicateKeyStmt := database.GetOnDuplicateKeyUpdateStatement(User{}, []string{"updated_at"})
+		// id is the primary key, we should NOT update it on duplicate
+		// password_hash might be empty for IDP users, we don't want to overwrite it
+		exclude := []string{"updated_at", "password_hash"}
+		cols, vals := database.GetInsertStatement(User{}, exclude)
+		onDuplicateKeyStmt := database.GetOnDuplicateKeyUpdateStatement(User{}, exclude)
 		query := fmt.Sprintf(`
 			INSERT INTO users (%s)
 			VALUES (%s)
 			ON DUPLICATE KEY UPDATE %s
 		`, cols, vals, onDuplicateKeyStmt)
 
-		_, err := tx.ExecContext(ctx, query,
-			user.RoleID,
-			user.FirstName,
-			user.MiddleName,
-			user.LastName,
-			user.Email,
-			user.PasswordHash,
-		)
+		_, err := tx.NamedExecContext(ctx, query, user)
 		if err != nil {
 			return err
 		}
