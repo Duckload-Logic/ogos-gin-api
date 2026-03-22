@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
 	"strings"
 	"time"
 
@@ -316,40 +315,22 @@ func (s *Service) PostIDPTokenExchange(
 	idpAccessToken := tokenResp.AccessToken
 	idpRefreshToken := tokenResp.RefreshToken
 
-	// Provision user if not exists
-	var appUserID string
-	var appRoleID int
-	dbUser, err := s.repo.GetUserByEmail(ctx, userInfo.Email)
+	// Strict user lookup (No auto-provisioning)
+	// We lookup by the IDP Subject (oid/sub) which is stored as the user's ID
+	dbUser, err := s.repo.GetUserByID(ctx, userInfo.ID)
 	if err != nil {
-		// New user from IDP
-		appUserID = uuid.New().String()
-		appRoleID = 1 // Default to Student role
-		err = s.repo.CreateUser(ctx, users.User{
-			ID:        appUserID,
-			RoleID:    appRoleID,
-			FirstName: userInfo.FirstName,
-			LastName:  userInfo.LastName,
-			Email:     userInfo.Email,
-			IsActive:  1,
-		})
-		if err != nil {
-			return "", "", "", "", "", fmt.Errorf("[AuthService] {Provision User}: %w", err)
-		}
-	} else {
-		// Existing user
-		appUserID = dbUser.ID
-		appRoleID = dbUser.RoleID
+		log.Printf("[AuthService] {IDP Login}: User %s (ID: %s) not found in registration table", userInfo.Email, userInfo.ID)
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {IDP Login}: unauthorized user - please register with an administrator")
 	}
 
+	appUserID := dbUser.ID
+	appRoleID := dbUser.RoleID
+
 	// Map Role ID to Name for frontend redirection
+	role, err := s.repo.GetRoleByID(ctx, appRoleID)
 	roleName := "student"
-	switch appRoleID {
-	case 1:
-		roleName = "student"
-	case 2:
-		roleName = "admin"
-	case 3:
-		roleName = "superadmin"
+	if err == nil && role != nil {
+		roleName = role.Name
 	}
 
 	// Generate internal App Tokens using the actual app IDs
