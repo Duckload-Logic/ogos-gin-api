@@ -1,20 +1,23 @@
 package tokens
 
 import (
+	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var JWTSecretEnv = os.Getenv("JWT_SECRET")
-
 type Service struct {
 	secret []byte
 }
 
 func NewService() *Service {
-	return &Service{secret: []byte(JWTSecretEnv)}
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		log.Printf("[WARNING] {NewService}: JWT_SECRET is empty. Signing will fail.")
+	}
+	return &Service{secret: []byte(secret)}
 }
 
 func (s *Service) GenerateToken(

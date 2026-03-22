@@ -33,7 +33,7 @@ func NewService(repo *users.Repository, redis *database.RedisClient) *Service {
 	}
 }
 
-var tokenService = tokens.NewService()
+// tokenService is now called inline to ensure environment variables are loaded
 
 // AuthenticateUser
 func (s *Service) AuthenticateUser(
@@ -55,13 +55,13 @@ func (s *Service) AuthenticateUser(
 	}
 
 	// Generate the token
-	token, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.AccessTokenMaxAge/60)
+	token, err := tokens.NewService().GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.AccessTokenMaxAge/60)
 	if err != nil {
 		return "", "", "", errors.New("failed to generate session")
 	}
 
 	// Generate refresh token
-	refreshToken, err := tokenService.GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.RefreshTokenMaxAge/60)
+	refreshToken, err := tokens.NewService().GenerateToken(user.Email, user.ID, user.RoleID, "", "native", constants.RefreshTokenMaxAge/60)
 	if err != nil {
 		return "", "", "", errors.New("failed to generate refresh token")
 	}
@@ -79,7 +79,7 @@ func (s *Service) AuthenticateUser(
 func (s *Service) RefreshToken(
 	ctx context.Context, refreshToken string, cfg *config.Config,
 ) (string, string, error) {
-	claims, err := tokenService.ValidateToken(refreshToken)
+	claims, err := tokens.NewService().ValidateToken(refreshToken)
 	if err != nil {
 		return "", "", errors.New("Invalid refresh token")
 	}
@@ -100,7 +100,7 @@ func (s *Service) RefreshToken(
 		}
 
 		// Generate NEW App Tokens
-		newAppAccessToken, err := tokenService.GenerateToken(
+		newAppAccessToken, err := tokens.NewService().GenerateToken(
 			claims.UserEmail,
 			claims.UserID,
 			claims.RoleID,
@@ -112,7 +112,7 @@ func (s *Service) RefreshToken(
 			return "", "", fmt.Errorf("[AuthService] {Generate App Access Token}: %w", err)
 		}
 
-		newAppRefreshToken, err := tokenService.GenerateToken(
+		newAppRefreshToken, err := tokens.NewService().GenerateToken(
 			claims.UserEmail,
 			claims.UserID,
 			claims.RoleID,
@@ -145,13 +145,13 @@ func (s *Service) RefreshToken(
 	}
 
 	// Generate new token
-	newToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.AccessTokenMaxAge/60)
+	newToken, err := tokens.NewService().GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.AccessTokenMaxAge/60)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new token")
 	}
 
 	// Generate new refresh token
-	newRefreshToken, err := tokenService.GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.RefreshTokenMaxAge/60)
+	newRefreshToken, err := tokens.NewService().GenerateToken(claims.UserEmail, claims.UserID, claims.RoleID, "", "native", constants.RefreshTokenMaxAge/60)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new refresh token")
 	}
@@ -312,7 +312,7 @@ func (s *Service) PostIDPTokenExchange(
 	idpRefreshToken := tokenResp.RefreshToken
 
 	// Generate internal App Tokens
-	appAccessToken, err := tokenService.GenerateToken(
+	appAccessToken, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		userInfo.ID,
 		0, // Guest/IDP role initially
@@ -324,7 +324,7 @@ func (s *Service) PostIDPTokenExchange(
 		return "", "", nil, fmt.Errorf("[AuthService] {Generate App Access Token}: %w", err)
 	}
 
-	appRefreshToken, err := tokenService.GenerateToken(
+	appRefreshToken, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		userInfo.ID,
 		0,
@@ -376,7 +376,6 @@ func (s *Service) GetIDPUserInfo(
 	}
 	return userInfo, nil
 }
-
 
 // ValidateIDPSession checks if the provided session ID is valid on the IDP.
 func (s *Service) ValidateIDPSession(
