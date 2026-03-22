@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 ARG GO_VERSION=1.23
-# Note: User had 1.25.5-alpine, but 1.23 is more standard for current projects. 
+# Note: User had 1.25.5-alpine, but 1.23 is more standard for current projects.
 # I'll stick to 1.25.5-alpine if they really want it, but I'll use a variable.
 ARG IMAGE_TAG=1.25.5-alpine
 
@@ -10,18 +10,27 @@ FROM golang:${IMAGE_TAG} AS base
 RUN apk add --no-cache git make
 WORKDIR /app
 COPY go.mod go.sum ./
-RUN go mod download
+# Implement build cache for go modules
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+################################################################################
+# Tools stage for installing dependencies
+FROM base AS tools
+# Implement build cache for go installs
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go install github.com/air-verse/air@latest && \
+    go install github.com/swaggo/swag/cmd/swag@latest
 
 ################################################################################
 # Development stage
-FROM base AS dev
-RUN go install github.com/air-verse/air@latest
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+FROM tools AS dev
 COPY . .
 # Docs generation for development
-RUN swag init -g main.go --parseDependency --parseInternal \
-    --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students \
-    --output ./docs/internal --instanceName internal
+# RUN swag init -g main.go --parseDependency --parseInternal \
+#     --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students \
+#     --output ./docs/internal --instanceName internal
 RUN swag init -g main.go --parseDependency --parseInternal \
     --dir ./cmd/api,./internal/features/students/external \
     --output ./docs/external --instanceName external
@@ -29,16 +38,18 @@ CMD ["air"]
 
 ################################################################################
 # Builder stage for production
-FROM base AS builder
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+FROM tools AS builder
 COPY . .
-RUN swag init -g main.go --parseDependency --parseInternal \
-    --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students \
-    --output ./docs/internal --instanceName internal
+# RUN swag init -g main.go --parseDependency --parseInternal \
+#     --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students \
+#     --output ./docs/internal --instanceName internal
 RUN swag init -g main.go --parseDependency --parseInternal \
     --dir ./cmd/api,./internal/features/students/external \
     --output ./docs/external --instanceName external
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/api
+# Implement build cache to speed up successive builds
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/api
 
 ################################################################################
 # Production stage
