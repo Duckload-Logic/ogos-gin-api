@@ -244,7 +244,7 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 	// Log event
 	userID, _ := c.Get("userID")
 	userEmail, _ := c.Get("userEmail")
-	if userID != nil {
+	if userID != nil && userEmail != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
 			Action:    logs.ActionLogout,
@@ -266,7 +266,7 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 // @Description  Generates OAuth 2.0 authorization URL with PKCE
 // @Tags         Auth
 // @Produce      json
-// @Success      200 {object} IDPAuthorizeURLResponse
+// @Success      200 {object} idp.IDPAuthorizeURLResponse
 // @Failure      500 {object} map[string]string
 // @Router       /auth/idp/authorize-url [get]
 func (h *Handler) GetAuthorizeURL(c *gin.Context) {
@@ -274,25 +274,17 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 	authURL, err := h.service.GetAuthorizeURL(h.cfg)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: constants.LogCategorySecurity,
-			Action:   constants.LogActionLoginFailed,
-			Message: fmt.Sprintf(
-				"[GetAuthorizeURL] {Generate URL}: %s",
-				err.Error(),
-			),
+			Category:  logs.CategorySecurity,
+			Action:    logs.ActionLoginFailed,
+			Message:   fmt.Sprintf("[GetAuthorizeURL] {Generate URL}: %s", err.Error()),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
 		})
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to generate authorization URL"},
-		)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate authorization URL"})
 		return
 	}
 
-	c.JSON(http.StatusOK, idp.IDPAuthorizeURLResponse{
-		AuthorizationURL: authURL,
-	})
+	c.JSON(http.StatusOK, gin.H{"authorization_url": authURL})
 }
 
 // PostIDPToken godoc
@@ -305,71 +297,37 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 // @Success      200 {object} map[string]interface{}
 // @Failure      400 {object} map[string]string
 // @Failure      401 {object} map[string]string
-// @Failure      500 {object} map[string]string
 // @Router       /auth/idp/token [post]
 func (h *Handler) PostIDPToken(c *gin.Context) {
 	var req idp.IDPTokenExchangeRequest
-
-	// Bind and validate request
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: constants.LogCategorySecurity,
-			Action:   constants.LogActionLoginFailed,
-			Message: fmt.Sprintf(
-				"[PostIDPToken] {Bind JSON}: %s",
-				err.Error(),
-			),
+			Category:  logs.CategorySecurity,
+			Action:    logs.ActionLoginFailed,
+			Message:   fmt.Sprintf("[PostIDPToken] {Bind JSON}: %s", err.Error()),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
 		})
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid request format"},
-		)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
-	// Execute token exchange and user provisioning
-	accessToken, refreshToken, userInfo, err := h.service.PostIDPTokenExchange(
-		c.Request.Context(),
-		req.Code,
-		h.cfg,
-	)
+	// Perform token exchange
+	accessToken, refreshToken, userID, userEmail, roleName, err := h.service.PostIDPTokenExchange(c.Request.Context(), req.Code, h.cfg)
 	if err != nil {
-		// Determine appropriate status code based on error
-		statusCode := http.StatusInternalServerError
-		errorMsg := constants.ErrUserProvisioningFailed
-
-		// Check if error is state validation failure
-		if containsStr(err.Error(), "Validate State") {
-			statusCode = http.StatusUnauthorized
-			errorMsg = constants.ErrInvalidState
-		} else if containsStr(err.Error(), "Token Exchange") {
-			statusCode = http.StatusUnauthorized
-			errorMsg = constants.ErrTokenExchangeFailed
-		} else if containsStr(err.Error(), "Fetch User Info") {
-			statusCode = http.StatusUnauthorized
-			errorMsg = constants.ErrUserInfoFailed
-		}
-
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: constants.LogCategorySecurity,
-			Action:   constants.LogActionLoginFailed,
-			Message: fmt.Sprintf(
-				"[PostIDPToken] {Service Execution}: %s",
-				err.Error(),
-			),
-			UserID:    userInfo.ID,
+			Category:  logs.CategorySecurity,
+			Action:    logs.ActionLoginFailed,
+			Message:   fmt.Sprintf("[PostIDPToken] {Service Call}: %s", err.Error()),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
 		})
-
-		log.Printf("[PostIDPToken] {Service Execution}: %s", err.Error())
-		c.JSON(statusCode, gin.H{"error": errorMsg})
+		log.Printf("[PostIDPToken] {Service Call}: %v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Set cookie security attributes based on environment
+	// Set cookies for frontend
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
@@ -398,12 +356,26 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		true,
 	)
 
-	// Return Message
+	// Log success
+	h.logService.Record(c.Request.Context(), logs.LogEntry{
+		Category:  logs.CategorySecurity,
+		Action:    logs.ActionLoginSuccess,
+		Message:   fmt.Sprintf("User %s logged in successfully via IDP", userEmail),
+		UserID:    userID,
+		UserEmail: userEmail,
+		IPAddress: c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
+	})
+
+	// Return Message and Role info for immediate redirect
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful",
+		"userID":    userID,
+		"userEmail": userEmail,
+		"role":      roleName,
+		"message":   "Login successful",
+		"roles":     []string{roleName},
 	})
 }
-
 
 // HandleValidateIDPSession godoc
 // @Summary      Validate IDP session

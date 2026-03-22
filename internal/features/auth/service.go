@@ -299,17 +299,17 @@ func (s *Service) PostIDPTokenExchange(
 	ctx context.Context,
 	code string,
 	cfg *config.Config,
-) (string, string, *idp.IDPUserInfo, error) {
+) (string, string, string, string, string, error) {
 	// Exchange authorization code for IDP tokens
 	tokenResp, err := s.idpClient.ExchangeCodeForToken(ctx, code, cfg)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("[AuthService] {Token Exchange}: %w", err)
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Token Exchange}: %w", err)
 	}
 
 	// Fetch User Info from IDP
 	userInfo, err := s.GetIDPUserInfo(ctx, tokenResp.AccessToken, cfg)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("[AuthService] {Fetch User Info}: %w", err)
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Fetch User Info}: %w", err)
 	}
 
 	// Parse Tokens
@@ -333,12 +333,23 @@ func (s *Service) PostIDPTokenExchange(
 			IsActive:  1,
 		})
 		if err != nil {
-			return "", "", nil, fmt.Errorf("[AuthService] {Provision User}: %w", err)
+			return "", "", "", "", "", fmt.Errorf("[AuthService] {Provision User}: %w", err)
 		}
 	} else {
 		// Existing user
 		appUserID = dbUser.ID
 		appRoleID = dbUser.RoleID
+	}
+
+	// Map Role ID to Name for frontend redirection
+	roleName := "student"
+	switch appRoleID {
+	case 1:
+		roleName = "student"
+	case 2:
+		roleName = "admin"
+	case 3:
+		roleName = "superadmin"
 	}
 
 	// Generate internal App Tokens using the actual app IDs
@@ -351,7 +362,7 @@ func (s *Service) PostIDPTokenExchange(
 		constants.AccessTokenMaxAge/60, // convert seconds to minutes for GenerateToken
 	)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("[AuthService] {Generate App Access Token}: %w", err)
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Generate App Access Token}: %w", err)
 	}
 
 	appRefreshToken, refreshClaims, err := tokens.NewService().GenerateToken(
@@ -363,22 +374,26 @@ func (s *Service) PostIDPTokenExchange(
 		constants.RefreshTokenMaxAge/60,
 	)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("[AuthService] {Generate App Refresh Token}: %w", err)
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Generate App Refresh Token}: %w", err)
 	}
 
 	// Store App Access Token in Redis using its ID (jti)
 	if err := s.storeTokenInRedis(ctx, appUserID, accessClaims.ID, "idp", &idpAccessToken, constants.AccessTokenMaxAge/60); err != nil {
-		return "", "", nil, fmt.Errorf("[AuthService] {Store Access in Redis}: %w", err)
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Store Access in Redis}: %w", err)
 	}
 
 	// Store IDP Refresh Token in Redis associated with the App Refresh Token's ID (jti)
 	idpRefreshKey := fmt.Sprintf("idp_refresh:%s", refreshClaims.ID)
-	err = s.redis.Set(ctx, idpRefreshKey, idpRefreshToken, time.Duration(constants.RefreshTokenMaxAge)*time.Second)
+	idpRefreshTokenToStore := idpRefreshToken
+	if idpRefreshTokenToStore == "" {
+		// This shouldn't happen on initial login, but good for robustness
+	}
+	err = s.redis.Set(ctx, idpRefreshKey, idpRefreshTokenToStore, time.Duration(constants.RefreshTokenMaxAge)*time.Second)
 	if err != nil {
-		return "", "", nil, fmt.Errorf("[AuthService] {Store IDP Refresh in Redis}: %w", err)
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Store IDP Refresh in Redis}: %w", err)
 	}
 
-	return appAccessToken, appRefreshToken, userInfo, nil
+	return appAccessToken, appRefreshToken, appUserID, userInfo.Email, roleName, nil
 }
 
 // GetIDPUserInfo fetches user information from the IDP userinfo endpoint
