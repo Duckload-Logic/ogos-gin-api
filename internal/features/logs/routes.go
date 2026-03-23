@@ -8,7 +8,7 @@ import (
 )
 
 func RegisterRoutes(rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
-	routes := rg.Group("/system-logs")
+	routes := rg.Group("/activity-meta")
 	routes.Use(middleware.AuthMiddleware(redis))
 	routes.Use(middleware.RoleMiddleware(
 		int(constants.SuperAdminRoleID),
