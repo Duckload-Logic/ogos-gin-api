@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
-    "github.com/google/uuid"
 )
 
 type Repository struct {
@@ -244,8 +244,8 @@ func (r *Repository) ListStudents(
 			usr.id as user_id,
 			usr.first_name,
 			usr.middle_name,
-			spi.suffix_name,
 			usr.last_name,
+			spi.suffix_name,
 			spi.gender_id,
 			usr.email,
 			spi.student_number,
