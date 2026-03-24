@@ -19,6 +19,7 @@ type SlipStatus struct {
 type SlipWithDetailsView struct {
 	ID             string         `json:"id" db:"id"`
 	IIRID          string         `json:"iirId" db:"iir_id"`
+	UserID         string         `json:"userId" db:"user_id"`
 	UserFirstName  string         `json:"userFirstName" db:"user_first_name"`
 	UserMiddleName sql.NullString `json:"userMiddleName" db:"user_middle_name"`
 	UserLastName   string         `json:"userLastName" db:"user_last_name"`
