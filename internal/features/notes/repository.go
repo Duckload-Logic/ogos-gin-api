@@ -3,6 +3,7 @@ package notes
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/database"
@@ -35,48 +36,46 @@ func (r *Repository) GetStudentSignificantNotes(
 		)
 	}
 
+	log.Printf(
+		"[GetStudentSignificantNotes] {Database Query}: Retrieved %d notes for IIR ID %s",
+		len(notes),
+		iirID,
+	)
+
 	return notes, nil
 }
 
 func (r *Repository) CreateSignificantNote(
 	ctx context.Context,
 	sn *SignificantNote,
-) (int, error) {
+) (string, error) {
 	return database.NewRunInTransaction(
 		ctx,
 		r.db,
-		func(tx *sqlx.Tx) (int, error) {
+		func(tx *sqlx.Tx) (string, error) {
 			cols, vals := database.GetInsertStatement(
 				SignificantNote{},
 				[]string{"created_at", "updated_at"},
 			)
 
 			query := fmt.Sprintf(`
-				INSERT INTO significant_notes (%s)
-				VALUES (%s)
+				INSERT INTO significant_notes (id, %s)
+				VALUES (:id, %s)
 			`, cols, vals)
 
-			result, err := tx.NamedExecContext(
+			_, err := tx.NamedExecContext(
 				ctx,
 				query,
 				sn,
 			)
 			if err != nil {
-				return 0, fmt.Errorf(
+				return "", fmt.Errorf(
 					"failed to create significant note: %w",
 					err,
 				)
 			}
 
-			lastID, err := result.LastInsertId()
-			if err != nil {
-				return 0, fmt.Errorf(
-					"failed to get last insert ID: %w",
-					err,
-				)
-			}
-
-			return int(lastID), nil
+			return sn.ID, nil
 		},
 	)
 }

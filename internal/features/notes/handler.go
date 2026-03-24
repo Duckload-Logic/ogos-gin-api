@@ -3,6 +3,7 @@ package notes
 import (
 	"log"
 	"net/http"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,7 +18,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) HandleGetStudentSignificantNotes(
 	c *gin.Context,
 ) {
-	iirID := c.GetString("iirID")
+	iirID := c.Param("iirID")
 
 	significantNotes, err := h.service.GetStudentSignificantNotes(
 		c.Request.Context(),
