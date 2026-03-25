@@ -259,3 +259,30 @@ func (c *IDPClient) ValidateSession(
 
 	return &sessionResp, nil
 }
+
+func (c *IDPClient) Logout(ctx context.Context, cfg *config.Config) (*IDPLogoutResponse, error) {
+	url := cfg.IDPLogoutURL
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		bytes.NewReader(nil),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Create Logout Request}: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Execute Logout Request}: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var logoutResp IDPLogoutResponse
+	if err := json.NewDecoder(resp.Body).Decode(&logoutResp); err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Parse Logout Response}: %w", err)
+	}
+
+	return &logoutResp, nil
+}

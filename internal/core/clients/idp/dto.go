@@ -4,7 +4,6 @@ type IDPAuthorizeURLResponse struct {
 	AuthorizationURL string `json:"authorizationUrl"`
 }
 
-
 type IDPTokenExchangeRequest struct {
 	ClientID     string `json:"client_id"`
 	ClientSecret string `json:"client_secret"`
@@ -15,6 +14,9 @@ type IDPSessionResponse struct {
 	Message string `json:"message"`
 }
 
+type IDPLogoutResponse struct {
+	Message string `json:"message"`
+}
 
 // IDPTokenResponse represents the response from IDP token endpoint
 type IDPTokenResponse struct {

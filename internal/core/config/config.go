@@ -28,11 +28,11 @@ type Config struct {
 	IDPClientSecret string
 	IDPRedirectURI  string
 	IDPLoginURL     string
+	IDPLogoutURL    string
 	IDPTokenURL     string
 	IDPUserinfoURL  string
 	IDPRefreshURL   string
 	IDPSessionURL   string
-
 
 	RedisHost string
 	RedisPort string
@@ -64,11 +64,11 @@ func LoadConfig() *Config {
 		IDPClientSecret: os.Getenv("IDP_CLIENT_SECRET"),
 		IDPRedirectURI:  os.Getenv("IDP_REDIRECT_URI"),
 		IDPLoginURL:     os.Getenv("IDP_LOGIN_ENDPOINT"),
+		IDPLogoutURL:    os.Getenv("IDP_LOGOUT_ENDPOINT"),
 		IDPTokenURL:     os.Getenv("IDP_TOKEN_ENDPOINT"),
 		IDPUserinfoURL:  os.Getenv("IDP_USERINFO_ENDPOINT"),
 		IDPRefreshURL:   os.Getenv("IDP_REFRESH_ENDPOINT"),
 		IDPSessionURL:   os.Getenv("IDP_SESSION_ENDPOINT"),
-
 
 		RedisHost: os.Getenv("REDIS_HOST"),
 		RedisPort: os.Getenv("REDIS_PORT"),

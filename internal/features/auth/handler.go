@@ -209,7 +209,7 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 	tokenType, _ := c.Get("tokenType")
 
 	if tokenString != "" {
-		_ = h.service.Logout(c.Request.Context(), tokenString, tokenType.(string))
+		_ = h.service.Logout(c.Request.Context(), tokenString, tokenType.(string), h.cfg)
 	}
 
 	// Clear cookies
@@ -380,14 +380,4 @@ func (h *Handler) HandleValidateIDPSession(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": resp.Message})
-}
-
-// containsStr checks if a string contains a substring
-func containsStr(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

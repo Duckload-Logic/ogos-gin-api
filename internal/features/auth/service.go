@@ -250,7 +250,11 @@ func (s *Service) storeTokenInRedis(ctx context.Context, userID, jti, tokenType 
 	return nil
 }
 
-func (s *Service) Logout(ctx context.Context, token string, tokenType string) error {
+func (s *Service) Logout(ctx context.Context, token string, tokenType string, cfg *config.Config) error {
+	if tokenType != "" && tokenType == "idp" {
+		_, _ = s.idpClient.Logout(ctx, cfg)
+	}
+
 	key := fmt.Sprintf("session:%s", token)
 	return s.redis.Del(ctx, key)
 }
