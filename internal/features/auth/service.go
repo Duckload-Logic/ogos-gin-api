@@ -273,10 +273,6 @@ func (s *Service) GetAuthorizeURL(
 	// Build authorization URL with all required parameters
 	params := url.Values{}
 	params.Set("client_id", cfg.IDPClientID)
-	params.Set("redirect_uri", cfg.IDPRedirectURI)
-	params.Set("response_type", "code")
-	params.Set("state", "random_state_string") // In production, this should be generated per-request and validated
-	params.Set("scope", "openid profile email")
 
 	authURL := fmt.Sprintf(
 		"%s?%s",

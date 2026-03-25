@@ -244,12 +244,12 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 
 // GetAuthorizeURL godoc
 // @Summary      Get IDP authorization URL
-// @Description  Generates OAuth 2.0 authorization URL with PKCE
+// @Description  Redirects to OAuth 2.0 authorization page on the IDP.
 // @Tags         Auth
 // @Produce      json
-// @Success      200 {object} idp.IDPAuthorizeURLResponse
+// @Success      302 {string} string "Redirect to IDP login page"
 // @Failure      500 {object} map[string]string
-// @Router       /auth/idp/authorize-url [get]
+// @Router       /auth/idp/authorize [get]
 func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 	// Generate authorization URL with state and PKCE parameters
 	authURL, err := h.service.GetAuthorizeURL(h.cfg)
@@ -265,7 +265,7 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"authorization_url": authURL})
+	c.Redirect(http.StatusFound, authURL)
 }
 
 // PostIDPToken godoc
