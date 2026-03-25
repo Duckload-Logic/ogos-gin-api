@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
@@ -63,7 +62,6 @@ func (c *IDPClient) ExchangeCodeForToken(
 	if err != nil {
 		return nil, fmt.Errorf("[IDPClient] {Create Token Request}: %w", err)
 	}
-
 
 	// Update header to application/json
 	req.Header.Set("Content-Type", "application/json")
@@ -215,8 +213,6 @@ func (c *IDPClient) RefreshToken(
 
 	return &tokenResp, nil
 }
-
-
 
 // ValidateSession checks if the provided session ID is valid by calling
 // the IDP's session endpoint with the idp_session cookie.
