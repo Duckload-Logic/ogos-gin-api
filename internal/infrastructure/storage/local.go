@@ -17,7 +17,12 @@ func NewDiskStorage(baseDir string) *DiskStorage {
 	return &DiskStorage{baseDir: baseDir}
 }
 
-func (d *DiskStorage) Upload(ctx context.Context, path string, reader io.ReadSeeker, contentType string) error {
+func (d *DiskStorage) Upload(
+	ctx context.Context,
+	path string,
+	reader io.ReadSeeker,
+	contentType string,
+) error {
 	fullPath := filepath.Join(d.baseDir, filepath.FromSlash(path))
 
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0o750); err != nil {
@@ -37,7 +42,11 @@ func (d *DiskStorage) Upload(ctx context.Context, path string, reader io.ReadSee
 	return nil
 }
 
-func (d *DiskStorage) Download(ctx context.Context, path string, writer io.Writer) error {
+func (d *DiskStorage) Download(
+	ctx context.Context,
+	path string,
+	writer io.Writer,
+) error {
 	fullPath := filepath.Join(d.baseDir, filepath.FromSlash(path))
 
 	f, err := os.Open(fullPath)

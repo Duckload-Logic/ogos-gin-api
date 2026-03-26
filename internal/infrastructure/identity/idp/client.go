@@ -260,7 +260,10 @@ func (c *IDPClient) ValidateSession(
 	return &sessionResp, nil
 }
 
-func (c *IDPClient) Logout(ctx context.Context, cfg *config.Config) (*IDPLogoutResponse, error) {
+func (c *IDPClient) Logout(
+	ctx context.Context,
+	cfg *config.Config,
+) (*IDPLogoutResponse, error) {
 	url := cfg.IDPLogoutURL
 
 	req, err := http.NewRequestWithContext(

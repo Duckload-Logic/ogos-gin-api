@@ -1,4 +1,4 @@
-package database
+package datastore
 
 import (
 	"context"
@@ -31,7 +31,12 @@ func NewRedisClient(cfg *config.Config) (*RedisClient, error) {
 	return &RedisClient{Client: rdb}, nil
 }
 
-func (r *RedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+func (r *RedisClient) Set(
+	ctx context.Context,
+	key string,
+	value interface{},
+	expiration time.Duration,
+) error {
 	return r.Client.Set(ctx, key, value, expiration).Err()
 }
 
