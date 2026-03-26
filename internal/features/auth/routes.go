@@ -2,29 +2,33 @@ package auth
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
-	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
-func RegisterRoutes(rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
+func RegisterRoutes(
+	rg *gin.RouterGroup,
+	h *Handler,
+	redis *datastore.RedisClient,
+) {
 	authRoutes := rg.Group("/auth")
 	{
-		authRoutes.POST("/login", h.HandleLogin)
-		authRoutes.POST("/refresh", h.HandleRefreshToken)
+		authRoutes.POST("/login", h.PostLogin)
+		authRoutes.POST("/refresh", h.PostRefreshToken)
 		authRoutes.GET(
 			"/me",
 			middleware.AuthMiddleware(redis),
-			h.HandleGetMe,
+			h.GetMe,
 		)
 		authRoutes.POST(
 			"/logout",
 			middleware.AuthMiddleware(redis),
-			h.HandleLogout,
+			h.PostLogout,
 		)
 
 		// IDP OAuth 2.0 routes
 		authRoutes.GET("/idp/authorize", h.GetAuthorizeURL)
 		authRoutes.POST("/idp/token", h.PostIDPToken)
-		authRoutes.GET("/idp/session", h.HandleValidateIDPSession)
+		authRoutes.GET("/idp/session", h.GetIDPValidateSession)
 	}
 }

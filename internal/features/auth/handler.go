@@ -7,23 +7,28 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/clients/idp"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/identity/idp"
 )
 
 type Handler struct {
-	service    *Service
+	service    ServiceInterface
 	logService *logs.Service
 	cfg        *config.Config
 }
 
-func NewHandler(s *Service, logService *logs.Service, cfg *config.Config) *Handler {
+func NewHandler(
+	s ServiceInterface,
+	logService *logs.Service,
+	cfg *config.Config,
+) *Handler {
 	return &Handler{service: s, logService: logService, cfg: cfg}
 }
 
-// HandleLogin godoc
+// PostLogin godoc
 // @Summary      User login
 // @Description  Authenticates a user and sets JWT cookies.
 // @Tags         Auth
@@ -34,30 +39,41 @@ func NewHandler(s *Service, logService *logs.Service, cfg *config.Config) *Handl
 // @Failure      400     {object}  map[string]string
 // @Failure      401     {object}  map[string]string
 // @Router       /auth/login [post]
-func (h *Handler) HandleLogin(c *gin.Context) {
+func (h *Handler) PostLogin(c *gin.Context) {
 	var req LoginDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[HandleLogin] {Bind JSON}: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
 		return
 	}
 
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	userID, token, refreshToken, err := h.service.AuthenticateUser(c, req.Email, req.Password)
+	userID, token, refreshToken, err := h.service.AuthenticateUser(
+		c,
+		req.Email,
+		req.Password,
+	)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category:  logs.CategorySecurity,
-			Action:    logs.ActionLoginFailed,
-			Message:   fmt.Sprintf("Failed login attempt for %s: %s", req.Email, err.Error()),
+			Category: logs.CategorySecurity,
+			Action:   logs.ActionLoginFailed,
+			Message: fmt.Sprintf(
+				"Failed login attempt for %s: %s",
+				req.Email,
+				err.Error(),
+			),
 			UserID:    userID,
 			UserEmail: req.Email,
 			IPAddress: ip,
 			UserAgent: ua,
 		})
-		log.Printf("[HandleLogin] {AuthenticateUser}: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		log.Printf("[PostLogin] {AuthenticateUser}: %v", err)
+		response.SendFail(
+			c,
+			gin.H{"error": err.Error()},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -88,10 +104,10 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	})
 
 	// Optionally return user info (but no tokens)
-	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+	response.SendSuccess(c, gin.H{"message": "Login successful"})
 }
 
-// HandleRefreshToken godoc
+// PostRefreshToken godoc
 // @Summary      Refresh JWT token
 // @Description  Refreshes the JWT token using the refresh token cookie.
 // @Tags         Auth
@@ -100,7 +116,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 // @Success      200 {object} map[string]string "New access token (optional)"
 // @Failure      401 {object} map[string]string
 // @Router       /auth/refresh [post]
-func (h *Handler) HandleRefreshToken(c *gin.Context) {
+func (h *Handler) PostRefreshToken(c *gin.Context) {
 	// Try to get refresh token from cookie first
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil {
@@ -112,15 +128,23 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	}
 
 	if refreshToken == "" {
-		log.Printf("[HandleRefreshToken] {Check Token}: Refresh token missing")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication session missing or expired"})
+		log.Printf("[PostRefreshToken] {Check Token}: Refresh token missing")
+		response.SendFail(
+			c,
+			gin.H{"error": "Authentication session missing or expired"},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	newToken, newRefreshToken, err := h.service.RefreshToken(c, refreshToken, h.cfg)
+	newToken, newRefreshToken, err := h.service.RefreshToken(
+		c,
+		refreshToken,
+		h.cfg,
+	)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
 			Category:  logs.CategorySecurity,
@@ -129,8 +153,12 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 			IPAddress: ip,
 			UserAgent: ua,
 		})
-		log.Printf("[HandleRefreshToken] {RefreshToken}: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		log.Printf("[PostRefreshToken] {RefreshToken}: %v", err)
+		response.SendFail(
+			c,
+			gin.H{"error": err.Error()},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -140,13 +168,29 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 	} else {
 		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
 	}
-	c.SetCookie("access_token", newToken, int(AccessTokenTTL), "/", "", h.cfg.IsProduction, true)
-	c.SetCookie("refresh_token", newRefreshToken, int(RefreshTokenTTL), "/", "", h.cfg.IsProduction, true)
+	c.SetCookie(
+		"access_token",
+		newToken,
+		int(AccessTokenTTL),
+		"/",
+		"",
+		h.cfg.IsProduction,
+		true,
+	)
+	c.SetCookie(
+		"refresh_token",
+		newRefreshToken,
+		int(RefreshTokenTTL),
+		"/",
+		"",
+		h.cfg.IsProduction,
+		true,
+	)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Token refreshed"})
+	response.SendSuccess(c, gin.H{"message": "Token refreshed"})
 }
 
-// HandleGetMe godoc
+// GetMe godoc
 // @Summary      Get current user info
 // @Description  Retrieves information about the currently authenticated user (native or IDP).
 // @Tags         Auth
@@ -154,7 +198,7 @@ func (h *Handler) HandleRefreshToken(c *gin.Context) {
 // @Success      200 {object} MeResponse
 // @Failure      401 {object} map[string]string
 // @Router       /auth/me [get]
-func (h *Handler) HandleGetMe(c *gin.Context) {
+func (h *Handler) GetMe(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
 	accessToken, _ := c.Cookie("access_token")
 	if accessToken == "" {
@@ -165,8 +209,12 @@ func (h *Handler) HandleGetMe(c *gin.Context) {
 	}
 
 	if accessToken == "" {
-		log.Printf("[HandleGetMe] {Check Token}: Access token missing")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Access token missing"})
+		log.Printf("[GetMe] {Check Token}: Access token missing")
+		response.SendFail(
+			c,
+			gin.H{"error": "Access token missing"},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -178,21 +226,26 @@ func (h *Handler) HandleGetMe(c *gin.Context) {
 
 	resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
 	if err != nil {
-		log.Printf("[HandleGetMe] {GetMe}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user info"})
+		log.Printf("[GetMe] {GetMe}: %v", err)
+		response.SendError(
+			c,
+			"Failed to get user info",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	response.SendSuccess(c, resp)
 }
 
-// HandleLogout godoc
+// PostLogout godoc
 // @Summary      User logout
 // @Description  Invalidates the user's tokens by clearing cookies.
 // @Tags         Auth
 // @Success      200 {object} map[string]string
 // @Router       /auth/logout [post]
-func (h *Handler) HandleLogout(c *gin.Context) {
+func (h *Handler) PostLogout(c *gin.Context) {
 	// Extract token to invalidate in Redis
 	var tokenString string
 	cookie, err := c.Cookie("access_token")
@@ -209,7 +262,12 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 	tokenType, _ := c.Get("tokenType")
 
 	if tokenString != "" {
-		_ = h.service.Logout(c.Request.Context(), tokenString, tokenType.(string), h.cfg)
+		_ = h.service.Logout(
+			c.Request.Context(),
+			tokenString,
+			tokenType.(string),
+			h.cfg,
+		)
 	}
 
 	// Clear cookies
@@ -237,7 +295,7 @@ func (h *Handler) HandleLogout(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Logout successful"})
+	response.SendSuccess(c, gin.H{"message": "Logout successful"})
 }
 
 // IDP integration handlers
@@ -255,13 +313,21 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 	authURL, err := h.service.GetAuthorizeURL(h.cfg)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category:  logs.CategorySecurity,
-			Action:    logs.ActionLoginFailed,
-			Message:   fmt.Sprintf("[GetAuthorizeURL] {Generate URL}: %s", err.Error()),
+			Category: logs.CategorySecurity,
+			Action:   logs.ActionLoginFailed,
+			Message: fmt.Sprintf(
+				"[GetAuthorizeURL] {Generate URL}: %s",
+				err.Error(),
+			),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
 		})
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate authorization URL"})
+		response.SendError(
+			c,
+			"Failed to generate authorization URL",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -283,28 +349,42 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	var req idp.IDPTokenExchangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category:  logs.CategorySecurity,
-			Action:    logs.ActionLoginFailed,
-			Message:   fmt.Sprintf("[PostIDPToken] {Bind JSON}: %s", err.Error()),
+			Category: logs.CategorySecurity,
+			Action:   logs.ActionLoginFailed,
+			Message: fmt.Sprintf(
+				"[PostIDPToken] {Bind JSON}: %s",
+				err.Error(),
+			),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
 		})
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		response.SendFail(c, gin.H{"error": "Invalid request body"})
 		return
 	}
 
 	// Perform token exchange
-	accessToken, refreshToken, userID, userEmail, roleName, err := h.service.PostIDPTokenExchange(c.Request.Context(), req.Code, h.cfg)
+	accessToken, refreshToken, userID, userEmail, roleName, err := h.service.PostIDPTokenExchange(
+		c.Request.Context(),
+		req.Code,
+		h.cfg,
+	)
 	if err != nil {
 		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category:  logs.CategorySecurity,
-			Action:    logs.ActionLoginFailed,
-			Message:   fmt.Sprintf("[PostIDPToken] {Service Call}: %s", err.Error()),
+			Category: logs.CategorySecurity,
+			Action:   logs.ActionLoginFailed,
+			Message: fmt.Sprintf(
+				"[PostIDPToken] {Service Call}: %s",
+				err.Error(),
+			),
 			IPAddress: c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
 		})
 		log.Printf("[PostIDPToken] {Service Call}: %v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		response.SendFail(
+			c,
+			gin.H{"error": err.Error()},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -339,9 +419,12 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 
 	// Log success
 	h.logService.Record(c.Request.Context(), logs.LogEntry{
-		Category:  logs.CategorySecurity,
-		Action:    logs.ActionLoginSuccess,
-		Message:   fmt.Sprintf("User %s logged in successfully via IDP", userEmail),
+		Category: logs.CategorySecurity,
+		Action:   logs.ActionLoginSuccess,
+		Message: fmt.Sprintf(
+			"User %s logged in successfully via IDP",
+			userEmail,
+		),
 		UserID:    userID,
 		UserEmail: userEmail,
 		IPAddress: c.ClientIP(),
@@ -349,7 +432,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	})
 
 	// Return Message and Role info for immediate redirect
-	c.JSON(http.StatusOK, gin.H{
+	response.SendSuccess(c, gin.H{
 		"userID":    userID,
 		"userEmail": userEmail,
 		"role":      roleName,
@@ -358,7 +441,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	})
 }
 
-// HandleValidateIDPSession godoc
+// GetIDPValidateSession godoc
 // @Summary      Validate IDP session
 // @Description  Validates the current IDP session using the idp_session cookie.
 // @Tags         Auth
@@ -366,18 +449,26 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 // @Success      200 {object} map[string]string
 // @Failure      401 {object} map[string]string
 // @Router       /auth/idp/session [get]
-func (h *Handler) HandleValidateIDPSession(c *gin.Context) {
+func (h *Handler) GetIDPValidateSession(c *gin.Context) {
 	sessionID, err := c.Cookie("idp_session")
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "IDP session cookie missing"})
+		response.SendFail(
+			c,
+			gin.H{"error": "IDP session cookie missing"},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
 	resp, err := h.service.ValidateIDPSession(c, sessionID, h.cfg)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid IDP session"})
+		response.SendFail(
+			c,
+			gin.H{"error": "Invalid IDP session"},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": resp.Message})
+	response.SendSuccess(c, gin.H{"message": resp.Message})
 }
