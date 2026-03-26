@@ -22,7 +22,12 @@ import (
 
 var db *sqlx.DB
 
-var notificationTypes = []string{"System", "Appointment", "Admission Slip", "Academic"}
+var notificationTypes = []string{
+	"System",
+	"Appointment",
+	"Admission Slip",
+	"Academic",
+}
 
 // lookup slices (IDs)
 var (
@@ -234,7 +239,9 @@ func loadLookups() {
 
 	// relationship types (map by name for easy lookup)
 	relationshipTypeIDs = make(map[string]int)
-	rows, err = db.Query("SELECT id, relationship_name FROM student_relationship_types")
+	rows, err = db.Query(
+		"SELECT id, relationship_name FROM student_relationship_types",
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -271,7 +278,9 @@ func loadLookups() {
 	}
 
 	// activity options
-	rows, err = db.Query("SELECT id FROM activity_options WHERE is_active = TRUE")
+	rows, err = db.Query(
+		"SELECT id FROM activity_options WHERE is_active = TRUE",
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -296,7 +305,9 @@ func loadLookups() {
 
 	// appointment statuses
 	appointmentStatusByName = make(map[string]int)
-	rows, err = db.Query("SELECT id, name FROM statuses WHERE status_type IN ('appointment', 'both')")
+	rows, err = db.Query(
+		"SELECT id, name FROM statuses WHERE status_type IN ('appointment', 'both')",
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -312,7 +323,9 @@ func loadLookups() {
 	}
 
 	admissionSlipStatusesByName = make(map[string]int)
-	rows, err = db.Query("SELECT id, name FROM statuses WHERE status_type IN ('slip', 'both')")
+	rows, err = db.Query(
+		"SELECT id, name FROM statuses WHERE status_type IN ('slip', 'both')",
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -425,7 +438,9 @@ func createSuperAdmin() {
 	_ = userID // not needed further
 
 	tx.Commit()
-	fmt.Println("Created super admin: Super Admin (superadmin@university.edu / SuperAdmin@123)")
+	fmt.Println(
+		"Created super admin: Super Admin (superadmin@university.edu / SuperAdmin@123)",
+	)
 }
 
 // ----------------------------------------------------------------------
@@ -703,7 +718,10 @@ func deriveEmergencyContact(
 			LastName:       father.LastName,
 			Number:         validContact(father.ContactNumber),
 			RelationshipID: relationshipID("Father"),
-			AddressID:      safeAddressID(father.AddressID, provincialAddressID),
+			AddressID: safeAddressID(
+				father.AddressID,
+				provincialAddressID,
+			),
 		}
 	case "mother_guardian":
 		return emergencyContactSeed{
@@ -712,7 +730,10 @@ func deriveEmergencyContact(
 			LastName:       mother.LastName,
 			Number:         validContact(mother.ContactNumber),
 			RelationshipID: relationshipID("Mother"),
-			AddressID:      safeAddressID(mother.AddressID, provincialAddressID),
+			AddressID: safeAddressID(
+				mother.AddressID,
+				provincialAddressID,
+			),
 		}
 	case "separate_guardian":
 		return emergencyContactSeed{
@@ -721,7 +742,10 @@ func deriveEmergencyContact(
 			LastName:       guardian.LastName,
 			Number:         validContact(guardian.ContactNumber),
 			RelationshipID: relationshipID("Guardian"),
-			AddressID:      safeAddressID(guardian.AddressID, provincialAddressID),
+			AddressID: safeAddressID(
+				guardian.AddressID,
+				provincialAddressID,
+			),
 		}
 	default:
 		// no guardian: choose one of the parents as emergency contact
@@ -732,7 +756,10 @@ func deriveEmergencyContact(
 				LastName:       father.LastName,
 				Number:         validContact(father.ContactNumber),
 				RelationshipID: relationshipID("Father"),
-				AddressID:      safeAddressID(father.AddressID, residentialAddressID),
+				AddressID: safeAddressID(
+					father.AddressID,
+					residentialAddressID,
+				),
 			}
 		}
 		return emergencyContactSeed{
@@ -741,7 +768,10 @@ func deriveEmergencyContact(
 			LastName:       mother.LastName,
 			Number:         validContact(mother.ContactNumber),
 			RelationshipID: relationshipID("Mother"),
-			AddressID:      safeAddressID(mother.AddressID, residentialAddressID),
+			AddressID: safeAddressID(
+				mother.AddressID,
+				residentialAddressID,
+			),
 		}
 	}
 }
@@ -760,7 +790,11 @@ func validContact(contact sql.NullString) string {
 	return gofakeit.Phone()
 }
 
-func insertEmergencyContact(tx *sqlx.Tx, iirID string, emergency emergencyContactSeed) int {
+func insertEmergencyContact(
+	tx *sqlx.Tx,
+	iirID string,
+	emergency emergencyContactSeed,
+) int {
 	res, err := tx.Exec(`
 		INSERT INTO emergency_contacts (
 			iir_id, first_name, middle_name, last_name,
@@ -794,10 +828,21 @@ func fakePasswordHash() string {
 	return "$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq"
 }
 
-func insertPersonalInfo(tx *sqlx.Tx, iirID string, dob time.Time, studentIndex int, emergencyContactID int) {
+func insertPersonalInfo(
+	tx *sqlx.Tx,
+	iirID string,
+	dob time.Time,
+	studentIndex int,
+	emergencyContactID int,
+) {
 	studentStatus := rand.Intn(2) % 2 // 0 or 1
 	isEmployed := studentIndex%2 == 0
-	studentNumber := fmt.Sprintf("%d-%05d-TG-%d", time.Now().Year(), rand.Intn(100000), studentStatus)
+	studentNumber := fmt.Sprintf(
+		"%d-%05d-TG-%d",
+		time.Now().Year(),
+		rand.Intn(100000),
+		studentStatus,
+	)
 	var employerName, employerAddress sql.NullString
 	if isEmployed {
 		empName := gofakeit.Company()
@@ -817,24 +862,44 @@ func insertPersonalInfo(tx *sqlx.Tx, iirID string, dob time.Time, studentIndex i
 	nameSuffix := ""
 	if genderID == 1 {
 		if gofakeit.Bool() {
-			nameSuffix = gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})
+			nameSuffix = gofakeit.RandomString(
+				[]string{"Jr.", "Sr.", "III", "IV"},
+			)
 		}
 	}
 
-	_, err := tx.Exec(`
+	_, err := tx.Exec(
+		`
 		INSERT INTO student_personal_info (
 			iir_id, suffix_name, student_number, gender_id, civil_status_id, religion_id,
 			height_ft, weight_kg, complexion, high_school_gwa, course_id,
 			year_level, section, place_of_birth, date_of_birth,
 			is_employed, employer_name, employer_address, mobile_number, telephone_number
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, iirID, sql.NullString{String: nameSuffix, Valid: true}, studentNumber,
-		genderID, civilStatusID, randomChoice(religionIDs),
-		gofakeit.Float64Range(4.5, 6.5), gofakeit.Float64Range(40, 100), gofakeit.Color(),
-		gofakeit.Float64Range(75, 98), randomChoice(courseIDs),
-		rand.Intn(4)+1, rand.Intn(5)+1,
-		gofakeit.City(), dob.Format("2006-01-02"),
-		isEmployed, employerName, employerAddress, mobileNumber, telephoneNumber,
+	`,
+		iirID,
+		sql.NullString{String: nameSuffix, Valid: true},
+		studentNumber,
+		genderID,
+		civilStatusID,
+		randomChoice(religionIDs),
+		gofakeit.Float64Range(
+			4.5,
+			6.5,
+		),
+		gofakeit.Float64Range(40, 100),
+		gofakeit.Color(),
+		gofakeit.Float64Range(75, 98),
+		randomChoice(courseIDs),
+		rand.Intn(4)+1,
+		rand.Intn(5)+1,
+		gofakeit.City(),
+		dob.Format("2006-01-02"),
+		isEmployed,
+		employerName,
+		employerAddress,
+		mobileNumber,
+		telephoneNumber,
 	)
 	if err != nil {
 		log.Printf("[IIR]: %s", err)
@@ -877,12 +942,19 @@ func insertAddress(tx *sqlx.Tx) int {
 		ORDER BY RAND() LIMIT 1
 	`)
 	if err != nil {
-		log.Fatal("No cities with barangays found. Please run the address seeder first (make locations): ", err)
+		log.Fatal(
+			"No cities with barangays found. Please run the address seeder first (make locations): ",
+			err,
+		)
 	}
 
 	// Fetch a random barangay in that city
 	var barangayCode string
-	err = tx.Get(&barangayCode, "SELECT code FROM barangays WHERE city_code = ? ORDER BY RAND() LIMIT 1", cityRow.CityCode)
+	err = tx.Get(
+		&barangayCode,
+		"SELECT code FROM barangays WHERE city_code = ? ORDER BY RAND() LIMIT 1",
+		cityRow.CityCode,
+	)
 	if err != nil {
 		log.Fatal("No barangays found for city "+cityRow.CityCode+": ", err)
 	}
@@ -906,7 +978,12 @@ func insertAddress(tx *sqlx.Tx) int {
 	return int(id)
 }
 
-func insertStudentAddress(tx *sqlx.Tx, iirID string, addressID int, addrType string) {
+func insertStudentAddress(
+	tx *sqlx.Tx,
+	iirID string,
+	addressID int,
+	addrType string,
+) {
 	_, err := tx.Exec(`
 		INSERT INTO student_addresses (iir_id, address_id, address_type)
 		VALUES (?, ?, ?)
@@ -920,11 +997,23 @@ func insertRelatedPerson(tx *sqlx.Tx) relatedPersonSeed {
 	fname := gofakeit.FirstName()
 	lname := gofakeit.LastName()
 	mname := randomMiddleName()
-	dob := gofakeit.DateRange(time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC), time.Now().AddDate(-30, 0, 0))
+	dob := gofakeit.DateRange(
+		time.Date(1950, 1, 1, 0, 0, 0, 0, time.UTC),
+		time.Now().AddDate(-30, 0, 0),
+	)
 	educ := randomEducationalAttainment()
-	occupation := sql.NullString{String: gofakeit.JobTitle(), Valid: gofakeit.Bool()}
-	employer := sql.NullString{String: gofakeit.Company(), Valid: occupation.Valid}
-	employerAddr := sql.NullString{String: gofakeit.Address().Address, Valid: occupation.Valid}
+	occupation := sql.NullString{
+		String: gofakeit.JobTitle(),
+		Valid:  gofakeit.Bool(),
+	}
+	employer := sql.NullString{
+		String: gofakeit.Company(),
+		Valid:  occupation.Valid,
+	}
+	employerAddr := sql.NullString{
+		String: gofakeit.Address().Address,
+		Valid:  occupation.Valid,
+	}
 	contact := sql.NullString{String: gofakeit.Phone(), Valid: gofakeit.Bool()}
 
 	res, err := tx.Exec(`
@@ -951,11 +1040,23 @@ func insertRelatedPerson(tx *sqlx.Tx) relatedPersonSeed {
 }
 
 func randomEducationalAttainment() string {
-	levels := []string{"Elementary", "High School", "Vocational", "College", "Post Graduate"}
+	levels := []string{
+		"Elementary",
+		"High School",
+		"Vocational",
+		"College",
+		"Post Graduate",
+	}
 	return levels[rand.Intn(len(levels))]
 }
 
-func linkRelatedPerson(tx *sqlx.Tx, iirID string, personID int, relType string, isParent, isGuardian, isLiving bool) {
+func linkRelatedPerson(
+	tx *sqlx.Tx,
+	iirID string,
+	personID int,
+	relType string,
+	isParent, isGuardian, isLiving bool,
+) {
 	relID := relationshipID(relType)
 	_, err := tx.Exec(`
 		INSERT INTO student_related_persons (
@@ -982,7 +1083,10 @@ func insertFamilyBackground(tx *sqlx.Tx, iirID string) int {
 	sharing := gofakeit.Bool()
 	var shareDetails sql.NullString
 	if sharing {
-		shareDetails = sql.NullString{String: "Shares with " + gofakeit.FirstName(), Valid: true}
+		shareDetails = sql.NullString{
+			String: "Shares with " + gofakeit.FirstName(),
+			Valid:  true,
+		}
 	}
 	natureID := randomChoice(natureOfResidenceIDs)
 
@@ -1189,9 +1293,14 @@ func insertConsultations(tx *sqlx.Tx, iirID string) {
 	if rand.Float32() < 0.55 { // 55% have prior consultations
 		num := rand.Intn(3) + 1
 		for i := 0; i < num; i++ {
-			profType := randomChoice([]string{"Psychiatrist", "Psychologist", "Counselor"})
+			profType := randomChoice(
+				[]string{"Psychiatrist", "Psychologist", "Counselor"},
+			)
 			has := true
-			when := sql.NullString{String: gofakeit.Date().Format("2006-01-02"), Valid: true}
+			when := sql.NullString{
+				String: gofakeit.Date().Format("2006-01-02"),
+				Valid:  true,
+			}
 			what := sql.NullString{String: gofakeit.Sentence(8), Valid: true}
 			_, err := tx.Exec(`
 				INSERT INTO student_consultations (
@@ -1272,7 +1381,10 @@ func insertStudentFinances(tx *sqlx.Tx, iirID string) int {
 	incRangeID := randomChoice(incomeRangeIDs)
 	var otherInc sql.NullString
 	if incRangeID == 10 { // Above 50k, maybe other details
-		otherInc = sql.NullString{String: "Business income", Valid: gofakeit.Bool()}
+		otherInc = sql.NullString{
+			String: "Business income",
+			Valid:  gofakeit.Bool(),
+		}
 	}
 	allowance := gofakeit.Float64Range(100, 1500)
 
@@ -1334,7 +1446,16 @@ func insertSubjectPreferences(tx *sqlx.Tx, iirID string) {
 		return
 	}
 
-	subjects := []string{"Math", "Science", "English", "History", "PE", "Art", "Music", "Computer"}
+	subjects := []string{
+		"Math",
+		"Science",
+		"English",
+		"History",
+		"PE",
+		"Art",
+		"Music",
+		"Computer",
+	}
 	num := rand.Intn(5) + 2 // 2-6 unique subjects
 	selected := pickUniqueStrings(subjects, num)
 	fav := gofakeit.Bool()
@@ -1636,7 +1757,9 @@ func reserveAppointmentSlot() (string, int) {
 		appointmentSlotMu.Unlock()
 	}
 
-	log.Fatal("unable to reserve unique appointment slot after multiple attempts")
+	log.Fatal(
+		"unable to reserve unique appointment slot after multiple attempts",
+	)
 	return "", 0
 }
 
@@ -1761,7 +1884,10 @@ func randomAwards() sql.NullString {
 	}
 
 	if r < 0.7 {
-		return sql.NullString{String: awardPool[rand.Intn(len(awardPool))], Valid: true}
+		return sql.NullString{
+			String: awardPool[rand.Intn(len(awardPool))],
+			Valid:  true,
+		}
 	}
 
 	count := rand.Intn(3) + 2 // 2-4 awards
@@ -1823,7 +1949,14 @@ func buildDSNFromEnv() string {
 	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local",
+		user,
+		pass,
+		host,
+		port,
+		name,
+	)
 	if os.Getenv("DB_TLS") == "true" {
 		dsn += "&tls=true"
 	}
@@ -1842,12 +1975,21 @@ func createNotification(userID string) {
 
 	_, err := db.Exec(query, userID, title, message, notifType, isRead)
 	if err != nil {
-		log.Printf("[createNotification] {Insert}: failed to create notification for user %s: %v", userID, err)
+		log.Printf(
+			"[createNotification] {Insert}: failed to create notification for user %s: %v",
+			userID,
+			err,
+		)
 	}
 }
 
 func insertNotifications(tx *sqlx.Tx, userID string) {
-	notificationTypes := []string{"Appointment", "Guidance", "System", "Announcement"}
+	notificationTypes := []string{
+		"Appointment",
+		"Guidance",
+		"System",
+		"Announcement",
+	}
 
 	count := rand.Intn(3) + 3
 
@@ -1862,7 +2004,12 @@ func insertNotifications(tx *sqlx.Tx, userID string) {
             VALUES (?, ?, ?, ?, ?, NOW())
         `, userID, title, message, randomType, isRead)
 		if err != nil {
-			log.Printf("failed to insert fake notification for %s with type %s: %v", userID, randomType, err)
+			log.Printf(
+				"failed to insert fake notification for %s with type %s: %v",
+				userID,
+				randomType,
+				err,
+			)
 		}
 	}
 }

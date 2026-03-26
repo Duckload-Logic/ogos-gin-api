@@ -98,8 +98,15 @@ func (s *AddressSeeder) SeedAddresses(jsonFile string) error {
 		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
 
-	fmt.Printf("Loaded %d regions, %d provinces, %d cities, %d barangays\n",
-		len(data.Regions), len(data.Provinces), len(data.Cities), len(data.Barangays))
+	fmt.Printf(
+		"Loaded %d regions, %d provinces, %d cities, %d barangays\n",
+		len(
+			data.Regions,
+		),
+		len(data.Provinces),
+		len(data.Cities),
+		len(data.Barangays),
+	)
 
 	// Clear existing data
 	fmt.Println("Clearing existing address data...")
@@ -183,7 +190,10 @@ func (s *AddressSeeder) seedRegions(regions []PSGCRegion) error {
 		args = append(args, r.Code, r.Name)
 	}
 
-	query := "INSERT INTO regions (code, name) VALUES " + strings.Join(placeholders, ", ") +
+	query := "INSERT INTO regions (code, name) VALUES " + strings.Join(
+		placeholders,
+		", ",
+	) +
 		" ON DUPLICATE KEY UPDATE name=VALUES(name)"
 	_, err := s.db.Exec(query, args...)
 	return err
@@ -209,7 +219,10 @@ func (s *AddressSeeder) seedProvinces(provinces []PSGCProvince) error {
 			args = append(args, p.Code, p.Name, p.RegionCode)
 		}
 
-		query := "INSERT INTO provinces (code, name, region_code) VALUES " + strings.Join(placeholders, ", ") +
+		query := "INSERT INTO provinces (code, name, region_code) VALUES " + strings.Join(
+			placeholders,
+			", ",
+		) +
 			" ON DUPLICATE KEY UPDATE name=VALUES(name)"
 		if _, err := s.db.Exec(query, args...); err != nil {
 			return fmt.Errorf("failed to batch insert provinces: %w", err)
@@ -243,11 +256,23 @@ func (s *AddressSeeder) seedCities(cities []PSGCCity) error {
 				regCode = sql.NullString{String: c.RegionCode, Valid: true}
 			}
 			placeholders = append(placeholders, "(?, ?, ?, ?, ?, ?, ?)")
-			args = append(args, c.Code, c.Name, provCode, c.Type, c.ZipCode, c.District, regCode)
+			args = append(
+				args,
+				c.Code,
+				c.Name,
+				provCode,
+				c.Type,
+				c.ZipCode,
+				c.District,
+				regCode,
+			)
 		}
 
 		query := "INSERT INTO cities (code, name, province_code, `type`, zip_code, district, region_code) VALUES " +
-			strings.Join(placeholders, ", ") +
+			strings.Join(
+				placeholders,
+				", ",
+			) +
 			" ON DUPLICATE KEY UPDATE name=VALUES(name), `type`=VALUES(`type`), zip_code=VALUES(zip_code), district=VALUES(district), region_code=VALUES(region_code)"
 		if _, err := s.db.Exec(query, args...); err != nil {
 			return fmt.Errorf("failed to batch insert cities: %w", err)
@@ -304,7 +329,14 @@ func buildDSNFromEnv() string {
 	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local", user, pass, host, port, name)
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%s)/%s?parseTime=true&loc=Local",
+		user,
+		pass,
+		host,
+		port,
+		name,
+	)
 	if os.Getenv("DB_TLS") == "true" {
 		dsn += "&tls=true"
 	}

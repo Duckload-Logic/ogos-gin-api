@@ -89,8 +89,16 @@ func main() {
 		log.Fatal("failed to write file:", err)
 	}
 
-	fmt.Printf("Wrote %d regions, %d provinces, %d cities, %d barangays to %s\n",
-		len(data.Regions), len(data.Provinces), len(data.Cities), len(data.Barangays), outFile)
+	fmt.Printf(
+		"Wrote %d regions, %d provinces, %d cities, %d barangays to %s\n",
+		len(
+			data.Regions,
+		),
+		len(data.Provinces),
+		len(data.Cities),
+		len(data.Barangays),
+		outFile,
+	)
 }
 
 // fetchJSON performs a GET with retry on 429.
@@ -109,14 +117,23 @@ func fetchJSON(url string, target interface{}) error {
 		if resp.StatusCode == http.StatusTooManyRequests {
 			resp.Body.Close()
 			backoff := time.Duration(2<<uint(attempt)) * time.Second
-			fmt.Printf("  Rate limited, retrying in %v (attempt %d/%d)\n", backoff, attempt+1, maxRetries)
+			fmt.Printf(
+				"  Rate limited, retrying in %v (attempt %d/%d)\n",
+				backoff,
+				attempt+1,
+				maxRetries,
+			)
 			time.Sleep(backoff)
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			return fmt.Errorf("unexpected status %d for %s", resp.StatusCode, url)
+			return fmt.Errorf(
+				"unexpected status %d for %s",
+				resp.StatusCode,
+				url,
+			)
 		}
 
 		body, err := io.ReadAll(resp.Body)
@@ -196,7 +213,11 @@ func fetchAll() (*PSGCData, error) {
 	for _, prov := range data.Provinces {
 		var cities []apiCity
 		if err := fetchJSON(fmt.Sprintf("%s/provinces/%s/cities-municipalities", psgcBaseURL, prov.Code), &cities); err != nil {
-			fmt.Printf("  Warning: cities for province %s: %v\n", prov.Code, err)
+			fmt.Printf(
+				"  Warning: cities for province %s: %v\n",
+				prov.Code,
+				err,
+			)
 			continue
 		}
 		for _, c := range cities {
