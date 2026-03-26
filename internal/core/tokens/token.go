@@ -16,13 +16,20 @@ type Service struct {
 func NewService() *Service {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		log.Printf("[WARNING] {NewService}: JWT_SECRET is empty. Signing will fail.")
+		log.Printf(
+			"[WARNING] {NewService}: JWT_SECRET is empty. Signing will fail.",
+		)
 	}
 	return &Service{secret: []byte(secret)}
 }
 
 func (s *Service) GenerateToken(
-	userEmail string, userID string, roleID int, roleName string, tokenType string, expireMinutes int,
+	userEmail string,
+	userID string,
+	roleID int,
+	roleName string,
+	tokenType string,
+	expireMinutes int,
 ) (string, *Claims, error) {
 	claims := &Claims{
 		UserEmail: userEmail,
