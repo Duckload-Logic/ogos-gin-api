@@ -20,7 +20,7 @@ func NewDiskStorage(baseDir string) *DiskStorage {
 func (d *DiskStorage) Upload(ctx context.Context, path string, reader io.ReadSeeker, contentType string) error {
 	fullPath := filepath.Join(d.baseDir, filepath.FromSlash(path))
 
-	if err := os.MkdirAll(filepath.Dir(fullPath), 0750); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o750); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 

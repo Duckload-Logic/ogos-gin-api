@@ -48,8 +48,7 @@ func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsReque
 	}
 
 	if req.GenderID != 0 {
-		query +=
-			" AND sp.gender_id = ?"
+		query += " AND sp.gender_id = ?"
 		args = append(args, req.GenderID)
 	}
 

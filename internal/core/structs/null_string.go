@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 )
 
-type NullableString sql.NullString
-type NullableInt64 sql.NullInt64
+type (
+	NullableString sql.NullString
+	NullableInt64  sql.NullInt64
+)
 
 func (ns *NullableString) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {

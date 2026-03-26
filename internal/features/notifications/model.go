@@ -4,7 +4,7 @@ import "time"
 
 type NotificationModel struct {
 	ID        int       `db:"id" json:"id"`
-	UserID    string    `db:"user_id" json:"userId"` 
+	UserID    string    `db:"user_id" json:"userId"`
 	Title     string    `db:"title" json:"title"`
 	Message   string    `db:"message" json:"message"`
 	Type      string    `db:"type" json:"type"`

@@ -3,7 +3,7 @@ package auth
 type TTL int
 
 const (
-	AccessTokenTTL  TTL = 60 * 60     // 1 hour
+	AccessTokenTTL  TTL = 60 * 60      // 1 hour
 	RefreshTokenTTL TTL = 60 * 60 * 12 // 12 hours
 )
 

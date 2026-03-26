@@ -2,6 +2,7 @@ package analytics
 
 import (
 	"context"
+
 	"github.com/jmoiron/sqlx"
 )
 
@@ -82,6 +83,7 @@ func (r *Repository) GetCityAddressStats(ctx context.Context) ([]AggregatedStatM
 		GROUP BY category;`
 	return r.executeStatQuery(ctx, query)
 }
+
 // --- FAMILY & FINANCIAL BACKGROUND ---
 
 func (r *Repository) GetMonthlyIncomeStats(ctx context.Context) ([]AggregatedStatModel, error) {
@@ -294,7 +296,7 @@ func (r *Repository) getSchoolTypeStats(ctx context.Context, levelName string) (
 		LEFT JOIN genders g ON spi.gender_id = g.id
 		WHERE el.name = ?
 		GROUP BY category;`
-	
+
 	stats := make([]AggregatedStatModel, 0)
 	err := r.db.SelectContext(ctx, &stats, query, levelName)
 	return stats, err
@@ -313,7 +315,7 @@ func (r *Repository) getParentEducationStats(ctx context.Context, parentType str
 		LEFT JOIN educational_levels ed ON (CASE WHEN ? = 'Father' THEN fb.father_education_id ELSE fb.mother_education_id END) = ed.id
 		LEFT JOIN genders g ON spi.gender_id = g.id
 		GROUP BY category;`
-	
+
 	stats := make([]AggregatedStatModel, 0)
 	err := r.db.SelectContext(ctx, &stats, query, parentType)
 	return stats, err

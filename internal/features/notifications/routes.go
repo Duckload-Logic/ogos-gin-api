@@ -9,19 +9,19 @@ import (
 )
 
 func RegisterRoutes(db *sqlx.DB, rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
-    routes := rg.Group("/notifications")
-    routes.Use(middleware.AuthMiddleware(redis))
+	routes := rg.Group("/notifications")
+	routes.Use(middleware.AuthMiddleware(redis))
 
-    userResourceLookup := middleware.OwnershipMiddleware(db, "userId")
+	userResourceLookup := middleware.OwnershipMiddleware(db, "userId")
 
-    userRoutes := routes.Group("/")
-    userRoutes.Use(middleware.RoleMiddleware(
-        int(constants.StudentRoleID),
-        int(constants.CounselorRoleID),
-    ))
-    {
-        userRoutes.GET("/:userId", userResourceLookup, h.GetUserNotifications)
-        
-        userRoutes.PATCH("/:id/read", h.MarkAsRead) 
-    }
+	userRoutes := routes.Group("/")
+	userRoutes.Use(middleware.RoleMiddleware(
+		int(constants.StudentRoleID),
+		int(constants.CounselorRoleID),
+	))
+	{
+		userRoutes.GET("/:userId", userResourceLookup, h.GetUserNotifications)
+
+		userRoutes.PATCH("/:id/read", h.MarkAsRead)
+	}
 }

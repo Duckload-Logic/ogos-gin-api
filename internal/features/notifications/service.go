@@ -33,7 +33,7 @@ func (s *Service) GetUserNotifications(ctx context.Context, userID string) ([]No
 	for _, m := range models {
 		dtos = append(dtos, NotificationDTO{
 			ID:        uint(m.ID),
-			UserID:    m.UserID, 
+			UserID:    m.UserID,
 			Title:     m.Title,
 			Message:   m.Message,
 			Type:      m.Type,

@@ -85,7 +85,7 @@ func main() {
 		log.Fatal("failed to marshal JSON:", err)
 	}
 
-	if err := os.WriteFile(outFile, blob, 0644); err != nil {
+	if err := os.WriteFile(outFile, blob, 0o644); err != nil {
 		log.Fatal("failed to write file:", err)
 	}
 

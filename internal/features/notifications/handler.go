@@ -31,7 +31,7 @@ func (h *Handler) GetUserNotifications(c *gin.Context) {
 	data := ListNotificationsResponse{
 		Notifications: notifications,
 		Total:         len(notifications),
-		Page:          1, 
+		Page:          1,
 		PageSize:      len(notifications),
 		TotalPages:    1,
 	}
