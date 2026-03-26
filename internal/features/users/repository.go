@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Repository struct {
@@ -33,7 +33,7 @@ func (r *Repository) GetUserByID(
 		FROM users
 		WHERE id = ?
 		LIMIT 1
-	`, database.GetColumns(User{}))
+	`, datastore.GetColumns(User{}))
 
 	err := r.db.GetContext(ctx, &user, query, userID)
 	if err != nil {
@@ -51,7 +51,7 @@ func (r *Repository) GetRoleByID(
 		SELECT %s
 		FROM user_roles
 		WHERE id = ?
-	`, database.GetColumns(Role{}))
+	`, datastore.GetColumns(Role{}))
 	err := r.db.GetContext(ctx, &role, query, roleID)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (r *Repository) GetUserByEmail(
 		FROM users
 		WHERE email = ? AND auth_type = ?
 		LIMIT 1
-	`, database.GetColumns(User{}))
+	`, datastore.GetColumns(User{}))
 
 	err := r.db.GetContext(ctx, &user, query, email, authType)
 	if err != nil {
@@ -89,12 +89,15 @@ func (r *Repository) GetUserByEmail(
 func (r *Repository) CreateUser(
 	ctx context.Context, user User,
 ) error {
-	err := database.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
 		// id is the primary key, we should NOT update it on duplicate
 		// password_hash might be empty for IDP users, we don't want to overwrite it
 		exclude := []string{"updated_at", "password_hash"}
-		cols, vals := database.GetInsertStatement(User{}, exclude)
-		onDuplicateKeyStmt := database.GetOnDuplicateKeyUpdateStatement(User{}, exclude)
+		cols, vals := datastore.GetInsertStatement(User{}, exclude)
+		onDuplicateKeyStmt := datastore.GetOnDuplicateKeyUpdateStatement(
+			User{},
+			exclude,
+		)
 		query := fmt.Sprintf(`
 			INSERT INTO users (id, %s)
 			VALUES (:id, %s)

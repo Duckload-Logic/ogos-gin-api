@@ -5,13 +5,15 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+// NewHandler creates a new users handler.
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
@@ -21,7 +23,7 @@ func NewHandler(service *Service) *Handler {
 // |                                      |
 // ========================================
 
-// HandleGetCurrentUser godoc
+// GetMe godoc
 // @Summary      Get current user
 // @Description  Retrieves information about the currently authenticated user.
 // @Tags         Users
@@ -30,23 +32,26 @@ func NewHandler(service *Service) *Handler {
 // @Success      200      {object}  GetUserResponse        "Returns current user details"
 // @Failure      500      {object}  map[string]string     "Failed to get current user"
 // @Router       /users/me [get]
-func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
+// GetMe retrieves the currently authenticated user's information.
+func (h *Handler) GetMe(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
 
 	resp, err := h.service.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
-		log.Printf("[HandleGetCurrentUser] {GetUserByID}: %v", err)
-		c.JSON(
+		log.Printf("[GetMe] {GetUserByID}: %v", err)
+		response.SendError(
+			c,
+			"Failed to get current user",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to get current user"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	response.SendSuccess(c, resp)
 }
 
-// HandleGetUserByEmail godoc
+// GetUserByEmail godoc
 // @Summary      Get user by email
 // @Description  Retrieves user information based on the provided email.
 // @Tags         Users
@@ -57,12 +62,15 @@ func (h *Handler) HandleGetCurrentUser(c *gin.Context) {
 // @Failure      400      {object}  map[string]string     "Email query parameter is required"
 // @Failure      500      {object}  map[string]string     "Failed to get user by email"
 // @Router       /users [get]
-func (h *Handler) HandleGetUserByEmail(c *gin.Context) {
+// GetUserByEmail retrieves user information by their email address.
+func (h *Handler) GetUserByEmail(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
-		log.Printf("[HandleGetUserByEmail] {Check Query Email}: Email query parameter is required")
-		c.JSON(
-			http.StatusBadRequest,
+		log.Printf(
+			"[GetUserByEmail] {Check Query Email}: Email query parameter is required",
+		)
+		response.SendFail(
+			c,
 			gin.H{"error": "Email query parameter is required"},
 		)
 		return
@@ -72,13 +80,15 @@ func (h *Handler) HandleGetUserByEmail(c *gin.Context) {
 
 	resp, err := h.service.GetUserByEmail(c.Request.Context(), email, authType)
 	if err != nil {
-		log.Printf("[HandleGetUserByEmail] {GetUserByEmail}: %v", err)
-		c.JSON(
+		log.Printf("[GetUserByEmail] {GetUserByEmail}: %v", err)
+		response.SendError(
+			c,
+			"Failed to get user by email",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to get user by email"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	response.SendSuccess(c, resp)
 }

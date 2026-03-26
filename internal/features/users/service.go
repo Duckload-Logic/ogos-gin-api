@@ -7,13 +7,15 @@ import (
 )
 
 type Service struct {
-	repo *Repository
+	repo RepositoryInterface
 }
 
-func NewService(repo *Repository) *Service {
+// NewService creates a new users service.
+func NewService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
 }
 
+// GetUserByID retrieves a user by their ID.
 func (s *Service) GetUserByID(
 	ctx context.Context, userID string,
 ) (*GetUserResponse, error) {
@@ -25,6 +27,7 @@ func (s *Service) GetUserByID(
 	return s.mapUserModelToResponse(user), nil
 }
 
+// GetUserByEmail retrieves a user by their email and auth type.
 func (s *Service) GetUserByEmail(
 	ctx context.Context, email string, authType string,
 ) (*GetUserResponse, error) {

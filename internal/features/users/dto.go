@@ -14,10 +14,10 @@ type GetUserResponse struct {
 }
 
 type CreateUserRequest struct {
-	RoleID     int    `json:"roleId" binding:"required"`
-	FirstName  string `json:"firstName" binding:"required"`
+	RoleID     int    `json:"roleId"     binding:"required"`
+	FirstName  string `json:"firstName"  binding:"required"`
 	MiddleName string `json:"middleName"`
-	LastName   string `json:"lastName" binding:"required"`
-	Email      string `json:"email" binding:"required,email"`
-	Password   string `json:"password" binding:"required,min=8"`
+	LastName   string `json:"lastName"   binding:"required"`
+	Email      string `json:"email"      binding:"required,email"`
+	Password   string `json:"password"   binding:"required,min=8"`
 }
