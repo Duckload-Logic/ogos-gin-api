@@ -8,13 +8,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+// NewHandler creates a new slips handler.
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
@@ -22,21 +24,13 @@ func NewHandler(service *Service) *Handler {
 func getIIRIDFromContext(c *gin.Context) (string, bool) {
 	iirIDVal, exists := c.Get("iirID")
 	if !exists {
-		c.JSON(
-			http.StatusForbidden,
-			gin.H{
-				"error": "Please complete your IIR profile",
-			},
-		)
+		response.SendFail(c, gin.H{"error": "Please complete your IIR profile"}, http.StatusForbidden)
 		return "", false
 	}
 
 	iirID, ok := iirIDVal.(string)
 	if !ok {
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Internal server error"},
-		)
+		response.SendError(c, "Internal server error", http.StatusInternalServerError, nil)
 		return "", false
 	}
 
@@ -58,6 +52,7 @@ func getIIRIDFromContext(c *gin.Context) (string, bool) {
 // @Failure      403         {object} map[string]string
 // @Failure      500         {object} map[string]string
 // @Router       /slips [post]
+// PostSlip handles the submission of student excuse slips.
 func (h *Handler) PostSlip(c *gin.Context) {
 	iirID, ok := getIIRIDFromContext(c)
 	if !ok {
@@ -66,32 +61,20 @@ func (h *Handler) PostSlip(c *gin.Context) {
 
 	var req CreateSlipRequest
 	if err := c.ShouldBind(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid request format"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
 		return
 	}
 
 	form, err := c.MultipartForm()
 	if err != nil {
-		log.Printf(
-			"[PostSlip] {Parse Multipart Form}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Failed to parse form"},
-		)
+		log.Printf("[PostSlip] {Parse Multipart Form}: %v", err)
+		response.SendFail(c, gin.H{"error": "Failed to parse form"})
 		return
 	}
 
 	files := form.File["files"]
 	if len(files) == 0 {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "At least one file required"},
-		)
+		response.SendFail(c, gin.H{"error": "At least one file required"})
 		return
 	}
 
@@ -102,21 +85,15 @@ func (h *Handler) PostSlip(c *gin.Context) {
 		files,
 	)
 	if err != nil {
-		log.Printf(
-			"[PostSlip] {Submit Excuse Slip}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to submit slip"},
-		)
+		log.Printf("[PostSlip] {Submit Excuse Slip}: %v", err)
+		response.SendError(c, "Failed to submit slip", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.SendSuccess(c, gin.H{
 		"message": "Excuse slip submitted successfully",
 		"slipId":  slip.ID,
-	})
+	}, http.StatusCreated)
 }
 
 // GetUrgentSlipList godoc
@@ -130,10 +107,7 @@ func (h *Handler) PostSlip(c *gin.Context) {
 func (h *Handler) GetUrgentSlipList(c *gin.Context) {
 	var req ListSlipRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
@@ -142,18 +116,12 @@ func (h *Handler) GetUrgentSlipList(c *gin.Context) {
 		&req,
 	)
 	if err != nil {
-		log.Printf(
-			"[GetUrgentSlipList] {Fetch Urgent Slips}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve slips"},
-		)
+		log.Printf("[GetUrgentSlipList] {Fetch Urgent Slips}: %v", err)
+		response.SendError(c, "Failed to retrieve slips", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, slips)
+	response.SendSuccess(c, slips)
 }
 
 // GetSlipStatsList godoc
@@ -167,10 +135,7 @@ func (h *Handler) GetUrgentSlipList(c *gin.Context) {
 func (h *Handler) GetSlipStatsList(c *gin.Context) {
 	var req ListSlipRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
@@ -191,18 +156,12 @@ func (h *Handler) GetSlipStatsList(c *gin.Context) {
 		&req,
 	)
 	if err != nil {
-		log.Printf(
-			"[GetSlipStatsList] {Fetch Slip Stats}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve statistics"},
-		)
+		log.Printf("[GetSlipStatsList] {Fetch Slip Stats}: %v", err)
+		response.SendError(c, "Failed to retrieve statistics", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, stats)
+	response.SendSuccess(c, stats)
 }
 
 // GetSlipStatusList godoc
@@ -218,18 +177,12 @@ func (h *Handler) GetSlipStatusList(c *gin.Context) {
 		c.Request.Context(),
 	)
 	if err != nil {
-		log.Printf(
-			"[GetSlipStatusList] {Fetch Statuses}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve statuses"},
-		)
+		log.Printf("[GetSlipStatusList] {Fetch Statuses}: %v", err)
+		response.SendError(c, "Failed to retrieve statuses", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, statuses)
+	response.SendSuccess(c, statuses)
 }
 
 // GetSlipCategoryList godoc
@@ -245,18 +198,12 @@ func (h *Handler) GetSlipCategoryList(c *gin.Context) {
 		c.Request.Context(),
 	)
 	if err != nil {
-		log.Printf(
-			"[GetSlipCategoryList] {Fetch Categories}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve categories"},
-		)
+		log.Printf("[GetSlipCategoryList] {Fetch Categories}: %v", err)
+		response.SendError(c, "Failed to retrieve categories", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, categories)
+	response.SendSuccess(c, categories)
 }
 
 // GetSlipList godoc
@@ -270,10 +217,7 @@ func (h *Handler) GetSlipCategoryList(c *gin.Context) {
 func (h *Handler) GetSlipList(c *gin.Context) {
 	var req ListSlipRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
@@ -282,18 +226,12 @@ func (h *Handler) GetSlipList(c *gin.Context) {
 		req,
 	)
 	if err != nil {
-		log.Printf(
-			"[GetSlipList] {Fetch All Slips}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve slips"},
-		)
+		log.Printf("[GetSlipList] {Fetch All Slips}: %v", err)
+		response.SendError(c, "Failed to retrieve slips", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, slips)
+	response.SendSuccess(c, slips)
 }
 
 // GetSlipListByIIR godoc
@@ -313,10 +251,7 @@ func (h *Handler) GetSlipListByIIR(c *gin.Context) {
 
 	var req ListSlipRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
@@ -326,18 +261,12 @@ func (h *Handler) GetSlipListByIIR(c *gin.Context) {
 		req,
 	)
 	if err != nil {
-		log.Printf(
-			"[GetSlipListByIIR] {Fetch Slips by IIR}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve slips"},
-		)
+		log.Printf("[GetSlipListByIIR] {Fetch Slips by IIR}: %v", err)
+		response.SendError(c, "Failed to retrieve slips", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, slips)
+	response.SendSuccess(c, slips)
 }
 
 // GetSlipAttachmentList godoc
@@ -357,18 +286,12 @@ func (h *Handler) GetSlipAttachmentList(c *gin.Context) {
 		idParam,
 	)
 	if err != nil {
-		log.Printf(
-			"[GetSlipAttachmentList] {Fetch Attachments}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve attachments"},
-		)
+		log.Printf("[GetSlipAttachmentList] {Fetch Attachments}: %v", err)
+		response.SendError(c, "Failed to retrieve attachments", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, attachments)
+	response.SendSuccess(c, attachments)
 }
 
 // GetAttachmentFile godoc
@@ -389,24 +312,12 @@ func (h *Handler) GetAttachmentFile(c *gin.Context) {
 		c.Writer,
 	)
 	if err != nil {
-		if strings.Contains(
-			err.Error(),
-			"attachment not found",
-		) {
-			c.JSON(
-				http.StatusNotFound,
-				gin.H{"error": "Attachment not found"},
-			)
+		if strings.Contains(err.Error(), "attachment not found") {
+			response.SendFail(c, gin.H{"error": "Attachment not found"}, http.StatusNotFound)
 			return
 		}
-		log.Printf(
-			"[GetAttachmentFile] {Download Attachment}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to download file"},
-		)
+		log.Printf("[GetAttachmentFile] {Download Attachment}: %v", err)
+		response.SendError(c, "Failed to download file", http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -433,10 +344,7 @@ func (h *Handler) PatchSlipStatus(c *gin.Context) {
 	idParam := c.Param("id")
 	var req UpdateStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid request format"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
 		return
 	}
 
@@ -448,34 +356,17 @@ func (h *Handler) PatchSlipStatus(c *gin.Context) {
 	)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			c.JSON(
-				http.StatusNotFound,
-				gin.H{"error": "Slip not found"},
-			)
+			response.SendFail(c, gin.H{"error": "Slip not found"}, http.StatusNotFound)
 			return
 		}
-		if strings.Contains(
-			err.Error(),
-			"invalid status",
-		) {
-			c.JSON(
-				http.StatusBadRequest,
-				gin.H{"error": err.Error()},
-			)
+		if strings.Contains(err.Error(), "invalid status") {
+			response.SendFail(c, gin.H{"error": err.Error()})
 			return
 		}
-		log.Printf(
-			"[PatchSlipStatus] {Update Status}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to update status"},
-		)
+		log.Printf("[PatchSlipStatus] {Update Status}: %v", err)
+		response.SendError(c, "Failed to update status", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Status updated successfully",
-	})
+	response.SendSuccess(c, gin.H{"message": "Status updated successfully"})
 }

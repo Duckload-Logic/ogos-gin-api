@@ -14,21 +14,25 @@ import (
 	"github.com/google/uuid"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
 const MaxFileSize = 5 * 1024 * 1024 // 5MB limit
 
 type Service struct {
-	repo       *Repository
+	repo       RepositoryInterface
 	logService *logs.Service
 	storage    storage.FileStorage
 }
 
-func NewService(repo *Repository, logService *logs.Service, storage storage.FileStorage) *Service {
+func NewService(
+	repo RepositoryInterface,
+	logService *logs.Service,
+	storage storage.FileStorage,
+) *Service {
 	return &Service{repo: repo, logService: logService, storage: storage}
 }
 
@@ -40,7 +44,9 @@ func (s *Service) GetSlipStatuses(ctx context.Context) ([]SlipStatus, error) {
 	return statuses, nil
 }
 
-func (s *Service) GetSlipCategories(ctx context.Context) ([]SlipCategory, error) {
+func (s *Service) GetSlipCategories(
+	ctx context.Context,
+) ([]SlipCategory, error) {
 	categories, err := s.repo.GetSlipCategories(ctx)
 	if err != nil {
 		return nil, err
@@ -48,16 +54,11 @@ func (s *Service) GetSlipCategories(ctx context.Context) ([]SlipCategory, error)
 	return categories, nil
 }
 
-func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*ListSlipsDTO, error) {
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.Page > 100 {
-		req.PageSize = 100
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 12
-	}
+func (s *Service) GetUrgentSlips(
+	ctx context.Context,
+	req *ListSlipRequest,
+) (*ListSlipsDTO, error) {
+	req.SetDefaults("urgency_score")
 
 	slips, err := s.repo.GetUrgentSlips(ctx, req)
 	if err != nil {
@@ -103,15 +104,10 @@ func (s *Service) GetUrgentSlips(ctx context.Context, req *ListSlipRequest) (*Li
 		return nil, fmt.Errorf("failed to get slips count: %w", err)
 	}
 
-	listSlipDTO := ListSlipsDTO{
-		Slips:      slipDTOs,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: (total + req.PageSize - 1) / req.PageSize,
-	}
-
-	return &listSlipDTO, nil
+	return &ListSlipsDTO{
+		Slips: slipDTOs,
+		Meta:  structs.CalculateMetadata(total, req.Page, req.PageSize),
+	}, nil
 }
 
 func (s *Service) GetSlipStats(
@@ -127,17 +123,11 @@ func (s *Service) GetSlipStats(
 	return stats, nil
 }
 
-func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*ListSlipsDTO, error) {
-	// 1. Get raw data from repository
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	if req.PageSize > 100 {
-		req.PageSize = 100
-	}
+func (s *Service) GetAllExcuseSlips(
+	ctx context.Context,
+	req ListSlipRequest,
+) (*ListSlipsDTO, error) {
+	req.SetDefaults("created_at")
 
 	slips, err := s.repo.GetAll(ctx, &req)
 	if err != nil {
@@ -182,15 +172,10 @@ func (s *Service) GetAllExcuseSlips(ctx context.Context, req ListSlipRequest) (*
 		return nil, fmt.Errorf("failed to get slips count: %w", err)
 	}
 
-	listSlipsDTO := ListSlipsDTO{
-		Slips:      slipDTOs,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: (total + req.PageSize - 1) / req.PageSize,
-	}
-
-	return &listSlipsDTO, nil
+	return &ListSlipsDTO{
+		Slips: slipDTOs,
+		Meta:  structs.CalculateMetadata(total, req.Page, req.PageSize),
+	}, nil
 }
 
 func (s *Service) GetExcuseSlipsByIIRID(
@@ -198,15 +183,7 @@ func (s *Service) GetExcuseSlipsByIIRID(
 	iirID string,
 	req ListSlipRequest,
 ) (*ListSlipsDTO, error) {
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-	if req.PageSize > 100 {
-		req.PageSize = 100
-	}
+	req.SetDefaults("created_at")
 
 	slips, err := s.repo.GetByIIRID(ctx, iirID, &req)
 	if err != nil {
@@ -254,19 +231,16 @@ func (s *Service) GetExcuseSlipsByIIRID(
 		)
 	}
 
-	var listSlipsDTO ListSlipsDTO
-	listSlipsDTO = ListSlipsDTO{
-		Slips:      slipDTOs,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: (total + req.PageSize - 1) / req.PageSize,
-	}
-
-	return &listSlipsDTO, nil
+	return &ListSlipsDTO{
+		Slips: slipDTOs,
+		Meta:  structs.CalculateMetadata(total, req.Page, req.PageSize),
+	}, nil
 }
 
-func (s *Service) GetSlipAttachments(ctx context.Context, slipID string) ([]AttachmentDTO, error) {
+func (s *Service) GetSlipAttachments(
+	ctx context.Context,
+	slipID string,
+) ([]AttachmentDTO, error) {
 	attachments, err := s.repo.GetSlipAttachments(ctx, slipID)
 	if err != nil {
 		return nil, err
@@ -286,7 +260,10 @@ func (s *Service) GetSlipAttachments(ctx context.Context, slipID string) ([]Atta
 	return attachmentDTOs, nil
 }
 
-func (s *Service) GetAttachmentFile(ctx context.Context, attachmentID string) (*SlipAttachment, error) {
+func (s *Service) GetAttachmentFile(
+	ctx context.Context,
+	attachmentID string,
+) (*SlipAttachment, error) {
 	attachment, err := s.repo.GetAttachmentByID(ctx, attachmentID)
 	if err != nil {
 		return nil, err
@@ -449,7 +426,11 @@ func (s *Service) SubmitExcuseSlip(
 	return slip, nil
 }
 
-func (s *Service) uploadToBlob(ctx context.Context, fileHeader *multipart.FileHeader, blobPath string) error {
+func (s *Service) uploadToBlob(
+	ctx context.Context,
+	fileHeader *multipart.FileHeader,
+	blobPath string,
+) error {
 	src, err := fileHeader.Open()
 	if err != nil {
 		return err
@@ -468,7 +449,11 @@ func (s *Service) uploadToBlob(ctx context.Context, fileHeader *multipart.FileHe
 }
 
 // DownloadAttachment streams the attachment from Azure Blob Storage.
-func (s *Service) DownloadAttachment(ctx context.Context, attachmentID string, writer io.Writer) (*SlipAttachment, error) {
+func (s *Service) DownloadAttachment(
+	ctx context.Context,
+	attachmentID string,
+	writer io.Writer,
+) (*SlipAttachment, error) {
 	attachment, err := s.repo.GetAttachmentByID(ctx, attachmentID)
 	if err != nil {
 		return nil, err
@@ -487,7 +472,12 @@ func (s *Service) DownloadAttachment(ctx context.Context, attachmentID string, w
 	return attachment, nil
 }
 
-func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id string, newStatus string, adminNotes string) error {
+func (s *Service) UpdateExcuseSlipStatus(
+	ctx context.Context,
+	id string,
+	newStatus string,
+	adminNotes string,
+) error {
 	validStatuses := map[string]bool{
 		"Pending":      true,
 		"Approved":     true,
@@ -496,7 +486,9 @@ func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id string, newStat
 	}
 
 	if !validStatuses[newStatus] {
-		return fmt.Errorf("invalid status: must be 'Pending', 'Approved', 'Rejected', or 'For Revision'")
+		return fmt.Errorf(
+			"invalid status: must be 'Pending', 'Approved', 'Rejected', or 'For Revision'",
+		)
 	}
 
 	// Fetch old state for audit trail
@@ -509,9 +501,14 @@ func (s *Service) UpdateExcuseSlipStatus(ctx context.Context, id string, newStat
 
 	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
 	s.logService.Record(ctx, logs.LogEntry{
-		Category:  logs.CategoryAudit,
-		Action:    logs.ActionSlipStatusUpdated,
-		Message:   fmt.Sprintf("Excuse slip #%s status changed to '%s' by %s", id, newStatus, auditUserEmail),
+		Category: logs.CategoryAudit,
+		Action:   logs.ActionSlipStatusUpdated,
+		Message: fmt.Sprintf(
+			"Excuse slip #%s status changed to '%s' by %s",
+			id,
+			newStatus,
+			auditUserEmail,
+		),
 		UserID:    auditUserID,
 		UserEmail: auditUserEmail,
 		IPAddress: ipAddress,
