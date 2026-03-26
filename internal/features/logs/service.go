@@ -11,10 +11,10 @@ import (
 )
 
 type Service struct {
-	repo *Repository
+	repo RepositoryInterface
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
 }
 
@@ -33,14 +33,26 @@ func NewService(repo *Repository) *Service {
 //	})
 func (s *Service) Record(ctx context.Context, entry LogEntry) {
 	sysLog := &SystemLog{
-		Category:  entry.Category,
-		Action:    entry.Action,
-		Message:   entry.Message,
-		UserID:    sql.NullString{String: entry.UserID, Valid: entry.UserID != ""},
-		UserEmail: sql.NullString{String: entry.UserEmail, Valid: entry.UserEmail != ""},
-		IPAddress: sql.NullString{String: entry.IPAddress, Valid: entry.IPAddress != ""},
-		UserAgent: sql.NullString{String: entry.UserAgent, Valid: entry.UserAgent != ""},
-		Metadata:  toNullString(entry.Metadata),
+		Category: entry.Category,
+		Action:   entry.Action,
+		Message:  entry.Message,
+		UserID: sql.NullString{
+			String: entry.UserID,
+			Valid:  entry.UserID != "",
+		},
+		UserEmail: sql.NullString{
+			String: entry.UserEmail,
+			Valid:  entry.UserEmail != "",
+		},
+		IPAddress: sql.NullString{
+			String: entry.IPAddress,
+			Valid:  entry.IPAddress != "",
+		},
+		UserAgent: sql.NullString{
+			String: entry.UserAgent,
+			Valid:  entry.UserAgent != "",
+		},
+		Metadata: toNullString(entry.Metadata),
 	}
 
 	if err := s.repo.Record(ctx, sysLog); err != nil {
@@ -51,7 +63,11 @@ func (s *Service) Record(ctx context.Context, entry LogEntry) {
 
 // RecordSecurity is a convenience method that satisfies the middleware.SecurityLogger interface.
 // It records a security-category log entry with the given fields.
-func (s *Service) RecordSecurity(ctx context.Context, userEmail, action, message, ipAddress, userAgent string, userID string) {
+func (s *Service) RecordSecurity(
+	ctx context.Context,
+	userEmail, action, message, ipAddress, userAgent string,
+	userID string,
+) {
 	s.Record(ctx, LogEntry{
 		Category:  CategorySecurity,
 		Action:    action,
@@ -64,19 +80,11 @@ func (s *Service) RecordSecurity(ctx context.Context, userEmail, action, message
 }
 
 // ListLogs returns a paginated list of system logs with filters
-func (s *Service) ListLogs(ctx context.Context, req ListSystemLogsRequest) (*ListSystemLogsDTO, error) {
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-	if req.PageSize <= 0 {
-		req.PageSize = 20
-	}
-	if req.PageSize > 100 {
-		req.PageSize = 100
-	}
-	if req.OrderBy == "" {
-		req.OrderBy = "created_at"
-	}
+func (s *Service) ListLogs(
+	ctx context.Context,
+	req ListSystemLogsRequest,
+) (*ListSystemLogsDTO, error) {
+	req.SetDefaults("created_at")
 
 	results, err := s.repo.List(
 		ctx,
@@ -100,16 +108,16 @@ func (s *Service) ListLogs(ctx context.Context, req ListSystemLogsRequest) (*Lis
 	}
 
 	return &ListSystemLogsDTO{
-		Logs:       dtos,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: (total + req.PageSize - 1) / req.PageSize,
+		Logs: dtos,
+		Meta: structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}, nil
 }
 
 // GetStats returns log counts by category
-func (s *Service) GetStats(ctx context.Context, startDate, endDate string) ([]LogStatsDTO, error) {
+func (s *Service) GetStats(
+	ctx context.Context,
+	startDate, endDate string,
+) ([]LogStatsDTO, error) {
 	return s.repo.GetStats(ctx, startDate, endDate)
 }
 

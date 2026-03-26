@@ -8,52 +8,56 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) HandleGetLatestDocument(c *gin.Context) {
+func (h *Handler) GetLatestDocument(c *gin.Context) {
 	docType := c.Param("type")
 	if docType != "terms" && docType != "privacy" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document type"})
+		response.SendFail(c, gin.H{"error": "Invalid document type"})
 		return
 	}
 
 	doc, err := h.service.GetLatestDocument(c.Request.Context(), docType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch document"})
+		response.SendError(c, "Failed to fetch document", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, doc)
+	response.SendSuccess(c, doc)
 }
 
-func (h *Handler) HandleGetDocumentContent(c *gin.Context) {
+func (h *Handler) GetDocumentContent(c *gin.Context) {
 	docType := c.Param("type")
 	if docType != "terms" && docType != "privacy" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document type"})
+		response.SendFail(c, gin.H{"error": "Invalid document type"})
 		return
 	}
 
-	content, contentType, err := h.service.GetDocumentContent(c.Request.Context(), docType)
+	content, contentType, err := h.service.GetDocumentContent(
+		c.Request.Context(),
+		docType,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch document content"})
+		response.SendError(c, "Failed to fetch document content", http.StatusInternalServerError, nil)
 		return
 	}
 
 	c.Data(http.StatusOK, contentType, content)
 }
 
-func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
-	userID := c.MustGet("userID").(string) // Get userID from context set by AuthMiddleware
+func (h *Handler) GetConsentCheck(c *gin.Context) {
+	userID := c.MustGet("userID").(string)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		response.SendFail(c, gin.H{"error": "Unauthorized"}, http.StatusUnauthorized)
 		return
 	}
 
@@ -61,100 +65,115 @@ func (h *Handler) HandleCheckUserConsent(c *gin.Context) {
 
 	docID, err := strconv.Atoi(docIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		response.SendFail(c, gin.H{"error": "Invalid document ID"})
 		return
 	}
 
-	accepted, err := h.service.HasUserAccepted(c.Request.Context(), userID, docID)
+	accepted, err := h.service.HasUserAccepted(
+		c.Request.Context(),
+		userID,
+		docID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user consent"})
+		response.SendError(c, "Failed to check user consent", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"accepted": accepted})
+	response.SendSuccess(c, gin.H{"accepted": accepted})
 }
 
-func (h *Handler) HandleSaveConsent(c *gin.Context) {
-	userID := c.MustGet("userID").(string) // Get userID from context set by AuthMiddleware
+func (h *Handler) PostConsent(c *gin.Context) {
+	userID := c.MustGet("userID").(string)
 	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		response.SendFail(c, gin.H{"error": "Unauthorized"}, http.StatusUnauthorized)
 		return
 	}
 
 	docType := c.Param("type")
 	if docType != "terms" && docType != "privacy" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document type"})
+		response.SendFail(c, gin.H{"error": "Invalid document type"})
 		return
 	}
 
 	docIDStr := c.Param("docID")
 	docID, err := strconv.Atoi(docIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid document ID"})
+		response.SendFail(c, gin.H{"error": "Invalid document ID"})
 		return
 	}
 
 	err = h.service.SaveConsent(c.Request.Context(), userID, docID)
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save consent"})
+		log.Printf("[PostConsent] {Service Error}: %v", err)
+		response.SendError(c, "Failed to save consent", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusAccepted, gin.H{"message": "Consent saved successfully"})
+	response.SendSuccess(c, gin.H{"message": "Consent saved successfully"}, http.StatusAccepted)
 }
 
 // Admin endpoint to view user consent history
-func (h *Handler) HandleListUserConsentHistory(c *gin.Context) {
+func (h *Handler) GetConsentHistory(c *gin.Context) {
 	userID := c.Param("userID")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		response.SendFail(c, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	consents, err := h.service.ListUserConsentHistory(c.Request.Context(), userID)
+	consents, err := h.service.ListUserConsentHistory(
+		c.Request.Context(),
+		userID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch consent history"})
+		response.SendError(c, "Failed to fetch consent history", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, consents)
+	response.SendSuccess(c, consents)
 }
 
-func (h *Handler) HandleUploadDocument(c *gin.Context) {
+func (h *Handler) PostDocument(c *gin.Context) {
 	docType := c.PostForm("docType")
 
 	fileHeader, err := c.FormFile("document")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Document file is required"})
+		response.SendFail(c, gin.H{"error": "Document file is required"})
 		return
 	}
 
 	// VALIDATION: Strictly check for .md extension
 	if filepath.Ext(fileHeader.Filename) != ".md" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Only Markdown (.md) files are allowed"})
+		response.SendFail(c, gin.H{"error": "Only Markdown (.md) files are allowed"})
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+		response.SendError(c, "Failed to read file", http.StatusInternalServerError, nil)
 		return
 	}
 	defer file.Close()
 
 	seeker, ok := file.(io.ReadSeeker)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid file stream"})
+		response.SendError(c, "Invalid file stream", http.StatusInternalServerError, nil)
 		return
 	}
 
 	// pass "text/markdown" as the content type
-	err = h.service.UploadNewDocument(c.Request.Context(), docType, seeker, "text/markdown")
+	err = h.service.UploadNewDocument(
+		c.Request.Context(),
+		docType,
+		seeker,
+		"text/markdown",
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("[PostDocument] {Upload Error}: %v", err)
+		response.SendError(c, err.Error(), http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Markdown document uploaded and activated successfully"})
+	response.SendSuccess(c, gin.H{
+		"message": "Markdown document uploaded and activated successfully",
+	})
 }

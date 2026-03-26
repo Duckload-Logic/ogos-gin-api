@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Repository struct {
@@ -25,7 +25,7 @@ func (r *Repository) GetStudentSignificantNotes(
 		SELECT %s
 		FROM significant_notes
 		WHERE iir_id = ?
-	`, database.GetColumns(SignificantNote{}))
+	`, datastore.GetColumns(SignificantNote{}))
 
 	var notes []SignificantNote
 	err := r.db.SelectContext(ctx, &notes, query, iirID)
@@ -49,11 +49,11 @@ func (r *Repository) CreateSignificantNote(
 	ctx context.Context,
 	sn *SignificantNote,
 ) (string, error) {
-	return database.NewRunInTransaction(
+	return datastore.NewRunInTransaction(
 		ctx,
 		r.db,
 		func(tx *sqlx.Tx) (string, error) {
-			cols, vals := database.GetInsertStatement(
+			cols, vals := datastore.GetInsertStatement(
 				SignificantNote{},
 				[]string{"created_at", "updated_at"},
 			)

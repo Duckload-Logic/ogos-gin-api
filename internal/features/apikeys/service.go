@@ -14,16 +14,19 @@ import (
 )
 
 type Service struct {
-	repo       *Repository
+	repo       RepositoryInterface
 	logService *logs.Service
 }
 
-func NewService(repo *Repository, logService *logs.Service) *Service {
+func NewService(repo RepositoryInterface, logService *logs.Service) *Service {
 	return &Service{repo: repo, logService: logService}
 }
 
 // GenerateKey creates a new API key, stores its hash, and returns the plaintext key (shown once).
-func (s *Service) GenerateKey(ctx context.Context, req CreateAPIKeyRequest) (*CreateAPIKeyResponse, error) {
+func (s *Service) GenerateKey(
+	ctx context.Context,
+	req CreateAPIKeyRequest,
+) (*CreateAPIKeyResponse, error) {
 	// Generate a random 32-byte key
 	rawKey := make([]byte, 32)
 	if _, err := rand.Read(rawKey); err != nil {
@@ -46,7 +49,10 @@ func (s *Service) GenerateKey(ctx context.Context, req CreateAPIKeyRequest) (*Cr
 	if req.ExpiresAt != nil {
 		t, err := time.Parse(time.RFC3339, *req.ExpiresAt)
 		if err != nil {
-			return nil, fmt.Errorf("invalid expiresAt format (use RFC3339): %w", err)
+			return nil, fmt.Errorf(
+				"invalid expiresAt format (use RFC3339): %w",
+				err,
+			)
 		}
 		expiresAt = sql.NullTime{Time: t, Valid: true}
 	}
@@ -73,7 +79,11 @@ func (s *Service) GenerateKey(ctx context.Context, req CreateAPIKeyRequest) (*Cr
 		s.logService.Record(ctx, logs.LogEntry{
 			Category: logs.CategorySystem,
 			Action:   logs.ActionAPIKeyCreated,
-			Message:  fmt.Sprintf("API key '%s' created (prefix: %s)", req.Name, prefix),
+			Message: fmt.Sprintf(
+				"API key '%s' created (prefix: %s)",
+				req.Name,
+				prefix,
+			),
 			Metadata: map[string]interface{}{
 				"keyName":   req.Name,
 				"keyPrefix": prefix,
@@ -90,7 +100,10 @@ func (s *Service) GenerateKey(ctx context.Context, req CreateAPIKeyRequest) (*Cr
 
 // ValidateKey checks if a plaintext key is valid, active, and not expired.
 // Returns the APIKey record if valid, or an error.
-func (s *Service) ValidateKey(ctx context.Context, plaintext string) (*APIKey, error) {
+func (s *Service) ValidateKey(
+	ctx context.Context,
+	plaintext string,
+) (*APIKey, error) {
 	hash := sha256.Sum256([]byte(plaintext))
 	keyHash := hex.EncodeToString(hash[:])
 
@@ -127,7 +140,10 @@ func (s *Service) ValidateKeyFunc() func(ctx context.Context, plaintext string) 
 }
 
 // ListKeys returns all API keys (optionally including revoked ones).
-func (s *Service) ListKeys(ctx context.Context, includeRevoked bool) ([]APIKeyDTO, error) {
+func (s *Service) ListKeys(
+	ctx context.Context,
+	includeRevoked bool,
+) ([]APIKeyDTO, error) {
 	keys, err := s.repo.List(ctx, includeRevoked)
 	if err != nil {
 		return nil, err

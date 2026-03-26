@@ -5,13 +5,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
@@ -33,30 +34,30 @@ func NewHandler(service *Service) *Handler {
 // @Failure      400         {object}  map[string]string "Bad request"
 // @Failure      500         {object}  map[string]string "Internal server error"
 // @Router       /system-logs [get]
-func (h *Handler) HandleListSystemLogs(c *gin.Context) {
+func (h *Handler) GetLogs(c *gin.Context) {
 	var req ListSystemLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		log.Printf("[HandleListSystemLogs] {Bind Query}: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("[GetLogs] {Bind Query}: %v", err)
+		response.SendFail(c, gin.H{"error": err.Error()})
 		return
 	}
 
 	result, err := h.service.ListLogs(c.Request.Context(), req)
 	if err != nil {
-		log.Printf("[HandleListSystemLogs] {ListLogs}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve system logs"})
+		log.Printf("[GetLogs] {ListLogs}: %v", err)
+		response.SendError(c, "Failed to retrieve system logs", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.SendSuccess(c, result)
 }
 
-// HandleGetAuditLogs returns only AUDIT category logs
-func (h *Handler) HandleGetAuditLogs(c *gin.Context) {
+// GetAuditLogs returns only AUDIT category logs
+func (h *Handler) GetAuditLogs(c *gin.Context) {
 	var req ListSystemLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		log.Printf("[HandleGetAuditLogs] {Bind Query}: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("[GetAuditLogs] {Bind Query}: %v", err)
+		response.SendFail(c, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -64,20 +65,20 @@ func (h *Handler) HandleGetAuditLogs(c *gin.Context) {
 
 	result, err := h.service.ListLogs(c.Request.Context(), req)
 	if err != nil {
-		log.Printf("[HandleGetAuditLogs] {ListLogs}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve audit logs"})
+		log.Printf("[GetAuditLogs] {ListLogs}: %v", err)
+		response.SendError(c, "Failed to retrieve audit logs", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.SendSuccess(c, result)
 }
 
-// HandleGetSystemLogs returns only SYSTEM category logs
-func (h *Handler) HandleGetSystemLogs(c *gin.Context) {
+// GetSystemLogs returns only SYSTEM category logs
+func (h *Handler) GetSystemLogs(c *gin.Context) {
 	var req ListSystemLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		log.Printf("[HandleGetSystemLogs] {Bind Query}: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("[GetSystemLogs] {Bind Query}: %v", err)
+		response.SendFail(c, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -85,20 +86,20 @@ func (h *Handler) HandleGetSystemLogs(c *gin.Context) {
 
 	result, err := h.service.ListLogs(c.Request.Context(), req)
 	if err != nil {
-		log.Printf("[HandleGetSystemLogs] {ListLogs}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve system logs"})
+		log.Printf("[GetSystemLogs] {ListLogs}: %v", err)
+		response.SendError(c, "Failed to retrieve system logs", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.SendSuccess(c, result)
 }
 
-// HandleGetSecurityLogs returns only SECURITY category logs
-func (h *Handler) HandleGetSecurityLogs(c *gin.Context) {
+// GetSecurityLogs returns only SECURITY category logs
+func (h *Handler) GetSecurityLogs(c *gin.Context) {
 	var req ListSystemLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		log.Printf("[HandleGetSecurityLogs] {Bind Query}: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("[GetSecurityLogs] {Bind Query}: %v", err)
+		response.SendFail(c, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -106,25 +107,25 @@ func (h *Handler) HandleGetSecurityLogs(c *gin.Context) {
 
 	result, err := h.service.ListLogs(c.Request.Context(), req)
 	if err != nil {
-		log.Printf("[HandleGetSecurityLogs] {ListLogs}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve security logs"})
+		log.Printf("[GetSecurityLogs] {ListLogs}: %v", err)
+		response.SendError(c, "Failed to retrieve security logs", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, result)
+	response.SendSuccess(c, result)
 }
 
-// HandleGetLogStats returns log counts by category
-func (h *Handler) HandleGetLogStats(c *gin.Context) {
+// GetLogStats returns log counts by category
+func (h *Handler) GetLogStats(c *gin.Context) {
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
 
 	stats, err := h.service.GetStats(c.Request.Context(), startDate, endDate)
 	if err != nil {
-		log.Printf("[HandleGetLogStats] {GetStats}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve log stats"})
+		log.Printf("[GetLogStats] {GetStats}: %v", err)
+		response.SendError(c, "Failed to retrieve log stats", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, stats)
+	response.SendSuccess(c, stats)
 }

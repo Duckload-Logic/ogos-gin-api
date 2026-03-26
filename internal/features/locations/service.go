@@ -7,10 +7,10 @@ import (
 )
 
 type Service struct {
-	repo *Repository
+	repo RepositoryInterface
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
 }
 
@@ -18,23 +18,38 @@ func (s *Service) GetRegions(ctx context.Context) ([]Region, error) {
 	return s.repo.GetRegions(ctx)
 }
 
-func (s *Service) GetProvincesByRegion(ctx context.Context, regionCode string) ([]Province, error) {
+func (s *Service) GetProvincesByRegion(
+	ctx context.Context,
+	regionCode string,
+) ([]Province, error) {
 	return s.repo.GetProvincesByRegion(ctx, regionCode)
 }
 
-func (s *Service) GetCitiesByProvince(ctx context.Context, provinceCode string) ([]City, error) {
+func (s *Service) GetCitiesByProvince(
+	ctx context.Context,
+	provinceCode string,
+) ([]City, error) {
 	return s.repo.GetCitiesByProvince(ctx, provinceCode)
 }
 
-func (s *Service) GetCitiesByRegion(ctx context.Context, regionCode string) ([]City, error) {
+func (s *Service) GetCitiesByRegion(
+	ctx context.Context,
+	regionCode string,
+) ([]City, error) {
 	return s.repo.GetCitiesByRegion(ctx, regionCode)
 }
 
-func (s *Service) GetBarangaysByCity(ctx context.Context, cityCode string) ([]Barangay, error) {
+func (s *Service) GetBarangaysByCity(
+	ctx context.Context,
+	cityCode string,
+) ([]Barangay, error) {
 	return s.repo.GetBarangaysByCity(ctx, cityCode)
 }
 
-func (s *Service) GetAddressByID(ctx context.Context, addressID int) (AddressDTO, error) {
+func (s *Service) GetAddressByID(
+	ctx context.Context,
+	addressID int,
+) (AddressDTO, error) {
 	addr, err := s.repo.GetAddressByID(ctx, addressID)
 	if err != nil {
 		return AddressDTO{}, err
@@ -73,22 +88,38 @@ func (s *Service) GetAddressByID(ctx context.Context, addressID int) (AddressDTO
 	return addrDTO, nil
 }
 
-func (s *Service) GetCityByCode(ctx context.Context, cityCode string) (*City, error) {
+func (s *Service) GetCityByCode(
+	ctx context.Context,
+	cityCode string,
+) (*City, error) {
 	return s.repo.GetCityByCode(ctx, cityCode)
 }
 
-func (s *Service) GetRegionByCode(ctx context.Context, regionCode string) (*Region, error) {
+func (s *Service) GetRegionByCode(
+	ctx context.Context,
+	regionCode string,
+) (*Region, error) {
 	return s.repo.GetRegionByCode(ctx, regionCode)
 }
 
-func (s *Service) GetBarangayByCode(ctx context.Context, barangayCode string) (*Barangay, error) {
+func (s *Service) GetBarangayByCode(
+	ctx context.Context,
+	barangayCode string,
+) (*Barangay, error) {
 	return s.repo.GetBarangayByCode(ctx, barangayCode)
 }
 
-func (s *Service) GetProvinceByCode(ctx context.Context, provinceCode string) (*Province, error) {
+func (s *Service) GetProvinceByCode(
+	ctx context.Context,
+	provinceCode string,
+) (*Province, error) {
 	return s.repo.GetProvinceByCode(ctx, provinceCode)
 }
 
-func (s *Service) SaveAddress(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
+func (s *Service) SaveAddress(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	addr *Address,
+) (int, error) {
 	return s.repo.UpsertAddress(ctx, tx, addr)
 }

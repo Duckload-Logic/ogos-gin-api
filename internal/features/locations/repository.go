@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Repository struct {
@@ -17,42 +17,75 @@ func NewRepository(db *sqlx.DB) *Repository {
 }
 
 func (r *Repository) GetRegions(ctx context.Context) ([]Region, error) {
-	query := fmt.Sprintf("SELECT %s FROM regions ORDER BY name", database.GetColumns(Region{}))
+	query := fmt.Sprintf(
+		"SELECT %s FROM regions ORDER BY name",
+		datastore.GetColumns(Region{}),
+	)
 	var regions []Region
 	err := r.db.SelectContext(ctx, &regions, query)
 	return regions, err
 }
 
-func (r *Repository) GetProvincesByRegion(ctx context.Context, regionCode string) ([]Province, error) {
-	query := fmt.Sprintf("SELECT %s FROM provinces WHERE region_code = ? ORDER BY name", database.GetColumns(Province{}))
+func (r *Repository) GetProvincesByRegion(
+	ctx context.Context,
+	regionCode string,
+) ([]Province, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM provinces WHERE region_code = ? ORDER BY name",
+		datastore.GetColumns(Province{}),
+	)
 	var provinces []Province
 	err := r.db.SelectContext(ctx, &provinces, query, regionCode)
 	return provinces, err
 }
 
-func (r *Repository) GetCitiesByProvince(ctx context.Context, provinceCode string) ([]City, error) {
-	query := fmt.Sprintf("SELECT %s FROM cities WHERE province_code = ? ORDER BY name", database.GetColumns(City{}))
+func (r *Repository) GetCitiesByProvince(
+	ctx context.Context,
+	provinceCode string,
+) ([]City, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM cities WHERE province_code = ? ORDER BY name",
+		datastore.GetColumns(City{}),
+	)
 	var cities []City
 	err := r.db.SelectContext(ctx, &cities, query, provinceCode)
 	return cities, err
 }
 
-func (r *Repository) GetCitiesByRegion(ctx context.Context, regionCode string) ([]City, error) {
-	query := fmt.Sprintf("SELECT %s FROM cities WHERE region_code = ? ORDER BY name", database.GetColumns(City{}))
+func (r *Repository) GetCitiesByRegion(
+	ctx context.Context,
+	regionCode string,
+) ([]City, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM cities WHERE region_code = ? ORDER BY name",
+		datastore.GetColumns(City{}),
+	)
 	var cities []City
 	err := r.db.SelectContext(ctx, &cities, query, regionCode)
 	return cities, err
 }
 
-func (r *Repository) GetBarangaysByCity(ctx context.Context, cityCode string) ([]Barangay, error) {
-	query := fmt.Sprintf("SELECT %s FROM barangays WHERE city_code = ? ORDER BY name", database.GetColumns(Barangay{}))
+func (r *Repository) GetBarangaysByCity(
+	ctx context.Context,
+	cityCode string,
+) ([]Barangay, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM barangays WHERE city_code = ? ORDER BY name",
+		datastore.GetColumns(Barangay{}),
+	)
 	var barangays []Barangay
 	err := r.db.SelectContext(ctx, &barangays, query, cityCode)
 	return barangays, err
 }
 
-func (r *Repository) GetAddressByID(ctx context.Context, addressID int) (*Address, error) {
-	query := fmt.Sprintf("SELECT %s FROM addresses WHERE id = ?", database.GetColumns(Address{}))
+func (r *Repository) GetAddressByID(
+	ctx context.Context,
+	addressID int,
+) (*Address, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM addresses WHERE id = ?",
+		datastore.GetColumns(Address{}),
+	)
 	var address Address
 	err := r.db.GetContext(ctx, &address, query, addressID)
 	if err != nil {
@@ -61,8 +94,14 @@ func (r *Repository) GetAddressByID(ctx context.Context, addressID int) (*Addres
 	return &address, nil
 }
 
-func (r *Repository) GetCityByCode(ctx context.Context, cityCode string) (*City, error) {
-	query := fmt.Sprintf("SELECT %s FROM cities WHERE code = ?", database.GetColumns(City{}))
+func (r *Repository) GetCityByCode(
+	ctx context.Context,
+	cityCode string,
+) (*City, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM cities WHERE code = ?",
+		datastore.GetColumns(City{}),
+	)
 	var city City
 	err := r.db.GetContext(ctx, &city, query, cityCode)
 	if err != nil {
@@ -71,8 +110,14 @@ func (r *Repository) GetCityByCode(ctx context.Context, cityCode string) (*City,
 	return &city, nil
 }
 
-func (r *Repository) GetRegionByCode(ctx context.Context, regionCode string) (*Region, error) {
-	query := fmt.Sprintf("SELECT %s FROM regions WHERE code = ?", database.GetColumns(Region{}))
+func (r *Repository) GetRegionByCode(
+	ctx context.Context,
+	regionCode string,
+) (*Region, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM regions WHERE code = ?",
+		datastore.GetColumns(Region{}),
+	)
 	var region Region
 	err := r.db.GetContext(ctx, &region, query, regionCode)
 	if err != nil {
@@ -81,8 +126,14 @@ func (r *Repository) GetRegionByCode(ctx context.Context, regionCode string) (*R
 	return &region, nil
 }
 
-func (r *Repository) GetBarangayByCode(ctx context.Context, barangayCode string) (*Barangay, error) {
-	query := fmt.Sprintf("SELECT %s FROM barangays WHERE code = ?", database.GetColumns(Barangay{}))
+func (r *Repository) GetBarangayByCode(
+	ctx context.Context,
+	barangayCode string,
+) (*Barangay, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM barangays WHERE code = ?",
+		datastore.GetColumns(Barangay{}),
+	)
 	var barangay Barangay
 	err := r.db.GetContext(ctx, &barangay, query, barangayCode)
 	if err != nil {
@@ -91,8 +142,14 @@ func (r *Repository) GetBarangayByCode(ctx context.Context, barangayCode string)
 	return &barangay, nil
 }
 
-func (r *Repository) GetProvinceByCode(ctx context.Context, provinceCode string) (*Province, error) {
-	query := fmt.Sprintf("SELECT %s FROM provinces WHERE code = ?", database.GetColumns(Province{}))
+func (r *Repository) GetProvinceByCode(
+	ctx context.Context,
+	provinceCode string,
+) (*Province, error) {
+	query := fmt.Sprintf(
+		"SELECT %s FROM provinces WHERE code = ?",
+		datastore.GetColumns(Province{}),
+	)
 	var province Province
 	err := r.db.GetContext(ctx, &province, query, provinceCode)
 	if err != nil {
@@ -101,13 +158,17 @@ func (r *Repository) GetProvinceByCode(ctx context.Context, provinceCode string)
 	return &province, nil
 }
 
-func (r *Repository) UpsertAddress(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
+func (r *Repository) UpsertAddress(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	addr *Address,
+) (int, error) {
 	if tx != nil {
 		return r.upsertAddressTx(ctx, tx, addr)
 	}
 
 	var id int
-	err := database.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
 		var err error
 		id, err = r.upsertAddressTx(ctx, txn, addr)
 		return err
@@ -115,9 +176,19 @@ func (r *Repository) UpsertAddress(ctx context.Context, tx *sqlx.Tx, addr *Addre
 	return id, err
 }
 
-func (r *Repository) upsertAddressTx(ctx context.Context, tx *sqlx.Tx, addr *Address) (int, error) {
-	cols, vals := database.GetInsertStatement(Address{}, []string{"created_at", "updated_at"})
-	updateCols := database.GetOnDuplicateKeyUpdateStatement(Address{}, []string{"created_at", "updated_at"})
+func (r *Repository) upsertAddressTx(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	addr *Address,
+) (int, error) {
+	cols, vals := datastore.GetInsertStatement(
+		Address{},
+		[]string{"created_at", "updated_at"},
+	)
+	updateCols := datastore.GetOnDuplicateKeyUpdateStatement(
+		Address{},
+		[]string{"created_at", "updated_at"},
+	)
 
 	if addr.ProvinceCode != nil && *addr.ProvinceCode == "" {
 		addr.ProvinceCode = nil
@@ -135,7 +206,10 @@ func (r *Repository) upsertAddressTx(ctx context.Context, tx *sqlx.Tx, addr *Add
 
 	lastID, err := result.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("failed to get last insert ID for address: %w", err)
+		return 0, fmt.Errorf(
+			"failed to get last insert ID for address: %w",
+			err,
+		)
 	}
 
 	return int(lastID), nil

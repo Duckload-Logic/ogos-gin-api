@@ -5,17 +5,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) HandleGetStudentSignificantNotes(
+func (h *Handler) GetSignificantNotes(
 	c *gin.Context,
 ) {
 	iirID := c.Param("iirID")
@@ -25,44 +26,27 @@ func (h *Handler) HandleGetStudentSignificantNotes(
 		iirID,
 	)
 	if err != nil {
-		log.Printf(
-			"[GetStudentSignificantNotes] {Database Query}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{
-				"error": "Failed to get student significant notes",
-			},
-		)
+		log.Printf("[GetSignificantNotes] {Database Query}: %v", err)
+		response.SendError(c, "Failed to get student significant notes", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, significantNotes)
+	response.SendSuccess(c, significantNotes)
 }
 
-func (h *Handler) HandlePostStudentSignificantNote(
+func (h *Handler) PostSignificantNote(
 	c *gin.Context,
 ) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(
-			http.StatusUnauthorized,
-			gin.H{"error": "IIR ID not found"},
-		)
+		response.SendFail(c, gin.H{"error": "IIR ID not found"}, http.StatusUnauthorized)
 		return
 	}
 
 	var noteReq SignificantNoteDTO
 	if err := c.ShouldBindJSON(&noteReq); err != nil {
-		log.Printf(
-			"[PostSignificantNote] {JSON Bind}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid request body"},
-		)
+		log.Printf("[PostSignificantNote] {JSON Bind}: %v", err)
+		response.SendFail(c, gin.H{"error": "Invalid request body"})
 		return
 	}
 
@@ -72,19 +56,10 @@ func (h *Handler) HandlePostStudentSignificantNote(
 		noteReq,
 	)
 	if err != nil {
-		log.Printf(
-			"[PostSignificantNote] {Database Insert}: %v",
-			err,
-		)
-		c.JSON(
-			http.StatusInternalServerError,
-			gin.H{"error": "Failed to save significant note"},
-		)
+		log.Printf("[PostSignificantNote] {Database Insert}: %v", err)
+		response.SendError(c, "Failed to save significant note", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(
-		http.StatusOK,
-		gin.H{"message": "Significant note saved successfully"},
-	)
+	response.SendSuccess(c, gin.H{"message": "Significant note saved successfully"})
 }

@@ -12,8 +12,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
 const (
@@ -23,16 +23,23 @@ const (
 )
 
 type Service struct {
-	repo       *Repository
+	repo       RepositoryInterface
 	logService *logs.Service
 	storage    storage.FileStorage
 }
 
-func NewService(repo *Repository, logService *logs.Service, fileStorage storage.FileStorage) *Service {
+func NewService(
+	repo RepositoryInterface,
+	logService *logs.Service,
+	fileStorage storage.FileStorage,
+) *Service {
 	return &Service{repo: repo, logService: logService, storage: fileStorage}
 }
 
-func (s *Service) GetLatestDocument(ctx context.Context, docType string) (*LegalDocument, error) {
+func (s *Service) GetLatestDocument(
+	ctx context.Context,
+	docType string,
+) (*LegalDocument, error) {
 	dbDocType := ""
 	switch docType {
 	case "terms":
@@ -44,7 +51,11 @@ func (s *Service) GetLatestDocument(ctx context.Context, docType string) (*Legal
 	return s.repo.GetLatestDocument(ctx, dbDocType)
 }
 
-func (s *Service) GetLatestDocumentLocked(ctx context.Context, tx *sqlx.Tx, docType string) (*LegalDocument, error) {
+func (s *Service) GetLatestDocumentLocked(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	docType string,
+) (*LegalDocument, error) {
 	dbDocType := ""
 	switch docType {
 	case "terms":
@@ -57,7 +68,10 @@ func (s *Service) GetLatestDocumentLocked(ctx context.Context, tx *sqlx.Tx, docT
 }
 
 // In consents/service.go
-func (s *Service) GetDocumentContent(ctx context.Context, docType string) ([]byte, string, error) {
+func (s *Service) GetDocumentContent(
+	ctx context.Context,
+	docType string,
+) ([]byte, string, error) {
 	// 1. Fetch latest document metadata
 	doc, err := s.GetLatestDocument(ctx, docType)
 	if err != nil {
@@ -76,11 +90,19 @@ func (s *Service) GetDocumentContent(ctx context.Context, docType string) ([]byt
 	return buf.Bytes(), "text/markdown; charset=utf-8", nil
 }
 
-func (s *Service) HasUserAccepted(ctx context.Context, userID string, docID int) (bool, error) {
+func (s *Service) HasUserAccepted(
+	ctx context.Context,
+	userID string,
+	docID int,
+) (bool, error) {
 	return s.repo.HasUserAccepted(ctx, userID, docID)
 }
 
-func (s *Service) SaveConsent(ctx context.Context, userID string, docID int) error {
+func (s *Service) SaveConsent(
+	ctx context.Context,
+	userID string,
+	docID int,
+) error {
 	_, ipAddress, userAgent, userEmail := audit.ExtractMeta(ctx)
 
 	err := s.repo.SaveConsent(ctx, userID, docID, ipAddress)
@@ -100,7 +122,10 @@ func (s *Service) SaveConsent(ctx context.Context, userID string, docID int) err
 }
 
 // ListUserConsentHistory (Optional) for an admin "Compliance Dashboard"
-func (s *Service) ListUserConsentHistory(ctx context.Context, userID string) ([]UserConsent, error) {
+func (s *Service) ListUserConsentHistory(
+	ctx context.Context,
+	userID string,
+) ([]UserConsent, error) {
 	return s.repo.ListUserConsentHistory(ctx, userID)
 }
 
@@ -113,7 +138,7 @@ func (s *Service) UploadNewDocument(
 	now := time.Now()
 	today := strings.ReplaceAll(now.Format("2006.01.02"), "-", ".")
 
-	tx, err := s.repo.db.BeginTxx(ctx, nil)
+	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
 		log.Printf("[PostUploadNewDocument] Begin Transaction: %v", err)
 		return fmt.Errorf("failed to start transaction: %w", err)

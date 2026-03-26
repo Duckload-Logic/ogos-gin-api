@@ -20,8 +20,15 @@ func (r *Repository) Create(ctx context.Context, key APIKey) (int, error) {
 		INSERT INTO api_keys (name, key_hash, key_prefix, scopes, is_active, expires_at)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`
-	result, err := r.db.ExecContext(ctx, query,
-		key.Name, key.KeyHash, key.KeyPrefix, key.Scopes, key.IsActive, key.ExpiresAt,
+	result, err := r.db.ExecContext(
+		ctx,
+		query,
+		key.Name,
+		key.KeyHash,
+		key.KeyPrefix,
+		key.Scopes,
+		key.IsActive,
+		key.ExpiresAt,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create api key: %w", err)
@@ -35,7 +42,10 @@ func (r *Repository) Create(ctx context.Context, key APIKey) (int, error) {
 	return int(id), nil
 }
 
-func (r *Repository) GetByHash(ctx context.Context, keyHash string) (*APIKey, error) {
+func (r *Repository) GetByHash(
+	ctx context.Context,
+	keyHash string,
+) (*APIKey, error) {
 	var key APIKey
 	query := `SELECT * FROM api_keys WHERE key_hash = ?`
 	err := r.db.GetContext(ctx, &key, query, keyHash)
@@ -45,7 +55,10 @@ func (r *Repository) GetByHash(ctx context.Context, keyHash string) (*APIKey, er
 	return &key, nil
 }
 
-func (r *Repository) List(ctx context.Context, includeRevoked bool) ([]APIKey, error) {
+func (r *Repository) List(
+	ctx context.Context,
+	includeRevoked bool,
+) ([]APIKey, error) {
 	var keys []APIKey
 	query := `SELECT * FROM api_keys`
 	if !includeRevoked {

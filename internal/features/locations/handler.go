@@ -4,86 +4,96 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) HandleGetRegions(c *gin.Context) {
+func (h *Handler) GetRegions(c *gin.Context) {
 	regions, err := h.service.GetRegions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve regions"})
+		response.SendError(c, "Failed to retrieve regions", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, regions)
+	response.SendSuccess(c, regions)
 }
 
-func (h *Handler) HandleGetProvincesByRegion(c *gin.Context) {
+func (h *Handler) GetProvincesByRegion(c *gin.Context) {
 	regionCode := c.Param("regionCode")
 	if regionCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid region code"})
+		response.SendFail(c, gin.H{"error": "Invalid region code"})
 		return
 	}
 
-	provinces, err := h.service.GetProvincesByRegion(c.Request.Context(), regionCode)
+	provinces, err := h.service.GetProvincesByRegion(
+		c.Request.Context(),
+		regionCode,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve provinces"})
+		response.SendError(c, "Failed to retrieve provinces", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, provinces)
+	response.SendSuccess(c, provinces)
 }
 
-func (h *Handler) HandleGetCitiesByProvince(c *gin.Context) {
+func (h *Handler) GetCitiesByProvince(c *gin.Context) {
 	provinceCode := c.Param("provinceCode")
 	if provinceCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid province code"})
+		response.SendFail(c, gin.H{"error": "Invalid province code"})
 		return
 	}
 
-	cities, err := h.service.GetCitiesByProvince(c.Request.Context(), provinceCode)
+	cities, err := h.service.GetCitiesByProvince(
+		c.Request.Context(),
+		provinceCode,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve cities"})
+		response.SendError(c, "Failed to retrieve cities", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, cities)
+	response.SendSuccess(c, cities)
 }
 
-func (h *Handler) HandleGetCitiesByRegion(c *gin.Context) {
+func (h *Handler) GetCitiesByRegion(c *gin.Context) {
 	regionCode := c.Param("regionCode")
 	if regionCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid region code"})
+		response.SendFail(c, gin.H{"error": "Invalid region code"})
 		return
 	}
 
 	cities, err := h.service.GetCitiesByRegion(c.Request.Context(), regionCode)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve cities"})
+		response.SendError(c, "Failed to retrieve cities", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, cities)
+	response.SendSuccess(c, cities)
 }
 
-func (h *Handler) HandleGetBarangaysByCity(c *gin.Context) {
+func (h *Handler) GetBarangaysByCity(c *gin.Context) {
 	cityCode := c.Param("cityCode")
 	if cityCode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid city code"})
+		response.SendFail(c, gin.H{"error": "Invalid city code"})
 		return
 	}
 
-	barangays, err := h.service.GetBarangaysByCity(c.Request.Context(), cityCode)
+	barangays, err := h.service.GetBarangaysByCity(
+		c.Request.Context(),
+		cityCode,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve barangays"})
+		response.SendError(c, "Failed to retrieve barangays", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, barangays)
+	response.SendSuccess(c, barangays)
 }

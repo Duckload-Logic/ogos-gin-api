@@ -5,26 +5,26 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) GetUserNotifications(c *gin.Context) {
+func (h *Handler) GetNotifications(c *gin.Context) {
 	userID := c.Param("userId")
 
-	notifications, err := h.service.GetUserNotifications(c.Request.Context(), userID)
+	notifications, err := h.service.GetUserNotifications(
+		c.Request.Context(),
+		userID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Failed to fetch notifications",
-			"error":   err.Error(),
-		})
+		response.SendError(c, "Failed to fetch notifications", http.StatusInternalServerError, nil)
 		return
 	}
 
@@ -36,33 +36,20 @@ func (h *Handler) GetUserNotifications(c *gin.Context) {
 		TotalPages:    1,
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Notifications retrieved successfully",
-		"data":    data,
-	})
+	response.SendSuccess(c, data)
 }
 
-func (h *Handler) MarkAsRead(c *gin.Context) {
+func (h *Handler) PatchNotificationRead(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"message": "Invalid notification ID",
-		})
+		response.SendFail(c, gin.H{"error": "Invalid notification ID"})
 		return
 	}
 
 	if err := h.service.MarkAsRead(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Failed to mark notification as read",
-		})
+		response.SendError(c, "Failed to mark notification as read", http.StatusInternalServerError, nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Notification marked as read",
-	})
+	response.SendSuccess(c, gin.H{"message": "Notification marked as read"})
 }

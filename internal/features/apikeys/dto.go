@@ -5,7 +5,7 @@ import "time"
 // Requests
 
 type CreateAPIKeyRequest struct {
-	Name      string   `json:"name" binding:"required"`
+	Name      string   `json:"name"                binding:"required"`
 	Scopes    []string `json:"scopes,omitempty"`
 	ExpiresAt *string  `json:"expiresAt,omitempty"` // RFC3339 format, optional
 }

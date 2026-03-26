@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/olazo-johnalbert/duckload-api/internal/core/request"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 )
 
@@ -76,23 +75,18 @@ type LogEntry struct {
 
 // ListSystemLogsRequest holds query parameters for listing system logs
 type ListSystemLogsRequest struct {
-	request.PaginationParams
-	Category  string `form:"category,omitempty" binding:"omitempty,oneof=AUDIT SYSTEM SECURITY"`
+	structs.PaginationRequest
+	Category  string `form:"category,omitempty"   binding:"omitempty,oneof=AUDIT SYSTEM SECURITY"`
 	Action    string `form:"action,omitempty"`
-	Search    string `form:"search,omitempty"`
-	UserEmail string `form:"user_email,omitempty"` // filter by email (joined)
+	UserEmail string `form:"user_email,omitempty"`
 	StartDate string `form:"start_date,omitempty"`
 	EndDate   string `form:"end_date,omitempty"`
-	OrderBy   string `form:"order_by,omitempty" binding:"omitempty,oneof=created_at"`
 }
 
 // ListSystemLogsDTO is the paginated response for system logs
 type ListSystemLogsDTO struct {
-	Logs       []SystemLogDTO `json:"logs"`
-	Total      int            `json:"total"`
-	Page       int            `json:"page"`
-	PageSize   int            `json:"pageSize"`
-	TotalPages int            `json:"totalPages"`
+	Logs []SystemLogDTO             `json:"logs"`
+	Meta structs.PaginationMetadata `json:"meta"`
 }
 
 // SystemLogDTO is the response DTO for a single system log entry
@@ -112,5 +106,5 @@ type SystemLogDTO struct {
 // LogStatsDTO returns summary counts by category
 type LogStatsDTO struct {
 	Category string `json:"category" db:"category"`
-	Count    int    `json:"count" db:"count"`
+	Count    int    `json:"count"    db:"count"`
 }

@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Repository struct {
@@ -17,8 +17,15 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
+func (r *Repository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
+	return r.db.BeginTxx(ctx, nil)
+}
+
 // GetLatestDocument fetches the current active version of a policy from Azure/DB
-func (r *Repository) GetLatestDocument(ctx context.Context, docType string) (*LegalDocument, error) {
+func (r *Repository) GetLatestDocument(
+	ctx context.Context,
+	docType string,
+) (*LegalDocument, error) {
 	var doc LegalDocument
 	query := fmt.Sprintf(
 		`SELECT %s
@@ -26,7 +33,7 @@ func (r *Repository) GetLatestDocument(ctx context.Context, docType string) (*Le
         WHERE doc_type = ? AND
 		is_active = TRUE
 		LIMIT 1`,
-		database.GetColumns(LegalDocument{}),
+		datastore.GetColumns(LegalDocument{}),
 	)
 
 	err := r.db.GetContext(ctx, &doc, query, docType)
@@ -40,7 +47,11 @@ func (r *Repository) GetLatestDocument(ctx context.Context, docType string) (*Le
 	return &doc, nil
 }
 
-func (r *Repository) GetLatestDocumentLocked(ctx context.Context, tx *sqlx.Tx, docType string) (*LegalDocument, error) {
+func (r *Repository) GetLatestDocumentLocked(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	docType string,
+) (*LegalDocument, error) {
 	var doc LegalDocument
 	query := fmt.Sprintf(
 		`SELECT %s
@@ -49,7 +60,7 @@ func (r *Repository) GetLatestDocumentLocked(ctx context.Context, tx *sqlx.Tx, d
 		is_active = TRUE
 		LIMIT 1
 		FOR UPDATE`, // Lock the selected row for update
-		database.GetColumns(LegalDocument{}),
+		datastore.GetColumns(LegalDocument{}),
 	)
 
 	err := tx.GetContext(ctx, &doc, query, docType)
@@ -64,7 +75,11 @@ func (r *Repository) GetLatestDocumentLocked(ctx context.Context, tx *sqlx.Tx, d
 }
 
 // HasUserAccepted checks if the specific user has already signed this specific document ID
-func (r *Repository) HasUserAccepted(ctx context.Context, userID string, docID int) (bool, error) {
+func (r *Repository) HasUserAccepted(
+	ctx context.Context,
+	userID string,
+	docID int,
+) (bool, error) {
 	var exists bool
 	query := `
 		SELECT EXISTS(
@@ -79,8 +94,16 @@ func (r *Repository) HasUserAccepted(ctx context.Context, userID string, docID i
 }
 
 // SaveConsent records the "State" of the user's agreement
-func (r *Repository) SaveConsent(ctx context.Context, userID string, docID int, ip string) error {
-	cols, vals := database.GetInsertStatement(UserConsent{}, []string{"created_at", "email", "accepted_at"})
+func (r *Repository) SaveConsent(
+	ctx context.Context,
+	userID string,
+	docID int,
+	ip string,
+) error {
+	cols, vals := datastore.GetInsertStatement(
+		UserConsent{},
+		[]string{"created_at", "email", "accepted_at"},
+	)
 	query := fmt.Sprintf(`
 		INSERT INTO user_consents (%s)
 		VALUES (%s)`, cols, vals)
@@ -100,21 +123,32 @@ func (r *Repository) SaveConsent(ctx context.Context, userID string, docID int, 
 }
 
 // ListUserConsentHistory for an admin "Compliance Dashboard"
-func (r *Repository) ListUserConsentHistory(ctx context.Context, userID string) ([]UserConsent, error) {
+func (r *Repository) ListUserConsentHistory(
+	ctx context.Context,
+	userID string,
+) ([]UserConsent, error) {
 	var history []UserConsent
 	query := fmt.Sprintf(`
 		SELECT %s FROM user_consents uc
 		JOIN legal_documents ld ON uc.document_id = ld.id
 		WHERE uc.user_id = ? ORDER BY uc.accepted_at DESC
-	`, database.GetColumns(UserConsent{}))
+	`, datastore.GetColumns(UserConsent{}))
 
 	err := r.db.SelectContext(ctx, &history, query, userID)
 	return history, err
 }
 
-func (r *Repository) CreateNewVersion(ctx context.Context, tx *sqlx.Tx, doc LegalDocument) error {
+func (r *Repository) CreateNewVersion(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	doc LegalDocument,
+) error {
 	// Deactivate current active version
-	_, err := tx.ExecContext(ctx, "UPDATE legal_documents SET is_active = FALSE WHERE doc_type = ?", doc.DocType)
+	_, err := tx.ExecContext(
+		ctx,
+		"UPDATE legal_documents SET is_active = FALSE WHERE doc_type = ?",
+		doc.DocType,
+	)
 	if err != nil {
 		return err
 	}
