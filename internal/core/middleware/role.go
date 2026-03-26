@@ -49,9 +49,23 @@ func RoleMiddleware(allowedRoles ...int) gin.HandlerFunc {
 			if logSvc, ok := c.Get(SecurityLoggerContextKey); ok {
 				if svc, ok := logSvc.(SecurityLogger); ok {
 					userEmail, _ := c.Get("userEmail")
-					svc.RecordSecurity(c.Request.Context(), "ACCESS_DENIED",
-						fmt.Sprintf("Access denied for %v (role %d) on %s %s", userEmail, rid, c.Request.Method, c.Request.URL.Path),
-						fmt.Sprintf("%v", userEmail), c.ClientIP(), c.Request.UserAgent())
+					svc.RecordSecurity(
+						c.Request.Context(),
+						"ACCESS_DENIED",
+						fmt.Sprintf(
+							"Access denied for %v (role %d) on %s %s",
+							userEmail,
+							rid,
+							c.Request.Method,
+							c.Request.URL.Path,
+						),
+						fmt.Sprintf(
+							"%v",
+							userEmail,
+						),
+						c.ClientIP(),
+						c.Request.UserAgent(),
+					)
 				}
 			}
 			c.AbortWithStatusJSON(

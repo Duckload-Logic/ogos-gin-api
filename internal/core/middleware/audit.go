@@ -27,7 +27,13 @@ func AuditContextMiddleware() gin.HandlerFunc {
 		ipAddress := c.ClientIP()
 		userAgent := c.GetHeader("User-Agent")
 
-		ctx := audit.WithContext(c.Request.Context(), ipAddress, userAgent, userID, userEmail.(string))
+		ctx := audit.WithContext(
+			c.Request.Context(),
+			ipAddress,
+			userAgent,
+			userID,
+			userEmail.(string),
+		)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()

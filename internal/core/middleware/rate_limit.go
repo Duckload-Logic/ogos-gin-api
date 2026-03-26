@@ -50,9 +50,19 @@ func RateLimitMiddleware(limiter *IPRateLimiter) gin.HandlerFunc {
 		if !limiter.GetLimiter(ip).Allow() {
 			if logSvc, ok := c.Get(SecurityLoggerContextKey); ok {
 				if svc, ok := logSvc.(SecurityLogger); ok {
-					svc.RecordSecurity(c.Request.Context(), "RATE_LIMIT_EXCEEDED",
-						fmt.Sprintf("Rate limit exceeded from IP %s on %s %s", ip, c.Request.Method, c.Request.URL.Path),
-						"", ip, c.Request.UserAgent())
+					svc.RecordSecurity(
+						c.Request.Context(),
+						"RATE_LIMIT_EXCEEDED",
+						fmt.Sprintf(
+							"Rate limit exceeded from IP %s on %s %s",
+							ip,
+							c.Request.Method,
+							c.Request.URL.Path,
+						),
+						"",
+						ip,
+						c.Request.UserAgent(),
+					)
 				}
 			}
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{

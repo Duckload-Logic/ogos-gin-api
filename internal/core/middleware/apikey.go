@@ -38,9 +38,18 @@ func APIKeyMiddleware(validate APIKeyValidator) gin.HandlerFunc {
 				if len(prefix) > 8 {
 					prefix = prefix[:8]
 				}
-				logSvc.RecordSecurity(c.Request.Context(), "API_KEY_INVALID",
-					fmt.Sprintf("Invalid API key attempt (prefix: %s...): %s", prefix, err.Error()),
-					"", c.ClientIP(), c.Request.UserAgent())
+				logSvc.RecordSecurity(
+					c.Request.Context(),
+					"API_KEY_INVALID",
+					fmt.Sprintf(
+						"Invalid API key attempt (prefix: %s...): %s",
+						prefix,
+						err.Error(),
+					),
+					"",
+					c.ClientIP(),
+					c.Request.UserAgent(),
+				)
 			}
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
@@ -50,9 +59,20 @@ func APIKeyMiddleware(validate APIKeyValidator) gin.HandlerFunc {
 		}
 
 		if logSvc != nil {
-			logSvc.RecordSecurity(c.Request.Context(), "API_KEY_USED",
-				fmt.Sprintf("API key '%s' (ID: %d) used on %s %s", name, id, c.Request.Method, c.Request.URL.Path),
-				"", c.ClientIP(), c.Request.UserAgent())
+			logSvc.RecordSecurity(
+				c.Request.Context(),
+				"API_KEY_USED",
+				fmt.Sprintf(
+					"API key '%s' (ID: %d) used on %s %s",
+					name,
+					id,
+					c.Request.Method,
+					c.Request.URL.Path,
+				),
+				"",
+				c.ClientIP(),
+				c.Request.UserAgent(),
+			)
 		}
 
 		c.Set("apiKeyID", id)

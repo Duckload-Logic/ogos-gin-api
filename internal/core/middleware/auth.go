@@ -8,10 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
-func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
+func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tokenString string
 
@@ -29,15 +29,24 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 		}
 
 		if tokenString == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "No authentication token provided"})
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "No authentication token provided"},
+			)
 			return
 		}
 
 		// Validate JWT signature and expiration first
 		claims, err := tokens.NewService().ValidateToken(tokenString)
 		if err != nil {
-			log.Printf("[AuthMiddleware] {Token}: Invalid or expired token: %v", err)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			log.Printf(
+				"[AuthMiddleware] {Token}: Invalid or expired token: %v",
+				err,
+			)
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "Invalid or expired token"},
+			)
 			return
 		}
 
@@ -46,8 +55,15 @@ func AuthMiddleware(redis *database.RedisClient) gin.HandlerFunc {
 			tokenKey := "session:" + claims.ID
 			val, err := redis.Get(c.Request.Context(), tokenKey)
 			if err != nil {
-				log.Printf("[AuthMiddleware] {Redis}: Session %s missing or expired for UserID: %s", claims.ID, claims.UserID)
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Session has been revoked or expired"})
+				log.Printf(
+					"[AuthMiddleware] {Redis}: Session %s missing or expired for UserID: %s",
+					claims.ID,
+					claims.UserID,
+				)
+				c.AbortWithStatusJSON(
+					http.StatusUnauthorized,
+					gin.H{"error": "Session has been revoked or expired"},
+				)
 				return
 			}
 
