@@ -1,4 +1,4 @@
-package bootstrap
+package server
 
 import (
 	"net/http"
@@ -6,7 +6,9 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/bootstrap"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/middleware"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
@@ -20,7 +22,6 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
-	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -28,7 +29,11 @@ import (
 	externalDocs "github.com/olazo-johnalbert/duckload-api/docs/external"
 )
 
-func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engine {
+func NewRouter(
+	db *sqlx.DB,
+	handlers *bootstrap.Handlers,
+	cfg *config.Config,
+) *gin.Engine {
 	g := gin.Default()
 
 	localOrigins := []string{
@@ -53,7 +58,14 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 
 	corsConfig := cors.Config{
 		AllowOrigins: origins,
-		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"PATCH",
+			"DELETE",
+			"OPTIONS",
+		},
 		AllowHeaders: []string{
 			"Origin",
 			"Content-Type",
@@ -94,11 +106,6 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 		apiV1Routes.Static("./uploads", "./uploads")
 	}
 
-	// ==============================
-	// |                            |
-	// |        HOME ROUTES         |
-	// |                            |
-	// ==============================
 	apiV1Routes.GET("/", func(c *gin.Context) {
 		c.JSON(
 			http.StatusOK,
@@ -109,25 +116,51 @@ func SetupRoutes(db *sqlx.DB, handlers *Handlers, cfg *config.Config) *gin.Engin
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	// ==============================
-	// |                            |
-	// |       MODULE ROUTES        |
-	// |                            |
-	// ==============================
-
 	auth.RegisterRoutes(apiV1Routes, handlers.AuthHandler, handlers.Redis)
 	users.RegisterRoutes(db, apiV1Routes, handlers.UserHandler, handlers.Redis)
-	locations.RegisterRoutes(apiV1Routes, handlers.LocationsHandler, handlers.Redis)
-	students.RegisterRoutes(db, apiV1Routes, handlers.StudentHandler, handlers.Redis)
-	appointments.RegisterRoutes(db, apiV1Routes, handlers.AppointmentHandler, handlers.Redis)
+	locations.RegisterRoutes(
+		apiV1Routes,
+		handlers.LocationsHandler,
+		handlers.Redis,
+	)
+	students.RegisterRoutes(
+		db,
+		apiV1Routes,
+		handlers.StudentHandler,
+		handlers.Redis,
+	)
+	appointments.RegisterRoutes(
+		db,
+		apiV1Routes,
+		handlers.AppointmentHandler,
+		handlers.Redis,
+	)
 	slips.RegisterRoutes(db, apiV1Routes, handlers.SlipHandler, handlers.Redis)
-	analytics.RegisterRoutes(apiV1Routes, handlers.AnalyticsHandler, handlers.Redis)
+	analytics.RegisterRoutes(
+		apiV1Routes,
+		handlers.AnalyticsHandler,
+		handlers.Redis,
+	)
 	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler, handlers.Redis)
-	notifications.RegisterRoutes(db, apiV1Routes, handlers.NotificationsHandler, handlers.Redis)
+	notifications.RegisterRoutes(
+		db,
+		apiV1Routes,
+		handlers.NotificationsHandler,
+		handlers.Redis,
+	)
 	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler, handlers.Redis)
-	consents.RegisterRoutes(apiV1Routes, handlers.ConsentHandler, handlers.Redis)
+	consents.RegisterRoutes(
+		apiV1Routes,
+		handlers.ConsentHandler,
+		handlers.Redis,
+	)
 	notes.RegisterRoutes(db, apiV1Routes, handlers.NoteHandler, handlers.Redis)
 
-	external.RegisterRoutes(apiV1Routes, handlers.ExternalStudentHandler, handlers.APIKeyService.ValidateKeyFunc(), handlers.Redis)
+	external.RegisterRoutes(
+		apiV1Routes,
+		handlers.ExternalStudentHandler,
+		handlers.APIKeyService.ValidateKeyFunc(),
+		handlers.Redis,
+	)
 	return g
 }

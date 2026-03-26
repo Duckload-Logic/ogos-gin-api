@@ -8,7 +8,8 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/olazo-johnalbert/duckload-api/internal/bootstrap"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
+	"github.com/olazo-johnalbert/duckload-api/internal/server"
 )
 
 // @title           DuckLoad API
@@ -37,20 +38,24 @@ func main() {
 		dbUrl += "&tls=true"
 	}
 
-	db, err := database.GetDBConnection(dbUrl)
+	db, err := datastore.GetDBConnection(dbUrl)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	// Get application
-	app, err := bootstrap.GetNewApplication(db, config)
+	// Get application dependencies
+	app, err := bootstrap.Initialize(db, config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Serve Application
-	if err := app.Serve(); err != nil {
+	// Setup Router
+	router := server.NewRouter(db, app.Handlers, config)
+
+	// Start Server
+	log.Printf("Server starting on port %s", config.WebsitesPort)
+	if err := router.Run(":" + config.WebsitesPort); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -3,8 +3,6 @@ package bootstrap
 import (
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/storage"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
@@ -18,6 +16,8 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
 type Handlers struct {
@@ -37,10 +37,15 @@ type Handlers struct {
 	SystemLogHandler       *logs.Handler
 	SystemLogService       *logs.Service
 	ConsentHandler         *consents.Handler
-	Redis                  *database.RedisClient
+	Redis                  *datastore.RedisClient
 }
 
-func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *config.Config, redis *database.RedisClient) *Handlers {
+func getHandlers(
+	repos *Repositories,
+	fileStorage storage.FileStorage,
+	cfg *config.Config,
+	redis *datastore.RedisClient,
+) *Handlers {
 	systemLogService := logs.NewService(repos.SystemLogRepo)
 	systemLogHandler := logs.NewHandler(systemLogService)
 	apiKeyService := apikeys.NewService(repos.APIKeyRepo, systemLogService)
@@ -53,14 +58,30 @@ func getHandlers(repos *Repositories, fileStorage storage.FileStorage, cfg *conf
 	studentService := students.NewService(repos.StudentRepo, locationsService)
 	noteService := notes.NewService(repos.NoteRepo)
 	externalStudentService := external.NewService(repos.ExternalStudentRepo)
-	appointmentService := appointments.NewService(repos.AppointmentRepo, notificationsService, systemLogService)
-	slipService := slips.NewService(repos.SlipRepo, systemLogService, fileStorage)
+	appointmentService := appointments.NewService(
+		repos.AppointmentRepo,
+		notificationsService,
+		systemLogService,
+	)
+	slipService := slips.NewService(
+		repos.SlipRepo,
+		systemLogService,
+		fileStorage,
+	)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo)
 	analyticsHandler := analytics.NewHandler(analyticsService)
-	consentService := consents.NewService(repos.ConsentRepo, systemLogService, fileStorage)
+	consentService := consents.NewService(
+		repos.ConsentRepo,
+		systemLogService,
+		fileStorage,
+	)
 
 	return &Handlers{
-		AuthHandler:            auth.NewHandler(authService, systemLogService, cfg),
+		AuthHandler: auth.NewHandler(
+			authService,
+			systemLogService,
+			cfg,
+		),
 		UserHandler:            users.NewHandler(userService),
 		LocationsHandler:       locations.NewHandler(locationsService),
 		StudentHandler:         students.NewHandler(studentService),
