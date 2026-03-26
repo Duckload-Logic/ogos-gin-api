@@ -14,7 +14,10 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsRequest) ([]OGOSStudentView, int, error) {
+func (r *Repository) ListStudents(
+	ctx context.Context,
+	req OGOSListStudentsRequest,
+) ([]OGOSStudentView, int, error) {
 	query := `
 		SELECT
 			sp.student_number AS student_number,
@@ -67,7 +70,7 @@ func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsReque
 
 	// Apply pagination
 	query += " LIMIT ? OFFSET ?"
-	args = append(args, req.PageSize, req.PageSize*(req.Page-1))
+	args = append(args, req.PageSize, req.GetOffset())
 
 	var students []OGOSStudentView
 	err = r.db.SelectContext(ctx, &students, query, args...)
@@ -78,7 +81,10 @@ func (r *Repository) ListStudents(ctx context.Context, req OGOSListStudentsReque
 	return students, total, nil
 }
 
-func (r *Repository) GetStudentByUserID(ctx context.Context, userID string) (*OGOSStudentView, error) {
+func (r *Repository) GetStudentByUserID(
+	ctx context.Context,
+	userID string,
+) (*OGOSStudentView, error) {
 	query := `
 		SELECT
 			sp.student_number AS student_number,
@@ -110,7 +116,10 @@ func (r *Repository) GetStudentByUserID(ctx context.Context, userID string) (*OG
 	return &student, nil
 }
 
-func (r *Repository) GetPersonalInfoByStudentNumber(ctx context.Context, studentNumber string) (*OGOSStudentPersonalInfoView, error) {
+func (r *Repository) GetPersonalInfoByStudentNumber(
+	ctx context.Context,
+	studentNumber string,
+) (*OGOSStudentPersonalInfoView, error) {
 	query := `
 		SELECT
 			sp.student_number AS student_number,
@@ -135,7 +144,10 @@ func (r *Repository) GetPersonalInfoByStudentNumber(ctx context.Context, student
 	return &student, nil
 }
 
-func (r *Repository) GetAddressByStudentNumber(ctx context.Context, studentNumber string) ([]OGOSStudentAddressView, error) {
+func (r *Repository) GetAddressByStudentNumber(
+	ctx context.Context,
+	studentNumber string,
+) ([]OGOSStudentAddressView, error) {
 	query := `
 		SELECT
 			sp.student_number AS student_number,

@@ -1,17 +1,19 @@
 package external
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
@@ -33,23 +35,30 @@ func NewHandler(service *Service) *Handler {
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Failure 500 {object} map[string]string "Internal Server Error"
 // @Router /students/external [get]
-func (h *Handler) ListStudents(c *gin.Context) {
+func (h *Handler) GetStudents(c *gin.Context) {
 	var req OGOSListStudentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid query parameters"})
+		log.Printf("[GetStudents] {Bind Query}: %v", err)
+		response.SendFail(c, gin.H{"error": "invalid query parameters"})
 		return
 	}
 
-	response, err := h.service.ListStudents(c.Request.Context(), req)
+	resp, err := h.service.ListStudents(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
+		log.Printf("[GetStudents] {Service List}: %v", err)
+		response.SendError(
+			c,
+			string(constants.ErrInternalServerError),
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	response.SendSuccess(c, resp)
 }
 
-// HandleGetStudentByUserID godoc
+// GetStudentByUserID godoc
 // @Summary Get student by user ID
 // @Description Get student information by user ID
 // @Tags External Students
@@ -62,28 +71,34 @@ func (h *Handler) ListStudents(c *gin.Context) {
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
 // @Router /students/external/by-id/{userID} [get]
-func (h *Handler) HandleGetStudentByUserID(c *gin.Context) {
+func (h *Handler) GetStudentByUserID(c *gin.Context) {
 	userID := c.Param("userID")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "userID parameter is required"})
+		response.SendFail(c, gin.H{"error": "userID parameter is required"})
 		return
 	}
 
 	student, err := h.service.GetStudentByUserID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
+		log.Printf("[GetStudentByUserID] {Service Get}: %v", err)
+		response.SendError(
+			c,
+			string(constants.ErrInternalServerError),
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
 	if student == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": constants.ErrNotFound})
+		response.SendFail(c, gin.H{"error": constants.ErrNotFound}, http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusOK, student)
+	response.SendSuccess(c, student)
 }
 
-// HandleGetPersonalInfoByStudentNumber godoc
+// GetPersonalInfoByStudentNumber godoc
 // @Summary Get personal information by student number
 // @Description Get personal information of a student by their student number
 // @Tags External Students
@@ -96,28 +111,37 @@ func (h *Handler) HandleGetStudentByUserID(c *gin.Context) {
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
 // @Router /students/external/personal-info/{studentNumber} [get]
-func (h *Handler) HandleGetPersonalInfoByStudentNumber(c *gin.Context) {
+func (h *Handler) GetPersonalInfoByStudentNumber(c *gin.Context) {
 	studentNumber := c.Param("studentNumber")
 	if studentNumber == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "student_number parameter is required"})
+		response.SendFail(c, gin.H{"error": "student_number parameter is required"})
 		return
 	}
 
-	student, err := h.service.GetPersonalInfoByStudentNumber(c.Request.Context(), studentNumber)
+	student, err := h.service.GetPersonalInfoByStudentNumber(
+		c.Request.Context(),
+		studentNumber,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
+		log.Printf("[GetPersonalInfoByStudentNumber] {Service Get}: %v", err)
+		response.SendError(
+			c,
+			string(constants.ErrInternalServerError),
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
 	if student == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": constants.ErrNotFound})
+		response.SendFail(c, gin.H{"error": constants.ErrNotFound}, http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusOK, student)
+	response.SendSuccess(c, student)
 }
 
-// HandleGetAddressByStudentNumber godoc
+// GetAddressByStudentNumber godoc
 // @Summary Get student addresses by student number
 // @Description Get all addresses of a student by their student number
 // @Tags External Students
@@ -130,23 +154,32 @@ func (h *Handler) HandleGetPersonalInfoByStudentNumber(c *gin.Context) {
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
 // @Router /students/external/addresses/{studentNumber} [get]
-func (h *Handler) HandleGetAddressByStudentNumber(c *gin.Context) {
+func (h *Handler) GetAddressByStudentNumber(c *gin.Context) {
 	studentNumber := c.Param("studentNumber")
 	if studentNumber == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "student_number parameter is required"})
+		response.SendFail(c, gin.H{"error": "student_number parameter is required"})
 		return
 	}
 
-	studentAddresses, err := h.service.GetAddressByStudentNumber(c.Request.Context(), studentNumber)
+	studentAddresses, err := h.service.GetAddressByStudentNumber(
+		c.Request.Context(),
+		studentNumber,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": constants.ErrInternalServerError})
+		log.Printf("[GetAddressByStudentNumber] {Service Get}: %v", err)
+		response.SendError(
+			c,
+			string(constants.ErrInternalServerError),
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
 	if len(studentAddresses) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": constants.ErrNotFound})
+		response.SendFail(c, gin.H{"error": constants.ErrNotFound}, http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusOK, studentAddresses)
+	response.SendSuccess(c, studentAddresses)
 }

@@ -1,27 +1,21 @@
 package external
 
 import (
-	"github.com/olazo-johnalbert/duckload-api/internal/core/request"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 )
 
 type OGOSListStudentsRequest struct {
-	request.PaginationParams
-	Search    string `form:"search,omitempty"`
-	CourseID  int    `form:"course_id,omitempty"`
-	GenderID  int    `form:"gender_id,omitempty"`
-	YearLevel int    `form:"year_level,omitempty"`
-	OrderBy   string `form:"order_by,omitempty" binding:"omitempty,oneof=first_name last_name student_number created_at updated_at year_level course_id"`
+	structs.PaginationRequest
+	CourseID  int `form:"course_id,omitempty"`
+	GenderID  int `form:"gender_id,omitempty"`
+	YearLevel int `form:"year_level,omitempty"`
 }
 
 type OGOSListStudentsResponse struct {
-	Students   []OGOSStudentDTO `json:"students"`
-	Total      int              `json:"total"`
-	Page       int              `json:"page"`
-	PageSize   int              `json:"pageSize"`
-	TotalPages int              `json:"totalPages"`
+	Students []OGOSStudentDTO           `json:"students"`
+	Meta     structs.PaginationMetadata `json:"meta"`
 }
 
 type OGOSStudentDTO struct {

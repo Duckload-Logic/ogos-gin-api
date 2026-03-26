@@ -6,147 +6,215 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) HandleGetGenders(c *gin.Context) {
+func (h *Handler) GetGenders(c *gin.Context) {
 	genders, err := h.service.GetGenders(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get genders"})
+		response.SendError(
+			c,
+			"Failed to get genders",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, genders)
+	response.SendSuccess(c, genders)
 }
 
-func (h *Handler) HandleGetParentalStatusTypes(c *gin.Context) {
+func (h *Handler) GetParentalStatusTypes(c *gin.Context) {
 	statuses, err := h.service.GetParentalStatusTypes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get parental status types"})
+		response.SendError(
+			c,
+			"Failed to get parental status types",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, statuses)
+	response.SendSuccess(c, statuses)
 }
 
-func (h *Handler) HandleGetEnrollmentReasons(c *gin.Context) {
+func (h *Handler) GetEnrollmentReasons(c *gin.Context) {
 	reasons, err := h.service.GetEnrollmentReasons(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get enrollment reasons"})
+		response.SendError(
+			c,
+			"Failed to get enrollment reasons",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, reasons)
+	response.SendSuccess(c, reasons)
 }
 
-func (h *Handler) HandleGetIncomeRanges(c *gin.Context) {
+func (h *Handler) GetIncomeRanges(c *gin.Context) {
 	ranges, err := h.service.GetIncomeRanges(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get income ranges"})
+		response.SendError(
+			c,
+			"Failed to get income ranges",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, ranges)
+	response.SendSuccess(c, ranges)
 }
 
-func (h *Handler) HandleGetStudentSupportTypes(c *gin.Context) {
+func (h *Handler) GetStudentSupportTypes(c *gin.Context) {
 	supportTypes, err := h.service.GetStudentSupportTypes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student support types"})
+		response.SendError(
+			c,
+			"Failed to get student support types",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, supportTypes)
+	response.SendSuccess(c, supportTypes)
 }
 
-func (h *Handler) HandleGetSiblingSupportTypes(c *gin.Context) {
+func (h *Handler) GetSiblingSupportTypes(c *gin.Context) {
 	supportTypes, err := h.service.GetSiblingSupportTypes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get sibling support types"})
+		response.SendError(
+			c,
+			"Failed to get sibling support types",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, supportTypes)
+	response.SendSuccess(c, supportTypes)
 }
 
-func (h *Handler) HandleGetEducationalLevels(c *gin.Context) {
+func (h *Handler) GetEducationalLevels(c *gin.Context) {
 	levels, err := h.service.GetEducationalLevels(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get educational levels"})
+		response.SendError(
+			c,
+			"Failed to get educational levels",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, levels)
+	response.SendSuccess(c, levels)
 }
 
-func (h *Handler) HandleGetCourses(c *gin.Context) {
+func (h *Handler) GetCourses(c *gin.Context) {
 	courses, err := h.service.GetCourses(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get courses"})
+		response.SendError(
+			c,
+			"Failed to get courses",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, courses)
+	response.SendSuccess(c, courses)
 }
 
-func (h *Handler) HandleGetCivilStatusTypes(c *gin.Context) {
+func (h *Handler) GetCivilStatusTypes(c *gin.Context) {
 	civilStatusTypes, err := h.service.GetCivilStatusTypes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get civil status types"})
+		response.SendError(
+			c,
+			"Failed to get civil status types",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, civilStatusTypes)
+	response.SendSuccess(c, civilStatusTypes)
 }
 
-func (h *Handler) HandleGetReligions(c *gin.Context) {
+func (h *Handler) GetReligions(c *gin.Context) {
 	religions, err := h.service.GetReligions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get religions"})
+		response.SendError(
+			c,
+			"Failed to get religions",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, religions)
+	response.SendSuccess(c, religions)
 }
 
-func (h *Handler) HandleGetStudentRelationshipTypes(c *gin.Context) {
-	relationshipTypes, err := h.service.GetStudentRelationshipTypes(c.Request.Context())
+func (h *Handler) GetStudentRelationshipTypes(c *gin.Context) {
+	relationshipTypes, err := h.service.GetStudentRelationshipTypes(
+		c.Request.Context(),
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student relationship types"})
+		response.SendError(
+			c,
+			"Failed to get student relationship types",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, relationshipTypes)
+	response.SendSuccess(c, relationshipTypes)
 }
 
-func (h *Handler) HandleGetNatureOfResidenceTypes(c *gin.Context) {
+func (h *Handler) GetNatureOfResidenceTypes(c *gin.Context) {
 	types, err := h.service.GetNatureOfResidenceTypes(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get nature of residence types"})
+		response.SendError(
+			c,
+			"Failed to get nature of residence types",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, types)
+	response.SendSuccess(c, types)
 }
 
-func (h *Handler) HandleGetActivityOptions(c *gin.Context) {
+func (h *Handler) GetActivityOptions(c *gin.Context) {
 	options, err := h.service.GetActivityOptions(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get activity options"})
+		response.SendError(
+			c,
+			"Failed to get activity options",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, options)
+	response.SendSuccess(c, options)
 }
 
-// HandleListStudents godoc
+// GetStudentList godoc
 // @Summary      List Students
 // @Description  Retrieves a paginated list of students with optional filters.
 // @Tags         Students
@@ -160,351 +228,492 @@ func (h *Handler) HandleGetActivityOptions(c *gin.Context) {
 // @Success      200        {object}  ListStudentsResponse
 // @Failure      500        {object}  map[string]string "Failed to list students"
 // @Router       /students [get]
-func (h *Handler) HandleListStudents(c *gin.Context) {
+func (h *Handler) GetStudentList(c *gin.Context) {
 	var req ListStudentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.SendFail(c, gin.H{"error": err.Error()})
 		return
 	}
 
 	resp, err := h.service.ListStudents(c.Request.Context(), req)
 	if err != nil {
-		log.Printf("[HandleListStudents] {Service Error}: %v", err)
-		c.JSON(
+		log.Printf("[GetStudentList] {Service Error}: %v", err)
+		response.SendError(
+			c,
+			"Failed to list students",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to list students"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, resp)
+	response.SendSuccess(c, resp)
 }
 
-func (h *Handler) HandleGetStudentProfile(c *gin.Context) {
+func (h *Handler) GetStudentProfile(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
 	profile, err := h.service.GetStudentProfile(c.Request.Context(), iirID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student profile"})
+		response.SendError(
+			c,
+			"Failed to get student profile",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, profile)
+	response.SendSuccess(c, profile)
 }
 
-func (h *Handler) HandleGetStudentBasicInfo(c *gin.Context) {
+func (h *Handler) GetStudentBasicInfo(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
 	basicInfo, err := h.service.GetStudentBasicInfo(c.Request.Context(), iirID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student basic info"})
+		response.SendError(
+			c,
+			"Failed to get student basic info",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, basicInfo)
+	response.SendSuccess(c, basicInfo)
 }
 
-func (h *Handler) HandleGetIIRDraft(c *gin.Context) {
+func (h *Handler) GetIIRDraft(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
 	draft, err := h.service.GetIIRDraft(c.Request.Context(), userID)
 	if err != nil {
-		log.Printf("[HandleGetIIRDraft] {Fetch Draft Error}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get IIR draft"})
+		log.Printf("[GetIIRDraft] {Fetch Draft Error}: %v", err)
+		response.SendError(
+			c,
+			"Failed to get IIR draft",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, draft)
+	response.SendSuccess(c, draft)
 }
 
-func (h *Handler) HandleGetStudentIIRByUserID(c *gin.Context) {
+func (h *Handler) GetStudentIIRByUserID(c *gin.Context) {
 	userID := c.Param("userID")
 	if userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "User ID is required"})
+		response.SendFail(c, gin.H{"error": "User ID is required"})
 		return
 	}
 
 	iir, err := h.service.GetStudentIIRByUserID(c.Request.Context(), userID)
 	if err != nil {
-		log.Printf("[HandleGetStudentIIRByUserID] {Fetch IIR Error}: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student IIR by user ID"})
+		log.Printf("[GetStudentIIRByUserID] {Fetch IIR Error}: %v", err)
+		response.SendError(
+			c,
+			"Failed to get student IIR by user ID",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, iir)
+	response.SendSuccess(c, iir)
 }
 
-func (h *Handler) HandleGetStudentIIRByIIRID(c *gin.Context) {
+func (h *Handler) GetStudentIIRByIIRID(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
 	iir, err := h.service.GetStudentIIR(c.Request.Context(), iirID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student IIR by IIR ID"})
+		response.SendError(
+			c,
+			"Failed to get student IIR by IIR ID",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, iir)
+	response.SendSuccess(c, iir)
 }
 
-func (h *Handler) HandleGetStudentEnrollmentReasons(c *gin.Context) {
+func (h *Handler) GetStudentEnrollmentReasons(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	reasons, err := h.service.GetStudentEnrollmentReasons(c.Request.Context(), iirID)
+	reasons, err := h.service.GetStudentEnrollmentReasons(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student enrollment reasons"})
+		response.SendError(
+			c,
+			"Failed to get student enrollment reasons",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, reasons)
+	response.SendSuccess(c, reasons)
 }
 
-func (h *Handler) HandleGetStudentPersonalInfo(c *gin.Context) {
+func (h *Handler) GetStudentPersonalInfo(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	personalInfo, err := h.service.GetStudentPersonalInfo(c.Request.Context(), iirID)
+	personalInfo, err := h.service.GetStudentPersonalInfo(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student personal info"})
+		response.SendError(
+			c,
+			"Failed to get student personal info",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, personalInfo)
+	response.SendSuccess(c, personalInfo)
 }
 
-func (h *Handler) HandleGetStudentAddresses(c *gin.Context) {
+func (h *Handler) GetStudentAddresses(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
 	addresses, err := h.service.GetStudentAddresses(c.Request.Context(), iirID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student addresses"})
+		response.SendError(
+			c,
+			"Failed to get student addresses",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, addresses)
+	response.SendSuccess(c, addresses)
 }
 
-func (h *Handler) HandleGetStudentFamilyBackground(c *gin.Context) {
+func (h *Handler) GetStudentFamilyBackground(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	familyBackground, err := h.service.GetStudentFamilyBackground(c.Request.Context(), iirID)
+	familyBackground, err := h.service.GetStudentFamilyBackground(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student family background"})
+		response.SendError(
+			c,
+			"Failed to get student family background",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, familyBackground)
+	response.SendSuccess(c, familyBackground)
 }
 
-func (h *Handler) HandleGetStudentRelatedPersons(c *gin.Context) {
+func (h *Handler) GetStudentRelatedPersons(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	relatedPersons, err := h.service.GetStudentRelatedPersons(c.Request.Context(), iirID)
+	relatedPersons, err := h.service.GetStudentRelatedPersons(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student related persons"})
+		response.SendError(
+			c,
+			"Failed to get student related persons",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, relatedPersons)
+	response.SendSuccess(c, relatedPersons)
 }
 
-func (h *Handler) HandleGetEducationalBackground(c *gin.Context) {
+func (h *Handler) GetEducationalBackground(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	educationalBackground, err := h.service.GetEducationalBackground(c.Request.Context(), iirID)
+	educationalBackground, err := h.service.GetEducationalBackground(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get educational background"})
+		response.SendError(
+			c,
+			"Failed to get educational background",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, educationalBackground)
+	response.SendSuccess(c, educationalBackground)
 }
 
-func (h *Handler) HandleGetStudentFinancialInfo(c *gin.Context) {
+func (h *Handler) GetStudentFinancialInfo(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	financialInfo, err := h.service.GetStudentFinancialInfo(c.Request.Context(), iirID)
+	financialInfo, err := h.service.GetStudentFinancialInfo(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student financial info"})
+		response.SendError(
+			c,
+			"Failed to get student financial info",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, financialInfo)
+	response.SendSuccess(c, financialInfo)
 }
 
-func (h *Handler) HandleGetStudentHealthRecord(c *gin.Context) {
+func (h *Handler) GetStudentHealthRecord(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	healthRecord, err := h.service.GetStudentHealthRecord(c.Request.Context(), iirID)
+	healthRecord, err := h.service.GetStudentHealthRecord(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student health record"})
+		response.SendError(
+			c,
+			"Failed to get student health record",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, healthRecord)
+	response.SendSuccess(c, healthRecord)
 }
 
-func (h *Handler) HandleGetStudentConsultations(c *gin.Context) {
+func (h *Handler) GetStudentConsultations(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	consultations, err := h.service.GetStudentConsultations(c.Request.Context(), iirID)
+	consultations, err := h.service.GetStudentConsultations(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student consultations"})
+		response.SendError(
+			c,
+			"Failed to get student consultations",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, consultations)
+	response.SendSuccess(c, consultations)
 }
 
-func (h *Handler) HandleGetStudentActivities(c *gin.Context) {
+func (h *Handler) GetStudentActivities(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	activities, err := h.service.GetStudentActivities(c.Request.Context(), iirID)
+	activities, err := h.service.GetStudentActivities(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student activities"})
+		response.SendError(
+			c,
+			"Failed to get student activities",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, activities)
+	response.SendSuccess(c, activities)
 }
 
-func (h *Handler) HandleGetStudentSubjectPreferences(c *gin.Context) {
+func (h *Handler) GetStudentSubjectPreferences(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	subjectPreferences, err := h.service.GetStudentSubjectPreferences(c.Request.Context(), iirID)
+	subjectPreferences, err := h.service.GetStudentSubjectPreferences(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student subject preferences"})
+		response.SendError(
+			c,
+			"Failed to get student subject preferences",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, subjectPreferences)
+	response.SendSuccess(c, subjectPreferences)
 }
 
-func (h *Handler) HandleGetStudentHobbies(c *gin.Context) {
+func (h *Handler) GetStudentHobbies(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
 	hobbies, err := h.service.GetStudentHobbies(c.Request.Context(), iirID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student hobbies"})
+		response.SendError(
+			c,
+			"Failed to get student hobbies",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, hobbies)
+	response.SendSuccess(c, hobbies)
 }
 
-func (h *Handler) HandleGetStudentTestResults(c *gin.Context) {
+func (h *Handler) GetStudentTestResults(c *gin.Context) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid IIR ID format"})
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
 		return
 	}
 
-	testResults, err := h.service.GetStudentTestResults(c.Request.Context(), iirID)
+	testResults, err := h.service.GetStudentTestResults(
+		c.Request.Context(),
+		iirID,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get student test results"})
+		response.SendError(
+			c,
+			"Failed to get student test results",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, testResults)
+	response.SendSuccess(c, testResults)
 }
 
-func (h *Handler) HandleSaveIIRDraft(c *gin.Context) {
+func (h *Handler) PostIIRDraft(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
 	var req ComprehensiveProfileDTO
 	if err := json.NewDecoder(c.Request.Body).Decode(&req); err != nil {
 		log.Printf(
-			"[HandleSaveIIRDraft] {JSON Decode}: %v",
+			"[PostIIRDraft] {JSON Decode}: %v",
 			err,
 		)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+		response.SendFail(c, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
 	draftID, err := h.service.SaveIIRDraft(c.Request.Context(), userID, req)
 	if err != nil {
 		log.Printf(
-			"[HandleSaveIIRDraft] {Service Error}: %v",
+			"[PostIIRDraft] {Service Error}: %v",
 			err,
 		)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save IIR draft"})
+		response.SendError(
+			c,
+			"Failed to save IIR draft",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": draftID, "message": "IIR draft saved successfully"})
+	response.SendSuccess(
+		c,
+		gin.H{"id": draftID, "message": "IIR draft saved successfully"},
+	)
 }
 
-func (h *Handler) HandleSubmitIIR(c *gin.Context) {
+func (h *Handler) PostIIR(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
 	var req ComprehensiveProfileDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("[HandleSubmitIIR] {JSON Decode}: %s", err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("[PostIIR] {JSON Decode}: %s", err.Error())
+		response.SendFail(c, gin.H{"error": err.Error()})
 		return
 	}
 
 	iirID, err := h.service.SubmitStudentIIR(c.Request.Context(), userID, req)
 	if err != nil {
-		log.Printf("[HandleSubmitIIR] {Service Error}: %s", err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to submit student IIR"})
+		log.Printf("[PostIIR] {Service Error}: %s", err.Error())
+		response.SendError(
+			c,
+			"Failed to submit student IIR",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": iirID, "message": "Student IIR submitted successfully"})
+	response.SendSuccess(
+		c,
+		gin.H{"id": iirID, "message": "Student IIR submitted successfully"},
+	)
 }

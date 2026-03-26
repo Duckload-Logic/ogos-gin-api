@@ -10,29 +10,18 @@ import (
 )
 
 type Service struct {
-	repo *Repository
+	repo RepositoryInterface
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest) (OGOSListStudentsResponse, error) {
-	if req.Page <= 0 {
-		req.Page = 1
-	}
-
-	if req.PageSize <= 0 {
-		req.PageSize = 10
-	}
-
-	if req.PageSize > 50 {
-		req.PageSize = 50
-	}
-
-	if req.OrderBy == "" {
-		req.OrderBy = "created_at"
-	}
+func (s *Service) ListStudents(
+	ctx context.Context,
+	req OGOSListStudentsRequest,
+) (OGOSListStudentsResponse, error) {
+	req.SetDefaults("created_at")
 
 	studentList, total, err := s.repo.ListStudents(ctx, req)
 	if err != nil {
@@ -60,17 +49,17 @@ func (s *Service) ListStudents(ctx context.Context, req OGOSListStudentsRequest)
 	}
 
 	listResponse := OGOSListStudentsResponse{
-		Students:   studentsDTO,
-		Total:      total,
-		Page:       req.Page,
-		PageSize:   req.PageSize,
-		TotalPages: (total + req.PageSize - 1) / req.PageSize,
+		Students: studentsDTO,
+		Meta:     structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}
 
 	return listResponse, nil
 }
 
-func (s *Service) GetStudentByUserID(ctx context.Context, userID string) (*OGOSStudentDTO, error) {
+func (s *Service) GetStudentByUserID(
+	ctx context.Context,
+	userID string,
+) (*OGOSStudentDTO, error) {
 	student, err := s.repo.GetStudentByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -94,7 +83,10 @@ func (s *Service) GetStudentByUserID(ctx context.Context, userID string) (*OGOSS
 	}, nil
 }
 
-func (s *Service) GetPersonalInfoByStudentNumber(ctx context.Context, studentNumber string) (*OGOSStudentPersonalInfoDTO, error) {
+func (s *Service) GetPersonalInfoByStudentNumber(
+	ctx context.Context,
+	studentNumber string,
+) (*OGOSStudentPersonalInfoDTO, error) {
 	student, err := s.repo.GetPersonalInfoByStudentNumber(ctx, studentNumber)
 	if err != nil {
 		return nil, err
@@ -113,14 +105,23 @@ func (s *Service) GetPersonalInfoByStudentNumber(ctx context.Context, studentNum
 	}, nil
 }
 
-func (s *Service) GetAddressByStudentNumber(ctx context.Context, studentNumber string) ([]OGOSStudentAddressDTO, error) {
-	studentAddresses, err := s.repo.GetAddressByStudentNumber(ctx, studentNumber)
+func (s *Service) GetAddressByStudentNumber(
+	ctx context.Context,
+	studentNumber string,
+) ([]OGOSStudentAddressDTO, error) {
+	studentAddresses, err := s.repo.GetAddressByStudentNumber(
+		ctx,
+		studentNumber,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(studentAddresses) == 0 {
-		return nil, fmt.Errorf("no addresses found for student number: %s", studentNumber)
+		return nil, fmt.Errorf(
+			"no addresses found for student number: %s",
+			studentNumber,
+		)
 	}
 
 	var addresesDTO []OGOSStudentAddressDTO
@@ -129,10 +130,22 @@ func (s *Service) GetAddressByStudentNumber(ctx context.Context, studentNumber s
 			StudentNumber: address.StudentNumber,
 			AddressType:   address.AddressType,
 			StreetDetail:  address.StreetDetail,
-			Barangay:      locations.Barangay{Code: address.BarangayCode, Name: address.BarangayName},
-			City:          locations.City{Code: address.CityCode, Name: address.CityName},
-			Province:      &locations.ProvinceDTO{Code: structs.FromSqlNull(address.ProvinceCode), Name: structs.FromSqlNull(address.ProvinceName)},
-			Region:        locations.Region{Code: address.RegionCode, Name: address.RegionName},
+			Barangay: locations.Barangay{
+				Code: address.BarangayCode,
+				Name: address.BarangayName,
+			},
+			City: locations.City{
+				Code: address.CityCode,
+				Name: address.CityName,
+			},
+			Province: &locations.ProvinceDTO{
+				Code: structs.FromSqlNull(address.ProvinceCode),
+				Name: structs.FromSqlNull(address.ProvinceName),
+			},
+			Region: locations.Region{
+				Code: address.RegionCode,
+				Name: address.RegionName,
+			},
 		})
 	}
 
