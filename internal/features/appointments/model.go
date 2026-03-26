@@ -47,7 +47,8 @@ type Appointment struct {
 	UpdatedAt             time.Time      `db:"updated_at"              json:"updatedAt"`
 }
 
-// AppointmentWithDetailsView holds appointment data with joined time slot, category, and status
+// AppointmentWithDetailsView holds appointment data with joined time slot,
+// category, and status
 type AppointmentWithDetailsView struct {
 	ID             string         `db:"id"`
 	IIRID          string         `db:"iir_id"`

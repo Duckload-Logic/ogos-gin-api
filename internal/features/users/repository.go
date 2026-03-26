@@ -16,6 +16,10 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
 // =============================================
 // |                                           |
 // |                                           |
@@ -87,30 +91,44 @@ func (r *Repository) GetUserByEmail(
 
 // CreateUser
 func (r *Repository) CreateUser(
-	ctx context.Context, user User,
+	ctx context.Context,
+	tx datastore.DB,
+	user User,
 ) error {
-	err := datastore.RunInTransaction(ctx, r.db, func(tx *sqlx.Tx) error {
-		// id is the primary key, we should NOT update it on duplicate
-		// password_hash might be empty for IDP users, we don't want to overwrite it
-		exclude := []string{"updated_at", "password_hash"}
-		cols, vals := datastore.GetInsertStatement(User{}, exclude)
-		onDuplicateKeyStmt := datastore.GetOnDuplicateKeyUpdateStatement(
-			User{},
-			exclude,
-		)
-		query := fmt.Sprintf(`
+	// id is the primary key, we should NOT update it on duplicate
+	// password_hash might be empty for IDP users, we don't want to overwrite it
+	exclude := []string{"updated_at"}
+	cols, vals := datastore.GetInsertStatement(User{}, exclude)
+	onDuplicateKeyStmt := datastore.GetOnDuplicateKeyUpdateStatement(
+		User{},
+		exclude,
+	)
+	query := fmt.Sprintf(`
 			INSERT INTO users (id, %s)
 			VALUES (:id, %s)
 			ON DUPLICATE KEY UPDATE %s
 		`, cols, vals, onDuplicateKeyStmt)
 
-		_, err := tx.NamedExecContext(ctx, query, user)
-		if err != nil {
-			return err
-		}
+	_, err := tx.NamedExecContext(ctx, query, user)
+	return err
+}
 
-		return nil
-	})
+func (r *Repository) BlockUser(
+	ctx context.Context,
+	tx datastore.DB,
+	userID string,
+) error {
+	query := `UPDATE users SET is_active = 0 WHERE id = ?`
+	_, err := tx.ExecContext(ctx, query, userID)
+	return err
+}
 
+func (r *Repository) UnblockUser(
+	ctx context.Context,
+	tx datastore.DB,
+	userID string,
+) error {
+	query := `UPDATE users SET is_active = 1 WHERE id = ?`
+	_, err := tx.ExecContext(ctx, query, userID)
 	return err
 }

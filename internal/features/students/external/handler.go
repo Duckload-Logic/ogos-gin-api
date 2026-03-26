@@ -28,7 +28,8 @@ func NewHandler(service ServiceInterface) *Handler {
 // @Param course_id query int false "Filter by course ID"
 // @Param gender_id query int false "Filter by gender ID"
 // @Param year_level query int false "Filter by year level"
-// @Param order_by query string false "Order by field (first_name, last_name, student_number, created_at, updated_at, year_level, course_id)"
+// @Param order_by query string false "Order by field (first_name, last_name,
+// student_number, created_at, updated_at, year_level, course_id)"
 // @Param page query int false "Page number for pagination"
 // @Param page_size query int false "Number of items per page for pagination"
 // @Success 200 {object} OGOSListStudentsResponse
@@ -91,7 +92,11 @@ func (h *Handler) GetStudentByUserID(c *gin.Context) {
 	}
 
 	if student == nil {
-		response.SendFail(c, gin.H{"error": constants.ErrNotFound}, http.StatusNotFound)
+		response.SendFail(
+			c,
+			gin.H{"error": constants.ErrNotFound},
+			http.StatusNotFound,
+		)
 		return
 	}
 
@@ -114,7 +119,10 @@ func (h *Handler) GetStudentByUserID(c *gin.Context) {
 func (h *Handler) GetPersonalInfoByStudentNumber(c *gin.Context) {
 	studentNumber := c.Param("studentNumber")
 	if studentNumber == "" {
-		response.SendFail(c, gin.H{"error": "student_number parameter is required"})
+		response.SendFail(
+			c,
+			gin.H{"error": "student_number parameter is required"},
+		)
 		return
 	}
 
@@ -134,7 +142,11 @@ func (h *Handler) GetPersonalInfoByStudentNumber(c *gin.Context) {
 	}
 
 	if student == nil {
-		response.SendFail(c, gin.H{"error": constants.ErrNotFound}, http.StatusNotFound)
+		response.SendFail(
+			c,
+			gin.H{"error": constants.ErrNotFound},
+			http.StatusNotFound,
+		)
 		return
 	}
 
@@ -157,7 +169,10 @@ func (h *Handler) GetPersonalInfoByStudentNumber(c *gin.Context) {
 func (h *Handler) GetAddressByStudentNumber(c *gin.Context) {
 	studentNumber := c.Param("studentNumber")
 	if studentNumber == "" {
-		response.SendFail(c, gin.H{"error": "student_number parameter is required"})
+		response.SendFail(
+			c,
+			gin.H{"error": "student_number parameter is required"},
+		)
 		return
 	}
 
@@ -177,7 +192,11 @@ func (h *Handler) GetAddressByStudentNumber(c *gin.Context) {
 	}
 
 	if len(studentAddresses) == 0 {
-		response.SendFail(c, gin.H{"error": constants.ErrNotFound}, http.StatusNotFound)
+		response.SendFail(
+			c,
+			gin.H{"error": constants.ErrNotFound},
+			http.StatusNotFound,
+		)
 		return
 	}
 

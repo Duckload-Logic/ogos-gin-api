@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Service struct {
@@ -22,7 +23,8 @@ func NewService(repo RepositoryInterface, logService *logs.Service) *Service {
 	return &Service{repo: repo, logService: logService}
 }
 
-// GenerateKey creates a new API key, stores its hash, and returns the plaintext key (shown once).
+// GenerateKey creates a new API key, stores its hash, and returns the plaintext
+// key (shown once).
 func (s *Service) GenerateKey(
 	ctx context.Context,
 	req CreateAPIKeyRequest,
@@ -66,7 +68,7 @@ func (s *Service) GenerateKey(
 		ExpiresAt: expiresAt,
 	}
 
-	id, err := s.repo.Create(ctx, apiKey)
+	id, err := s.repo.Create(ctx, s.repo.GetDB(), apiKey)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +78,7 @@ func (s *Service) GenerateKey(
 
 	// Record system log
 	if s.logService != nil {
-		s.logService.Record(ctx, logs.LogEntry{
+		s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
 			Category: logs.CategorySystem,
 			Action:   logs.ActionAPIKeyCreated,
 			Message: fmt.Sprintf(
@@ -122,14 +124,16 @@ func (s *Service) ValidateKey(
 
 	// Fire-and-forget: update last_used_at
 	go func() {
-		_ = s.repo.TouchLastUsed(context.Background(), key.ID)
+		_ = s.repo.TouchLastUsed(context.Background(), s.repo.GetDB(), key.ID)
 	}()
 
 	return key, nil
 }
 
 // ValidateKeyFunc returns a closure compatible with middleware.APIKeyValidator.
-func (s *Service) ValidateKeyFunc() func(ctx context.Context, plaintext string) (int, string, error) {
+func (s *Service) ValidateKeyFunc() func(
+	ctx context.Context, plaintext string,
+) (int, string, error) {
 	return func(ctx context.Context, plaintext string) (int, string, error) {
 		key, err := s.ValidateKey(ctx, plaintext)
 		if err != nil {
@@ -158,24 +162,30 @@ func (s *Service) ListKeys(
 
 // RevokeKey deactivates an API key.
 func (s *Service) RevokeKey(ctx context.Context, id int) error {
-	err := s.repo.Revoke(ctx, id)
-	if err != nil {
-		return err
-	}
+	return datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			err := s.repo.Revoke(ctx, tx, id)
+			if err != nil {
+				return err
+			}
 
-	// Record system log
-	if s.logService != nil {
-		s.logService.Record(ctx, logs.LogEntry{
-			Category: logs.CategorySystem,
-			Action:   logs.ActionAPIKeyRevoked,
-			Message:  fmt.Sprintf("API key #%d has been revoked", id),
-			Metadata: map[string]interface{}{
-				"keyId": id,
-			},
-		})
-	}
+			// Record system log
+			if s.logService != nil {
+				s.logService.Record(ctx, tx, logs.LogEntry{
+					Category: logs.CategorySystem,
+					Action:   logs.ActionAPIKeyRevoked,
+					Message:  fmt.Sprintf("API key #%d has been revoked", id),
+					Metadata: map[string]interface{}{
+						"keyId": id,
+					},
+				})
+			}
 
-	return nil
+			return nil
+		},
+	)
 }
 
 func mapKeyToDTO(key APIKey) APIKeyDTO {

@@ -24,7 +24,7 @@ CREATE TABLE notifications (
     user_id CHAR(36) NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    type ENUM('Appointment', 'Guidance', 'System', 'Announcement') DEFAULT 'System',
+    type ENUM('Appointment', 'Slip', 'Guidance', 'System', 'General') DEFAULT 'System',
     is_read TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

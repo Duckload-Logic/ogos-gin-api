@@ -75,6 +75,7 @@ func (s *Service) ValidateToken(tokenString string) (
 }
 
 func (s *Service) InvalidateToken(tokenString string) error {
-	// TODO: Implement token invalidation (e.g., using a blacklist or token store)
+	// TODO: Implement token invalidation (e.g., using a blacklist or token
+	// store)
 	return nil
 }

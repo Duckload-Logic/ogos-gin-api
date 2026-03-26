@@ -35,7 +35,8 @@ func NewHandler(
 // @Accept       json
 // @Produce      json
 // @Param        request body      LoginDTO true "Login Credentials"
-// @Success      200     {object}  map[string]interface{} "Returns user info (optional)"
+// @Success      200     {object}  map[string]interface{} "Returns user info
+// (optional)"
 // @Failure      400     {object}  map[string]string
 // @Failure      401     {object}  map[string]string
 // @Router       /auth/login [post]
@@ -55,19 +56,23 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		req.Password,
 	)
 	if err != nil {
-		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: logs.CategorySecurity,
-			Action:   logs.ActionLoginFailed,
-			Message: fmt.Sprintf(
-				"Failed login attempt for %s: %s",
-				req.Email,
-				err.Error(),
-			),
-			UserID:    userID,
-			UserEmail: req.Email,
-			IPAddress: ip,
-			UserAgent: ua,
-		})
+		h.logService.Record(
+			c.Request.Context(),
+			h.logService.GetDB(),
+			logs.LogEntry{
+				Category: logs.CategorySecurity,
+				Action:   logs.ActionLoginFailed,
+				Message: fmt.Sprintf(
+					"Failed login attempt for %s: %s",
+					req.Email,
+					err.Error(),
+				),
+				UserID:    userID,
+				UserEmail: req.Email,
+				IPAddress: ip,
+				UserAgent: ua,
+			},
+		)
 		log.Printf("[PostLogin] {AuthenticateUser}: %v", err)
 		response.SendFail(
 			c,
@@ -93,15 +98,19 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		"", h.cfg.IsProduction, true) // 12 hours
 
 	// Log success
-	h.logService.Record(c.Request.Context(), logs.LogEntry{
-		Category:  logs.CategorySecurity,
-		Action:    logs.ActionLoginSuccess,
-		Message:   fmt.Sprintf("User %s logged in successfully", req.Email),
-		UserID:    userID,
-		UserEmail: req.Email,
-		IPAddress: ip,
-		UserAgent: ua,
-	})
+	h.logService.Record(
+		c.Request.Context(),
+		h.logService.GetDB(),
+		logs.LogEntry{
+			Category:  logs.CategorySecurity,
+			Action:    logs.ActionLoginSuccess,
+			Message:   fmt.Sprintf("User %s logged in successfully", req.Email),
+			UserID:    userID,
+			UserEmail: req.Email,
+			IPAddress: ip,
+			UserAgent: ua,
+		},
+	)
 
 	// Optionally return user info (but no tokens)
 	response.SendSuccess(c, gin.H{"message": "Login successful"})
@@ -146,13 +155,17 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		h.cfg,
 	)
 	if err != nil {
-		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category:  logs.CategorySecurity,
-			Action:    logs.ActionInvalidToken,
-			Message:   "Token refresh failed: invalid or expired refresh token",
-			IPAddress: ip,
-			UserAgent: ua,
-		})
+		h.logService.Record(
+			c.Request.Context(),
+			h.logService.GetDB(),
+			logs.LogEntry{
+				Category:  logs.CategorySecurity,
+				Action:    logs.ActionInvalidToken,
+				Message:   "Token refresh failed: invalid or expired refresh token",
+				IPAddress: ip,
+				UserAgent: ua,
+			},
+		)
 		log.Printf("[PostRefreshToken] {RefreshToken}: %v", err)
 		response.SendFail(
 			c,
@@ -192,7 +205,8 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 
 // GetMe godoc
 // @Summary      Get current user info
-// @Description  Retrieves information about the currently authenticated user (native or IDP).
+// @Description  Retrieves information about the currently authenticated user
+// (native or IDP).
 // @Tags         Auth
 // @Produce      json
 // @Success      200 {object} MeResponse
@@ -284,15 +298,19 @@ func (h *Handler) PostLogout(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	userEmail, _ := c.Get("userEmail")
 	if userID != nil && userEmail != nil {
-		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category:  logs.CategorySecurity,
-			Action:    logs.ActionLogout,
-			Message:   fmt.Sprintf("User %s logged out", userEmail),
-			UserID:    userID.(string),
-			UserEmail: userEmail.(string),
-			IPAddress: c.ClientIP(),
-			UserAgent: c.Request.UserAgent(),
-		})
+		h.logService.Record(
+			c.Request.Context(),
+			h.logService.GetDB(),
+			logs.LogEntry{
+				Category:  logs.CategorySecurity,
+				Action:    logs.ActionLogout,
+				Message:   fmt.Sprintf("User %s logged out", userEmail),
+				UserID:    userID.(string),
+				UserEmail: userEmail.(string),
+				IPAddress: c.ClientIP(),
+				UserAgent: c.Request.UserAgent(),
+			},
+		)
 	}
 
 	response.SendSuccess(c, gin.H{"message": "Logout successful"})
@@ -312,16 +330,20 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 	// Generate authorization URL with state and PKCE parameters
 	authURL, err := h.service.GetAuthorizeURL(h.cfg)
 	if err != nil {
-		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: logs.CategorySecurity,
-			Action:   logs.ActionLoginFailed,
-			Message: fmt.Sprintf(
-				"[GetAuthorizeURL] {Generate URL}: %s",
-				err.Error(),
-			),
-			IPAddress: c.ClientIP(),
-			UserAgent: c.Request.UserAgent(),
-		})
+		h.logService.Record(
+			c.Request.Context(),
+			h.logService.GetDB(),
+			logs.LogEntry{
+				Category: logs.CategorySecurity,
+				Action:   logs.ActionLoginFailed,
+				Message: fmt.Sprintf(
+					"[GetAuthorizeURL] {Generate URL}: %s",
+					err.Error(),
+				),
+				IPAddress: c.ClientIP(),
+				UserAgent: c.Request.UserAgent(),
+			},
+		)
 		response.SendError(
 			c,
 			"Failed to generate authorization URL",
@@ -348,37 +370,46 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 func (h *Handler) PostIDPToken(c *gin.Context) {
 	var req idp.IDPTokenExchangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: logs.CategorySecurity,
-			Action:   logs.ActionLoginFailed,
-			Message: fmt.Sprintf(
-				"[PostIDPToken] {Bind JSON}: %s",
-				err.Error(),
-			),
-			IPAddress: c.ClientIP(),
-			UserAgent: c.Request.UserAgent(),
-		})
+		h.logService.Record(
+			c.Request.Context(),
+			h.logService.GetDB(),
+			logs.LogEntry{
+				Category: logs.CategorySecurity,
+				Action:   logs.ActionLoginFailed,
+				Message: fmt.Sprintf(
+					"[PostIDPToken] {Bind JSON}: %s",
+					err.Error(),
+				),
+				IPAddress: c.ClientIP(),
+				UserAgent: c.Request.UserAgent(),
+			},
+		)
 		response.SendFail(c, gin.H{"error": "Invalid request body"})
 		return
 	}
 
 	// Perform token exchange
-	accessToken, refreshToken, userID, userEmail, roleName, err := h.service.PostIDPTokenExchange(
+	accessToken, refreshToken, userID, userEmail, roleName,
+		err := h.service.PostIDPTokenExchange(
 		c.Request.Context(),
 		req.Code,
 		h.cfg,
 	)
 	if err != nil {
-		h.logService.Record(c.Request.Context(), logs.LogEntry{
-			Category: logs.CategorySecurity,
-			Action:   logs.ActionLoginFailed,
-			Message: fmt.Sprintf(
-				"[PostIDPToken] {Service Call}: %s",
-				err.Error(),
-			),
-			IPAddress: c.ClientIP(),
-			UserAgent: c.Request.UserAgent(),
-		})
+		h.logService.Record(
+			c.Request.Context(),
+			h.logService.GetDB(),
+			logs.LogEntry{
+				Category: logs.CategorySecurity,
+				Action:   logs.ActionLoginFailed,
+				Message: fmt.Sprintf(
+					"[PostIDPToken] {Service Call}: %s",
+					err.Error(),
+				),
+				IPAddress: c.ClientIP(),
+				UserAgent: c.Request.UserAgent(),
+			},
+		)
 		log.Printf("[PostIDPToken] {Service Call}: %v", err)
 		response.SendFail(
 			c,
@@ -418,18 +449,22 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	)
 
 	// Log success
-	h.logService.Record(c.Request.Context(), logs.LogEntry{
-		Category: logs.CategorySecurity,
-		Action:   logs.ActionLoginSuccess,
-		Message: fmt.Sprintf(
-			"User %s logged in successfully via IDP",
-			userEmail,
-		),
-		UserID:    userID,
-		UserEmail: userEmail,
-		IPAddress: c.ClientIP(),
-		UserAgent: c.Request.UserAgent(),
-	})
+	h.logService.Record(
+		c.Request.Context(),
+		h.logService.GetDB(),
+		logs.LogEntry{
+			Category: logs.CategorySecurity,
+			Action:   logs.ActionLoginSuccess,
+			Message: fmt.Sprintf(
+				"User %s logged in successfully via IDP",
+				userEmail,
+			),
+			UserID:    userID,
+			UserEmail: userEmail,
+			IPAddress: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+		},
+	)
 
 	// Return Message and Role info for immediate redirect
 	response.SendSuccess(c, gin.H{

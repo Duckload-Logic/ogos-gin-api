@@ -17,7 +17,6 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
-	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
 type Handlers struct {
@@ -41,61 +40,40 @@ type Handlers struct {
 }
 
 func getHandlers(
-	repos *Repositories,
-	fileStorage storage.FileStorage,
+	services *Services,
 	cfg *config.Config,
 	redis *datastore.RedisClient,
 ) *Handlers {
-	systemLogService := logs.NewService(repos.SystemLogRepo)
-	systemLogHandler := logs.NewHandler(systemLogService)
-	apiKeyService := apikeys.NewService(repos.APIKeyRepo, systemLogService)
-
-	notificationsService := notifications.NewService(repos.NotificationRepo)
-	notificationsHandler := notifications.NewHandler(notificationsService)
-	authService := auth.NewService(repos.UserRepo, redis)
-	userService := users.NewService(repos.UserRepo)
-	locationsService := locations.NewService(repos.LocationsRepo)
-	studentService := students.NewService(repos.StudentRepo, locationsService)
-	noteService := notes.NewService(repos.NoteRepo)
-	externalStudentService := external.NewService(repos.ExternalStudentRepo)
-	appointmentService := appointments.NewService(
-		repos.AppointmentRepo,
-		notificationsService,
-		systemLogService,
-	)
-	slipService := slips.NewService(
-		repos.SlipRepo,
-		systemLogService,
-		fileStorage,
-	)
-	analyticsService := analytics.NewService(repos.AnalyticsRepo)
-	analyticsHandler := analytics.NewHandler(analyticsService)
-	consentService := consents.NewService(
-		repos.ConsentRepo,
-		systemLogService,
-		fileStorage,
+	systemLogHandler := logs.NewHandler(services.SystemLogService)
+	analyticsHandler := analytics.NewHandler(services.AnalyticsService)
+	notificationsHandler := notifications.NewHandler(
+		services.NotificationsService,
 	)
 
 	return &Handlers{
 		AuthHandler: auth.NewHandler(
-			authService,
-			systemLogService,
+			services.AuthService,
+			services.SystemLogService,
 			cfg,
 		),
-		UserHandler:            users.NewHandler(userService),
-		LocationsHandler:       locations.NewHandler(locationsService),
-		StudentHandler:         students.NewHandler(studentService),
-		NoteHandler:            notes.NewHandler(noteService),
-		ExternalStudentHandler: external.NewHandler(externalStudentService),
-		AppointmentHandler:     appointments.NewHandler(appointmentService),
-		SlipHandler:            slips.NewHandler(slipService),
-		AnalyticsHandler:       analyticsHandler,
-		APIKeyHandler:          apikeys.NewHandler(apiKeyService),
-		APIKeyService:          apiKeyService,
-		NotificationsHandler:   notificationsHandler,
-		SystemLogHandler:       systemLogHandler,
-		SystemLogService:       systemLogService,
-		ConsentHandler:         consents.NewHandler(consentService),
-		Redis:                  redis,
+		UserHandler:      users.NewHandler(services.UserService),
+		LocationsHandler: locations.NewHandler(services.LocationsService),
+		StudentHandler:   students.NewHandler(services.StudentService),
+		NoteHandler:      notes.NewHandler(services.NoteService),
+		ExternalStudentHandler: external.NewHandler(
+			services.ExternalStudentService,
+		),
+		AppointmentHandler: appointments.NewHandler(
+			services.AppointmentService,
+		),
+		SlipHandler:          slips.NewHandler(services.SlipService),
+		AnalyticsHandler:     analyticsHandler,
+		APIKeyHandler:        apikeys.NewHandler(services.APIKeyService),
+		APIKeyService:        services.APIKeyService,
+		NotificationsHandler: notificationsHandler,
+		SystemLogHandler:     systemLogHandler,
+		SystemLogService:     services.SystemLogService,
+		ConsentHandler:       consents.NewHandler(services.ConsentService),
+		Redis:                redis,
 	}
 }

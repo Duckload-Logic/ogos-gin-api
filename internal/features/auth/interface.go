@@ -5,6 +5,7 @@ import (
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/identity/idp"
 )
 
@@ -47,6 +48,8 @@ type ServiceInterface interface {
 		sessionID string,
 		cfg *config.Config,
 	) (*idp.IDPSessionResponse, error)
+	BlockUser(ctx context.Context, userID string) error
+	UnblockUser(ctx context.Context, userID string) error
 }
 
 type RepositoryInterface interface {
@@ -57,5 +60,7 @@ type RepositoryInterface interface {
 	) (*users.User, error)
 	GetUserByID(ctx context.Context, userID string) (*users.User, error)
 	GetRoleByID(ctx context.Context, roleID int) (*users.Role, error)
-	CreateUser(ctx context.Context, user users.User) error
+	CreateUser(ctx context.Context, tx datastore.DB, user users.User) error
+	BlockUser(ctx context.Context, tx datastore.DB, userID string) error
+	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error
 }

@@ -28,7 +28,12 @@ func (h *Handler) GetLatestDocument(c *gin.Context) {
 
 	doc, err := h.service.GetLatestDocument(c.Request.Context(), docType)
 	if err != nil {
-		response.SendError(c, "Failed to fetch document", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to fetch document",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -47,7 +52,12 @@ func (h *Handler) GetDocumentContent(c *gin.Context) {
 		docType,
 	)
 	if err != nil {
-		response.SendError(c, "Failed to fetch document content", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to fetch document content",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -57,7 +67,11 @@ func (h *Handler) GetDocumentContent(c *gin.Context) {
 func (h *Handler) GetConsentCheck(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
 	if userID == "" {
-		response.SendFail(c, gin.H{"error": "Unauthorized"}, http.StatusUnauthorized)
+		response.SendFail(
+			c,
+			gin.H{"error": "Unauthorized"},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -75,7 +89,12 @@ func (h *Handler) GetConsentCheck(c *gin.Context) {
 		docID,
 	)
 	if err != nil {
-		response.SendError(c, "Failed to check user consent", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to check user consent",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -85,7 +104,11 @@ func (h *Handler) GetConsentCheck(c *gin.Context) {
 func (h *Handler) PostConsent(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
 	if userID == "" {
-		response.SendFail(c, gin.H{"error": "Unauthorized"}, http.StatusUnauthorized)
+		response.SendFail(
+			c,
+			gin.H{"error": "Unauthorized"},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -105,11 +128,20 @@ func (h *Handler) PostConsent(c *gin.Context) {
 	err = h.service.SaveConsent(c.Request.Context(), userID, docID)
 	if err != nil {
 		log.Printf("[PostConsent] {Service Error}: %v", err)
-		response.SendError(c, "Failed to save consent", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to save consent",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	response.SendSuccess(c, gin.H{"message": "Consent saved successfully"}, http.StatusAccepted)
+	response.SendSuccess(
+		c,
+		gin.H{"message": "Consent saved successfully"},
+		http.StatusAccepted,
+	)
 }
 
 // Admin endpoint to view user consent history
@@ -125,7 +157,12 @@ func (h *Handler) GetConsentHistory(c *gin.Context) {
 		userID,
 	)
 	if err != nil {
-		response.SendError(c, "Failed to fetch consent history", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to fetch consent history",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -143,20 +180,33 @@ func (h *Handler) PostDocument(c *gin.Context) {
 
 	// VALIDATION: Strictly check for .md extension
 	if filepath.Ext(fileHeader.Filename) != ".md" {
-		response.SendFail(c, gin.H{"error": "Only Markdown (.md) files are allowed"})
+		response.SendFail(
+			c,
+			gin.H{"error": "Only Markdown (.md) files are allowed"},
+		)
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		response.SendError(c, "Failed to read file", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to read file",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 	defer file.Close()
 
 	seeker, ok := file.(io.ReadSeeker)
 	if !ok {
-		response.SendError(c, "Invalid file stream", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Invalid file stream",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 

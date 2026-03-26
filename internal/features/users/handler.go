@@ -29,8 +29,9 @@ func NewHandler(service ServiceInterface) *Handler {
 // @Tags         Users
 // @Accept       json
 // @Produce      json
-// @Success      200      {object}  GetUserResponse        "Returns current user details"
-// @Failure      500      {object}  map[string]string     "Failed to get current user"
+// @Success      200      {object}  GetUserResponse        "Returns current user
+// details" @Failure      500      {object}  map[string]string     "Failed to
+// get current user"
 // @Router       /users/me [get]
 // GetMe retrieves the currently authenticated user's information.
 func (h *Handler) GetMe(c *gin.Context) {
@@ -58,9 +59,10 @@ func (h *Handler) GetMe(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        email   query     string true "User Email"
-// @Success      200      {object}  GetUserResponse        "Returns user details"
-// @Failure      400      {object}  map[string]string     "Email query parameter is required"
-// @Failure      500      {object}  map[string]string     "Failed to get user by email"
+// @Success      200      {object}  GetUserResponse        "Returns user
+// details" @Failure      400      {object}  map[string]string     "Email query
+// parameter is required" @Failure      500      {object}  map[string]string
+// "Failed to get user by email"
 // @Router       /users [get]
 // GetUserByEmail retrieves user information by their email address.
 func (h *Handler) GetUserByEmail(c *gin.Context) {

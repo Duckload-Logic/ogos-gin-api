@@ -22,7 +22,8 @@ func RegisterRoutes(
 	// Define lookups
 	userResourceLookup := middleware.OwnershipMiddleware(db, "userID")
 	iirResourceLookup := middleware.OwnershipMiddleware(db, "iirID")
-	// inventoryRecordLookup := middleware.OwnershipMiddleware(db, "inventoryRecordID")
+	// inventoryRecordLookup := middleware.OwnershipMiddleware(db,
+	// "inventoryRecordID")
 
 	lookupRoutes := routes.Group("/lookups")
 	{

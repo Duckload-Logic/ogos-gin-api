@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -45,6 +44,10 @@ const appointmentsBaseQuery = `
 
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
+}
+
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
 }
 
 func (r *Repository) GetTimeSlots(
@@ -476,6 +479,7 @@ func (r *Repository) GetAppointmentStats(
 
 func (r *Repository) CreateAppointment(
 	ctx context.Context,
+	tx datastore.DB,
 	appt *Appointment,
 ) error {
 	cols, vals := datastore.GetInsertStatement(
@@ -483,74 +487,63 @@ func (r *Repository) CreateAppointment(
 		[]string{"updated_at"},
 	)
 	query := fmt.Sprintf(`
-		INSERT INTO appointments (%s)
-		VALUES (%s)
-	`, cols, vals)
+			INSERT INTO appointments (id, %s)
+			VALUES (:id, %s)
+		`, cols, vals)
 
-	_, err := r.db.NamedExecContext(ctx, query, appt)
+	_, err := tx.NamedExecContext(ctx, query, appt)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to insert appointment: %w",
 			err,
 		)
 	}
-
 	return nil
 }
 
 func (r *Repository) UpdateAppointment(
 	ctx context.Context,
+	tx datastore.DB,
 	appt Appointment,
 ) error {
-	return datastore.RunInTransaction(
-		ctx,
-		r.db,
-		func(txn *sqlx.Tx) error {
-			var args []interface{}
-			var setQuery []string
+	var args []interface{}
+	var setQuery []string
 
-			if appt.IIRID != "" {
-				setQuery = append(setQuery, "iir_id = ?")
-				args = append(args, appt.IIRID)
-			}
-			if appt.Reason.Valid {
-				setQuery = append(setQuery, "reason = ?")
-				args = append(args, appt.Reason.String)
-			}
-			if appt.WhenDate != "" {
-				setQuery = append(setQuery, "when_date = ?")
-				args = append(args, appt.WhenDate)
-			}
-			if appt.TimeSlotID != 0 {
-				setQuery = append(setQuery, "time_slot_id = ?")
-				args = append(args, appt.TimeSlotID)
-			}
-			if appt.StatusID != 0 {
-				setQuery = append(setQuery, "status_id = ?")
-				args = append(args, appt.StatusID)
-			}
+	if appt.IIRID != "" {
+		setQuery = append(setQuery, "iir_id = ?")
+		args = append(args, appt.IIRID)
+	}
+	if appt.Reason.Valid {
+		setQuery = append(setQuery, "reason = ?")
+		args = append(args, appt.Reason.String)
+	}
+	if appt.WhenDate != "" {
+		setQuery = append(setQuery, "when_date = ?")
+		args = append(args, appt.WhenDate)
+	}
+	if appt.TimeSlotID != 0 {
+		setQuery = append(setQuery, "time_slot_id = ?")
+		args = append(args, appt.TimeSlotID)
+	}
+	if appt.StatusID != 0 {
+		setQuery = append(setQuery, "status_id = ?")
+		args = append(args, appt.StatusID)
+	}
 
-			// Validate that there is actually something to update
-			if len(setQuery) == 0 {
-				return nil
-			}
+	// Validate that there is actually something to update
+	if len(setQuery) == 0 {
+		return nil
+	}
 
-			query := "UPDATE appointments SET " +
-				strings.Join(setQuery, ", ") +
-				" WHERE id = ?"
-			args = append(args, appt.ID)
+	query := "UPDATE appointments SET " +
+		strings.Join(setQuery, ", ") +
+		" WHERE id = ?"
+	args = append(args, appt.ID)
 
-			fmt.Printf("Query: %s; Args: %s", query, args)
+	_, err := tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
 
-			_, err := txn.ExecContext(ctx, query, args...)
-			if err != nil {
-				// Use professional logging format
-				log.Printf("[Repository] UpdateAppointment Query: %s", query)
-				log.Printf("[Repository] UpdateAppointment Args: %v", args)
-				return err
-			}
-
-			return nil
-		},
-	)
+	return nil
 }

@@ -14,6 +14,10 @@ type Repository struct {
 	db *sqlx.DB
 }
 
+func NewRepository(db *sqlx.DB) *Repository {
+	return &Repository{db: db}
+}
+
 const slipsBaseQuery = `
 	SELECT
 		slp.id AS id,
@@ -40,24 +44,29 @@ const slipsBaseQuery = `
 	JOIN statuses s ON slp.status_id = s.id
 `
 
-func NewRepository(db *sqlx.DB) *Repository {
-	return &Repository{db: db}
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
+func (r *Repository) BeginTx(ctx context.Context) (datastore.DB, error) {
+	return r.db.BeginTxx(ctx, nil)
 }
 
 func (r *Repository) CreateSlip(
 	ctx context.Context,
+	tx datastore.DB,
 	slip *Slip,
 ) (*string, error) {
 	cols, vals := datastore.GetInsertStatement(
 		slip,
-		[]string{"id", "updated_at"},
+		[]string{"updated_at"},
 	)
 	query := fmt.Sprintf(`
-		INSERT INTO admission_slips (%s)
-		VALUES (%s)
-	`, cols, vals)
+			INSERT INTO admission_slips (id, %s)
+			VALUES (:id, %s)
+		`, cols, vals)
 
-	_, err := r.db.NamedExecContext(ctx, query, slip)
+	_, err := tx.NamedExecContext(ctx, query, slip)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert excuse slip: %w", err)
 	}
@@ -67,19 +76,21 @@ func (r *Repository) CreateSlip(
 
 func (r *Repository) SaveSlipAttachment(
 	ctx context.Context,
+	tx datastore.DB,
 	attachment *SlipAttachment,
 ) error {
 	cols, vals := datastore.GetInsertStatement(
 		attachment,
-		[]string{"id", "updated_at"},
+		[]string{"updated_at"},
 	)
 	query := fmt.Sprintf(`
-		INSERT INTO slip_attachments (%s)
-		VALUES (%s)
-	`, cols, vals)
-	_, err := r.db.NamedExecContext(ctx, query, attachment)
+			INSERT INTO slip_attachments (id, %s)
+			VALUES (:id, %s)
+		`, cols, vals)
+
+	_, err := tx.NamedExecContext(ctx, query, attachment)
 	if err != nil {
-		return fmt.Errorf("failed to save slip attachment: %w", err)
+		return fmt.Errorf("failed to insert slip attachment: %w", err)
 	}
 
 	return nil
@@ -187,7 +198,12 @@ func (r *Repository) applyFilters(
 	}
 
 	if req.Search != "" {
-		query += " AND (slp.reason LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)"
+		query += `
+			AND (
+				slp.reason LIKE ?
+				OR u.first_name LIKE ?
+				OR u.last_name LIKE ?
+			)`
 		searchTerm := "%" + req.Search + "%"
 		args = append(args, searchTerm, searchTerm, searchTerm)
 	}
@@ -260,7 +276,8 @@ func (r *Repository) GetUrgentSlips(
 	query := strings.Replace(
 		slipsBaseQuery,
 		"slp.updated_at AS updated_at",
-		"slp.updated_at AS updated_at, "+r.getUrgencyScoreSQL()+" AS urgency_score",
+		`slp.updated_at AS updated_at, `+
+			r.getUrgencyScoreSQL()+" AS urgency_score",
 		1,
 	)
 
@@ -434,6 +451,7 @@ func (r *Repository) GetAttachmentByID(
 
 func (r *Repository) UpdateStatus(
 	ctx context.Context,
+	tx datastore.DB,
 	id string,
 	statusName string,
 	adminNotes string,
@@ -441,7 +459,7 @@ func (r *Repository) UpdateStatus(
 	// First, get the status ID from the status name
 	var statusID int
 	query := `SELECT id FROM statuses WHERE name = ?`
-	err := r.db.GetContext(ctx, &statusID, query, statusName)
+	err := tx.GetContext(ctx, &statusID, query, statusName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("status '%s' not found", statusName)
@@ -456,7 +474,7 @@ func (r *Repository) UpdateStatus(
 		WHERE id = ?
 	`
 
-	result, err := r.db.ExecContext(ctx, updateQuery, statusID, adminNotes, id)
+	result, err := tx.ExecContext(ctx, updateQuery, statusID, adminNotes, id)
 	if err != nil {
 		return fmt.Errorf("failed to update status: %w", err)
 	}

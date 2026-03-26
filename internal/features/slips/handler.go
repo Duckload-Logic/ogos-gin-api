@@ -20,17 +20,27 @@ func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-// getIIRIDFromContext extracts iirID from context or aborts with Forbidden status if not found.
+// getIIRIDFromContext extracts iirID from context or aborts with Forbidden
+// status if not found.
 func getIIRIDFromContext(c *gin.Context) (string, bool) {
 	iirIDVal, exists := c.Get("iirID")
 	if !exists {
-		response.SendFail(c, gin.H{"error": "Please complete your IIR profile"}, http.StatusForbidden)
+		response.SendFail(
+			c,
+			gin.H{"error": "Please complete your IIR profile"},
+			http.StatusForbidden,
+		)
 		return "", false
 	}
 
 	iirID, ok := iirIDVal.(string)
 	if !ok {
-		response.SendError(c, "Internal server error", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Internal server error",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return "", false
 	}
 
@@ -86,7 +96,12 @@ func (h *Handler) PostSlip(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[PostSlip] {Submit Excuse Slip}: %v", err)
-		response.SendError(c, "Failed to submit slip", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to submit slip",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -117,7 +132,12 @@ func (h *Handler) GetUrgentSlipList(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[GetUrgentSlipList] {Fetch Urgent Slips}: %v", err)
-		response.SendError(c, "Failed to retrieve slips", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve slips",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -157,7 +177,12 @@ func (h *Handler) GetSlipStatsList(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[GetSlipStatsList] {Fetch Slip Stats}: %v", err)
-		response.SendError(c, "Failed to retrieve statistics", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve statistics",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -178,7 +203,12 @@ func (h *Handler) GetSlipStatusList(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[GetSlipStatusList] {Fetch Statuses}: %v", err)
-		response.SendError(c, "Failed to retrieve statuses", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve statuses",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -199,7 +229,12 @@ func (h *Handler) GetSlipCategoryList(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[GetSlipCategoryList] {Fetch Categories}: %v", err)
-		response.SendError(c, "Failed to retrieve categories", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve categories",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -227,7 +262,12 @@ func (h *Handler) GetSlipList(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[GetSlipList] {Fetch All Slips}: %v", err)
-		response.SendError(c, "Failed to retrieve slips", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve slips",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -262,7 +302,12 @@ func (h *Handler) GetSlipListByIIR(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[GetSlipListByIIR] {Fetch Slips by IIR}: %v", err)
-		response.SendError(c, "Failed to retrieve slips", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve slips",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -287,7 +332,12 @@ func (h *Handler) GetSlipAttachmentList(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("[GetSlipAttachmentList] {Fetch Attachments}: %v", err)
-		response.SendError(c, "Failed to retrieve attachments", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve attachments",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -313,11 +363,20 @@ func (h *Handler) GetAttachmentFile(c *gin.Context) {
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "attachment not found") {
-			response.SendFail(c, gin.H{"error": "Attachment not found"}, http.StatusNotFound)
+			response.SendFail(
+				c,
+				gin.H{"error": "Attachment not found"},
+				http.StatusNotFound,
+			)
 			return
 		}
 		log.Printf("[GetAttachmentFile] {Download Attachment}: %v", err)
-		response.SendError(c, "Failed to download file", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to download file",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -356,7 +415,11 @@ func (h *Handler) PatchSlipStatus(c *gin.Context) {
 	)
 	if err != nil {
 		if err.Error() == "sql: no rows in result set" {
-			response.SendFail(c, gin.H{"error": "Slip not found"}, http.StatusNotFound)
+			response.SendFail(
+				c,
+				gin.H{"error": "Slip not found"},
+				http.StatusNotFound,
+			)
 			return
 		}
 		if strings.Contains(err.Error(), "invalid status") {
@@ -364,7 +427,12 @@ func (h *Handler) PatchSlipStatus(c *gin.Context) {
 			return
 		}
 		log.Printf("[PatchSlipStatus] {Update Status}: %v", err)
-		response.SendError(c, "Failed to update status", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to update status",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 

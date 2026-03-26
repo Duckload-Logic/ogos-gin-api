@@ -27,7 +27,12 @@ func (h *Handler) GetSignificantNotes(
 	)
 	if err != nil {
 		log.Printf("[GetSignificantNotes] {Database Query}: %v", err)
-		response.SendError(c, "Failed to get student significant notes", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to get student significant notes",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -39,7 +44,11 @@ func (h *Handler) PostSignificantNote(
 ) {
 	iirID := c.Param("iirID")
 	if iirID == "" {
-		response.SendFail(c, gin.H{"error": "IIR ID not found"}, http.StatusUnauthorized)
+		response.SendFail(
+			c,
+			gin.H{"error": "IIR ID not found"},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -57,9 +66,17 @@ func (h *Handler) PostSignificantNote(
 	)
 	if err != nil {
 		log.Printf("[PostSignificantNote] {Database Insert}: %v", err)
-		response.SendError(c, "Failed to save significant note", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to save significant note",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	response.SendSuccess(c, gin.H{"message": "Significant note saved successfully"})
+	response.SendSuccess(
+		c,
+		gin.H{"message": "Significant note saved successfully"},
+	)
 }

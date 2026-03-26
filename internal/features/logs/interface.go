@@ -2,13 +2,18 @@ package logs
 
 import (
 	"context"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 // ServiceInterface defines the business logic for system logging.
 type ServiceInterface interface {
-	Record(ctx context.Context, entry LogEntry)
+	GetDB() datastore.DB
+	Record(ctx context.Context, tx datastore.DB, entry LogEntry)
 	RecordSecurity(
 		ctx context.Context,
+		tx datastore.DB,
 		userEmail, action, message, ipAddress, userAgent string,
 		userID string,
 	)
@@ -22,9 +27,9 @@ type ServiceInterface interface {
 	) ([]LogStatsDTO, error)
 }
 
-// RepositoryInterface defines the data access layer for system logging.
 type RepositoryInterface interface {
-	Record(ctx context.Context, log *SystemLog) error
+	GetDB() *sqlx.DB
+	Record(ctx context.Context, tx datastore.DB, log *SystemLog) error
 	List(
 		ctx context.Context, offset, limit int,
 		category, action, userEmail, search, startDate, endDate, orderBy string,

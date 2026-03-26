@@ -16,6 +16,10 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
 func (r *Repository) GetRegions(ctx context.Context) ([]Region, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM regions ORDER BY name",
@@ -160,25 +164,7 @@ func (r *Repository) GetProvinceByCode(
 
 func (r *Repository) UpsertAddress(
 	ctx context.Context,
-	tx *sqlx.Tx,
-	addr *Address,
-) (int, error) {
-	if tx != nil {
-		return r.upsertAddressTx(ctx, tx, addr)
-	}
-
-	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
-		var err error
-		id, err = r.upsertAddressTx(ctx, txn, addr)
-		return err
-	})
-	return id, err
-}
-
-func (r *Repository) upsertAddressTx(
-	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	addr *Address,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(

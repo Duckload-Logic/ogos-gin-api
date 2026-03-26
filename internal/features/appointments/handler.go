@@ -463,7 +463,11 @@ func (h *Handler) PatchAppointment(c *gin.Context) {
 		req,
 	); err != nil {
 		if err == sql.ErrNoRows {
-			response.SendFail(c, gin.H{"error": "Appointment not found"}, http.StatusNotFound)
+			response.SendFail(
+				c,
+				gin.H{"error": "Appointment not found"},
+				http.StatusNotFound,
+			)
 			return
 		}
 		log.Printf(

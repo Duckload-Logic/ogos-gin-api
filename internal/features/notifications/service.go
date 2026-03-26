@@ -19,15 +19,7 @@ func (s *Service) Send(
 	userID string,
 	title, message, notifType string,
 ) error {
-	// Wrapped error pattern matches students service
-	if err := s.repo.Create(ctx, userID, title, message, notifType); err != nil {
-		return fmt.Errorf(
-			"failed to send notification to user %s: %w",
-			userID,
-			err,
-		)
-	}
-	return nil
+	return s.repo.Create(ctx, s.repo.GetDB(), userID, title, message, notifType)
 }
 
 func (s *Service) GetUserNotifications(
@@ -60,8 +52,5 @@ func (s *Service) GetUserNotifications(
 }
 
 func (s *Service) MarkAsRead(ctx context.Context, id int) error {
-	if err := s.repo.MarkAsRead(ctx, id); err != nil {
-		return fmt.Errorf("failed to mark notification %d as read: %w", id, err)
-	}
-	return nil
+	return s.repo.MarkAsRead(ctx, s.repo.GetDB(), id)
 }

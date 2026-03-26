@@ -27,7 +27,8 @@ type APIKeyDTO struct {
 	CreatedAt  time.Time  `json:"createdAt"`
 }
 
-// CreateAPIKeyResponse includes the full key — only shown once at creation time.
+// CreateAPIKeyResponse includes the full key — only shown once at creation
+// time.
 type CreateAPIKeyResponse struct {
 	APIKeyDTO
 	Key string `json:"key"`

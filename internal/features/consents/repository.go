@@ -17,11 +17,16 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
+func (r *Repository) BeginTx(ctx context.Context) (datastore.DB, error) {
 	return r.db.BeginTxx(ctx, nil)
 }
 
-// GetLatestDocument fetches the current active version of a policy from Azure/DB
+// GetLatestDocument fetches the current active version of a policy from
+// Azure/DB
 func (r *Repository) GetLatestDocument(
 	ctx context.Context,
 	docType string,
@@ -49,7 +54,7 @@ func (r *Repository) GetLatestDocument(
 
 func (r *Repository) GetLatestDocumentLocked(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	docType string,
 ) (*LegalDocument, error) {
 	var doc LegalDocument
@@ -74,7 +79,8 @@ func (r *Repository) GetLatestDocumentLocked(
 	return &doc, nil
 }
 
-// HasUserAccepted checks if the specific user has already signed this specific document ID
+// HasUserAccepted checks if the specific user has already signed this specific
+// document ID
 func (r *Repository) HasUserAccepted(
 	ctx context.Context,
 	userID string,
@@ -140,7 +146,7 @@ func (r *Repository) ListUserConsentHistory(
 
 func (r *Repository) CreateNewVersion(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	doc LegalDocument,
 ) error {
 	// Deactivate current active version

@@ -18,7 +18,11 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) BeginTx(ctx context.Context) (*sqlx.Tx, error) {
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
+func (r *Repository) BeginTx(ctx context.Context) (datastore.DB, error) {
 	return r.db.BeginTxx(ctx, nil)
 }
 
@@ -1075,7 +1079,7 @@ func (r *Repository) UpsertIIRDraft(
 	draft IIRDraft,
 ) (int, error) {
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertIIRDraftTx(ctx, txn, draft)
 		return err
@@ -1085,7 +1089,7 @@ func (r *Repository) UpsertIIRDraft(
 
 func (r *Repository) upsertIIRDraftTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	draft IIRDraft,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1119,7 +1123,7 @@ func (r *Repository) upsertIIRDraftTx(
 
 func (r *Repository) UpsertIIRRecord(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iir *IIRRecord,
 ) (string, error) {
 	if tx != nil {
@@ -1127,7 +1131,7 @@ func (r *Repository) UpsertIIRRecord(
 	}
 
 	var id string
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertIIRRecordTx(ctx, txn, iir)
 		return err
@@ -1137,7 +1141,7 @@ func (r *Repository) UpsertIIRRecord(
 
 func (r *Repository) upsertIIRRecordTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iir *IIRRecord,
 ) (string, error) {
 	if iir.ID == "" {
@@ -1157,8 +1161,8 @@ func (r *Repository) upsertIIRRecordTx(
 		[]string{"created_at", "updated_at"},
 	)
 	query := fmt.Sprintf(`
-		INSERT INTO iir_records (%s)
-		VALUES (%s)
+		INSERT INTO iir_records (id, %s)
+		VALUES (:id, %s)
 		ON DUPLICATE KEY UPDATE %s
 	`, cols, vals, onDuplicateKey)
 	_, err := tx.NamedExecContext(ctx, query, iir)
@@ -1171,21 +1175,21 @@ func (r *Repository) upsertIIRRecordTx(
 
 func (r *Repository) UpsertStudentPersonalInfo(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	info *StudentPersonalInfo,
 ) error {
 	if tx != nil {
 		return r.upsertStudentPersonalInfoTx(ctx, tx, info)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.upsertStudentPersonalInfoTx(ctx, txn, info)
 	})
 }
 
 func (r *Repository) upsertStudentPersonalInfoTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	info *StudentPersonalInfo,
 ) error {
 	cols, vals := datastore.GetInsertStatement(
@@ -1209,7 +1213,7 @@ func (r *Repository) upsertStudentPersonalInfoTx(
 
 func (r *Repository) UpsertEmergencyContact(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ec *EmergencyContact,
 ) (int, error) {
 	if tx != nil {
@@ -1217,7 +1221,7 @@ func (r *Repository) UpsertEmergencyContact(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertEmergencyContactTx(ctx, txn, ec)
 		return err
@@ -1227,7 +1231,7 @@ func (r *Repository) UpsertEmergencyContact(
 
 func (r *Repository) upsertEmergencyContactTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ec *EmergencyContact,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1262,7 +1266,7 @@ func (r *Repository) upsertEmergencyContactTx(
 
 func (r *Repository) UpsertStudentAddress(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sa *StudentAddress,
 ) (int, error) {
 	if tx != nil {
@@ -1270,7 +1274,7 @@ func (r *Repository) UpsertStudentAddress(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertStudentAddressTx(ctx, txn, sa)
 		return err
@@ -1280,7 +1284,7 @@ func (r *Repository) UpsertStudentAddress(
 
 func (r *Repository) upsertStudentAddressTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sa *StudentAddress,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1315,21 +1319,21 @@ func (r *Repository) upsertStudentAddressTx(
 
 func (r *Repository) CreateStudentSelectedReason(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ssr *StudentSelectedReason,
 ) error {
 	if tx != nil {
 		return r.createStudentSelectedReasonTx(ctx, tx, ssr)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.createStudentSelectedReasonTx(ctx, txn, ssr)
 	})
 }
 
 func (r *Repository) createStudentSelectedReasonTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ssr *StudentSelectedReason,
 ) error {
 	query := `
@@ -1345,21 +1349,21 @@ func (r *Repository) createStudentSelectedReasonTx(
 
 func (r *Repository) DeleteStudentSelectedReasons(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	if tx != nil {
 		return r.deleteStudentSelectedReasonsTx(ctx, tx, iirID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteStudentSelectedReasonsTx(ctx, txn, iirID)
 	})
 }
 
 func (r *Repository) deleteStudentSelectedReasonsTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	query := `DELETE FROM student_selected_reasons WHERE iir_id = ?`
@@ -1372,7 +1376,7 @@ func (r *Repository) deleteStudentSelectedReasonsTx(
 
 func (r *Repository) UpsertRelatedPerson(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	rp *RelatedPerson,
 ) (int, error) {
 	if tx != nil {
@@ -1380,7 +1384,7 @@ func (r *Repository) UpsertRelatedPerson(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertRelatedPersonTx(ctx, txn, rp)
 		return err
@@ -1390,7 +1394,7 @@ func (r *Repository) UpsertRelatedPerson(
 
 func (r *Repository) upsertRelatedPersonTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	rp *RelatedPerson,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1425,21 +1429,21 @@ func (r *Repository) upsertRelatedPersonTx(
 
 func (r *Repository) UpsertStudentRelatedPerson(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	srp *StudentRelatedPerson,
 ) error {
 	if tx != nil {
 		return r.upsertStudentRelatedPersonTx(ctx, tx, srp)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.upsertStudentRelatedPersonTx(ctx, txn, srp)
 	})
 }
 
 func (r *Repository) upsertStudentRelatedPersonTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	srp *StudentRelatedPerson,
 ) error {
 	cols, vals := datastore.GetInsertStatement(
@@ -1466,21 +1470,21 @@ func (r *Repository) upsertStudentRelatedPersonTx(
 
 func (r *Repository) DeleteStudentRelatedPersons(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	if tx != nil {
 		return r.deleteStudentRelatedPersonsTx(ctx, tx, iirID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteStudentRelatedPersonsTx(ctx, txn, iirID)
 	})
 }
 
 func (r *Repository) deleteStudentRelatedPersonsTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	query := `DELETE FROM student_related_persons WHERE iir_id = ?`
@@ -1493,7 +1497,7 @@ func (r *Repository) deleteStudentRelatedPersonsTx(
 
 func (r *Repository) UpsertFamilyBackground(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	fb *FamilyBackground,
 ) (int, error) {
 	if tx != nil {
@@ -1501,7 +1505,7 @@ func (r *Repository) UpsertFamilyBackground(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertFamilyBackgroundTx(ctx, txn, fb)
 		return err
@@ -1511,7 +1515,7 @@ func (r *Repository) UpsertFamilyBackground(
 
 func (r *Repository) upsertFamilyBackgroundTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	fb *FamilyBackground,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1544,21 +1548,21 @@ func (r *Repository) upsertFamilyBackgroundTx(
 
 func (r *Repository) CreateStudentSiblingSupport(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sss *StudentSiblingSupport,
 ) error {
 	if tx != nil {
 		return r.createStudentSiblingSupportTx(ctx, tx, sss)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.createStudentSiblingSupportTx(ctx, txn, sss)
 	})
 }
 
 func (r *Repository) createStudentSiblingSupportTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sss *StudentSiblingSupport,
 ) error {
 	cols, vals := datastore.GetInsertStatement(
@@ -1577,7 +1581,7 @@ func (r *Repository) createStudentSiblingSupportTx(
 
 func (r *Repository) DeleteStudentSiblingSupportsByFamilyID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	familyBackgroundID int,
 ) error {
 	if tx != nil {
@@ -1588,7 +1592,7 @@ func (r *Repository) DeleteStudentSiblingSupportsByFamilyID(
 		)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteStudentSiblingSupportsByFamilyIDTx(
 			ctx,
 			txn,
@@ -1599,7 +1603,7 @@ func (r *Repository) DeleteStudentSiblingSupportsByFamilyID(
 
 func (r *Repository) deleteStudentSiblingSupportsByFamilyIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	familyBackgroundID int,
 ) error {
 	query := `DELETE FROM student_sibling_supports WHERE family_background_id = ?`
@@ -1612,7 +1616,7 @@ func (r *Repository) deleteStudentSiblingSupportsByFamilyIDTx(
 
 func (r *Repository) UpsertEducationalBackground(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	eb *EducationalBackground,
 ) (int, error) {
 	if tx != nil {
@@ -1620,7 +1624,7 @@ func (r *Repository) UpsertEducationalBackground(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertEducationalBackgroundTx(ctx, txn, eb)
 		return err
@@ -1630,7 +1634,7 @@ func (r *Repository) UpsertEducationalBackground(
 
 func (r *Repository) upsertEducationalBackgroundTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	eb *EducationalBackground,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1663,7 +1667,7 @@ func (r *Repository) upsertEducationalBackgroundTx(
 
 func (r *Repository) UpsertSchoolDetails(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sd *SchoolDetails,
 ) (int, error) {
 	if tx != nil {
@@ -1671,7 +1675,7 @@ func (r *Repository) UpsertSchoolDetails(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertSchoolDetailsTx(ctx, txn, sd)
 		return err
@@ -1681,7 +1685,7 @@ func (r *Repository) UpsertSchoolDetails(
 
 func (r *Repository) upsertSchoolDetailsTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sd *SchoolDetails,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1714,21 +1718,21 @@ func (r *Repository) upsertSchoolDetailsTx(
 
 func (r *Repository) DeleteSchoolDetailsByEBID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ebID int,
 ) error {
 	if tx != nil {
 		return r.deleteSchoolDetailsByEBIDTx(ctx, tx, ebID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteSchoolDetailsByEBIDTx(ctx, txn, ebID)
 	})
 }
 
 func (r *Repository) deleteSchoolDetailsByEBIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ebID int,
 ) error {
 	query := `DELETE FROM school_details WHERE eb_id = ?`
@@ -1741,7 +1745,7 @@ func (r *Repository) deleteSchoolDetailsByEBIDTx(
 
 func (r *Repository) UpsertStudentHealthRecord(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	hr *StudentHealthRecord,
 ) (int, error) {
 	if tx != nil {
@@ -1749,7 +1753,7 @@ func (r *Repository) UpsertStudentHealthRecord(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertStudentHealthRecordTx(ctx, txn, hr)
 		return err
@@ -1759,7 +1763,7 @@ func (r *Repository) UpsertStudentHealthRecord(
 
 func (r *Repository) upsertStudentHealthRecordTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	hr *StudentHealthRecord,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1792,7 +1796,7 @@ func (r *Repository) upsertStudentHealthRecordTx(
 
 func (r *Repository) UpsertStudentConsultation(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sc *StudentConsultation,
 ) (int, error) {
 	if tx != nil {
@@ -1800,7 +1804,7 @@ func (r *Repository) UpsertStudentConsultation(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertStudentConsultationTx(ctx, txn, sc)
 		return err
@@ -1810,7 +1814,7 @@ func (r *Repository) UpsertStudentConsultation(
 
 func (r *Repository) upsertStudentConsultationTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sc *StudentConsultation,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1843,7 +1847,7 @@ func (r *Repository) upsertStudentConsultationTx(
 
 func (r *Repository) UpsertStudentFinance(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sf *StudentFinance,
 ) (int, error) {
 	if tx != nil {
@@ -1851,7 +1855,7 @@ func (r *Repository) UpsertStudentFinance(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.upsertStudentFinanceTx(ctx, txn, sf)
 		return err
@@ -1861,7 +1865,7 @@ func (r *Repository) UpsertStudentFinance(
 
 func (r *Repository) upsertStudentFinanceTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sf *StudentFinance,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -1896,21 +1900,21 @@ func (r *Repository) upsertStudentFinanceTx(
 
 func (r *Repository) CreateStudentFinancialSupport(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sfs *StudentFinancialSupport,
 ) error {
 	if tx != nil {
 		return r.createStudentFinancialSupportTx(ctx, tx, sfs)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.createStudentFinancialSupportTx(ctx, txn, sfs)
 	})
 }
 
 func (r *Repository) createStudentFinancialSupportTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sfs *StudentFinancialSupport,
 ) error {
 	cols, vals := datastore.GetInsertStatement(
@@ -1930,14 +1934,14 @@ func (r *Repository) createStudentFinancialSupportTx(
 
 func (r *Repository) DeleteStudentFinancialSupportsByFinanceID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	financeID int,
 ) error {
 	if tx != nil {
 		return r.deleteStudentFinancialSupportsByFinanceIDTx(ctx, tx, financeID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteStudentFinancialSupportsByFinanceIDTx(
 			ctx,
 			txn,
@@ -1948,7 +1952,7 @@ func (r *Repository) DeleteStudentFinancialSupportsByFinanceID(
 
 func (r *Repository) deleteStudentFinancialSupportsByFinanceIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	financeID int,
 ) error {
 	query := `DELETE FROM student_financial_supports WHERE sf_id = ?`
@@ -1964,7 +1968,7 @@ func (r *Repository) deleteStudentFinancialSupportsByFinanceIDTx(
 
 func (r *Repository) CreateStudentActivity(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sa *StudentActivity,
 ) (int, error) {
 	if tx != nil {
@@ -1972,7 +1976,7 @@ func (r *Repository) CreateStudentActivity(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.createStudentActivityTx(ctx, txn, sa)
 		return err
@@ -1982,7 +1986,7 @@ func (r *Repository) CreateStudentActivity(
 
 func (r *Repository) createStudentActivityTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sa *StudentActivity,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -2012,21 +2016,21 @@ func (r *Repository) createStudentActivityTx(
 
 func (r *Repository) DeleteStudentActivitiesByIIRID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	if tx != nil {
 		return r.deleteStudentActivitiesByIIRIDTx(ctx, tx, iirID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteStudentActivitiesByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
 func (r *Repository) deleteStudentActivitiesByIIRIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	query := `DELETE FROM student_activities WHERE iir_id = ?`
@@ -2039,7 +2043,7 @@ func (r *Repository) deleteStudentActivitiesByIIRIDTx(
 
 func (r *Repository) CreateStudentSubjectPreference(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ssp *StudentSubjectPreference,
 ) (int, error) {
 	if tx != nil {
@@ -2047,7 +2051,7 @@ func (r *Repository) CreateStudentSubjectPreference(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.createStudentSubjectPreferenceTx(ctx, txn, ssp)
 		return err
@@ -2057,7 +2061,7 @@ func (r *Repository) CreateStudentSubjectPreference(
 
 func (r *Repository) createStudentSubjectPreferenceTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	ssp *StudentSubjectPreference,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -2090,21 +2094,21 @@ func (r *Repository) createStudentSubjectPreferenceTx(
 
 func (r *Repository) DeleteStudentSubjectPreferencesByIIRID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	if tx != nil {
 		return r.deleteStudentSubjectPreferencesByIIRIDTx(ctx, tx, iirID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteStudentSubjectPreferencesByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
 func (r *Repository) deleteStudentSubjectPreferencesByIIRIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	query := `DELETE FROM student_subject_preferences WHERE iir_id = ?`
@@ -2120,7 +2124,7 @@ func (r *Repository) deleteStudentSubjectPreferencesByIIRIDTx(
 
 func (r *Repository) CreateStudentHobby(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sh *StudentHobby,
 ) (int, error) {
 	if tx != nil {
@@ -2128,7 +2132,7 @@ func (r *Repository) CreateStudentHobby(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.createStudentHobbyTx(ctx, txn, sh)
 		return err
@@ -2138,7 +2142,7 @@ func (r *Repository) CreateStudentHobby(
 
 func (r *Repository) createStudentHobbyTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	sh *StudentHobby,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -2168,21 +2172,21 @@ func (r *Repository) createStudentHobbyTx(
 
 func (r *Repository) DeleteStudentHobbiesByIIRID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	if tx != nil {
 		return r.deleteStudentHobbiesByIIRIDTx(ctx, tx, iirID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteStudentHobbiesByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
 func (r *Repository) deleteStudentHobbiesByIIRIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	query := `DELETE FROM student_hobbies WHERE iir_id = ?`
@@ -2195,7 +2199,7 @@ func (r *Repository) deleteStudentHobbiesByIIRIDTx(
 
 func (r *Repository) CreateTestResult(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	tr *TestResult,
 ) (int, error) {
 	if tx != nil {
@@ -2203,7 +2207,7 @@ func (r *Repository) CreateTestResult(
 	}
 
 	var id int
-	err := datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	err := datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		var err error
 		id, err = r.createTestResultTx(ctx, txn, tr)
 		return err
@@ -2213,7 +2217,7 @@ func (r *Repository) CreateTestResult(
 
 func (r *Repository) createTestResultTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	tr *TestResult,
 ) (int, error) {
 	cols, vals := datastore.GetInsertStatement(
@@ -2243,21 +2247,21 @@ func (r *Repository) createTestResultTx(
 
 func (r *Repository) DeleteTestResultsByIIRID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	if tx != nil {
 		return r.deleteTestResultsByIIRIDTx(ctx, tx, iirID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteTestResultsByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
 func (r *Repository) deleteTestResultsByIIRIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	query := `DELETE FROM test_results WHERE iir_id = ?`
@@ -2270,21 +2274,21 @@ func (r *Repository) deleteTestResultsByIIRIDTx(
 
 func (r *Repository) DeleteSignificantNotesByIIRID(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	if tx != nil {
 		return r.deleteSignificantNotesByIIRIDTx(ctx, tx, iirID)
 	}
 
-	return datastore.RunInTransaction(ctx, r.db, func(txn *sqlx.Tx) error {
+	return datastore.RunInTransaction(ctx, r.db, func(txn datastore.DB) error {
 		return r.deleteSignificantNotesByIIRIDTx(ctx, txn, iirID)
 	})
 }
 
 func (r *Repository) deleteSignificantNotesByIIRIDTx(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	iirID string,
 ) error {
 	query := `DELETE FROM significant_notes WHERE iir_id = ?`

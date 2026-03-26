@@ -177,11 +177,13 @@ func fetchAll() (*PSGCData, error) {
 	}
 	fmt.Printf("  %d provinces\n", len(data.Provinces))
 
-	// 3. Cities/municipalities — fetch from regions FIRST (authoritative region mapping),
+	// 3. Cities/municipalities — fetch from regions FIRST (authoritative
+	// region mapping),
 	// then enrich with province codes from the province-level fetch.
 	fmt.Println("Fetching cities/municipalities...")
 
-	// 3a. Fetch cities per region first (gives correct region_code, especially for NCR)
+	// 3a. Fetch cities per region first (gives correct region_code, especially
+	// for NCR)
 	seenCities := make(map[string]bool)
 	cityIndex := make(map[string]int) // city code -> index in data.Cities
 
@@ -204,7 +206,8 @@ func fetchAll() (*PSGCData, error) {
 				ZipCode:    c.ZipCode,
 				District:   c.District,
 				RegionCode: reg.Code,
-				// ProvinceCode left empty; filled below if the city belongs to a province
+				// ProvinceCode left empty; filled below if the city belongs to
+				// a province
 			})
 		}
 	}
@@ -222,7 +225,8 @@ func fetchAll() (*PSGCData, error) {
 		}
 		for _, c := range cities {
 			if idx, ok := cityIndex[c.Code]; ok {
-				// Only enrich with province code if the province belongs to the same region
+				// Only enrich with province code if the province belongs to the
+				// same region
 				if data.Cities[idx].RegionCode == prov.RegionCode {
 					data.Cities[idx].ProvinceCode = prov.Code
 				}

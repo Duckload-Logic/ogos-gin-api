@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Repository struct {
@@ -15,12 +16,22 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) Create(ctx context.Context, key APIKey) (int, error) {
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
+func (r *Repository) Create(
+	ctx context.Context,
+	tx datastore.DB,
+	key APIKey,
+) (int, error) {
 	query := `
-		INSERT INTO api_keys (name, key_hash, key_prefix, scopes, is_active, expires_at)
+		INSERT INTO api_keys (
+			name, key_hash, key_prefix, scopes, is_active, expires_at
+		)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`
-	result, err := r.db.ExecContext(
+	result, err := tx.ExecContext(
 		ctx,
 		query,
 		key.Name,
@@ -72,18 +83,26 @@ func (r *Repository) List(
 	return keys, nil
 }
 
-func (r *Repository) Revoke(ctx context.Context, id int) error {
+func (r *Repository) Revoke(
+	ctx context.Context,
+	tx datastore.DB,
+	id int,
+) error {
 	query := `UPDATE api_keys SET is_active = 0 WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, id)
+	_, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to revoke api key: %w", err)
 	}
 	return nil
 }
 
-func (r *Repository) TouchLastUsed(ctx context.Context, id int) error {
+func (r *Repository) TouchLastUsed(
+	ctx context.Context,
+	tx datastore.DB,
+	id int,
+) error {
 	query := `UPDATE api_keys SET last_used_at = NOW() WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, id)
+	_, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to update last_used_at: %w", err)
 	}

@@ -1,6 +1,11 @@
 package appointments
 
-import "context"
+import (
+	"context"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
+)
 
 type ServiceInterface interface {
 	GetConcernCategories(ctx context.Context) ([]AppointmentCategory, error)
@@ -47,6 +52,7 @@ type ServiceInterface interface {
 }
 
 type RepositoryInterface interface {
+	GetDB() *sqlx.DB
 	GetTimeSlots(ctx context.Context, date string) ([]TimeSlot, error)
 	GetCategories(ctx context.Context) ([]AppointmentCategory, error)
 	GetAppointment(ctx context.Context, id string) (*Appointment, error)
@@ -94,6 +100,14 @@ type RepositoryInterface interface {
 		statusID, startDate, endDate string,
 		iirID *string,
 	) ([]StatusCount, error)
-	CreateAppointment(ctx context.Context, appt *Appointment) error
-	UpdateAppointment(ctx context.Context, appt Appointment) error
+	CreateAppointment(
+		ctx context.Context,
+		tx datastore.DB,
+		appt *Appointment,
+	) error
+	UpdateAppointment(
+		ctx context.Context,
+		tx datastore.DB,
+		appt Appointment,
+	) error
 }

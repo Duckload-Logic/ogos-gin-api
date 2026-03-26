@@ -17,6 +17,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
@@ -382,29 +383,40 @@ func (s *Service) SubmitExcuseSlip(
 		StatusID:      1,
 	}
 
-	slipID, err := s.repo.CreateSlip(ctx, slip)
+	err = datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			slipID, err := s.repo.CreateSlip(ctx, tx, slip)
+			if err != nil {
+				return err
+			}
+
+			// Loop to create attachment records
+			for i, url := range fileURLs {
+				attachment := &SlipAttachment{
+					ID:       uuid.New().String(),
+					SlipID:   slipID,
+					FileName: files[i].Filename,
+					FileURL:  url,
+				}
+				if err := s.repo.SaveSlipAttachment(
+					ctx,
+					tx,
+					attachment,
+				); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	// Loop to create attachment records
-	for i, url := range fileURLs {
-		attachment := &SlipAttachment{
-			ID:       uuid.New().String(),
-			SlipID:   slipID,
-			FileName: files[i].Filename,
-			FileURL:  url,
-		}
-		if err := s.repo.SaveSlipAttachment(
-			ctx,
-			attachment,
-		); err != nil {
-			return nil, err
-		}
-	}
-
 	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
-	s.logService.Record(ctx, logs.LogEntry{
+	s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
 		Category: logs.CategoryAudit,
 		Action:   logs.ActionSlipCreated,
 		Message: fmt.Sprintf(
@@ -478,6 +490,7 @@ func (s *Service) UpdateExcuseSlipStatus(
 	newStatus string,
 	adminNotes string,
 ) error {
+	// ... (validation code was here, I'll keep it)
 	validStatuses := map[string]bool{
 		"Pending":      true,
 		"Approved":     true,
@@ -494,37 +507,44 @@ func (s *Service) UpdateExcuseSlipStatus(
 	// Fetch old state for audit trail
 	oldSlip, _ := s.repo.GetSlipByID(ctx, id)
 
-	err := s.repo.UpdateStatus(ctx, id, newStatus, adminNotes)
-	if err != nil {
-		return err
-	}
+	return datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			err := s.repo.UpdateStatus(ctx, tx, id, newStatus, adminNotes)
+			if err != nil {
+				return err
+			}
 
-	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
-	s.logService.Record(ctx, logs.LogEntry{
-		Category: logs.CategoryAudit,
-		Action:   logs.ActionSlipStatusUpdated,
-		Message: fmt.Sprintf(
-			"Excuse slip #%s status changed to '%s' by %s",
-			id,
-			newStatus,
-			auditUserEmail,
-		),
-		UserID:    auditUserID,
-		UserEmail: auditUserEmail,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		Metadata: map[string]interface{}{
-			"entity_type": "slip",
-			"entity_id":   id,
-			"old_values":  oldSlip,
-			"new_values": map[string]interface{}{
-				"status":     newStatus,
-				"adminNotes": adminNotes,
-			},
+			auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(
+				ctx,
+			)
+			s.logService.Record(ctx, tx, logs.LogEntry{
+				Category: logs.CategoryAudit,
+				Action:   logs.ActionSlipStatusUpdated,
+				Message: fmt.Sprintf(
+					"Excuse slip #%s status changed to '%s' by %s",
+					id,
+					newStatus,
+					auditUserEmail,
+				),
+				UserID:    auditUserID,
+				UserEmail: auditUserEmail,
+				IPAddress: ipAddress,
+				UserAgent: userAgent,
+				Metadata: map[string]interface{}{
+					"entity_type": "slip",
+					"entity_id":   id,
+					"old_values":  oldSlip,
+					"new_values": map[string]interface{}{
+						"status":     newStatus,
+						"adminNotes": adminNotes,
+					},
+				},
+			})
+			return nil
 		},
-	})
-
-	return nil
+	)
 }
 
 // func (s *Service) DeleteExcuseSlip(ctx context.Context, id int) error {

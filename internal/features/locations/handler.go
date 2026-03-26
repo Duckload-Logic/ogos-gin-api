@@ -18,7 +18,12 @@ func NewHandler(service ServiceInterface) *Handler {
 func (h *Handler) GetRegions(c *gin.Context) {
 	regions, err := h.service.GetRegions(c.Request.Context())
 	if err != nil {
-		response.SendError(c, "Failed to retrieve regions", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve regions",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -37,7 +42,12 @@ func (h *Handler) GetProvincesByRegion(c *gin.Context) {
 		regionCode,
 	)
 	if err != nil {
-		response.SendError(c, "Failed to retrieve provinces", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve provinces",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -56,7 +66,12 @@ func (h *Handler) GetCitiesByProvince(c *gin.Context) {
 		provinceCode,
 	)
 	if err != nil {
-		response.SendError(c, "Failed to retrieve cities", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve cities",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -72,7 +87,12 @@ func (h *Handler) GetCitiesByRegion(c *gin.Context) {
 
 	cities, err := h.service.GetCitiesByRegion(c.Request.Context(), regionCode)
 	if err != nil {
-		response.SendError(c, "Failed to retrieve cities", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve cities",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -91,7 +111,12 @@ func (h *Handler) GetBarangaysByCity(c *gin.Context) {
 		cityCode,
 	)
 	if err != nil {
-		response.SendError(c, "Failed to retrieve barangays", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to retrieve barangays",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 

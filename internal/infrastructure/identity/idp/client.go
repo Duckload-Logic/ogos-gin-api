@@ -175,7 +175,8 @@ func (c *IDPClient) RefreshToken(
 	// The requirement said /auth/refresh is called.
 	url := cfg.IDPRefreshURL
 	if url == "" {
-		// Fallback to TokenURL if RefreshURL is not set (legacy behavior or generic)
+		// Fallback to TokenURL if RefreshURL is not set (legacy behavior or
+		// generic)
 		url = cfg.IDPTokenURL
 	}
 

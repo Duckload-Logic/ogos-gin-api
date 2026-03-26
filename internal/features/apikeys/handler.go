@@ -16,7 +16,8 @@ func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-// PostAPIKey creates a new API key and returns the plaintext key (shown only once).
+// PostAPIKey creates a new API key and returns the plaintext key (shown only
+// once).
 func (h *Handler) PostAPIKey(c *gin.Context) {
 	var req CreateAPIKeyRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

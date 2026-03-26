@@ -3,7 +3,7 @@ package locations
 import (
 	"context"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Service struct {
@@ -118,7 +118,7 @@ func (s *Service) GetProvinceByCode(
 
 func (s *Service) SaveAddress(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	addr *Address,
 ) (int, error) {
 	return s.repo.UpsertAddress(ctx, tx, addr)

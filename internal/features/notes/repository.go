@@ -52,7 +52,7 @@ func (r *Repository) CreateSignificantNote(
 	return datastore.NewRunInTransaction(
 		ctx,
 		r.db,
-		func(tx *sqlx.Tx) (string, error) {
+		func(tx datastore.DB) (string, error) {
 			cols, vals := datastore.GetInsertStatement(
 				SignificantNote{},
 				[]string{"created_at", "updated_at"},

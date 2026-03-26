@@ -12,5 +12,6 @@ type SecurityLogger interface {
 	)
 }
 
-// SecurityLoggerContextKey is the gin context key used to store the security logger.
+// SecurityLoggerContextKey is the gin context key used to store the security
+// logger.
 const SecurityLoggerContextKey = "securityLogger"

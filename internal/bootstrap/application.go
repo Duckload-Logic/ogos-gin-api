@@ -40,7 +40,8 @@ func Initialize(db *sqlx.DB, cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to initialize Redis: %w", err)
 	}
 
-	handlers := getHandlers(repos, fileStorage, cfg, redis)
+	services := getServices(repos, fileStorage, cfg, redis)
+	handlers := getHandlers(services, cfg, redis)
 
 	return &Application{
 		Handlers: handlers,

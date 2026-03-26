@@ -8,7 +8,8 @@ const (
 	StatusError   JSendStatus = "error"
 )
 
-// JSendResponse is the generic wrapper for all API responses following the JSend specification.
+// JSendResponse is the generic wrapper for all API responses following the
+// JSend specification.
 type JSendResponse struct {
 	Status  JSendStatus `json:"status"`
 	Data    interface{} `json:"data,omitempty"`
@@ -24,7 +25,8 @@ func NewSuccessResponse(data interface{}) JSendResponse {
 	}
 }
 
-// NewFailResponse creates a JSend response for client-side errors (e.g., validation).
+// NewFailResponse creates a JSend response for client-side errors (e.g.,
+// validation).
 func NewFailResponse(data interface{}) JSendResponse {
 	return JSendResponse{
 		Status: StatusFail,

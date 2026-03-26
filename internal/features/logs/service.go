@@ -8,6 +8,7 @@ import (
 	"log"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Service struct {
@@ -16,6 +17,10 @@ type Service struct {
 
 func NewService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
+}
+
+func (s *Service) GetDB() datastore.DB {
+	return s.repo.GetDB()
 }
 
 // Record logs a system log entry. Fails silently (logs error)
@@ -31,7 +36,7 @@ func NewService(repo RepositoryInterface) *Service {
 //	    IPAddress: ipAddress,
 //	    UserAgent: userAgent,
 //	})
-func (s *Service) Record(ctx context.Context, entry LogEntry) {
+func (s *Service) Record(ctx context.Context, tx datastore.DB, entry LogEntry) {
 	sysLog := &SystemLog{
 		Category: entry.Category,
 		Action:   entry.Action,
@@ -55,20 +60,22 @@ func (s *Service) Record(ctx context.Context, entry LogEntry) {
 		Metadata: toNullString(entry.Metadata),
 	}
 
-	if err := s.repo.Record(ctx, sysLog); err != nil {
+	if err := s.repo.Record(ctx, tx, sysLog); err != nil {
 		log.Printf("Failed to record system log: %v", err)
 		return
 	}
 }
 
-// RecordSecurity is a convenience method that satisfies the middleware.SecurityLogger interface.
+// RecordSecurity is a convenience method that satisfies the
+// middleware.SecurityLogger interface.
 // It records a security-category log entry with the given fields.
 func (s *Service) RecordSecurity(
 	ctx context.Context,
+	tx datastore.DB,
 	userEmail, action, message, ipAddress, userAgent string,
 	userID string,
 ) {
-	s.Record(ctx, LogEntry{
+	s.Record(ctx, tx, LogEntry{
 		Category:  CategorySecurity,
 		Action:    action,
 		Message:   message,

@@ -18,15 +18,23 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
 // Record inserts a new system log entry
-func (r *Repository) Record(ctx context.Context, log *SystemLog) error {
+func (r *Repository) Record(
+	ctx context.Context,
+	tx datastore.DB,
+	log *SystemLog,
+) error {
 	cols, vals := datastore.GetInsertStatement(log, []string{"created_at"})
 	query := fmt.Sprintf(`
 		INSERT INTO system_logs (%s)
 		VALUES (%s)
 	`, cols, vals)
 
-	_, err := r.db.NamedExecContext(ctx, query, log)
+	_, err := tx.NamedExecContext(ctx, query, log)
 	if err != nil {
 		return fmt.Errorf("failed to insert system log: %w", err)
 	}

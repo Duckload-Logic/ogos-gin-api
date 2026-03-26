@@ -35,11 +35,6 @@ type StudentProfileDTO struct {
 	YearLevel     int                    `json:"yearLevel"`
 }
 
-// Get Student
-type GetStudentRequest struct {
-	IncludeParams
-}
-
 type ComprehensiveProfileDTO struct {
 	IIRID   string `json:"iirId,omitempty"`
 	Student struct {

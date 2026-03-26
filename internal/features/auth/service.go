@@ -50,10 +50,16 @@ func (s *Service) AuthenticateUser(
 		return "", "", "", errors.New("invalid credentials")
 	}
 
+	log.Printf(`[AuthService:AuthenticateUser] {Get User}: %v`, user)
+
 	// Compare hashed password
 	if !user.PasswordHash.Valid {
 		return "", "", "", errors.New("invalid credentials")
 	}
+	log.Printf(
+		`[AuthService:AuthenticateUser] {Password Hash}: %v`,
+		user.PasswordHash.String,
+	)
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash.String),
 		[]byte(password),
@@ -62,6 +68,8 @@ func (s *Service) AuthenticateUser(
 		return "", "", "", errors.New("invalid credentials")
 	}
 
+	log.Printf(`[AuthService:AuthenticateUser] {Password Match}: %v`, err)
+
 	// Generate the token
 	token, claims, err := tokens.NewService().GenerateToken(
 		user.Email,
@@ -69,7 +77,7 @@ func (s *Service) AuthenticateUser(
 		user.RoleID,
 		"",
 		"native",
-		constants.AccessTokenMaxAge/60,
+		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", "", errors.New("failed to generate session")
@@ -82,7 +90,7 @@ func (s *Service) AuthenticateUser(
 		user.RoleID,
 		"",
 		"native",
-		constants.RefreshTokenMaxAge/60,
+		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", "", errors.New("failed to generate refresh token")
@@ -95,13 +103,14 @@ func (s *Service) AuthenticateUser(
 		claims.ID,
 		"native",
 		nil,
-		constants.AccessTokenMaxAge/60,
+		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to store token in redis: %v", err)
 	}
 	log.Printf(
-		"[AuthService:AuthenticateUser] {Redis Store}: Successfully stored token in redis",
+		`[AuthService:AuthenticateUser] {Redis Store}:
+		 Successfully stored token in redis`,
 	)
 
 	return user.ID, token, refreshToken, nil
@@ -123,7 +132,8 @@ func (s *Service) RefreshToken(
 		idpRefreshToken, err := s.redis.Get(ctx, idpRefreshKey)
 		if err != nil {
 			return "", "", fmt.Errorf(
-				"[AuthService] {Get IDP Refresh Token}: token missing or expired in Redis",
+				`[AuthService] {Get IDP Refresh Token}:
+				 token missing or expired in Redis`,
 			)
 		}
 
@@ -141,7 +151,7 @@ func (s *Service) RefreshToken(
 				claims.RoleID,
 				"",
 				"idp",
-				constants.AccessTokenMaxAge/60,
+				constants.AccessTokenMaxAge,
 			)
 		if err != nil {
 			return "", "", fmt.Errorf(
@@ -157,7 +167,7 @@ func (s *Service) RefreshToken(
 				claims.RoleID,
 				"",
 				"idp",
-				constants.RefreshTokenMaxAge/60,
+				constants.RefreshTokenMaxAge,
 			)
 		if err != nil {
 			return "", "", fmt.Errorf(
@@ -174,7 +184,7 @@ func (s *Service) RefreshToken(
 			accessClaims.ID,
 			"idp",
 			&idpAccess,
-			constants.AccessTokenMaxAge/60,
+			constants.AccessTokenMaxAge,
 		)
 		if err != nil {
 			return "", "", fmt.Errorf(
@@ -216,7 +226,7 @@ func (s *Service) RefreshToken(
 		claims.RoleID,
 		"",
 		"native",
-		constants.AccessTokenMaxAge/60,
+		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new token")
@@ -229,7 +239,7 @@ func (s *Service) RefreshToken(
 		claims.RoleID,
 		"",
 		"native",
-		constants.RefreshTokenMaxAge/60,
+		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", errors.New("Failed to generate new refresh token")
@@ -242,7 +252,7 @@ func (s *Service) RefreshToken(
 		newClaims.ID,
 		"native",
 		nil,
-		constants.AccessTokenMaxAge/60,
+		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to update token in redis: %v", err)
@@ -432,16 +442,22 @@ func (s *Service) PostIDPTokenExchange(
 	// Upsert IDP user into native database
 	// This ensures non-existing users are added and existing ones
 	// are synchronized
-	err = s.repo.CreateUser(ctx, users.User{
-		ID:           userInfo.ID,
-		RoleID:       appRoleID,
-		FirstName:    userInfo.FirstName,
-		LastName:     userInfo.LastName,
-		Email:        userInfo.Email,
-		AuthType:     "idp",
-		PasswordHash: sql.NullString{Valid: false},
-		IsActive:     1,
-	})
+	err = datastore.RunInTransaction(
+		ctx,
+		s.repo.(*users.Repository).GetDB(),
+		func(tx datastore.DB) error {
+			return s.repo.CreateUser(ctx, tx, users.User{
+				ID:           userInfo.ID,
+				RoleID:       appRoleID,
+				FirstName:    userInfo.FirstName,
+				LastName:     userInfo.LastName,
+				Email:        userInfo.Email,
+				AuthType:     "idp",
+				PasswordHash: sql.NullString{Valid: false},
+				IsActive:     1,
+			})
+		},
+	)
 	if err != nil {
 		return "", "", "", "", "", fmt.Errorf(
 			"[AuthService] {Provision IDP User}: %w",
@@ -525,7 +541,8 @@ func (s *Service) PostIDPTokenExchange(
 		)
 	}
 
-	return appAccessToken, appRefreshToken, appUserID, userInfo.Email, roleName, nil
+	return appAccessToken, appRefreshToken, appUserID, userInfo.Email,
+		roleName, nil
 }
 
 // GetIDPUserInfo fetches user information from the IDP userinfo endpoint
@@ -605,4 +622,24 @@ func (s *Service) ValidateIDPSession(
 	cfg *config.Config,
 ) (*idp.IDPSessionResponse, error) {
 	return s.idpClient.ValidateSession(ctx, sessionID, cfg)
+}
+
+func (s *Service) BlockUser(ctx context.Context, userID string) error {
+	return datastore.RunInTransaction(
+		ctx,
+		s.repo.(*users.Repository).GetDB(),
+		func(tx datastore.DB) error {
+			return s.repo.BlockUser(ctx, tx, userID)
+		},
+	)
+}
+
+func (s *Service) UnblockUser(ctx context.Context, userID string) error {
+	return datastore.RunInTransaction(
+		ctx,
+		s.repo.(*users.Repository).GetDB(),
+		func(tx datastore.DB) error {
+			return s.repo.UnblockUser(ctx, tx, userID)
+		},
+	)
 }

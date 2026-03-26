@@ -24,7 +24,12 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 		userID,
 	)
 	if err != nil {
-		response.SendError(c, "Failed to fetch notifications", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to fetch notifications",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -47,7 +52,12 @@ func (h *Handler) PatchNotificationRead(c *gin.Context) {
 	}
 
 	if err := h.service.MarkAsRead(c.Request.Context(), id); err != nil {
-		response.SendError(c, "Failed to mark notification as read", http.StatusInternalServerError, nil)
+		response.SendError(
+			c,
+			"Failed to mark notification as read",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 

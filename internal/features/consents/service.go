@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
@@ -53,7 +53,7 @@ func (s *Service) GetLatestDocument(
 
 func (s *Service) GetLatestDocumentLocked(
 	ctx context.Context,
-	tx *sqlx.Tx,
+	tx datastore.DB,
 	docType string,
 ) (*LegalDocument, error) {
 	dbDocType := ""
@@ -107,7 +107,7 @@ func (s *Service) SaveConsent(
 
 	err := s.repo.SaveConsent(ctx, userID, docID, ipAddress)
 	if err == nil {
-		s.logService.Record(ctx, logs.LogEntry{
+		s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
 			Category:  logs.CategoryConsent,
 			Action:    logs.ActionTermsAccepted,
 			Message:   fmt.Sprintf("%s accepted legal document", userEmail),
@@ -138,58 +138,49 @@ func (s *Service) UploadNewDocument(
 	now := time.Now()
 	today := strings.ReplaceAll(now.Format("2006.01.02"), "-", ".")
 
-	tx, err := s.repo.BeginTx(ctx)
-	if err != nil {
-		log.Printf("[PostUploadNewDocument] Begin Transaction: %v", err)
-		return fmt.Errorf("failed to start transaction: %w", err)
-	}
-
-	// Ensure rollback only happens if an error occurred
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		}
-	}()
-
-	lastDoc, err := s.repo.GetLatestDocumentLocked(ctx, tx, docType)
-	if err != nil {
-		log.Printf("[PostUploadNewDocument] Database Query Locked: %v", err)
-		return fmt.Errorf("failed to get latest document: %w", err)
-	}
-
-	versionCtr := FirstVersion
-	if lastDoc != nil && strings.HasPrefix(lastDoc.Version, today) {
-		parts := strings.Split(lastDoc.Version, VersionPrefix)
-		if len(parts) == 2 {
-			if val, e := strconv.Atoi(parts[1]); e == nil {
-				versionCtr = val + 1
+	return datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			lastDoc, err := s.repo.GetLatestDocumentLocked(ctx, tx, docType)
+			if err != nil {
+				log.Printf(
+					"[PostUploadNewDocument] Database Query Locked: %v",
+					err,
+				)
+				return fmt.Errorf("failed to get latest document: %w", err)
 			}
-		}
-	}
 
-	version := fmt.Sprintf("%s%s%d", today, VersionPrefix, versionCtr)
-	filePath := fmt.Sprintf(DocPathFormat, docType, version)
+			versionCtr := FirstVersion
+			if lastDoc != nil && strings.HasPrefix(lastDoc.Version, today) {
+				parts := strings.Split(lastDoc.Version, VersionPrefix)
+				if len(parts) == 2 {
+					if val, e := strconv.Atoi(parts[1]); e == nil {
+						versionCtr = val + 1
+					}
+				}
+			}
 
-	if err = s.storage.Upload(ctx, filePath, file, contentType); err != nil {
-		log.Printf("[PostUploadNewDocument] Storage Upload: %v", err)
-		return fmt.Errorf("failed to upload file: %w", err)
-	}
+			version := fmt.Sprintf("%s%s%d", today, VersionPrefix, versionCtr)
+			filePath := fmt.Sprintf(DocPathFormat, docType, version)
 
-	doc := LegalDocument{
-		DocType: docType,
-		Version: version,
-		FileURL: filePath,
-	}
+			if err = s.storage.Upload(ctx, filePath, file, contentType); err != nil {
+				log.Printf("[PostUploadNewDocument] Storage Upload: %v", err)
+				return fmt.Errorf("failed to upload file: %w", err)
+			}
 
-	if err = s.repo.CreateNewVersion(ctx, tx, doc); err != nil {
-		log.Printf("[PostUploadNewDocument] Database Insert: %v", err)
-		return fmt.Errorf("failed to save document record: %w", err)
-	}
+			doc := LegalDocument{
+				DocType: docType,
+				Version: version,
+				FileURL: filePath,
+			}
 
-	if err = tx.Commit(); err != nil {
-		log.Printf("[PostUploadNewDocument] Commit Transaction: %v", err)
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+			if err = s.repo.CreateNewVersion(ctx, tx, doc); err != nil {
+				log.Printf("[PostUploadNewDocument] Database Insert: %v", err)
+				return fmt.Errorf("failed to save document record: %w", err)
+			}
 
-	return nil
+			return nil
+		},
+	)
 }

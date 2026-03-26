@@ -11,6 +11,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 
 	"github.com/google/uuid"
 )
@@ -54,16 +55,23 @@ func (s *Service) CreateAppointment(
 		StatusID:              1,
 	}
 
-	if err := s.repo.CreateAppointment(ctx, appt); err != nil {
+	err := datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			return s.repo.CreateAppointment(ctx, tx, appt)
+		},
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	auditUserID, ipAddress, userAgent, auditUserEmail := (audit.ExtractMeta(ctx))
-	s.logService.Record(ctx, logs.LogEntry{
+	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
+	s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
 		Category: logs.CategoryAudit,
 		Action:   logs.ActionAppointmentCreated,
 		Message: fmt.Sprintf(
-			"Appointment #%s created by user %s",
+			"Appointment #%s created by %s",
 			appt.ID,
 			auditUserEmail,
 		),
@@ -396,13 +404,19 @@ func (s *Service) UpdateAppointment(
 		AppointmentCategoryID: req.AppointmentCategory.ID,
 	}
 
-	err := s.repo.UpdateAppointment(ctx, appt)
+	err := datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			return s.repo.UpdateAppointment(ctx, tx, appt)
+		},
+	)
 	if err != nil {
 		return err
 	}
 
 	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
-	s.logService.Record(ctx, logs.LogEntry{
+	s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
 		Category: logs.CategoryAudit,
 		Action:   logs.ActionAppointmentUpdated,
 		Message: fmt.Sprintf(

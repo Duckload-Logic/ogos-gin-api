@@ -39,9 +39,17 @@ func (r *Repository) GetByUserID(
 	return results, nil
 }
 
-func (r *Repository) MarkAsRead(ctx context.Context, id int) error {
+func (r *Repository) GetDB() *sqlx.DB {
+	return r.db
+}
+
+func (r *Repository) MarkAsRead(
+	ctx context.Context,
+	tx datastore.DB,
+	id int,
+) error {
 	query := `UPDATE notifications SET is_read = TRUE WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, id)
+	_, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to mark notification %d as read: %w", id, err)
 	}
@@ -50,6 +58,7 @@ func (r *Repository) MarkAsRead(ctx context.Context, id int) error {
 
 func (r *Repository) Create(
 	ctx context.Context,
+	tx datastore.DB,
 	userID string,
 	title, message, notifType string,
 ) error {
@@ -57,7 +66,7 @@ func (r *Repository) Create(
         INSERT INTO notifications (user_id, title, message, type, created_at)
         VALUES (?, ?, ?, ?, NOW())`
 
-	_, err := r.db.ExecContext(ctx, query, userID, title, message, notifType)
+	_, err := tx.ExecContext(ctx, query, userID, title, message, notifType)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to create notification for user %s: %w",
