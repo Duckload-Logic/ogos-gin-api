@@ -4,13 +4,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
@@ -19,17 +20,14 @@ func (h *Handler) GetAnalyticsDashboard(c *gin.Context) {
 
 	dashboardData, err := h.service.GetDashboard(ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"message": "Failed to generate analytics dashboard",
-			"error":   err.Error(),
-		})
+		response.SendError(
+			c,
+			"Failed to generate analytics dashboard",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Analytics retrieved successfully",
-		"data":    dashboardData,
-	})
+	response.SendSuccess(c, dashboardData)
 }

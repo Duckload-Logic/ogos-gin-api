@@ -16,13 +16,19 @@ func NewRepository(db *sqlx.DB) *Repository {
 
 func (r *Repository) GetTotalStudents(ctx context.Context) (int, error) {
 	var total int
-	err := r.db.GetContext(ctx, &total, "SELECT COUNT(*) FROM student_personal_info")
+	err := r.db.GetContext(
+		ctx,
+		&total,
+		"SELECT COUNT(*) FROM student_personal_info",
+	)
 	return total, err
 }
 
 // --- PERSONAL INFORMATION ---
 
-func (r *Repository) GetAgeStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetAgeStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			CAST(TIMESTAMPDIFF(YEAR, spi.date_of_birth, CURDATE()) AS CHAR) AS category,
@@ -37,7 +43,9 @@ func (r *Repository) GetAgeStats(ctx context.Context) ([]AggregatedStatModel, er
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetCivilStatusStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetCivilStatusStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(status_name, 'Not Indicated') AS category,
@@ -53,7 +61,9 @@ func (r *Repository) GetCivilStatusStats(ctx context.Context) ([]AggregatedStatM
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetReligionStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetReligionStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(religion_name, 'Not Indicated') AS category,
@@ -69,7 +79,9 @@ func (r *Repository) GetReligionStats(ctx context.Context) ([]AggregatedStatMode
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetCityAddressStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetCityAddressStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(sa.city, 'Not Indicated') AS category,
@@ -86,7 +98,9 @@ func (r *Repository) GetCityAddressStats(ctx context.Context) ([]AggregatedStatM
 
 // --- FAMILY & FINANCIAL BACKGROUND ---
 
-func (r *Repository) GetMonthlyIncomeStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetMonthlyIncomeStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(ir.range_text, 'Not Indicated') AS category,
@@ -102,7 +116,9 @@ func (r *Repository) GetMonthlyIncomeStats(ctx context.Context) ([]AggregatedSta
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetOrdinalPositionStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetOrdinalPositionStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			CAST(fb.ordinal_position AS CHAR) AS category,
@@ -117,7 +133,9 @@ func (r *Repository) GetOrdinalPositionStats(ctx context.Context) ([]AggregatedS
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetFatherEducationStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetFatherEducationStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(rp.educational_level, 'Not Indicated') AS category,
@@ -133,7 +151,9 @@ func (r *Repository) GetFatherEducationStats(ctx context.Context) ([]AggregatedS
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetMotherEducationStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetMotherEducationStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(rp.educational_level, 'Not Indicated') AS category,
@@ -149,7 +169,9 @@ func (r *Repository) GetMotherEducationStats(ctx context.Context) ([]AggregatedS
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetParentsMaritalStatusStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetParentsMaritalStatusStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(pst.status_name, 'Not Indicated') AS category,
@@ -165,7 +187,9 @@ func (r *Repository) GetParentsMaritalStatusStats(ctx context.Context) ([]Aggreg
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetQuietStudyPlaceStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetQuietStudyPlaceStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			CASE WHEN fb.have_quiet_place_to_study = 1 THEN 'Yes' ELSE 'No' END AS category,
@@ -182,7 +206,9 @@ func (r *Repository) GetQuietStudyPlaceStats(ctx context.Context) ([]AggregatedS
 
 // --- ACADEMIC BACKGROUND ---
 
-func (r *Repository) GetHSGWAStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetHSGWAStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			CASE 
@@ -204,7 +230,9 @@ func (r *Repository) GetHSGWAStats(ctx context.Context) ([]AggregatedStatModel, 
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetElementaryStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetElementaryStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
@@ -222,7 +250,9 @@ func (r *Repository) GetElementaryStats(ctx context.Context) ([]AggregatedStatMo
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetJuniorHighStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetJuniorHighStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
@@ -240,7 +270,9 @@ func (r *Repository) GetJuniorHighStats(ctx context.Context) ([]AggregatedStatMo
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetSeniorHighStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetSeniorHighStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
@@ -258,7 +290,9 @@ func (r *Repository) GetSeniorHighStats(ctx context.Context) ([]AggregatedStatMo
 	return r.executeStatQuery(ctx, query)
 }
 
-func (r *Repository) GetNatureOfSchoolingStats(ctx context.Context) ([]AggregatedStatModel, error) {
+func (r *Repository) GetNatureOfSchoolingStats(
+	ctx context.Context,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(eb.nature_of_schooling, 'Not Indicated') AS category,
@@ -275,13 +309,19 @@ func (r *Repository) GetNatureOfSchoolingStats(ctx context.Context) ([]Aggregate
 
 // --- HELPERS ---
 
-func (r *Repository) executeStatQuery(ctx context.Context, query string) ([]AggregatedStatModel, error) {
+func (r *Repository) executeStatQuery(
+	ctx context.Context,
+	query string,
+) ([]AggregatedStatModel, error) {
 	stats := make([]AggregatedStatModel, 0)
 	err := r.db.SelectContext(ctx, &stats, query)
 	return stats, err
 }
 
-func (r *Repository) getSchoolTypeStats(ctx context.Context, levelName string) ([]AggregatedStatModel, error) {
+func (r *Repository) getSchoolTypeStats(
+	ctx context.Context,
+	levelName string,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
@@ -302,7 +342,10 @@ func (r *Repository) getSchoolTypeStats(ctx context.Context, levelName string) (
 	return stats, err
 }
 
-func (r *Repository) getParentEducationStats(ctx context.Context, parentType string) ([]AggregatedStatModel, error) {
+func (r *Repository) getParentEducationStats(
+	ctx context.Context,
+	parentType string,
+) ([]AggregatedStatModel, error) {
 	query := `
 		SELECT 
 			COALESCE(ed.level_name, 'Not Indicated') AS category,

@@ -6,14 +6,16 @@ import (
 )
 
 type Service struct {
-	repo *Repository
+	repo RepositoryInterface
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) GetDashboard(ctx context.Context) (*DashboardResponseDTO, error) {
+func (s *Service) GetDashboard(
+	ctx context.Context,
+) (*DashboardResponseDTO, error) {
 	total, err := s.repo.GetTotalStudents(ctx)
 	if err != nil {
 		return nil, err
@@ -92,7 +94,10 @@ func (s *Service) GetDashboard(ctx context.Context) (*DashboardResponseDTO, erro
 	return dashboard, nil
 }
 
-func (s *Service) mapToDTO(rawStats []AggregatedStatModel, totalStudents int) []DemographicStatDTO {
+func (s *Service) mapToDTO(
+	rawStats []AggregatedStatModel,
+	totalStudents int,
+) []DemographicStatDTO {
 	dtos := make([]DemographicStatDTO, 0)
 
 	if totalStudents == 0 {

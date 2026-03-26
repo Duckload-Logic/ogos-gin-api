@@ -3,11 +3,15 @@ package analytics
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
-	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
-func RegisterRoutes(rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
+func RegisterRoutes(
+	rg *gin.RouterGroup,
+	h *Handler,
+	redis *datastore.RedisClient,
+) {
 	analyticsRoutes := rg.Group("/analytics")
 	analyticsRoutes.Use(middleware.AuditContextMiddleware())
 	analyticsRoutes.Use(middleware.AuthMiddleware(redis))
