@@ -8,22 +8,53 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Repository struct {
 	db *sqlx.DB
 }
 
+const appointmentsBaseQuery = `
+	SELECT
+		a.id,
+		ir.id AS iir_id,
+		u.first_name AS user_first_name,
+		u.middle_name AS user_middle_name,
+		u.last_name AS user_last_name,
+		a.reason AS reason,
+		a.admin_notes AS admin_notes,
+		a.when_date AS when_date,
+		a.created_at AS created_at,
+		a.updated_at AS updated_at,
+		ts.id AS time_slot_id,
+		ts.time AS time_slot_time,
+		ac.id AS category_id,
+		ac.name AS category_name,
+		as2.id AS status_id,
+		as2.name AS status_name,
+		as2.color_key AS status_color_key
+	FROM appointments a
+	LEFT JOIN iir_records ir ON a.iir_id = ir.id
+	LEFT JOIN users u ON ir.user_id = u.id
+	JOIN time_slots ts ON a.time_slot_id = ts.id
+	JOIN appointment_categories ac ON
+		a.appointment_category_id = ac.id
+	JOIN statuses as2 ON a.status_id = as2.id
+`
+
 func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]TimeSlot, error) {
+func (r *Repository) GetTimeSlots(
+	ctx context.Context,
+	date string,
+) ([]TimeSlot, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM time_slots
-	`, database.GetColumns(TimeSlot{}))
+	`, datastore.GetColumns(TimeSlot{}))
 
 	var slots []TimeSlot
 	err := r.db.SelectContext(ctx, &slots, query, date)
@@ -34,11 +65,13 @@ func (r *Repository) GetTimeSlots(ctx context.Context, date string) ([]TimeSlot,
 	return slots, nil
 }
 
-func (r *Repository) GetCategories(ctx context.Context) ([]AppointmentCategory, error) {
+func (r *Repository) GetCategories(
+	ctx context.Context,
+) ([]AppointmentCategory, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM appointment_categories
-	`, database.GetColumns(AppointmentCategory{}))
+	`, datastore.GetColumns(AppointmentCategory{}))
 
 	var categories []AppointmentCategory
 	err := r.db.SelectContext(ctx, &categories, query)
@@ -57,7 +90,7 @@ func (r *Repository) GetAppointment(
 		SELECT %s
 		FROM appointments
 		WHERE id = ?
-	`, database.GetColumns(Appointment{}))
+	`, datastore.GetColumns(Appointment{}))
 
 	var appt Appointment
 	err := r.db.GetContext(ctx, &appt, query, id)
@@ -74,7 +107,10 @@ func (r *Repository) GetAppointment(
 	return &appt, nil
 }
 
-func (r *Repository) GetDailyStatusCount(ctx context.Context, startDate, endDate string) ([]DailyStatusCount, error) {
+func (r *Repository) GetDailyStatusCount(
+	ctx context.Context,
+	startDate, endDate string,
+) ([]DailyStatusCount, error) {
 	query := `
 		SELECT
 			DATE(a.when_date) as date,
@@ -101,25 +137,14 @@ func (r *Repository) GetTotalAppointmentsCount(
 	statusID, startDate, endDate string,
 	iirID *string,
 ) (int, error) {
-	query := `SELECT COUNT(*) FROM appointments WHERE 1=1`
-	var args []interface{}
-
-	if statusID != "" {
-		query += " AND status_id = ?"
-		args = append(args, statusID)
-	}
-	if startDate != "" {
-		query += " AND when_date >= ?"
-		args = append(args, startDate)
-	}
-	if endDate != "" {
-		query += " AND when_date <= ?"
-		args = append(args, endDate)
-	}
-	if iirID != nil {
-		query += " AND iir_id = ?"
-		args = append(args, *iirID)
-	}
+	query, args := r.applyFilters(
+		"SELECT COUNT(*) FROM appointments a WHERE 1=1",
+		nil,
+		statusID,
+		startDate,
+		endDate,
+		iirID,
+	)
 
 	var count int
 	err := r.db.GetContext(ctx, &count, query, args...)
@@ -132,39 +157,42 @@ func (r *Repository) GetTotalAppointmentsCount(
 	return count, nil
 }
 
+func (r *Repository) applyFilters(
+	query string,
+	args []interface{},
+	statusID, startDate, endDate string,
+	iirID *string,
+) (string, []interface{}) {
+	if args == nil {
+		args = []interface{}{}
+	}
+
+	if statusID != "" {
+		query += " AND a.status_id = ?"
+		args = append(args, statusID)
+	}
+	if startDate != "" {
+		query += " AND a.when_date >= ?"
+		args = append(args, startDate)
+	}
+	if endDate != "" {
+		query += " AND a.when_date <= ?"
+		args = append(args, endDate)
+	}
+	if iirID != nil {
+		query += " AND a.iir_id = ?"
+		args = append(args, *iirID)
+	}
+
+	return query, args
+}
+
 func (r *Repository) List(
 	ctx context.Context,
 	offset, limit int,
 	search, orderBy, statusIDs, startDate, endDate string,
 ) ([]AppointmentWithDetailsView, error) {
-	query := (`
-		SELECT
-			a.id,
-			ir.id AS iir_id,
-			u.first_name AS user_first_name,
-			u.middle_name AS user_middle_name,
-			u.last_name AS user_last_name,
-			a.reason AS reason,
-			a.admin_notes AS admin_notes,
-			a.when_date AS when_date,
-			a.created_at AS created_at,
-			a.updated_at AS updated_at,
-			ts.id AS time_slot_id,
-			ts.time AS time_slot_time,
-			ac.id AS category_id,
-			ac.name AS category_name,
-			as2.id AS status_id,
-			as2.name AS status_name,
-			as2.color_key AS status_color_key
-		FROM appointments a
-		LEFT JOIN iir_records ir ON a.iir_id = ir.id
-		LEFT JOIN users u ON ir.user_id = u.id
-		JOIN time_slots ts ON a.time_slot_id = ts.id
-		JOIN appointment_categories ac ON
-			a.appointment_category_id = ac.id
-		JOIN statuses as2 ON a.status_id = as2.id
-		WHERE 1=1
-	`)
+	query := appointmentsBaseQuery + " WHERE 1=1"
 	var args []interface{}
 
 	if statusIDs != "" {
@@ -222,12 +250,15 @@ func (r *Repository) List(
 	return appts, nil
 }
 
-func (r *Repository) GetTimeSlotByID(ctx context.Context, id int) (*TimeSlot, error) {
+func (r *Repository) GetTimeSlotByID(
+	ctx context.Context,
+	id int,
+) (*TimeSlot, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM time_slots
 		WHERE id = ?
-	`, database.GetColumns(TimeSlot{}))
+	`, datastore.GetColumns(TimeSlot{}))
 	var slot TimeSlot
 	err := r.db.GetContext(ctx, &slot, query, id)
 	if err != nil {
@@ -237,39 +268,54 @@ func (r *Repository) GetTimeSlotByID(ctx context.Context, id int) (*TimeSlot, er
 	return &slot, nil
 }
 
-func (r *Repository) GetAppointmentCategoryByID(ctx context.Context, id int) (*AppointmentCategory, error) {
+func (r *Repository) GetAppointmentCategoryByID(
+	ctx context.Context,
+	id int,
+) (*AppointmentCategory, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM appointment_categories
 		WHERE id = ?
-	`, database.GetColumns(AppointmentCategory{}))
+	`, datastore.GetColumns(AppointmentCategory{}))
 	var category AppointmentCategory
 	err := r.db.GetContext(ctx, &category, query, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get appointment category by ID: %w", err)
+		return nil, fmt.Errorf(
+			"failed to get appointment category by ID: %w",
+			err,
+		)
 	}
 
 	return &category, nil
 }
 
-func (r *Repository) GetStatusByID(ctx context.Context, id int) (*AppointmentStatus, error) {
+func (r *Repository) GetStatusByID(
+	ctx context.Context,
+	id int,
+) (*AppointmentStatus, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM statuses
 		WHERE status_type IN ('appointment', 'both')
 		AND id = ?
-	`, database.GetColumns(AppointmentStatus{}))
+	`, datastore.GetColumns(AppointmentStatus{}))
 
 	var status AppointmentStatus
 	err := r.db.GetContext(ctx, &status, query, id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get appointment status by ID: %w", err)
+		return nil, fmt.Errorf(
+			"failed to get appointment status by ID: %w",
+			err,
+		)
 	}
 
 	return &status, nil
 }
 
-func (r *Repository) GetAvailableTimeSlots(ctx context.Context, date string) ([]AvailableTimeSlotView, error) {
+func (r *Repository) GetAvailableTimeSlots(
+	ctx context.Context,
+	date string,
+) ([]AvailableTimeSlotView, error) {
 	query := `
 		SELECT
 			ts.id as time_slot_id,
@@ -290,12 +336,14 @@ func (r *Repository) GetAvailableTimeSlots(ctx context.Context, date string) ([]
 	return slots, nil
 }
 
-func (r *Repository) GetStatuses(ctx context.Context) ([]AppointmentStatus, error) {
+func (r *Repository) GetStatuses(
+	ctx context.Context,
+) ([]AppointmentStatus, error) {
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM statuses
 		WHERE status_type IN ('appointment', 'both')
-	`, database.GetColumns(AppointmentStatus{}))
+	`, datastore.GetColumns(AppointmentStatus{}))
 	var statuses []AppointmentStatus
 	err := r.db.SelectContext(ctx, &statuses, query)
 	if err != nil {
@@ -312,50 +360,14 @@ func (r *Repository) ListByUserID(
 	orderBy string,
 	statusID, startDate, endDate string,
 ) ([]AppointmentWithDetailsView, error) {
-	query := `
-		SELECT
-			a.id,
-			ir.id AS iir_id,
-			u.first_name AS user_first_name,
-			u.middle_name AS user_middle_name,
-			u.last_name AS user_last_name,
-			a.reason AS reason,
-			a.admin_notes AS admin_notes,
-			a.when_date AS when_date,
-			a.created_at AS created_at,
-			a.updated_at AS updated_at,
-			ts.id AS time_slot_id,
-			ts.time AS time_slot_time,
-			ac.id AS category_id,
-			ac.name AS category_name,
-			as2.id AS status_id,
-			as2.name AS status_name,
-			as2.color_key AS status_color_key
-		FROM appointments a
-		LEFT JOIN iir_records ir ON a.iir_id = ir.id
-		LEFT JOIN users u ON ir.user_id = u.id
-		JOIN time_slots ts ON a.time_slot_id = ts.id
-		JOIN appointment_categories ac ON
-			a.appointment_category_id = ac.id
-		JOIN statuses as2 ON a.status_id = as2.id
-		WHERE ir.user_id = ?
-	`
-	args := []interface{}{userID}
-
-	if statusID != "" {
-		query += " AND a.status_id = ?"
-		args = append(args, statusID)
-	}
-
-	if startDate != "" {
-		query += " AND a.when_date >= ?"
-		args = append(args, startDate)
-	}
-
-	if endDate != "" {
-		query += " AND a.when_date <= ?"
-		args = append(args, endDate)
-	}
+	query, args := r.applyFilters(
+		appointmentsBaseQuery+" WHERE ir.user_id = ?",
+		[]interface{}{userID},
+		statusID,
+		startDate,
+		endDate,
+		nil,
+	)
 
 	query += fmt.Sprintf(
 		" ORDER BY a.%s LIMIT %d OFFSET %d",
@@ -383,50 +395,14 @@ func (r *Repository) ListByIIRID(
 	orderBy string,
 	statusID, startDate, endDate string,
 ) ([]AppointmentWithDetailsView, error) {
-	query := `
-		SELECT
-			a.id,
-			ir.id AS iir_id,
-			u.first_name AS user_first_name,
-			u.middle_name AS user_middle_name,
-			u.last_name AS user_last_name,
-			a.reason AS reason,
-			a.admin_notes AS admin_notes,
-			a.when_date AS when_date,
-			a.created_at AS created_at,
-			a.updated_at AS updated_at,
-			ts.id AS time_slot_id,
-			ts.time AS time_slot_time,
-			ac.id AS category_id,
-			ac.name AS category_name,
-			as2.id AS status_id,
-			as2.name AS status_name,
-			as2.color_key AS status_color_key
-		FROM appointments a
-		LEFT JOIN iir_records ir ON a.iir_id = ir.id
-		LEFT JOIN users u ON ir.user_id = u.id
-		JOIN time_slots ts ON a.time_slot_id = ts.id
-		JOIN appointment_categories ac ON
-			a.appointment_category_id = ac.id
-		JOIN statuses as2 ON a.status_id = as2.id
-		WHERE a.iir_id = ?
-	`
-	args := []interface{}{iirID}
-
-	if statusID != "" {
-		query += " AND a.status_id = ?"
-		args = append(args, statusID)
-	}
-
-	if startDate != "" {
-		query += " AND a.when_date >= ?"
-		args = append(args, startDate)
-	}
-
-	if endDate != "" {
-		query += " AND a.when_date <= ?"
-		args = append(args, endDate)
-	}
+	query, args := r.applyFilters(
+		appointmentsBaseQuery+" WHERE a.iir_id = ?",
+		[]interface{}{iirID},
+		statusID,
+		startDate,
+		endDate,
+		nil,
+	)
 
 	query += fmt.Sprintf(
 		" ORDER BY a.%s LIMIT %d OFFSET %d",
@@ -502,7 +478,7 @@ func (r *Repository) CreateAppointment(
 	ctx context.Context,
 	appt *Appointment,
 ) error {
-	cols, vals := database.GetInsertStatement(
+	cols, vals := datastore.GetInsertStatement(
 		appt,
 		[]string{"updated_at"},
 	)
@@ -526,7 +502,7 @@ func (r *Repository) UpdateAppointment(
 	ctx context.Context,
 	appt Appointment,
 ) error {
-	return database.RunInTransaction(
+	return datastore.RunInTransaction(
 		ctx,
 		r.db,
 		func(txn *sqlx.Tx) error {

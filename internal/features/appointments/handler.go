@@ -7,13 +7,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
 type Handler struct {
-	service *Service
+	service ServiceInterface
 }
 
-func NewHandler(service *Service) *Handler {
+// NewHandler creates a new appointments handler.
+func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
@@ -22,20 +24,19 @@ func NewHandler(service *Service) *Handler {
 func getIIRIDFromContext(c *gin.Context) (string, bool) {
 	iirIDVal, exists := c.Get("iirID")
 	if !exists {
-		c.JSON(
-			http.StatusForbidden,
-			gin.H{
-				"error": "Please complete your IIR profile",
-			},
-		)
+		response.SendFail(c, gin.H{
+			"error": "Please complete your IIR profile",
+		}, http.StatusForbidden)
 		return "", false
 	}
 
 	iirID, ok := iirIDVal.(string)
 	if !ok {
-		c.JSON(
+		response.SendError(
+			c,
+			"Internal server error",
 			http.StatusInternalServerError,
-			gin.H{"error": "Internal server error"},
+			nil,
 		)
 		return "", false
 	}
@@ -51,6 +52,7 @@ func getIIRIDFromContext(c *gin.Context) (string, bool) {
 // @Success      200  {object} []AppointmentCategory
 // @Failure      500  {object} map[string]string
 // @Router       /appointments/lookups/categories [get]
+// GetAppointmentCategoryList retrieves all appointment concern categories.
 func (h *Handler) GetAppointmentCategoryList(
 	c *gin.Context,
 ) {
@@ -62,14 +64,16 @@ func (h *Handler) GetAppointmentCategoryList(
 			"[GetAppointmentCategoryList] {Fetch Categories}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve categories",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve categories"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, categories)
+	response.SendSuccess(c, categories)
 }
 
 // GetDailyStatusCountList godoc
@@ -85,20 +89,14 @@ func (h *Handler) GetAppointmentCategoryList(
 func (h *Handler) GetDailyStatusCountList(c *gin.Context) {
 	var req ListAppointmentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
 	if req.StartDate == "" {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{
-				"error": "start_date parameter required",
-			},
-		)
+		response.SendFail(c, gin.H{
+			"error": "start_date parameter required",
+		})
 		return
 	}
 
@@ -111,14 +109,16 @@ func (h *Handler) GetDailyStatusCountList(c *gin.Context) {
 			"[GetDailyStatusCountList] {Fetch Daily Stats}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve statistics",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve statistics"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, dsc)
+	response.SendSuccess(c, dsc)
 }
 
 // PostAppointment godoc
@@ -141,10 +141,7 @@ func (h *Handler) PostAppointment(c *gin.Context) {
 
 	var req AppointmentDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid request format"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
 		return
 	}
 
@@ -158,17 +155,19 @@ func (h *Handler) PostAppointment(c *gin.Context) {
 			"[PostAppointment] {Create Appointment}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to create appointment",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to create appointment"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.SendSuccess(c, gin.H{
 		"message": "Appointment created successfully",
 		"id":      appt.ID,
-	})
+	}, http.StatusCreated)
 }
 
 // GetAppointmentByID godoc
@@ -186,10 +185,7 @@ func (h *Handler) PostAppointment(c *gin.Context) {
 func (h *Handler) GetAppointmentByID(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid ID format"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid ID format"})
 		return
 	}
 
@@ -202,22 +198,25 @@ func (h *Handler) GetAppointmentByID(c *gin.Context) {
 			"[GetAppointmentByID] {Fetch Appointment}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve appointment",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve appointment"},
+			nil,
 		)
 		return
 	}
 
 	if appt == nil {
-		c.JSON(
-			http.StatusNotFound,
+		response.SendFail(
+			c,
 			gin.H{"error": "Appointment not found"},
+			http.StatusNotFound,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, appt)
+	response.SendSuccess(c, appt)
 }
 
 // GetAppointmentList godoc
@@ -236,10 +235,7 @@ func (h *Handler) GetAppointmentByID(c *gin.Context) {
 func (h *Handler) GetAppointmentList(c *gin.Context) {
 	var req ListAppointmentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
@@ -252,14 +248,16 @@ func (h *Handler) GetAppointmentList(c *gin.Context) {
 			"[GetAppointmentList] {Fetch All Appointments}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve appointments",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve appointments"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, appts)
+	response.SendSuccess(c, appts)
 }
 
 // GetAvailableTimeSlotList godoc
@@ -275,10 +273,7 @@ func (h *Handler) GetAppointmentList(c *gin.Context) {
 func (h *Handler) GetAvailableTimeSlotList(c *gin.Context) {
 	date := c.Query("date")
 	if date == "" {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "date parameter required"},
-		)
+		response.SendFail(c, gin.H{"error": "date parameter required"})
 		return
 	}
 
@@ -291,14 +286,16 @@ func (h *Handler) GetAvailableTimeSlotList(c *gin.Context) {
 			"[GetAvailableTimeSlotList] {Fetch Slots}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve time slots",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve time slots"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, slots)
+	response.SendSuccess(c, slots)
 }
 
 // GetAppointmentStatusList godoc
@@ -318,14 +315,16 @@ func (h *Handler) GetAppointmentStatusList(c *gin.Context) {
 			"[GetAppointmentStatusList] {Fetch Statuses}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve statuses",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve statuses"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, statuses)
+	response.SendSuccess(c, statuses)
 }
 
 // GetAppointmentListByIIR godoc
@@ -345,10 +344,7 @@ func (h *Handler) GetAppointmentListByIIR(c *gin.Context) {
 
 	var req ListAppointmentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
@@ -362,14 +358,16 @@ func (h *Handler) GetAppointmentListByIIR(c *gin.Context) {
 			"[GetAppointmentListByIIR] {Fetch Appointments}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve appointments",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve appointments"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, appointments)
+	response.SendSuccess(c, appointments)
 }
 
 // GetAppointmentStatsList godoc
@@ -387,19 +385,18 @@ func (h *Handler) GetAppointmentStatsList(c *gin.Context) {
 	var iirIDPtr *string
 	if roleID == int(constants.StudentRoleID) {
 		if !exists {
-			c.JSON(
-				http.StatusForbidden,
-				gin.H{
-					"error": "Please complete your IIR profile",
-				},
-			)
+			response.SendFail(c, gin.H{
+				"error": "Please complete your IIR profile",
+			}, http.StatusForbidden)
 			return
 		}
 		iirID, ok := iirIDVal.(string)
 		if !ok {
-			c.JSON(
+			response.SendError(
+				c,
+				"Internal server error",
 				http.StatusInternalServerError,
-				gin.H{"error": "Internal server error"},
+				nil,
 			)
 			return
 		}
@@ -408,10 +405,7 @@ func (h *Handler) GetAppointmentStatsList(c *gin.Context) {
 
 	var req ListAppointmentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid query parameters"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
 	}
 
@@ -425,14 +419,16 @@ func (h *Handler) GetAppointmentStatsList(c *gin.Context) {
 			"[GetAppointmentStatsList] {Fetch Stats}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to retrieve statistics",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to retrieve statistics"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, stats)
+	response.SendSuccess(c, stats)
 }
 
 // PatchAppointment godoc
@@ -451,19 +447,13 @@ func (h *Handler) GetAppointmentStatsList(c *gin.Context) {
 func (h *Handler) PatchAppointment(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid ID format"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid ID format"})
 		return
 	}
 
 	var req AppointmentDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "Invalid request format"},
-		)
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
 		return
 	}
 
@@ -473,24 +463,23 @@ func (h *Handler) PatchAppointment(c *gin.Context) {
 		req,
 	); err != nil {
 		if err == sql.ErrNoRows {
-			c.JSON(
-				http.StatusNotFound,
-				gin.H{"error": "Appointment not found"},
-			)
+			response.SendFail(c, gin.H{"error": "Appointment not found"}, http.StatusNotFound)
 			return
 		}
 		log.Printf(
 			"[PatchAppointment] {Update Appointment}: %v",
 			err,
 		)
-		c.JSON(
+		response.SendError(
+			c,
+			"Failed to update appointment",
 			http.StatusInternalServerError,
-			gin.H{"error": "Failed to update appointment"},
+			nil,
 		)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.SendSuccess(c, gin.H{
 		"message": "Appointment updated successfully",
 	})
 }

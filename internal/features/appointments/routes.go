@@ -4,11 +4,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
-	"github.com/olazo-johnalbert/duckload-api/internal/database"
-	"github.com/olazo-johnalbert/duckload-api/internal/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
-func RegisterRoutes(db *sqlx.DB, rg *gin.RouterGroup, h *Handler, redis *database.RedisClient) {
+func RegisterRoutes(
+	db *sqlx.DB,
+	rg *gin.RouterGroup,
+	h *Handler,
+	redis *datastore.RedisClient,
+) {
 	routes := rg.Group("/appointments")
 	routes.Use(middleware.AuthMiddleware(redis))
 	routes.Use(middleware.HydrateStudentContext(db))

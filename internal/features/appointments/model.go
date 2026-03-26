@@ -6,45 +6,45 @@ import (
 )
 
 type TimeSlot struct {
-	ID   int    `db:"id" json:"id"`
+	ID   int    `db:"id"   json:"id"`
 	Time string `db:"time" json:"time,omitempty"`
 }
 
 type AppointmentStatus struct {
-	ID       int    `db:"id" json:"id"`
-	Name     string `db:"name" json:"name,omitempty"`
+	ID       int    `db:"id"        json:"id"`
+	Name     string `db:"name"      json:"name,omitempty"`
 	ColorKey string `db:"color_key" json:"colorKey,omitempty"`
 }
 
 // StatusCount holds the count of appointments per status
 type StatusCount struct {
-	ID    int    `db:"id" json:"id"`
-	Name  string `db:"name" json:"name"`
+	ID    int    `db:"id"    json:"id"`
+	Name  string `db:"name"  json:"name"`
 	Count int    `db:"count" json:"count"`
 }
 
 type AppointmentCategory struct {
-	ID   int    `db:"id" json:"id"`
+	ID   int    `db:"id"   json:"id"`
 	Name string `db:"name" json:"name,omitempty"`
 }
 
 type AvailableTimeSlotView struct {
 	ID          int    `db:"time_slot_id" json:"id"`
-	Time        string `db:"time" json:"time,omitempty"`
+	Time        string `db:"time"         json:"time,omitempty"`
 	IsAvailable bool   `db:"is_available" json:"isAvailable"`
 }
 
 type Appointment struct {
-	ID                    string         `db:"id" json:"id,omitempty"`
-	IIRID                 string         `db:"iir_id" json:"iirId,omitempty"`
-	Reason                sql.NullString `db:"reason" json:"reason,omitempty"`
-	AdminNotes            sql.NullString `db:"admin_notes" json:"adminNotes,omitempty"`
-	WhenDate              string         `db:"when_date" json:"whenDate"`
-	TimeSlotID            int            `db:"time_slot_id" json:"scheduledTime"`
+	ID                    string         `db:"id"                      json:"id,omitempty"`
+	IIRID                 string         `db:"iir_id"                  json:"iirId,omitempty"`
+	Reason                sql.NullString `db:"reason"                  json:"reason,omitempty"`
+	AdminNotes            sql.NullString `db:"admin_notes"             json:"adminNotes,omitempty"`
+	WhenDate              string         `db:"when_date"               json:"whenDate"`
+	TimeSlotID            int            `db:"time_slot_id"            json:"scheduledTime"`
 	AppointmentCategoryID int            `db:"appointment_category_id" json:"appointmentCategoryId"`
-	StatusID              int            `db:"status_id" json:"statusId"`
-	CreatedAt             time.Time      `db:"created_at" json:"createdAt"`
-	UpdatedAt             time.Time      `db:"updated_at" json:"updatedAt"`
+	StatusID              int            `db:"status_id"               json:"statusId"`
+	CreatedAt             time.Time      `db:"created_at"              json:"createdAt"`
+	UpdatedAt             time.Time      `db:"updated_at"              json:"updatedAt"`
 }
 
 // AppointmentWithDetailsView holds appointment data with joined time slot, category, and status
