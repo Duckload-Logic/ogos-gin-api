@@ -34,6 +34,13 @@ func (ns NullableString) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ns.String)
 }
 
+func StringToNullableString(s string) NullableString {
+	if s == "" {
+		return NullableString{Valid: false}
+	}
+	return NullableString{String: s, Valid: true}
+}
+
 func FromSqlNull(ns sql.NullString) NullableString {
 	return NullableString{String: ns.String, Valid: ns.Valid}
 }

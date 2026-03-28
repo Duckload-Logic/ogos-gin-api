@@ -67,7 +67,9 @@ func createCounselor(index int, password string) {
 	// yet,
 	// but we could also use a named exec for better parity.
 	_, err = db.Exec(`
-		INSERT INTO counselor_profiles (user_id, license_number, specialization, is_available)
+		INSERT INTO counselor_profiles (
+			user_id, license_number, specialization, is_available
+		)
 		VALUES (?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE
 			license_number = VALUES(license_number),

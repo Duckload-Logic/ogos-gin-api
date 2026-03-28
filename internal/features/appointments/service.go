@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 
@@ -18,14 +17,14 @@ import (
 
 type Service struct {
 	repo         RepositoryInterface
-	notifService *notifications.Service
-	logService   *logs.Service
+	notifService audit.Notifier
+	logService   audit.Logger
 }
 
 func NewService(
 	repo RepositoryInterface,
-	notifService *notifications.Service,
-	logService *logs.Service,
+	notifService audit.Notifier,
+	logService audit.Logger,
 ) *Service {
 	return &Service{
 		repo:         repo,
@@ -63,26 +62,42 @@ func (s *Service) CreateAppointment(
 		},
 	)
 	if err != nil {
+		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+			Log: &audit.LogParams{
+				Category: audit.CategoryAudit,
+				Action:   audit.ActionAppointmentFailed,
+				Message: fmt.Sprintf(
+					"Failed to create appointment for IIR #%s",
+					iirID,
+				),
+				Metadata: &audit.LogMetadata{
+					EntityType: constants.AppointmentEntityType,
+					NewValues:  req,
+				},
+			},
+		})
 		return nil, err
 	}
 
-	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
-	s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
-		Category: logs.CategoryAudit,
-		Action:   logs.ActionAppointmentCreated,
-		Message: fmt.Sprintf(
-			"Appointment #%s created by %s",
-			appt.ID,
-			auditUserEmail,
-		),
-		UserID:    auditUserID,
-		UserEmail: auditUserEmail,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		Metadata: map[string]interface{}{
-			"entity_type": "appointment",
-			"entity_id":   appt.ID,
-			"new_values":  req,
+	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+		Log: &audit.LogParams{
+			Category: audit.CategoryAudit,
+			Action:   audit.ActionAppointmentCreated,
+			Message:  fmt.Sprintf("Appointment #%s created", appt.ID),
+			Metadata: &audit.LogMetadata{
+				EntityType: constants.AppointmentEntityType,
+				EntityID:   appt.ID,
+				NewValues:  req,
+			},
+		},
+		Notification: &audit.NotificationParams{
+			TargetID: structs.StringToNullableString(appt.ID),
+			TargetType: structs.StringToNullableString(
+				constants.AppointmentEntityType,
+			),
+			Title:   fmt.Sprintf("Appointment #%s Created", appt.ID),
+			Message: "Your appointment has been created and is pending approval.",
+			Type:    constants.AppointmentEntityType,
 		},
 	})
 
@@ -412,44 +427,50 @@ func (s *Service) UpdateAppointment(
 		},
 	)
 	if err != nil {
+		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+			Log: &audit.LogParams{
+				Category: audit.CategoryAudit,
+				Action:   audit.ActionAppointmentUpdateFailed,
+				Message:  fmt.Sprintf("Failed to update appointment #%s", id),
+				Metadata: &audit.LogMetadata{
+					EntityType: "appointment",
+					EntityID:   id,
+					OldValues:  oldAppt,
+					NewValues:  req,
+					Error:      err.Error(),
+				},
+			},
+		})
+
 		return err
 	}
 
-	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
-	s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
-		Category: logs.CategoryAudit,
-		Action:   logs.ActionAppointmentUpdated,
-		Message: fmt.Sprintf(
-			"Appointment #%s updated by %s",
-			id,
-			auditUserEmail,
-		),
-		UserID:    auditUserID,
-		UserEmail: auditUserEmail,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		Metadata: map[string]interface{}{
-			"entity_type": "appointment",
-			"entity_id":   id,
-			"old_values":  oldAppt,
-			"new_values":  req,
+	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+		Log: &audit.LogParams{
+			Category: audit.CategoryAudit,
+			Action:   audit.ActionAppointmentUpdated,
+			Message:  fmt.Sprintf("Appointment #%s updated", id),
+			Metadata: &audit.LogMetadata{
+				EntityType: constants.AppointmentEntityType,
+				EntityID:   id,
+				OldValues:  oldAppt,
+				NewValues:  req,
+			},
+		},
+		Notification: &audit.NotificationParams{
+			ReceiverID: structs.StringToNullableString(req.User.ID),
+			TargetID:   structs.StringToNullableString(id),
+			TargetType: structs.StringToNullableString(
+				constants.AppointmentEntityType,
+			),
+			Title: fmt.Sprintf("Appointment #%s Updated", id),
+			Message: fmt.Sprintf(
+				"Your appointment has been updated. New status: %s",
+				req.Status.Name,
+			),
+			Type: constants.AppointmentEntityType,
 		},
 	})
 
 	return nil
-}
-
-func (s *Service) ConfirmAppointment(
-	ctx context.Context,
-	appointmentID string,
-	studentEmail string,
-) error {
-	err := s.notifService.Send(
-		ctx,
-		studentEmail,
-		"Appointment Confirmed",
-		"Your session has been approved by the counselor.",
-		"Appointment",
-	)
-	return err
 }

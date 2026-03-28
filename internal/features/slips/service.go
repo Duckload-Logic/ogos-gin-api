@@ -13,9 +13,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
@@ -24,17 +24,24 @@ import (
 const MaxFileSize = 5 * 1024 * 1024 // 5MB limit
 
 type Service struct {
-	repo       RepositoryInterface
-	logService *logs.Service
-	storage    storage.FileStorage
+	repo         RepositoryInterface
+	logService   audit.Logger
+	notifService audit.Notifier
+	storage      storage.FileStorage
 }
 
 func NewService(
 	repo RepositoryInterface,
-	logService *logs.Service,
+	logService audit.Logger,
+	notifService audit.Notifier,
 	storage storage.FileStorage,
 ) *Service {
-	return &Service{repo: repo, logService: logService, storage: storage}
+	return &Service{
+		repo:         repo,
+		logService:   logService,
+		notifService: notifService,
+		storage:      storage,
+	}
 }
 
 func (s *Service) GetSlipStatuses(ctx context.Context) ([]SlipStatus, error) {
@@ -415,23 +422,16 @@ func (s *Service) SubmitExcuseSlip(
 		return nil, err
 	}
 
-	auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(ctx)
-	s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
-		Category: logs.CategoryAudit,
-		Action:   logs.ActionSlipCreated,
-		Message: fmt.Sprintf(
-			"Excuse slip #%s submitted by %s",
-			slip.ID,
-			auditUserEmail,
-		),
-		UserID:    auditUserID,
-		UserEmail: auditUserEmail,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-		Metadata: map[string]interface{}{
-			"entity_type": "slip",
-			"entity_id":   slip.ID,
-			"new_values":  req,
+	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+		Log: &audit.LogParams{
+			Category: audit.CategoryAudit,
+			Action:   audit.ActionSlipCreated,
+			Message:  fmt.Sprintf("Excuse slip #%s created", slip.ID),
+			Metadata: &audit.LogMetadata{
+				EntityType: constants.SlipEntityType,
+				EntityID:   slip.ID,
+				NewValues:  slip,
+			},
 		},
 	})
 
@@ -513,35 +513,79 @@ func (s *Service) UpdateExcuseSlipStatus(
 		func(tx datastore.DB) error {
 			err := s.repo.UpdateStatus(ctx, tx, id, newStatus, adminNotes)
 			if err != nil {
+				audit.Dispatch(
+					ctx,
+					s.logService,
+					s.notifService,
+					audit.DispatchParams{
+						Tx: tx,
+						Log: &audit.LogParams{
+							Category: audit.CategoryAudit,
+							Action:   audit.ActionSlipFailed,
+							Message: fmt.Sprintf(
+								"Failed to update status for slip #%s: %s",
+								id,
+								err.Error(),
+							),
+							Metadata: &audit.LogMetadata{
+								EntityType: constants.SlipEntityType,
+								EntityID:   id,
+								Error:      err.Error(),
+							},
+						},
+						Notification: &audit.NotificationParams{
+							Title: "Slip Status Update Failed",
+							Message: fmt.Sprintf(
+								"Failed to update status for slip #%s: %s",
+								id,
+								err.Error(),
+							),
+							Type: constants.SlipEntityType,
+						},
+					},
+				)
 				return err
 			}
 
-			auditUserID, ipAddress, userAgent, auditUserEmail := audit.ExtractMeta(
+			audit.Dispatch(
 				ctx,
-			)
-			s.logService.Record(ctx, tx, logs.LogEntry{
-				Category: logs.CategoryAudit,
-				Action:   logs.ActionSlipStatusUpdated,
-				Message: fmt.Sprintf(
-					"Excuse slip #%s status changed to '%s' by %s",
-					id,
-					newStatus,
-					auditUserEmail,
-				),
-				UserID:    auditUserID,
-				UserEmail: auditUserEmail,
-				IPAddress: ipAddress,
-				UserAgent: userAgent,
-				Metadata: map[string]interface{}{
-					"entity_type": "slip",
-					"entity_id":   id,
-					"old_values":  oldSlip,
-					"new_values": map[string]interface{}{
-						"status":     newStatus,
-						"adminNotes": adminNotes,
+				s.logService,
+				s.notifService,
+				audit.DispatchParams{
+					Tx: tx,
+					Log: &audit.LogParams{
+						Category: audit.CategoryAudit,
+						Action:   audit.ActionSlipStatusUpdated,
+						Message: fmt.Sprintf(
+							"Excuse slip #%s status changed to '%s'",
+							id,
+							newStatus,
+						),
+						Metadata: &audit.LogMetadata{
+							EntityType: constants.SlipEntityType,
+							EntityID:   id,
+							OldValues:  oldSlip,
+							NewValues: map[string]interface{}{
+								"status":     newStatus,
+								"adminNotes": adminNotes,
+							},
+						},
+					},
+					Notification: &audit.NotificationParams{
+						TargetID: structs.StringToNullableString(id),
+						TargetType: structs.StringToNullableString(
+							constants.SlipEntityType,
+						),
+						Title: "Slip Status Updated",
+						Message: fmt.Sprintf(
+							"Status for slip #%s changed to '%s'",
+							id,
+							newStatus,
+						),
+						Type: constants.SlipEntityType,
 					},
 				},
-			})
+			)
 			return nil
 		},
 	)

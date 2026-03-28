@@ -24,6 +24,3 @@ CREATE TABLE users (
 
 CREATE UNIQUE INDEX idx_users_email_auth_type ON users(email ASC, auth_type ASC);
 CREATE INDEX idx_users_role_id ON users(role_id ASC);
-
--- Note: legal_documents table is created in 000002 but referenced here
--- user_consents will be created after legal_documents is available

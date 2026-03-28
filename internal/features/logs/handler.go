@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 )
 
@@ -14,6 +15,10 @@ type Handler struct {
 
 func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
+}
+
+func (h *Handler) GetService() ServiceInterface {
+	return h.service
 }
 
 // HandleListSystemLogs godoc
@@ -69,7 +74,7 @@ func (h *Handler) GetAuditLogs(c *gin.Context) {
 		return
 	}
 
-	req.Category = CategoryAudit
+	req.Category = audit.CategoryAudit
 
 	result, err := h.service.ListLogs(c.Request.Context(), req)
 	if err != nil {
@@ -95,7 +100,7 @@ func (h *Handler) GetSystemLogs(c *gin.Context) {
 		return
 	}
 
-	req.Category = CategorySystem
+	req.Category = audit.CategorySystem
 
 	result, err := h.service.ListLogs(c.Request.Context(), req)
 	if err != nil {
@@ -121,7 +126,7 @@ func (h *Handler) GetSecurityLogs(c *gin.Context) {
 		return
 	}
 
-	req.Category = CategorySecurity
+	req.Category = audit.CategorySecurity
 
 	result, err := h.service.ListLogs(c.Request.Context(), req)
 	if err != nil {

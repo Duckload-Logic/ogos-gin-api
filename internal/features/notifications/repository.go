@@ -21,8 +21,8 @@ func (r *Repository) GetByUserID(
 	userID string,
 ) ([]NotificationModel, error) {
 	query := fmt.Sprintf(`
-		SELECT %s FROM notifications 
-		WHERE user_id = ? 
+		SELECT %s FROM notifications
+		WHERE user_id = ?
 		ORDER BY created_at DESC
 	`, datastore.GetColumns(NotificationModel{}))
 
@@ -46,12 +46,12 @@ func (r *Repository) GetDB() *sqlx.DB {
 func (r *Repository) MarkAsRead(
 	ctx context.Context,
 	tx datastore.DB,
-	id int,
+	id string,
 ) error {
 	query := `UPDATE notifications SET is_read = TRUE WHERE id = ?`
 	_, err := tx.ExecContext(ctx, query, id)
 	if err != nil {
-		return fmt.Errorf("failed to mark notification %d as read: %w", id, err)
+		return fmt.Errorf("failed to mark notification %s as read: %w", id, err)
 	}
 	return nil
 }
@@ -59,18 +59,18 @@ func (r *Repository) MarkAsRead(
 func (r *Repository) Create(
 	ctx context.Context,
 	tx datastore.DB,
-	userID string,
-	title, message, notifType string,
+	notif *NotificationModel,
 ) error {
-	query := `
-        INSERT INTO notifications (user_id, title, message, type, created_at)
-        VALUES (?, ?, ?, ?, NOW())`
+	cols, vals := datastore.GetInsertStatement(notif, []string{"created_at"})
+	query := fmt.Sprintf(`
+        INSERT INTO notifications (id, %s)
+        VALUES (:id, %s)`, cols, vals)
 
-	_, err := tx.ExecContext(ctx, query, userID, title, message, notifType)
+	_, err := tx.NamedExecContext(ctx, query, &notif)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to create notification for user %s: %w",
-			userID,
+			notif.ReceiverID.String,
 			err,
 		)
 	}

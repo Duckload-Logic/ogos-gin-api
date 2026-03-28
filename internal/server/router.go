@@ -13,7 +13,6 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
@@ -80,7 +79,10 @@ func NewRouter(
 
 	g.Use(cors.New(corsConfig))
 	g.Use(func(c *gin.Context) {
-		c.Set(middleware.SecurityLoggerContextKey, handlers.SystemLogService)
+		c.Set(
+			middleware.SecurityLoggerContextKey,
+			handlers.SystemLogHandler.GetService(),
+		)
 		c.Next()
 	})
 
@@ -88,6 +90,7 @@ func NewRouter(
 	g.Use(middleware.RateLimitMiddleware(limiter))
 
 	apiV1Routes := g.Group("/api/v1")
+	apiV1Routes.Use(middleware.TraceMiddleware())
 
 	apiV1Routes.GET("/docs/internal/*any", func(c *gin.Context) {
 		docs.SwaggerInfo.Host = c.Request.Host
@@ -149,17 +152,12 @@ func NewRouter(
 		handlers.Redis,
 	)
 	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler, handlers.Redis)
-	consents.RegisterRoutes(
-		apiV1Routes,
-		handlers.ConsentHandler,
-		handlers.Redis,
-	)
 	notes.RegisterRoutes(db, apiV1Routes, handlers.NoteHandler, handlers.Redis)
 
 	external.RegisterRoutes(
 		apiV1Routes,
 		handlers.ExternalStudentHandler,
-		handlers.APIKeyService.ValidateKeyFunc(),
+		handlers.APIKeyHandler.GetService().ValidateKeyFunc(),
 		handlers.Redis,
 	)
 	return g

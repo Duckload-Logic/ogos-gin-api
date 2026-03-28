@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
@@ -11,25 +12,23 @@ import (
 type ServiceInterface interface {
 	Send(
 		ctx context.Context,
-		userID string,
-		title, message, notifType string,
+		notif audit.NotificationEntry,
 	) error
 	GetUserNotifications(
 		ctx context.Context,
 		userID string,
-	) ([]NotificationDTO, error)
-	MarkAsRead(ctx context.Context, id int) error
+	) ([]audit.NotificationEntry, error)
+	MarkAsRead(ctx context.Context, id string) error
 }
 
 // RepositoryInterface defines the data access layer for managing notifications.
 type RepositoryInterface interface {
 	GetDB() *sqlx.DB
 	GetByUserID(ctx context.Context, userID string) ([]NotificationModel, error)
-	MarkAsRead(ctx context.Context, tx datastore.DB, id int) error
+	MarkAsRead(ctx context.Context, tx datastore.DB, id string) error
 	Create(
 		ctx context.Context,
 		tx datastore.DB,
-		userID string,
-		title, message, notifType string,
+		notif *NotificationModel,
 	) error
 }

@@ -44,11 +44,6 @@ type ServiceInterface interface {
 	) ([]AvailableTimeSlotView, error)
 	GetAppointmentStatuses(ctx context.Context) ([]AppointmentStatus, error)
 	UpdateAppointment(ctx context.Context, id string, req AppointmentDTO) error
-	ConfirmAppointment(
-		ctx context.Context,
-		appointmentID string,
-		studentEmail string,
-	) error
 }
 
 type RepositoryInterface interface {

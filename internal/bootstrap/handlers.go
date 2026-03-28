@@ -7,7 +7,6 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
@@ -31,11 +30,8 @@ type Handlers struct {
 	SlipHandler            *slips.Handler
 	AnalyticsHandler       *analytics.Handler
 	APIKeyHandler          *apikeys.Handler
-	APIKeyService          *apikeys.Service
 	NotificationsHandler   *notifications.Handler
 	SystemLogHandler       *logs.Handler
-	SystemLogService       *logs.Service
-	ConsentHandler         *consents.Handler
 	Redis                  *datastore.RedisClient
 }
 
@@ -69,11 +65,8 @@ func getHandlers(
 		SlipHandler:          slips.NewHandler(services.SlipService),
 		AnalyticsHandler:     analyticsHandler,
 		APIKeyHandler:        apikeys.NewHandler(services.APIKeyService),
-		APIKeyService:        services.APIKeyService,
 		NotificationsHandler: notificationsHandler,
 		SystemLogHandler:     systemLogHandler,
-		SystemLogService:     services.SystemLogService,
-		ConsentHandler:       consents.NewHandler(services.ConsentService),
 		Redis:                redis,
 	}
 }

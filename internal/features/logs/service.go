@@ -2,11 +2,11 @@ package logs
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
@@ -25,39 +25,20 @@ func (s *Service) GetDB() datastore.DB {
 
 // Record logs a system log entry. Fails silently (logs error)
 // to avoid disrupting the parent operation.
-//
-// Usage:
-//
-//	logService.Record(ctx, logs.LogEntry{
-//	    Category:  logs.CategorySecurity,
-//	    Action:    logs.ActionLoginSuccess,
-//	    Message:   "User john@example.com logged in successfully",
-//	    UserEmail: "john@example.com",
-//	    IPAddress: ipAddress,
-//	    UserAgent: userAgent,
-//	})
-func (s *Service) Record(ctx context.Context, tx datastore.DB, entry LogEntry) {
+func (s *Service) Record(
+	ctx context.Context,
+	tx datastore.DB,
+	entry audit.LogEntry,
+) {
 	sysLog := &SystemLog{
-		Category: entry.Category,
-		Action:   entry.Action,
-		Message:  entry.Message,
-		UserID: sql.NullString{
-			String: entry.UserID,
-			Valid:  entry.UserID != "",
-		},
-		UserEmail: sql.NullString{
-			String: entry.UserEmail,
-			Valid:  entry.UserEmail != "",
-		},
-		IPAddress: sql.NullString{
-			String: entry.IPAddress,
-			Valid:  entry.IPAddress != "",
-		},
-		UserAgent: sql.NullString{
-			String: entry.UserAgent,
-			Valid:  entry.UserAgent != "",
-		},
-		Metadata: toNullString(entry.Metadata),
+		Category:  entry.Category,
+		Action:    entry.Action,
+		Message:   entry.Message,
+		UserID:    structs.ToSqlNull(entry.UserID),
+		UserEmail: structs.ToSqlNull(entry.UserEmail),
+		IPAddress: structs.ToSqlNull(entry.IPAddress),
+		UserAgent: structs.ToSqlNull(entry.UserAgent),
+		Metadata:  toNullString(entry.Metadata),
 	}
 
 	if err := s.repo.Record(ctx, tx, sysLog); err != nil {
@@ -72,11 +53,11 @@ func (s *Service) Record(ctx context.Context, tx datastore.DB, entry LogEntry) {
 func (s *Service) RecordSecurity(
 	ctx context.Context,
 	tx datastore.DB,
-	userEmail, action, message, ipAddress, userAgent string,
-	userID string,
+	action, message string,
+	userEmail, userID, ipAddress, userAgent structs.NullableString,
 ) {
-	s.Record(ctx, tx, LogEntry{
-		Category:  CategorySecurity,
+	s.Record(ctx, tx, audit.LogEntry{
+		Category:  audit.CategorySecurity,
 		Action:    action,
 		Message:   message,
 		UserID:    userID,
@@ -97,6 +78,7 @@ func (s *Service) ListLogs(
 		ctx,
 		req.GetOffset(), req.PageSize,
 		req.Category, req.Action, req.UserEmail,
+		req.TargetType, req.TargetEmail,
 		req.Search, req.StartDate, req.EndDate, req.OrderBy,
 	)
 	if err != nil {
@@ -108,6 +90,7 @@ func (s *Service) ListLogs(
 	total, err := s.repo.GetTotalCount(
 		ctx,
 		req.Category, req.Action, req.UserEmail,
+		req.TargetType, req.TargetEmail,
 		req.Search, req.StartDate, req.EndDate,
 	)
 	if err != nil {

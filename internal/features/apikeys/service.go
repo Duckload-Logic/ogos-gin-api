@@ -10,17 +10,27 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Service struct {
-	repo       RepositoryInterface
-	logService *logs.Service
+	repo         RepositoryInterface
+	logService   audit.Logger
+	notifService audit.Notifier
 }
 
-func NewService(repo RepositoryInterface, logService *logs.Service) *Service {
-	return &Service{repo: repo, logService: logService}
+func NewService(
+	repo RepositoryInterface,
+	logService audit.Logger,
+	notifService audit.Notifier,
+) *Service {
+	return &Service{
+		repo:         repo,
+		logService:   logService,
+		notifService: notifService,
+	}
 }
 
 // GenerateKey creates a new API key, stores its hash, and returns the plaintext
@@ -70,29 +80,46 @@ func (s *Service) GenerateKey(
 
 	id, err := s.repo.Create(ctx, s.repo.GetDB(), apiKey)
 	if err != nil {
+		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+			Log: &audit.LogParams{
+				Category: audit.CategorySystem,
+				Action:   audit.ActionAPIKeyCreateFailed,
+				Message: fmt.Sprintf(
+					"Failed to create API key '%s'",
+					req.Name,
+				),
+				Metadata: &audit.LogMetadata{
+					NewValues: req,
+				},
+			},
+		})
 		return nil, err
 	}
 
 	dto := mapKeyToDTO(apiKey)
 	dto.ID = id
 
-	// Record system log
-	if s.logService != nil {
-		s.logService.Record(ctx, s.repo.GetDB(), logs.LogEntry{
-			Category: logs.CategorySystem,
-			Action:   logs.ActionAPIKeyCreated,
+	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+		Log: &audit.LogParams{
+			Category: audit.CategorySystem,
+			Action:   audit.ActionAPIKeyCreated,
 			Message: fmt.Sprintf(
 				"API key '%s' created (prefix: %s)",
 				req.Name,
 				prefix,
 			),
-			Metadata: map[string]interface{}{
-				"keyName":   req.Name,
-				"keyPrefix": prefix,
-				"scopes":    req.Scopes,
+			Metadata: &audit.LogMetadata{
+				EntityType: constants.APIKeyEntityType,
+				EntityID:   prefix,
+				NewValues:  req,
 			},
-		})
-	}
+		},
+		Notification: &audit.NotificationParams{
+			Type:    constants.APIKeyEntityType,
+			Title:   "API Key created",
+			Message: fmt.Sprintf("API key '%s' has been created", req.Name),
+		},
+	})
 
 	return &CreateAPIKeyResponse{
 		APIKeyDTO: dto,
@@ -168,20 +195,50 @@ func (s *Service) RevokeKey(ctx context.Context, id int) error {
 		func(tx datastore.DB) error {
 			err := s.repo.Revoke(ctx, tx, id)
 			if err != nil {
+				audit.Dispatch(
+					ctx,
+					s.logService,
+					s.notifService,
+					audit.DispatchParams{
+						Tx: tx,
+						Log: &audit.LogParams{
+							Category: audit.CategorySystem,
+							Action:   audit.ActionAPIKeyRevokeFailed,
+							Message: fmt.Sprintf(
+								"Failed to revoke API key #%d",
+								id,
+							),
+							Metadata: &audit.LogMetadata{
+								EntityType: constants.APIKeyEntityType,
+								EntityID:   fmt.Sprintf("%d", id),
+							},
+						},
+					},
+				)
 				return err
 			}
 
 			// Record system log
-			if s.logService != nil {
-				s.logService.Record(ctx, tx, logs.LogEntry{
-					Category: logs.CategorySystem,
-					Action:   logs.ActionAPIKeyRevoked,
-					Message:  fmt.Sprintf("API key #%d has been revoked", id),
-					Metadata: map[string]interface{}{
-						"keyId": id,
+			audit.Dispatch(
+				ctx,
+				s.logService,
+				s.notifService,
+				audit.DispatchParams{
+					Tx: tx,
+					Log: &audit.LogParams{
+						Category: audit.CategorySystem,
+						Action:   audit.ActionAPIKeyRevoked,
+						Message: fmt.Sprintf(
+							"API key #%d has been revoked",
+							id,
+						),
+						Metadata: &audit.LogMetadata{
+							EntityType: constants.APIKeyEntityType,
+							EntityID:   fmt.Sprintf("%d", id),
+						},
 					},
-				})
-			}
+				},
+			)
 
 			return nil
 		},

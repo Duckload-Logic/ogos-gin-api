@@ -7,22 +7,24 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/identity/idp"
 )
 
 type Handler struct {
 	service    ServiceInterface
-	logService *logs.Service
+	logService logs.ServiceInterface
 	cfg        *config.Config
 }
 
 func NewHandler(
 	s ServiceInterface,
-	logService *logs.Service,
+	logService logs.ServiceInterface,
 	cfg *config.Config,
 ) *Handler {
 	return &Handler{service: s, logService: logService, cfg: cfg}
@@ -59,18 +61,18 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
-			logs.LogEntry{
-				Category: logs.CategorySecurity,
-				Action:   logs.ActionLoginFailed,
+			audit.LogEntry{
+				Category: audit.CategorySecurity,
+				Action:   audit.ActionLoginFailed,
 				Message: fmt.Sprintf(
 					"Failed login attempt for %s: %s",
 					req.Email,
 					err.Error(),
 				),
-				UserID:    userID,
-				UserEmail: req.Email,
-				IPAddress: ip,
-				UserAgent: ua,
+				UserID:    structs.StringToNullableString(userID),
+				UserEmail: structs.StringToNullableString(req.Email),
+				IPAddress: structs.StringToNullableString(ip),
+				UserAgent: structs.StringToNullableString(ua),
 			},
 		)
 		log.Printf("[PostLogin] {AuthenticateUser}: %v", err)
@@ -101,14 +103,14 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	h.logService.Record(
 		c.Request.Context(),
 		h.logService.GetDB(),
-		logs.LogEntry{
-			Category:  logs.CategorySecurity,
-			Action:    logs.ActionLoginSuccess,
+		audit.LogEntry{
+			Category:  audit.CategorySecurity,
+			Action:    audit.ActionLoginSuccess,
 			Message:   fmt.Sprintf("User %s logged in successfully", req.Email),
-			UserID:    userID,
-			UserEmail: req.Email,
-			IPAddress: ip,
-			UserAgent: ua,
+			UserID:    structs.StringToNullableString(userID),
+			UserEmail: structs.StringToNullableString(req.Email),
+			IPAddress: structs.StringToNullableString(ip),
+			UserAgent: structs.StringToNullableString(ua),
 		},
 	)
 
@@ -158,12 +160,12 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
-			logs.LogEntry{
-				Category:  logs.CategorySecurity,
-				Action:    logs.ActionInvalidToken,
+			audit.LogEntry{
+				Category:  audit.CategorySecurity,
+				Action:    audit.ActionInvalidToken,
 				Message:   "Token refresh failed: invalid or expired refresh token",
-				IPAddress: ip,
-				UserAgent: ua,
+				IPAddress: structs.StringToNullableString(ip),
+				UserAgent: structs.StringToNullableString(ua),
 			},
 		)
 		log.Printf("[PostRefreshToken] {RefreshToken}: %v", err)
@@ -301,14 +303,18 @@ func (h *Handler) PostLogout(c *gin.Context) {
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
-			logs.LogEntry{
-				Category:  logs.CategorySecurity,
-				Action:    logs.ActionLogout,
-				Message:   fmt.Sprintf("User %s logged out", userEmail),
-				UserID:    userID.(string),
-				UserEmail: userEmail.(string),
-				IPAddress: c.ClientIP(),
-				UserAgent: c.Request.UserAgent(),
+			audit.LogEntry{
+				Level:    audit.LevelInfo,
+				Category: audit.CategorySecurity,
+				Action:   audit.ActionLogout,
+				Message:  fmt.Sprintf("User %s logged out", userEmail),
+
+				UserID:    structs.StringToNullableString(userID.(string)),
+				UserEmail: structs.StringToNullableString(userEmail.(string)),
+				IPAddress: structs.StringToNullableString(c.ClientIP()),
+				UserAgent: structs.StringToNullableString(
+					c.Request.UserAgent(),
+				),
 			},
 		)
 	}
@@ -333,15 +339,18 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
-			logs.LogEntry{
-				Category: logs.CategorySecurity,
-				Action:   logs.ActionLoginFailed,
+			audit.LogEntry{
+				Level:    audit.LevelError,
+				Category: audit.CategorySecurity,
+				Action:   audit.ActionLoginFailed,
 				Message: fmt.Sprintf(
 					"[GetAuthorizeURL] {Generate URL}: %s",
 					err.Error(),
 				),
-				IPAddress: c.ClientIP(),
-				UserAgent: c.Request.UserAgent(),
+				IPAddress: structs.StringToNullableString(c.ClientIP()),
+				UserAgent: structs.StringToNullableString(
+					c.Request.UserAgent(),
+				),
 			},
 		)
 		response.SendError(
@@ -373,15 +382,17 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
-			logs.LogEntry{
-				Category: logs.CategorySecurity,
-				Action:   logs.ActionLoginFailed,
+			audit.LogEntry{
+				Category: audit.CategorySecurity,
+				Action:   audit.ActionLoginFailed,
 				Message: fmt.Sprintf(
 					"[PostIDPToken] {Bind JSON}: %s",
 					err.Error(),
 				),
-				IPAddress: c.ClientIP(),
-				UserAgent: c.Request.UserAgent(),
+				IPAddress: structs.StringToNullableString(c.ClientIP()),
+				UserAgent: structs.StringToNullableString(
+					c.Request.UserAgent(),
+				),
 			},
 		)
 		response.SendFail(c, gin.H{"error": "Invalid request body"})
@@ -399,15 +410,17 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
-			logs.LogEntry{
-				Category: logs.CategorySecurity,
-				Action:   logs.ActionLoginFailed,
+			audit.LogEntry{
+				Category: audit.CategorySecurity,
+				Action:   audit.ActionLoginFailed,
 				Message: fmt.Sprintf(
 					"[PostIDPToken] {Service Call}: %s",
 					err.Error(),
 				),
-				IPAddress: c.ClientIP(),
-				UserAgent: c.Request.UserAgent(),
+				IPAddress: structs.StringToNullableString(c.ClientIP()),
+				UserAgent: structs.StringToNullableString(
+					c.Request.UserAgent(),
+				),
 			},
 		)
 		log.Printf("[PostIDPToken] {Service Call}: %v", err)
@@ -452,17 +465,17 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	h.logService.Record(
 		c.Request.Context(),
 		h.logService.GetDB(),
-		logs.LogEntry{
-			Category: logs.CategorySecurity,
-			Action:   logs.ActionLoginSuccess,
+		audit.LogEntry{
+			Category: audit.CategorySecurity,
+			Action:   audit.ActionLoginSuccess,
 			Message: fmt.Sprintf(
 				"User %s logged in successfully via IDP",
 				userEmail,
 			),
-			UserID:    userID,
-			UserEmail: userEmail,
-			IPAddress: c.ClientIP(),
-			UserAgent: c.Request.UserAgent(),
+			UserID:    structs.StringToNullableString(userID),
+			UserEmail: structs.StringToNullableString(userEmail),
+			IPAddress: structs.StringToNullableString(c.ClientIP()),
+			UserAgent: structs.StringToNullableString(c.Request.UserAgent()),
 		},
 	)
 

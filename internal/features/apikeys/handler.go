@@ -1,6 +1,7 @@
 package apikeys
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -16,6 +17,10 @@ func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
+func (h *Handler) GetService() ServiceInterface {
+	return h.service
+}
+
 // PostAPIKey creates a new API key and returns the plaintext key (shown only
 // once).
 func (h *Handler) PostAPIKey(c *gin.Context) {
@@ -27,6 +32,7 @@ func (h *Handler) PostAPIKey(c *gin.Context) {
 
 	resp, err := h.service.GenerateKey(c.Request.Context(), req)
 	if err != nil {
+		log.Printf("[PostAPIKey] {GenerateKey}: %v", err)
 		response.SendError(
 			c,
 			"Failed to create API key",

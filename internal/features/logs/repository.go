@@ -45,7 +45,8 @@ func (r *Repository) Record(
 // List retrieves system log entries with filtering and pagination
 func (r *Repository) List(
 	ctx context.Context, offset, limit int,
-	category, action, userEmail, search, startDate, endDate, orderBy string,
+	category, action, userEmail, targetType, targetEmail,
+	search, startDate, endDate, orderBy string,
 ) ([]SystemLog, error) {
 	query, args := r.applyLogFilters(
 		fmt.Sprintf(
@@ -56,6 +57,8 @@ func (r *Repository) List(
 		category,
 		action,
 		userEmail,
+		targetType,
+		targetEmail,
 		search,
 		startDate,
 		endDate,
@@ -80,12 +83,14 @@ func (r *Repository) List(
 // GetTotalCount returns the total count of system log entries matching filters
 func (r *Repository) GetTotalCount(
 	ctx context.Context,
-	category, action, userEmail, search, startDate, endDate string,
+	category, action, userEmail, targetType, targetEmail,
+	search, startDate, endDate string,
 ) (int, error) {
 	query, args := r.applyLogFilters(
 		"SELECT COUNT(*) FROM system_logs WHERE 1=1",
 		nil,
-		category, action, userEmail, search, startDate, endDate,
+		category, action, userEmail, targetType, targetEmail,
+		search, startDate, endDate,
 	)
 
 	var count int
@@ -100,7 +105,8 @@ func (r *Repository) GetTotalCount(
 func (r *Repository) applyLogFilters(
 	query string,
 	args []interface{},
-	category, action, userEmail, search, startDate, endDate string,
+	category, action, userEmail, targetType, targetEmail,
+	search, startDate, endDate string,
 ) (string, []interface{}) {
 	if args == nil {
 		args = []interface{}{}
@@ -119,6 +125,16 @@ func (r *Repository) applyLogFilters(
 	if userEmail != "" {
 		query += " AND (user_email = ? OR target_email = ?)"
 		args = append(args, userEmail, userEmail)
+	}
+
+	if targetType != "" {
+		query += " AND target_type = ?"
+		args = append(args, targetType)
+	}
+
+	if targetEmail != "" {
+		query += " AND target_email = ?"
+		args = append(args, targetEmail)
 	}
 
 	if search != "" {
@@ -148,7 +164,7 @@ func (r *Repository) GetStats(
 	query, args := r.applyLogFilters(
 		"SELECT category, COUNT(*) as count FROM system_logs WHERE 1=1",
 		nil,
-		"", "", "", "", startDate, endDate,
+		"", "", "", "", "", "", startDate, endDate,
 	)
 
 	query += " GROUP BY category ORDER BY category"

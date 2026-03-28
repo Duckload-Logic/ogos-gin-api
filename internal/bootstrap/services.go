@@ -6,7 +6,6 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
@@ -29,10 +28,9 @@ type Services struct {
 	AppointmentService     appointments.ServiceInterface
 	SlipService            slips.ServiceInterface
 	AnalyticsService       analytics.ServiceInterface
-	APIKeyService          *apikeys.Service
+	APIKeyService          apikeys.ServiceInterface
 	NotificationsService   notifications.ServiceInterface
-	SystemLogService       *logs.Service
-	ConsentService         consents.ServiceInterface
+	SystemLogService       logs.ServiceInterface
 }
 
 func getServices(
@@ -42,8 +40,12 @@ func getServices(
 	redis *datastore.RedisClient,
 ) *Services {
 	systemLogService := logs.NewService(repos.SystemLogRepo)
-	apiKeyService := apikeys.NewService(repos.APIKeyRepo, systemLogService)
 	notificationsService := notifications.NewService(repos.NotificationRepo)
+	apiKeyService := apikeys.NewService(
+		repos.APIKeyRepo,
+		systemLogService,
+		notificationsService,
+	)
 	authService := auth.NewService(repos.UserRepo, redis)
 	userService := users.NewService(repos.UserRepo)
 	locationsService := locations.NewService(repos.LocationsRepo)
@@ -58,14 +60,10 @@ func getServices(
 	slipService := slips.NewService(
 		repos.SlipRepo,
 		systemLogService,
+		notificationsService,
 		fileStorage,
 	)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo)
-	consentService := consents.NewService(
-		repos.ConsentRepo,
-		systemLogService,
-		fileStorage,
-	)
 
 	return &Services{
 		AuthService:            authService,
@@ -80,6 +78,5 @@ func getServices(
 		APIKeyService:          apiKeyService,
 		NotificationsService:   notificationsService,
 		SystemLogService:       systemLogService,
-		ConsentService:         consentService,
 	}
 }

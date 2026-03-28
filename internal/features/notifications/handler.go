@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
@@ -45,12 +44,7 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 }
 
 func (h *Handler) PatchNotificationRead(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		response.SendFail(c, gin.H{"error": "Invalid notification ID"})
-		return
-	}
-
+	id := c.Param("id")
 	if err := h.service.MarkAsRead(c.Request.Context(), id); err != nil {
 		response.SendError(
 			c,

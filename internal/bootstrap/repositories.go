@@ -5,7 +5,6 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/consents"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
@@ -28,7 +27,6 @@ type Repositories struct {
 	APIKeyRepo          *apikeys.Repository
 	NotificationRepo    *notifications.Repository
 	SystemLogRepo       *logs.Repository
-	ConsentRepo         *consents.Repository
 }
 
 func getRepositories(db *sqlx.DB) *Repositories {
@@ -44,6 +42,5 @@ func getRepositories(db *sqlx.DB) *Repositories {
 		APIKeyRepo:          apikeys.NewRepository(db),
 		NotificationRepo:    notifications.NewRepository(db),
 		SystemLogRepo:       logs.NewRepository(db),
-		ConsentRepo:         consents.NewRepository(db),
 	}
 }

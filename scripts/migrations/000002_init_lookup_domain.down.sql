@@ -2,10 +2,8 @@
 -- LOOKUP & REFERENCE DOMAIN - ROLLBACK
 -- ============================================================================
 
-DROP TABLE IF EXISTS user_consents;
 DROP TABLE IF EXISTS student_support_types;
 DROP TABLE IF EXISTS sibling_support_types;
-DROP TABLE IF EXISTS legal_documents;
 DROP TABLE IF EXISTS income_ranges;
 DROP TABLE IF EXISTS courses;
 DROP TABLE IF EXISTS parental_status_types;

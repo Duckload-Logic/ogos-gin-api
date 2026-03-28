@@ -27,6 +27,7 @@ linters-settings:
         line-length: 80
         # Tab width in spaces.
         tab-width: 4
+        exclude: '(`.*`|//.*|".*")'
     gofumpt:
         extra-rules: true
     gocyclo:
