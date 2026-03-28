@@ -419,6 +419,27 @@ func (s *Service) SubmitExcuseSlip(
 		},
 	)
 	if err != nil {
+		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+			Log: &audit.LogParams{
+				Level:    audit.LevelError,
+				Category: audit.CategoryAudit,
+				Action:   audit.ActionSlipFailed,
+				Message:  fmt.Sprintf("Failed to create slip for IIR #%s", iirID),
+				Metadata: &audit.LogMetadata{
+					EntityType: constants.SlipEntityType,
+					EntityID:   slip.ID,
+					Error:      err.Error(),
+				},
+			},
+			Notification: &audit.NotificationParams{
+				Title: fmt.Sprintf("Slip Creation Failed for IIR #%s", iirID),
+				Message: fmt.Sprintf(
+					"An error occurred while creating the slip: %s",
+					err.Error(),
+				),
+				Type: constants.SlipEntityType,
+			},
+		})
 		return nil, err
 	}
 
