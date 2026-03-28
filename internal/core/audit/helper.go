@@ -16,6 +16,7 @@ type DispatchParams struct {
 
 // LogParams holds the parameters for a log entry.
 type LogParams struct {
+	Level      string
 	Category   string
 	Action     string
 	Message    string
@@ -48,6 +49,7 @@ func Dispatch(
 	// 2. Prepare and Record Log
 	if logger != nil && params.Log != nil {
 		entry := LogEntry{
+			Level:      params.Log.Level,
 			Category:   params.Log.Category,
 			Action:     params.Log.Action,
 			Message:    params.Log.Message,

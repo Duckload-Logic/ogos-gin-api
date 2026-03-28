@@ -424,6 +424,7 @@ func (s *Service) SubmitExcuseSlip(
 
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
+			Level:    audit.LevelInfo,
 			Category: audit.CategoryAudit,
 			Action:   audit.ActionSlipCreated,
 			Message:  fmt.Sprintf("Excuse slip #%s created", slip.ID),
@@ -520,6 +521,7 @@ func (s *Service) UpdateExcuseSlipStatus(
 					audit.DispatchParams{
 						Tx: tx,
 						Log: &audit.LogParams{
+							Level:    audit.LevelError,
 							Category: audit.CategoryAudit,
 							Action:   audit.ActionSlipFailed,
 							Message: fmt.Sprintf(
@@ -554,6 +556,7 @@ func (s *Service) UpdateExcuseSlipStatus(
 				audit.DispatchParams{
 					Tx: tx,
 					Log: &audit.LogParams{
+						Level:    audit.LevelInfo,
 						Category: audit.CategoryAudit,
 						Action:   audit.ActionSlipStatusUpdated,
 						Message: fmt.Sprintf(

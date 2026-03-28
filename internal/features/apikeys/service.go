@@ -82,6 +82,7 @@ func (s *Service) GenerateKey(
 	if err != nil {
 		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 			Log: &audit.LogParams{
+				Level:    audit.LevelError,
 				Category: audit.CategorySystem,
 				Action:   audit.ActionAPIKeyCreateFailed,
 				Message: fmt.Sprintf(
@@ -101,6 +102,7 @@ func (s *Service) GenerateKey(
 
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
+			Level:    audit.LevelInfo,
 			Category: audit.CategorySystem,
 			Action:   audit.ActionAPIKeyCreated,
 			Message: fmt.Sprintf(
@@ -202,6 +204,7 @@ func (s *Service) RevokeKey(ctx context.Context, id int) error {
 					audit.DispatchParams{
 						Tx: tx,
 						Log: &audit.LogParams{
+							Level:    audit.LevelError,
 							Category: audit.CategorySystem,
 							Action:   audit.ActionAPIKeyRevokeFailed,
 							Message: fmt.Sprintf(
@@ -226,6 +229,7 @@ func (s *Service) RevokeKey(ctx context.Context, id int) error {
 				audit.DispatchParams{
 					Tx: tx,
 					Log: &audit.LogParams{
+						Level:    audit.LevelInfo,
 						Category: audit.CategorySystem,
 						Action:   audit.ActionAPIKeyRevoked,
 						Message: fmt.Sprintf(

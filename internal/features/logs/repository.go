@@ -34,7 +34,12 @@ func (r *Repository) Record(
 		VALUES (%s)
 	`, cols, vals)
 
-	_, err := tx.NamedExecContext(ctx, query, log)
+	exec := tx
+	if exec == nil {
+		exec = r.db
+	}
+
+	_, err := exec.NamedExecContext(ctx, query, log)
 	if err != nil {
 		return fmt.Errorf("failed to insert system log: %w", err)
 	}

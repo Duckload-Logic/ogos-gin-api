@@ -64,6 +64,7 @@ func (s *Service) CreateAppointment(
 	if err != nil {
 		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 			Log: &audit.LogParams{
+				Level:    audit.LevelError,
 				Category: audit.CategoryAudit,
 				Action:   audit.ActionAppointmentFailed,
 				Message: fmt.Sprintf(
@@ -81,6 +82,7 @@ func (s *Service) CreateAppointment(
 
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
+			Level:    audit.LevelInfo,
 			Category: audit.CategoryAudit,
 			Action:   audit.ActionAppointmentCreated,
 			Message:  fmt.Sprintf("Appointment #%s created", appt.ID),
@@ -429,6 +431,7 @@ func (s *Service) UpdateAppointment(
 	if err != nil {
 		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 			Log: &audit.LogParams{
+				Level:    audit.LevelError,
 				Category: audit.CategoryAudit,
 				Action:   audit.ActionAppointmentUpdateFailed,
 				Message:  fmt.Sprintf("Failed to update appointment #%s", id),
@@ -447,6 +450,7 @@ func (s *Service) UpdateAppointment(
 
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
+			Level:    audit.LevelInfo,
 			Category: audit.CategoryAudit,
 			Action:   audit.ActionAppointmentUpdated,
 			Message:  fmt.Sprintf("Appointment #%s updated", id),

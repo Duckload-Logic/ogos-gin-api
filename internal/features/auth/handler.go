@@ -62,6 +62,7 @@ func (h *Handler) PostLogin(c *gin.Context) {
 			c.Request.Context(),
 			h.logService.GetDB(),
 			audit.LogEntry{
+				Level:    audit.LevelError,
 				Category: audit.CategorySecurity,
 				Action:   audit.ActionLoginFailed,
 				Message: fmt.Sprintf(
@@ -104,6 +105,7 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		c.Request.Context(),
 		h.logService.GetDB(),
 		audit.LogEntry{
+			Level:     audit.LevelInfo,
 			Category:  audit.CategorySecurity,
 			Action:    audit.ActionLoginSuccess,
 			Message:   fmt.Sprintf("User %s logged in successfully", req.Email),
@@ -161,6 +163,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 			c.Request.Context(),
 			h.logService.GetDB(),
 			audit.LogEntry{
+				Level:     audit.LevelError,
 				Category:  audit.CategorySecurity,
 				Action:    audit.ActionInvalidToken,
 				Message:   "Token refresh failed: invalid or expired refresh token",
@@ -466,6 +469,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		c.Request.Context(),
 		h.logService.GetDB(),
 		audit.LogEntry{
+			Level:    audit.LevelInfo,
 			Category: audit.CategorySecurity,
 			Action:   audit.ActionLoginSuccess,
 			Message: fmt.Sprintf(

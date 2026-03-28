@@ -30,15 +30,25 @@ func (s *Service) Record(
 	tx datastore.DB,
 	entry audit.LogEntry,
 ) {
+	level := entry.Level
+	if level == "" {
+		level = audit.LevelInfo
+	}
+
 	sysLog := &SystemLog{
-		Category:  entry.Category,
-		Action:    entry.Action,
-		Message:   entry.Message,
-		UserID:    structs.ToSqlNull(entry.UserID),
-		UserEmail: structs.ToSqlNull(entry.UserEmail),
-		IPAddress: structs.ToSqlNull(entry.IPAddress),
-		UserAgent: structs.ToSqlNull(entry.UserAgent),
-		Metadata:  toNullString(entry.Metadata),
+		Level:       level,
+		Category:    entry.Category,
+		Action:      entry.Action,
+		Message:     entry.Message,
+		UserID:      structs.ToSqlNull(entry.UserID),
+		TargetID:    structs.ToSqlNull(entry.TargetID),
+		TargetType:  structs.ToSqlNull(entry.TargetType),
+		UserEmail:   structs.ToSqlNull(entry.UserEmail),
+		TargetEmail: structs.ToSqlNull(entry.TargetEmail),
+		IPAddress:   structs.ToSqlNull(entry.IPAddress),
+		UserAgent:   structs.ToSqlNull(entry.UserAgent),
+		TraceID:     structs.ToSqlNull(entry.TraceID),
+		Metadata:    toNullString(entry.Metadata),
 	}
 
 	if err := s.repo.Record(ctx, tx, sysLog); err != nil {
