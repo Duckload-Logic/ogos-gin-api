@@ -27,12 +27,21 @@ func AuditContextMiddleware() gin.HandlerFunc {
 		ipAddress := c.ClientIP()
 		userAgent := c.GetHeader("User-Agent")
 
+		// Extract traceID set by TraceMiddleware
+		traceID := ""
+		if val, exists := c.Get(string(audit.TraceIDKey)); exists {
+			if t, ok := val.(string); ok {
+				traceID = t
+			}
+		}
+
 		ctx := audit.WithContext(
 			c.Request.Context(),
 			ipAddress,
 			userAgent,
 			userID,
 			userEmail.(string),
+			traceID,
 		)
 		c.Request = c.Request.WithContext(ctx)
 

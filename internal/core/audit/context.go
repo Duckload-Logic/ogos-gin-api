@@ -15,12 +15,13 @@ const (
 // WithContext enriches a context with audit metadata.
 func WithContext(
 	ctx context.Context,
-	ip, ua, id, email string,
+	ip, ua, id, email, traceID string,
 ) context.Context {
 	ctx = context.WithValue(ctx, ipAddressKey, ip)
 	ctx = context.WithValue(ctx, userAgentKey, ua)
 	ctx = context.WithValue(ctx, userIDKey, id)
 	ctx = context.WithValue(ctx, userEmailKey, email)
+	ctx = context.WithValue(ctx, TraceIDKey, traceID)
 	return ctx
 }
 
