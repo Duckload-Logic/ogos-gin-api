@@ -38,6 +38,8 @@ type Config struct {
 	RedisPort string
 	RedisPass string
 	RedisDB   int
+
+	GotenbergURL string
 }
 
 func LoadConfig() *Config {
@@ -82,6 +84,8 @@ func LoadConfig() *Config {
 			}
 			return db
 		}(),
+
+		GotenbergURL: os.Getenv("GOTENBERG_URL"),
 	}
 
 	validateConfig(config)

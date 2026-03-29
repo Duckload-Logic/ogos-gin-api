@@ -94,6 +94,19 @@ services:
         volumes:
             - mysql-data:/var/lib/mysql
 
+    gotenberg:
+        image: gotenberg/gotenberg:8
+        container_name: capstone-gotenberg
+        deploy:
+            resources:
+                limits:
+                    cpus: "0.5"
+                    memory: 512M
+        ports:
+            - "3001:3000"
+        networks:
+            - app-network
+
 networks:
     app-network:
         driver: bridge
