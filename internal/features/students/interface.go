@@ -108,6 +108,7 @@ type ServiceInterface interface {
 		userID string,
 		req ComprehensiveProfileDTO,
 	) (string, error)
+	GenerateIIR(ctx context.Context, iirID string) ([]byte, string, error)
 }
 
 type RepositoryInterface interface {

@@ -2,6 +2,7 @@ package students
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -718,4 +719,43 @@ func (h *Handler) PostIIR(c *gin.Context) {
 		c,
 		gin.H{"id": iirID, "message": "Student IIR submitted successfully"},
 	)
+}
+
+// GenerateIIR godoc
+// @Summary      Generate Student IIR PDF
+// @Description  Generates and downloads the student's Initial Interview Record
+// as a PDF.
+// @Tags         Students
+// @Produce      application/pdf
+// @Param        iirID   path      string  true  "IIR ID"
+// @Success      200     {file}    binary
+// @Failure      400     {object}  map[string]string
+// @Failure      500     {object}  map[string]string
+// @Router       /students/{iirID}/iir/download [get]
+func (h *Handler) GenerateIIR(c *gin.Context) {
+	iirID := c.Param("iirID")
+	if iirID == "" {
+		response.SendFail(c, gin.H{"error": "Invalid IIR ID format"})
+		return
+	}
+
+	pdfBytes, fileName, err := h.service.GenerateIIR(c.Request.Context(), iirID)
+	if err != nil {
+		log.Printf("[GenerateIIR] {Service Error}: %v", err)
+		response.SendError(
+			c,
+			"Failed to generate IIR PDF",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	c.Header(
+		"Content-Disposition",
+		fmt.Sprintf("attachment; filename=%s", fileName),
+	)
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
