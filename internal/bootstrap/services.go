@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/pdf"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
@@ -15,6 +16,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/gotenberg"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
@@ -49,7 +51,17 @@ func getServices(
 	authService := auth.NewService(repos.UserRepo, redis)
 	userService := users.NewService(repos.UserRepo)
 	locationsService := locations.NewService(repos.LocationsRepo)
-	studentService := students.NewService(repos.StudentRepo, locationsService)
+
+	gotenbergClient := gotenberg.NewClient(cfg.GotenbergURL)
+	pdfService := pdf.NewService(gotenbergClient)
+
+	studentService := students.NewService(
+		repos.StudentRepo,
+		locationsService,
+		systemLogService,
+		cfg,
+		pdfService,
+	)
 	noteService := notes.NewService(repos.NoteRepo)
 	externalStudentService := external.NewService(repos.ExternalStudentRepo)
 	appointmentService := appointments.NewService(
