@@ -40,7 +40,13 @@ func (r *Repository) ListStudents(
 	`
 	var args []interface{}
 	if req.Search != "" {
-		query += " AND (u.first_name LIKE ? OR u.last_name LIKE ? OR sp.student_number LIKE ?)"
+		query += `
+			AND (
+				u.first_name LIKE ?
+				OR u.last_name LIKE ?
+				OR sp.student_number LIKE ?
+			)
+		`
 		searchTerm := "%" + req.Search + "%"
 		args = append(args, searchTerm, searchTerm, searchTerm)
 	}

@@ -225,8 +225,7 @@ func (h *Handler) GetActivityOptions(c *gin.Context) {
 // @Param        year_level query     int     false  "Filter by year level"
 // @Param		gender_id query     int     false  "Filter by gender ID"
 // @Param        page       query     int     false  "Page number" default(1)
-// @Param        page_size  query     int     false  "
-// Number of records per page" default(20)
+// @Param        page_size  query     int     false  "Number of records per page" default(20)
 // @Success      200        {object}  ListStudentsResponse
 // @Failure      500        {object}
 // map[string]string "Failed to list students"

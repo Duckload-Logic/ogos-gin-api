@@ -28,8 +28,7 @@ func NewHandler(service ServiceInterface) *Handler {
 // @Param course_id query int false "Filter by course ID"
 // @Param gender_id query int false "Filter by gender ID"
 // @Param year_level query int false "Filter by year level"
-// @Param order_by query string false "Order by field (first_name,
-// last_name,student_number, created_at, updated_at, year_level, course_id)"
+// @Param order_by query string false "Order by field (first_name, last_name, student_number, created_at, updated_at, year_level, course_id)"
 // @Param page query int false "Page number for pagination"
 // @Param page_size query int false "Number of items per page for pagination"
 // @Success 200 {object} OGOSListStudentsResponse

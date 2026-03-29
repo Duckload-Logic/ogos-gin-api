@@ -30,14 +30,12 @@ func (h *Handler) GetService() ServiceInterface {
 // @Produce      json
 // @Param        page        query     int    false "Page number"
 // @Param        page_size   query     int    false "Number of entries per page"
-// @Param        category    query     string false "Filter by category (AUDIT,
-// SYSTEM, SECURITY)"
+// @Param        category    query     string false "Filter by category (AUDIT, SYSTEM, SECURITY)"
 // @Param        action      query     string false "Filter by action"
 // @Param        user_email  query     string false "Filter by user email"
-// @Param        start_date  query     string false "Filter from date
-// (YYYY-MM-DD)" @Param        end_date    query     string false "Filter to
-// date (YYYY-MM-DD)" @Param        search      query     string false "Search
-// in message, action, or user email"
+// @Param        start_date  query     string false "Filter from date (YYYY-MM-DD)"
+// @Param        end_date    query     string false "Filter to date (YYYY-MM-DD)"
+// @Param        search      query     string false "Search in message, action, or user email"
 // @Success      200         {object}  ListSystemLogsDTO
 // @Failure      400         {object}  map[string]string "Bad request"
 // @Failure      500         {object}  map[string]string "Internal server error"
