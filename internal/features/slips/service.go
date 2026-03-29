@@ -424,7 +424,10 @@ func (s *Service) SubmitExcuseSlip(
 				Level:    audit.LevelError,
 				Category: audit.CategoryAudit,
 				Action:   audit.ActionSlipFailed,
-				Message:  fmt.Sprintf("Failed to create slip for IIR #%s", iirID),
+				Message: fmt.Sprintf(
+					"Failed to create slip for IIR #%s",
+					iirID,
+				),
 				Metadata: &audit.LogMetadata{
 					EntityType: constants.SlipEntityType,
 					EntityID:   slip.ID,
