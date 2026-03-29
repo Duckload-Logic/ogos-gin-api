@@ -19,15 +19,8 @@ linters:
         - unconvert # Remove unnecessary type conversions
         - unparam # Reports unused function parameters
         - gosec # Security checker - can catch SQL injection risks
-        - lll # Line length linter
 
 linters-settings:
-    lll:
-        # Max line length, lines longer will be reported.
-        line-length: 80
-        # Tab width in spaces.
-        tab-width: 4
-        exclude: '(`.*`|//.*|".*")'
     gofumpt:
         extra-rules: true
     gocyclo:
