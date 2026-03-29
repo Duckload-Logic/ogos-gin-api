@@ -148,6 +148,11 @@ func RegisterRoutes(
 			iirResourceLookup,
 			h.GetStudentTestResults,
 		)
+		userRoutes.GET(
+			"/records/iir/:iirID/download",
+			iirResourceLookup,
+			h.GenerateIIR,
+		)
 	}
 
 	studentRoutes := inventoryRoutes.Group("/")
