@@ -1098,9 +1098,9 @@ func insertNotifications(ctx context.Context, tx *sqlx.Tx, userID string) {
 		isRead := rand.Intn(2)
 
 		_, err := tx.Exec(`
-            INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
-            VALUES (?, ?, ?, ?, ?, NOW())
-        `, userID, title, message, randomType, isRead)
+            INSERT INTO notifications (id, receiver_id, title, message, type, is_read, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        `, uuid.New().String(), userID, title, message, randomType, isRead)
 		if err != nil {
 			log.Printf(
 				"failed to insert fake notification for %s with type %s: %v",
