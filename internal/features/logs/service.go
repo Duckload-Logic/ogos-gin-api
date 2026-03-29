@@ -35,6 +35,14 @@ func (s *Service) Record(
 		level = audit.LevelInfo
 	}
 
+	// Safety net: extract trace ID from context if not provided
+	if !entry.TraceID.Valid || entry.TraceID.String == "" {
+		_, _, _, _, trace := audit.ExtractMeta(ctx)
+		if trace != "" {
+			entry.TraceID = structs.StringToNullableString(trace)
+		}
+	}
+
 	sysLog := &SystemLog{
 		Level:       level,
 		Category:    entry.Category,
@@ -134,6 +142,7 @@ func (s *Service) mapLogsToDTOs(logs []SystemLog) []SystemLogDTO {
 			UserEmail: structs.FromSqlNull(l.UserEmail),
 			IPAddress: structs.FromSqlNull(l.IPAddress),
 			UserAgent: structs.FromSqlNull(l.UserAgent),
+			TraceID:   structs.FromSqlNull(l.TraceID),
 			CreatedAt: l.CreatedAt,
 		}
 
