@@ -87,11 +87,12 @@ func NewRouter(
 		c.Next()
 	})
 
+	g.Use(middleware.TraceMiddleware())
+
 	limiter := middleware.NewIPRateLimiter(5, 30)
 	g.Use(middleware.RateLimitMiddleware(limiter))
 
 	apiV1Routes := g.Group("/api/v1")
-	apiV1Routes.Use(middleware.TraceMiddleware())
 
 	apiV1Routes.GET("/docs/internal/*any", func(c *gin.Context) {
 		docs.SwaggerInfo.Host = c.Request.Host
