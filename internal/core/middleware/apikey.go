@@ -10,7 +10,9 @@ import (
 
 // APIKeyValidator is a function that validates a plaintext API key
 // and returns the key ID, key name, and an error if invalid.
-type APIKeyValidator func(ctx context.Context, plaintext string) (id int, name string, err error)
+type APIKeyValidator func(
+	ctx context.Context, plaintext string,
+) (id int, name string, err error)
 
 // APIKeyMiddleware validates the X-API-Key header using the provided validator.
 // On success it sets "apiKeyID" and "apiKeyName" in the gin context.

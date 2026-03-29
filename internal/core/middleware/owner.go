@@ -60,8 +60,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 
 // Direct database query - ONE function to rule them all
 func checkStudentOwnership(
-	db *sqlx.DB, userID string,
-	paramName string, resourceID string,
+	db *sqlx.DB, userID, paramName, resourceID string,
 ) (bool, error) {
 	switch paramName {
 	case "iirID":

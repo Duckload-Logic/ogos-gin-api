@@ -56,7 +56,8 @@ func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 			val, err := redis.Get(c.Request.Context(), tokenKey)
 			if err != nil {
 				log.Printf(
-					"[AuthMiddleware] {Redis}: Session %s missing or expired for UserID: %s",
+					"[AuthMiddleware] {Redis}: Session %s missing or "+
+						"expired for UserID: %s",
 					claims.ID,
 					claims.UserID,
 				)
