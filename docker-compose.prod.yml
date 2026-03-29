@@ -19,6 +19,13 @@ services:
     volumes:
       - redis-data:/data
 
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: capstone-gotenberg
+    restart: always
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
