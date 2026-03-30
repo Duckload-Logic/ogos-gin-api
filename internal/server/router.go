@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
@@ -47,6 +48,7 @@ func NewRouter(
 	}
 
 	var origins []string
+	log.Printf("PRODUCTION MODE: %v", cfg.IsProduction)
 	if cfg.IsProduction {
 		gin.SetMode(gin.ReleaseMode)
 		origins = prodOrigins
