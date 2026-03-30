@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
@@ -292,6 +293,7 @@ func (c *IDPClient) Logout(
 	}
 	defer resp.Body.Close()
 
+	log.Printf("[IDPClient] Logout response status: %d", resp.StatusCode)
 	var logoutResp IDPLogoutResponse
 	if err := json.NewDecoder(resp.Body).Decode(&logoutResp); err != nil {
 		return nil, fmt.Errorf("[IDPClient] {Parse Logout Response}: %w", err)
