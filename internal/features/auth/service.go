@@ -101,6 +101,7 @@ func (s *Service) AuthenticateUser(
 		ctx,
 		user.ID,
 		claims.ID,
+		refreshToken,
 		"native",
 		nil,
 		constants.AccessTokenMaxAge,
@@ -116,10 +117,30 @@ func (s *Service) AuthenticateUser(
 	return user.ID, token, refreshToken, nil
 }
 
-// RefreshToken generates a new access token using a valid refresh token.
+// RefreshToken generates a new access token using a valid session handle.
 func (s *Service) RefreshToken(
-	ctx context.Context, refreshToken string, cfg *config.Config,
+	ctx context.Context,
+	accessTokenJTI string,
+	cfg *config.Config,
 ) (string, string, error) {
+	// 1. Get session from Redis
+	key := fmt.Sprintf("%s%s", constants.RedisSessionKeyPrefix, accessTokenJTI)
+	sessionData, err := s.redis.Get(ctx, key)
+	if err != nil {
+		return "", "", errors.New("Session expired or invalid")
+	}
+
+	var session map[string]string
+	if err := json.Unmarshal([]byte(sessionData), &session); err != nil {
+		return "", "", errors.New("Failed to parse session data")
+	}
+
+	refreshToken := session["appRefreshToken"]
+	if refreshToken == "" {
+		return "", "", errors.New("Refresh token missing from session")
+	}
+
+	// 2. Validate App Refresh Token
 	claims, err := tokens.NewService().ValidateToken(refreshToken)
 	if err != nil {
 		return "", "", errors.New("Invalid refresh token")
@@ -128,12 +149,15 @@ func (s *Service) RefreshToken(
 	// Check token type
 	if claims.TokenType == "idp" {
 		// Get IDP refresh token from Redis
-		idpRefreshKey := fmt.Sprintf("idp_refresh:%s", claims.ID)
+		idpRefreshKey := fmt.Sprintf(
+			"%s%s",
+			constants.RedisIDPRefreshKeyPrefix,
+			claims.ID,
+		)
 		idpRefreshToken, err := s.redis.Get(ctx, idpRefreshKey)
 		if err != nil {
 			return "", "", fmt.Errorf(
-				`[AuthService] {Get IDP Refresh Token}:
-				 token missing or expired in Redis`,
+				"[AuthService] {Get IDP Refresh Token}: idp token missing",
 			)
 		}
 
@@ -154,10 +178,7 @@ func (s *Service) RefreshToken(
 				constants.AccessTokenMaxAge,
 			)
 		if err != nil {
-			return "", "", fmt.Errorf(
-				"[AuthService] {Generate App Access Token}: %w",
-				err,
-			)
+			return "", "", err
 		}
 
 		newAppRefreshToken, refreshClaims, err := tokens.NewService().
@@ -170,10 +191,7 @@ func (s *Service) RefreshToken(
 				constants.RefreshTokenMaxAge,
 			)
 		if err != nil {
-			return "", "", fmt.Errorf(
-				"[AuthService] {Generate App Refresh Token}: %w",
-				err,
-			)
+			return "", "", err
 		}
 
 		// Update Redis: App Access session
@@ -182,22 +200,23 @@ func (s *Service) RefreshToken(
 			ctx,
 			claims.UserID,
 			accessClaims.ID,
+			newAppRefreshToken,
 			"idp",
 			&idpAccess,
 			constants.AccessTokenMaxAge,
 		)
 		if err != nil {
-			return "", "", fmt.Errorf(
-				"[AuthService] {Store Access in Redis}: %w",
-				err,
-			)
+			return "", "", err
 		}
 
 		// Update Redis: IDP Refresh linked to NEW App Refresh Token's ID
-		newIdpRefreshKey := fmt.Sprintf("idp_refresh:%s", refreshClaims.ID)
+		newIdpRefreshKey := fmt.Sprintf(
+			"%s%s",
+			constants.RedisIDPRefreshKeyPrefix,
+			refreshClaims.ID,
+		)
 		idpRefreshTokenToStore := tokenResp.RefreshToken
 		if idpRefreshTokenToStore == "" {
-			// Reuse the existing one if IDP didn't rotate
 			idpRefreshTokenToStore = idpRefreshToken
 		}
 		err = s.redis.Set(
@@ -207,19 +226,17 @@ func (s *Service) RefreshToken(
 			time.Duration(constants.RefreshTokenMaxAge)*time.Second,
 		)
 		if err != nil {
-			return "", "", fmt.Errorf(
-				"[AuthService] {Store IDP Refresh in Redis}: %w",
-				err,
-			)
+			return "", "", err
 		}
 
-		// Optional: Clean up old refresh key
+		// Clean up OLD session and IDP refresh keys
+		_ = s.redis.Del(ctx, key)
 		_ = s.redis.Del(ctx, idpRefreshKey)
 
 		return newAppAccessToken, newAppRefreshToken, nil
 	}
 
-	// Generate new token
+	// Native flow
 	newToken, newClaims, err := tokens.NewService().GenerateToken(
 		claims.UserEmail,
 		claims.UserID,
@@ -229,10 +246,9 @@ func (s *Service) RefreshToken(
 		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", errors.New("Failed to generate new token")
+		return "", "", err
 	}
 
-	// Generate new refresh token
 	newRefreshToken, _, err := tokens.NewService().GenerateToken(
 		claims.UserEmail,
 		claims.UserID,
@@ -242,7 +258,7 @@ func (s *Service) RefreshToken(
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", errors.New("Failed to generate new refresh token")
+		return "", "", err
 	}
 
 	// Update Redis using new jti
@@ -250,13 +266,17 @@ func (s *Service) RefreshToken(
 		ctx,
 		claims.UserID,
 		newClaims.ID,
+		newRefreshToken,
 		"native",
 		nil,
 		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to update token in redis: %v", err)
+		return "", "", err
 	}
+
+	// Clean up OLD session key
+	_ = s.redis.Del(ctx, key)
 
 	return newToken, newRefreshToken, nil
 }
@@ -327,14 +347,15 @@ func (s *Service) ParseIDPRoles(roles []string) []string {
 
 func (s *Service) storeTokenInRedis(
 	ctx context.Context,
-	userID, jti, tokenType string,
+	userID, jti, appRefreshToken, tokenType string,
 	idpAccessToken *string,
 	expiryMinutes int,
 ) error {
-	key := fmt.Sprintf("session:%s", jti)
+	key := fmt.Sprintf("%s%s", constants.RedisSessionKeyPrefix, jti)
 	val := map[string]string{
-		"userID":    userID,
-		"tokenType": tokenType,
+		"userID":          userID,
+		"tokenType":       tokenType,
+		"appRefreshToken": appRefreshToken,
 	}
 	if idpAccessToken != nil {
 		val["idpAccessToken"] = *idpAccessToken
@@ -360,13 +381,50 @@ func (s *Service) Logout(
 	token string,
 	tokenType string,
 	cfg *config.Config,
-) error {
-	if tokenType != "" && tokenType == "idp" {
-		_, _ = s.idpClient.Logout(ctx, cfg)
+) (string, error) {
+	// 1. Identify the session using the Access Token JTI
+	claims, err := tokens.NewService().ParseTokenUnverified(token)
+	if err != nil {
+		log.Printf("[AuthService:Logout] {Parse Error}: %v", err)
+		return "", nil // Move on since we can't identify the session
+	}
+	accessJTI := claims.ID
+
+	// 2. Fetch the session data to find linked refresh tokens
+	sessionKey := fmt.Sprintf("%s%s", constants.RedisSessionKeyPrefix, accessJTI)
+	sessionData, _ := s.redis.Get(ctx, sessionKey)
+
+	// 3. Delete any linked IDP refresh tokens
+	if sessionData != "" {
+		var session map[string]string
+		if err := json.Unmarshal([]byte(sessionData), &session); err == nil {
+			if appRefreshToken := session["appRefreshToken"]; appRefreshToken != "" {
+				// Get refresh token claims to identify IDP refresh key
+				rClaims, err := tokens.NewService().
+					ParseTokenUnverified(appRefreshToken)
+				if err == nil {
+					idpKey := fmt.Sprintf(
+						"%s%s",
+						constants.RedisIDPRefreshKeyPrefix,
+						rClaims.ID,
+					)
+					_ = s.redis.Del(ctx, idpKey)
+				}
+			}
+		}
 	}
 
-	key := fmt.Sprintf("session:%s", token)
-	return s.redis.Del(ctx, key)
+	// 4. Delete the primary session key
+	if err := s.redis.Del(ctx, sessionKey); err != nil {
+		log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
+	}
+
+	// 5. Return the IDP logout URL if appropriate
+	if tokenType == "idp" {
+		return cfg.IDPLogoutURL, nil
+	}
+
+	return "", nil
 }
 
 // IDP integration methods
@@ -510,6 +568,7 @@ func (s *Service) PostIDPTokenExchange(
 		ctx,
 		appUserID,
 		accessClaims.ID,
+		appRefreshToken,
 		"idp",
 		&idpAccessToken,
 		constants.AccessTokenMaxAge/60,
@@ -522,7 +581,11 @@ func (s *Service) PostIDPTokenExchange(
 
 	// Store IDP Refresh Token in Redis associated with the App
 	// Refresh Token's ID (jti)
-	idpRefreshKey := fmt.Sprintf("idp_refresh:%s", refreshClaims.ID)
+	idpRefreshKey := fmt.Sprintf(
+		"%s%s",
+		constants.RedisIDPRefreshKeyPrefix,
+		refreshClaims.ID,
+	)
 	idpRefreshTokenToStore := idpRefreshToken
 	if idpRefreshTokenToStore == "" {
 		// This shouldn't happen on initial login, but good for

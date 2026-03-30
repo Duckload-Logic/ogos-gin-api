@@ -47,3 +47,13 @@ const (
 	// LogActionLoginFailed is the log action for failed login
 	LogActionLoginFailed = "LoginFailed"
 )
+
+// Redis Key Constants
+const (
+	// RedisSessionKeyPrefix is the prefix for session keys (session:jti)
+	RedisSessionKeyPrefix = "session:"
+
+	// RedisIDPRefreshKeyPrefix is the prefix for IDP refresh tokens
+	// (idp_refresh:jti)
+	RedisIDPRefreshKeyPrefix = "idp_refresh:"
+)

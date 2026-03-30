@@ -74,6 +74,25 @@ func (s *Service) ValidateToken(tokenString string) (
 	return claims, nil
 }
 
+// ParseTokenUnverified extracts claims from a token string without
+// verifying its signature or expiration. Use this ONLY to identify
+// a session for refresh logic, never for authorization.
+func (s *Service) ParseTokenUnverified(tokenString string) (
+	*Claims, error,
+) {
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, &Claims{})
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
+		return nil, jwt.ErrTokenInvalidClaims
+	}
+
+	return claims, nil
+}
+
 func (s *Service) InvalidateToken(tokenString string) error {
 	// TODO: Implement token invalidation (e.g., using a blacklist or token
 	// store)

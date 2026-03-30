@@ -16,7 +16,7 @@ type ServiceInterface interface {
 	) (string, string, string, error)
 	RefreshToken(
 		ctx context.Context,
-		refreshToken string,
+		accessTokenJTI string,
 		cfg *config.Config,
 	) (string, string, error)
 	RefreshIDPToken(
@@ -31,7 +31,7 @@ type ServiceInterface interface {
 		token string,
 		tokenType string,
 		cfg *config.Config,
-	) error
+	) (string, error)
 	GetAuthorizeURL(cfg *config.Config) (string, error)
 	PostIDPTokenExchange(
 		ctx context.Context,

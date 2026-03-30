@@ -12,6 +12,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/identity/idp"
 )
@@ -52,7 +53,7 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	userID, token, refreshToken, err := h.service.AuthenticateUser(
+	userID, token, _, err := h.service.AuthenticateUser(
 		c,
 		req.Email,
 		req.Password,
@@ -93,12 +94,8 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	}
 	// Access token: short-lived, HTTP-only, Secure in production
 	c.SetCookie(
-		"access_token", token, int(AccessTokenTTL), "/",
-		"", h.cfg.IsProduction, true) // 1 hour
-	// Refresh token: longer-lived, HTTP-only
-	c.SetCookie(
-		"refresh_token", refreshToken, int(RefreshTokenTTL), "/",
-		"", h.cfg.IsProduction, true) // 12 hours
+		"access_token", token, int(constants.AccessTokenMaxAge), "/",
+		"", h.cfg.IsProduction, true) // 30 minutes
 
 	// Log success
 	h.logService.Record(
@@ -130,21 +127,31 @@ func (h *Handler) PostLogin(c *gin.Context) {
 // @Failure      401 {object} map[string]string
 // @Router       /auth/refresh [post]
 func (h *Handler) PostRefreshToken(c *gin.Context) {
-	// Try to get refresh token from cookie first
-	refreshToken, err := c.Cookie("refresh_token")
+	// 1. Get Access Token (which contains the session Handle/JTI)
+	accessToken, err := c.Cookie(constants.AccessTokenCookieName)
 	if err != nil {
-		// Fallback: read from request body
-		var req RefreshTokenDTO
-		if err := c.ShouldBindJSON(&req); err == nil {
-			refreshToken = req.RefreshToken
+		authHeader := c.GetHeader("Authorization")
+		if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+			accessToken = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 	}
 
-	if refreshToken == "" {
-		log.Printf("[PostRefreshToken] {Check Token}: Refresh token missing")
+	if accessToken == "" {
 		response.SendFail(
 			c,
-			gin.H{"error": "Authentication session missing or expired"},
+			gin.H{"error": "Access token missing"},
+			http.StatusUnauthorized,
+		)
+		return
+	}
+
+	// 2. Parse token UNVERIFIED to get the JTI (it might be expired)
+	tokenService := tokens.NewService()
+	claims, err := tokenService.ParseTokenUnverified(accessToken)
+	if err != nil {
+		response.SendFail(
+			c,
+			gin.H{"error": "Invalid session handle"},
 			http.StatusUnauthorized,
 		)
 		return
@@ -153,9 +160,10 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	newToken, newRefreshToken, err := h.service.RefreshToken(
+	// 3. Refresh using the JTI
+	newToken, _, err := h.service.RefreshToken(
 		c,
-		refreshToken,
+		claims.ID,
 		h.cfg,
 	)
 	if err != nil {
@@ -166,7 +174,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 				Level:     audit.LevelError,
 				Category:  audit.CategorySecurity,
 				Action:    audit.ActionInvalidToken,
-				Message:   "Token refresh failed: invalid or expired refresh token",
+				Message:   "Token refresh failed: " + err.Error(),
 				IPAddress: structs.StringToNullableString(ip),
 				UserAgent: structs.StringToNullableString(ua),
 			},
@@ -174,38 +182,30 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		log.Printf("[PostRefreshToken] {RefreshToken}: %v", err)
 		response.SendFail(
 			c,
-			gin.H{"error": err.Error()},
+			gin.H{"error": "Session expired or invalid"},
 			http.StatusUnauthorized,
 		)
 		return
 	}
 
-	// Set new cookies
+	// 4. Set new access token cookie
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
-		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
+		c.SetSameSite(http.SameSiteLaxMode)
 	}
+
 	c.SetCookie(
-		"access_token",
+		constants.AccessTokenCookieName,
 		newToken,
-		int(AccessTokenTTL),
-		"/",
-		"",
-		h.cfg.IsProduction,
-		true,
-	)
-	c.SetCookie(
-		"refresh_token",
-		newRefreshToken,
-		int(RefreshTokenTTL),
+		int(constants.AccessTokenMaxAge),
 		"/",
 		"",
 		h.cfg.IsProduction,
 		true,
 	)
 
-	response.SendSuccess(c, gin.H{"message": "Token refreshed"})
+	response.SendSuccess(c, gin.H{"message": "Session refreshed"})
 }
 
 // GetMe godoc
@@ -279,17 +279,22 @@ func (h *Handler) PostLogout(c *gin.Context) {
 	}
 
 	tokenType, _ := c.Get("tokenType")
+	tType := "native"
+	if tt, ok := tokenType.(string); ok {
+		tType = tt
+	}
 
+	logoutURL := ""
 	if tokenString != "" {
-		_ = h.service.Logout(
+		logoutURL, _ = h.service.Logout(
 			c.Request.Context(),
 			tokenString,
-			tokenType.(string),
+			tType,
 			h.cfg,
 		)
 	}
 
-	// Clear cookies
+	// Always clear cookies before any redirect or success response
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
@@ -320,6 +325,12 @@ func (h *Handler) PostLogout(c *gin.Context) {
 				),
 			},
 		)
+	}
+
+	// Redirect if IDP logout URL is provided, and RETURN
+	if logoutURL != "" {
+		c.Redirect(http.StatusTemporaryRedirect, logoutURL)
+		return
 	}
 
 	response.SendSuccess(c, gin.H{"message": "Logout successful"})
@@ -403,7 +414,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	}
 
 	// Perform token exchange
-	accessToken, refreshToken, userID, userEmail, roleName,
+	accessToken, _, userID, userEmail, roleName,
 		err := h.service.PostIDPTokenExchange(
 		c.Request.Context(),
 		req.Code,
@@ -447,17 +458,6 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		constants.AccessTokenCookieName,
 		accessToken,
 		constants.AccessTokenMaxAge,
-		constants.CookiePathRoot,
-		"",
-		h.cfg.IsProduction,
-		true,
-	)
-
-	// Set refresh token cookie
-	c.SetCookie(
-		constants.RefreshTokenCookieName,
-		refreshToken,
-		constants.RefreshTokenMaxAge,
 		constants.CookiePathRoot,
 		"",
 		h.cfg.IsProduction,
