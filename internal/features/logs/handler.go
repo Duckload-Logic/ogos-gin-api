@@ -160,3 +160,32 @@ func (h *Handler) GetLogStats(c *gin.Context) {
 
 	response.SendSuccess(c, stats)
 }
+
+// GetMyLogs retrieves activity logs for the currently authenticated user.
+func (h *Handler) GetMyLogs(c *gin.Context) {
+	userEmail := c.MustGet("userEmail").(string)
+
+	var req ListSystemLogsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		log.Printf("[GetMyLogs] {Bind Query}: %v", err)
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Force filter by current user's email
+	req.UserEmail = userEmail
+
+	result, err := h.service.ListLogs(c.Request.Context(), req)
+	if err != nil {
+		log.Printf("[GetMyLogs] {ListLogs}: %v", err)
+		response.SendError(
+			c,
+			"Failed to retrieve your activity logs",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, result)
+}

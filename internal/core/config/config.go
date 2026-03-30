@@ -104,7 +104,7 @@ func validateConfig(config *Config) {
 		panic("DB_USER is required")
 	}
 	if config.DBPass == "" {
-		panic("DB_PASSWORD is required")
+		panic("DB_PASS is required")
 	}
 	if config.DBName == "" {
 		panic("DB_NAME is required")

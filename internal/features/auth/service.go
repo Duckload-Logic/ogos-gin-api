@@ -314,6 +314,7 @@ func (s *Service) GetMe(
 			FirstName:  user.FirstName,
 			LastName:   user.LastName,
 			MiddleName: user.MiddleName.String,
+			CreatedAt:  user.CreatedAt.Time,
 			Roles:      []string{"user"},
 			Type:       tokenType,
 		}, nil
@@ -325,6 +326,7 @@ func (s *Service) GetMe(
 		FirstName:  user.FirstName,
 		LastName:   user.LastName,
 		MiddleName: user.MiddleName.String,
+		CreatedAt:  user.CreatedAt.Time,
 		Roles:      []string{role.Name},
 		Type:       tokenType,
 	}, nil

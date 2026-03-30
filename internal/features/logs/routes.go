@@ -12,16 +12,21 @@ func RegisterRoutes(
 	h *Handler,
 	redis *datastore.RedisClient,
 ) {
-	routes := rg.Group("/activity-meta")
-	routes.Use(middleware.AuthMiddleware(redis))
-	routes.Use(middleware.RoleMiddleware(
-		int(constants.SuperAdminRoleID),
-	))
+	// Base group for all activity logs
+	activityGroup := rg.Group("/activity-meta")
+	activityGroup.Use(middleware.AuthMiddleware(redis))
+
+	// User-specific activity route (No role check, just auth)
+	activityGroup.GET("/me", h.GetMyLogs)
+
+	// Admin-only routes (Requires SuperAdmin role)
+	adminOnly := activityGroup.Group("")
+	adminOnly.Use(middleware.RoleMiddleware(int(constants.SuperAdminRoleID)))
 	{
-		routes.GET("", h.GetLogs)
-		routes.GET("/audit", h.GetAuditLogs)
-		routes.GET("/system", h.GetSystemLogs)
-		routes.GET("/security", h.GetSecurityLogs)
-		routes.GET("/stats", h.GetLogStats)
+		adminOnly.GET("", h.GetLogs)
+		adminOnly.GET("/audit", h.GetAuditLogs)
+		adminOnly.GET("/system", h.GetSystemLogs)
+		adminOnly.GET("/security", h.GetSecurityLogs)
+		adminOnly.GET("/stats", h.GetLogStats)
 	}
 }

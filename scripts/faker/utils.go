@@ -72,9 +72,6 @@ func relationshipID(name string) int {
 func buildDSNFromEnv() string {
 	user := os.Getenv("DB_USER")
 	pass := os.Getenv("DB_PASS")
-	if pass == "" {
-		pass = os.Getenv("DB_PASSWORD")
-	}
 	host := os.Getenv("DB_HOST")
 	port := os.Getenv("DB_PORT")
 	name := os.Getenv("DB_NAME")

@@ -1,5 +1,7 @@
 package auth
 
+import "time"
+
 type TTL int
 
 const (
@@ -8,13 +10,14 @@ const (
 )
 
 type MeResponse struct {
-	ID         string   `json:"id"`
-	Email      string   `json:"email"`
-	FirstName  string   `json:"firstName"`
-	LastName   string   `json:"lastName"`
-	MiddleName string   `json:"middleName,omitempty"`
-	Roles      []string `json:"roles"`
-	Type       string   `json:"type"` // "native" or "idp"
+	ID         string    `json:"id"`
+	Email      string    `json:"email"`
+	FirstName  string    `json:"firstName"`
+	LastName   string    `json:"lastName"`
+	MiddleName string    `json:"middleName,omitempty"`
+	CreatedAt  time.Time `json:"createdAt"`
+	Roles      []string  `json:"roles"`
+	Type       string    `json:"type"` // "native" or "idp"
 }
 
 type IDPRefreshRequest struct {
