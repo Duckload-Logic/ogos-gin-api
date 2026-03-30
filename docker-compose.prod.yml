@@ -5,18 +5,19 @@ services:
     image: olazojohnalbert/capstone-gin-api:latest
     ports:
       - "80:8080"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASS=${REDIS_PASS}
     depends_on:
       - redis
     networks:
       - app-network
 
   redis:
-    image: redis/redis-stack-server:latest
+    image: redis:7-alpine
     container_name: capstone-redis
-    ports:
-      - "6379:6379"
-    environment:
-      - REDIS_ARGS=--requirepass "${REDIS_PASS}" --stop-writes-on-bgsave-error no
+    command: ["redis-server", "--requirepass", "${REDIS_PASS}", "--stop-writes-on-bgsave-error", "no"]
     restart: always
     networks:
       - app-network
