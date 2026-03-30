@@ -11,8 +11,14 @@ services:
       - app-network
 
   redis:
-    image: redis:alpine
+    image: redis/redis-stack-server:latest
     container_name: capstone-redis
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --requirepass "${REDIS_PASS}"
+      --stop-writes-on-bgsave-error no
     restart: always
     networks:
       - app-network
