@@ -20,15 +20,32 @@ func NewRedisClient(cfg *config.Config) (*RedisClient, error) {
 		DB:       cfg.RedisDB,
 	})
 
-	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	var err error
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		// Test connection
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, err = rdb.Ping(ctx).Result()
+		cancel()
 
-	if _, err := rdb.Ping(ctx).Result(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %v", err)
+		if err == nil {
+			return &RedisClient{Client: rdb}, nil
+		}
+
+		fmt.Printf(
+			"failed to connect to Redis (attempt %d/%d): %v\n",
+			i+1,
+			maxRetries,
+			err,
+		)
+		time.Sleep(5 * time.Second)
 	}
 
-	return &RedisClient{Client: rdb}, nil
+	return nil, fmt.Errorf(
+		"failed to connect to Redis after %d attempts: %v",
+		maxRetries,
+		err,
+	)
 }
 
 func (r *RedisClient) Set(
