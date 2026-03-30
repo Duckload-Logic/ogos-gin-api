@@ -293,18 +293,32 @@ func (c *IDPClient) Logout(
 	}
 	defer resp.Body.Close()
 
-	log.Printf("[IDPClient] Logout response status: %d", resp.StatusCode)
-	log.Printf("[IDPClient] Logout response body: %s", func() string {
-		bodyBytes, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Sprintf("Error reading body: %v", err)
-		}
-		return string(bodyBytes)
-	}())
-	var logoutResp IDPLogoutResponse
-	if err := json.NewDecoder(resp.Body).Decode(&logoutResp); err != nil {
-		return nil, fmt.Errorf("[IDPClient] {Parse Logout Response}: %w", err)
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("[IDPClient] Error reading logout body: %v", err)
 	}
 
-	return &logoutResp, nil
+	log.Printf("[IDPClient] Logout response status: %d", resp.StatusCode)
+	log.Printf("[IDPClient] Logout response body: %s", string(bodyBytes))
+
+	if resp.StatusCode == http.StatusOK ||
+		resp.StatusCode == http.StatusNoContent {
+		var logoutResp IDPLogoutResponse
+		// Attempt to parse JSON if body is not empty
+		if len(bodyBytes) > 0 && bodyBytes[0] == '{' {
+			_ = json.Unmarshal(bodyBytes, &logoutResp)
+		}
+
+		if logoutResp.Message == "" {
+			logoutResp.Message = "Logout successful"
+		}
+
+		return &logoutResp, nil
+	}
+
+	return nil, fmt.Errorf(
+		"[IDPClient] {IDP Logout Failed}: status %d, body %s",
+		resp.StatusCode,
+		string(bodyBytes),
+	)
 }
