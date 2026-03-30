@@ -390,11 +390,11 @@ func (s *Service) Logout(
 	}
 	accessJTI := claims.ID
 
-	// 2. Fetch the session data to find linked refresh tokens
+	// Fetch the session data to find linked refresh tokens
 	sessionKey := fmt.Sprintf("%s%s", constants.RedisSessionKeyPrefix, accessJTI)
 	sessionData, _ := s.redis.Get(ctx, sessionKey)
 
-	// 3. Delete any linked IDP refresh tokens
+	// Delete any linked IDP refresh tokens
 	if sessionData != "" {
 		var session map[string]string
 		if err := json.Unmarshal([]byte(sessionData), &session); err == nil {
@@ -421,7 +421,9 @@ func (s *Service) Logout(
 
 	// 5. Return the IDP logout URL if appropriate
 	if tokenType == "idp" {
+		log.Println("[AuthService:Logout] {IDP Logout}: Call IDP logout")
 		_, _ = s.idpClient.Logout(ctx, cfg)
+		log.Println("[AuthService:Logout] {IDP Logout}: IDP logout successful")
 		return nil
 	}
 
