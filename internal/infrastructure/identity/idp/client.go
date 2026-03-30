@@ -298,9 +298,6 @@ func (c *IDPClient) Logout(
 		log.Printf("[IDPClient] Error reading logout body: %v", err)
 	}
 
-	log.Printf("[IDPClient] Logout response status: %d", resp.StatusCode)
-	log.Printf("[IDPClient] Logout response body: %s", string(bodyBytes))
-
 	if resp.StatusCode == http.StatusOK ||
 		resp.StatusCode == http.StatusNoContent {
 		var logoutResp IDPLogoutResponse
