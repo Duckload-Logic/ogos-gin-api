@@ -34,8 +34,6 @@ func NewRouter(
 	handlers *bootstrap.Handlers,
 	cfg *config.Config,
 ) *gin.Engine {
-	g := gin.Default()
-
 	localOrigins := []string{
 		"http://localhost:8080",
 		"http://127.0.0.1:8080",
@@ -56,6 +54,8 @@ func NewRouter(
 		gin.SetMode(gin.DebugMode)
 		origins = localOrigins
 	}
+
+	g := gin.Default()
 
 	corsConfig := cors.Config{
 		AllowOrigins: origins,
