@@ -294,6 +294,13 @@ func (c *IDPClient) Logout(
 	defer resp.Body.Close()
 
 	log.Printf("[IDPClient] Logout response status: %d", resp.StatusCode)
+	log.Printf("[IDPClient] Logout response body: %s", func() string {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Sprintf("Error reading body: %v", err)
+		}
+		return string(bodyBytes)
+	}())
 	var logoutResp IDPLogoutResponse
 	if err := json.NewDecoder(resp.Body).Decode(&logoutResp); err != nil {
 		return nil, fmt.Errorf("[IDPClient] {Parse Logout Response}: %w", err)
