@@ -422,7 +422,12 @@ func (s *Service) Logout(
 	// 5. Return the IDP logout URL if appropriate
 	if tokenType == "idp" {
 		log.Println("[AuthService:Logout] {IDP Logout}: Call IDP logout")
-		_, _ = s.idpClient.Logout(ctx, cfg)
+		_, err = s.idpClient.Logout(ctx, cfg)
+		if err != nil {
+			log.Printf("[AuthService:Logout] {IDP Logout Error}: %v", err)
+			return err
+		}
+
 		log.Println("[AuthService:Logout] {IDP Logout}: IDP logout successful")
 		return nil
 	}
