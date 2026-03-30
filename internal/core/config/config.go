@@ -138,7 +138,10 @@ func validateConfig(config *Config) {
 		panic("IDP_REDIRECT_URI is required")
 	}
 	if config.IDPLoginURL == "" {
-		panic("IDP_AUTHORIZE_ENDPOINT is required")
+		panic("IDP_LOGIN_ENDPOINT is required")
+	}
+	if config.IDPLogoutURL == "" {
+		panic("IDP_LOGOUT_ENDPOINT is required")
 	}
 	if config.IDPTokenURL == "" {
 		panic("IDP_TOKEN_ENDPOINT is required")
