@@ -267,11 +267,20 @@ func (c *IDPClient) Logout(
 ) (*IDPLogoutResponse, error) {
 	url := cfg.IDPLogoutURL
 
+	payload := map[string]string{
+		"client_id": cfg.IDPClientID,
+	}
+
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("[IDPClient] {Marshal JSON}: %w", err)
+	}
+
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
 		url,
-		bytes.NewReader(nil),
+		bytes.NewReader(jsonBody),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("[IDPClient] {Create Logout Request}: %w", err)
