@@ -31,4 +31,7 @@ func RegisterRoutes(
 		authRoutes.POST("/idp/token", h.PostIDPToken)
 		authRoutes.GET("/idp/session", h.GetIDPValidateSession)
 	}
+
+	// Internal Debugging (Redis Dashboard)
+	RegisterDebugRoutes(rg, redis)
 }
