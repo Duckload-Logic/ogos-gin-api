@@ -284,9 +284,8 @@ func (h *Handler) PostLogout(c *gin.Context) {
 		tType = tt
 	}
 
-	logoutURL := ""
 	if tokenString != "" {
-		logoutURL, _ = h.service.Logout(
+		_ = h.service.Logout(
 			c.Request.Context(),
 			tokenString,
 			tType,

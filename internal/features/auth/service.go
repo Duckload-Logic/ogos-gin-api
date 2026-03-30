@@ -381,12 +381,12 @@ func (s *Service) Logout(
 	token string,
 	tokenType string,
 	cfg *config.Config,
-) (string, error) {
+) error {
 	// 1. Identify the session using the Access Token JTI
 	claims, err := tokens.NewService().ParseTokenUnverified(token)
 	if err != nil {
 		log.Printf("[AuthService:Logout] {Parse Error}: %v", err)
-		return "", nil // Move on since we can't identify the session
+		return nil // Move on since we can't identify the session
 	}
 	accessJTI := claims.ID
 
@@ -421,10 +421,11 @@ func (s *Service) Logout(
 
 	// 5. Return the IDP logout URL if appropriate
 	if tokenType == "idp" {
-		return cfg.IDPLogoutURL, nil
+		_, _ = s.idpClient.Logout(ctx, cfg)
+		return nil
 	}
 
-	return "", nil
+	return nil
 }
 
 // IDP integration methods

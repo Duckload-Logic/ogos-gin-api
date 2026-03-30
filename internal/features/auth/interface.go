@@ -31,7 +31,7 @@ type ServiceInterface interface {
 		token string,
 		tokenType string,
 		cfg *config.Config,
-	) (string, error)
+	) error
 	GetAuthorizeURL(cfg *config.Config) (string, error)
 	PostIDPTokenExchange(
 		ctx context.Context,
