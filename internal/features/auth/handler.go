@@ -326,12 +326,6 @@ func (h *Handler) PostLogout(c *gin.Context) {
 		)
 	}
 
-	// Redirect if IDP logout URL is provided, and RETURN
-	if logoutURL != "" {
-		c.Redirect(http.StatusTemporaryRedirect, logoutURL)
-		return
-	}
-
 	response.SendSuccess(c, gin.H{"message": "Logout successful"})
 }
 
