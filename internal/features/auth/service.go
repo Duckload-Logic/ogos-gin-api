@@ -391,7 +391,11 @@ func (s *Service) Logout(
 	accessJTI := claims.ID
 
 	// Fetch the session data to find linked refresh tokens
-	sessionKey := fmt.Sprintf("%s%s", constants.RedisSessionKeyPrefix, accessJTI)
+	sessionKey := fmt.Sprintf(
+		"%s%s",
+		constants.RedisSessionKeyPrefix,
+		accessJTI,
+	)
 	sessionData, _ := s.redis.Get(ctx, sessionKey)
 
 	// Delete any linked IDP refresh tokens

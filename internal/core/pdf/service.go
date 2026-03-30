@@ -152,7 +152,9 @@ func (s *Service) GenerateFromTemplate(
 				p := v.Index(i)
 				isParent := p.FieldByName("IsParent").Bool()
 				isGuardian := p.FieldByName("IsGuardian").Bool()
-				relName := p.FieldByName("Relationship").FieldByName("RelationshipName").String()
+				relName := p.FieldByName("Relationship").
+					FieldByName("RelationshipName").
+					String()
 
 				switch role {
 				case "Father":
@@ -179,7 +181,9 @@ func (s *Service) GenerateFromTemplate(
 			}
 			for i := 0; i < v.Len(); i++ {
 				s := v.Index(i)
-				lvl := s.FieldByName("EducationalLevel").FieldByName("LevelName").String()
+				lvl := s.FieldByName("EducationalLevel").
+					FieldByName("LevelName").
+					String()
 				if lvl == level {
 					return s.Interface()
 				}
