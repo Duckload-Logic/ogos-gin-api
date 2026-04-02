@@ -105,4 +105,5 @@ type RepositoryInterface interface {
 		tx datastore.DB,
 		appt Appointment,
 	) error
+	GetUserIDByAppointmentID(ctx context.Context, id string) (string, error)
 }

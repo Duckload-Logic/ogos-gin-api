@@ -410,6 +410,21 @@ func (r *Repository) GetSlipByID(
 	return &slip, nil
 }
 
+func (r *Repository) GetUserIDBySlipID(
+	ctx context.Context,
+	id string,
+) (string, error) {
+	var userID string
+	query := `
+		SELECT ir.user_id
+		FROM admission_slips slp
+		JOIN iir_records ir ON slp.iir_id = ir.id
+		WHERE slp.id = ?
+	`
+	err := r.db.GetContext(ctx, &userID, query, id)
+	return userID, err
+}
+
 func (r *Repository) GetSlipAttachments(
 	ctx context.Context,
 	slipID string,

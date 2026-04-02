@@ -2,6 +2,7 @@ package audit
 
 import (
 	"context"
+	"log"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
@@ -9,9 +10,9 @@ import (
 
 // DispatchParams holds the parameters for the Dispatch helper.
 type DispatchParams struct {
-	Log          *LogParams
-	Notification *NotificationParams
-	Tx           datastore.DB
+	Log           *LogParams
+	Notifications []NotificationParams
+	Tx            datastore.DB
 }
 
 // LogParams holds the parameters for a log entry.
@@ -44,7 +45,7 @@ func Dispatch(
 	params DispatchParams,
 ) {
 	// 1. Extract Meta
-	id, ip, ua, email, trace := ExtractMeta(ctx)
+	id, ip, ua, email, _, trace := ExtractMeta(ctx)
 
 	// 2. Prepare and Record Log
 	if logger != nil && params.Log != nil {
@@ -65,22 +66,30 @@ func Dispatch(
 		logger.Record(ctx, params.Tx, entry)
 	}
 
-	// 3. Prepare and Send Notification
-	if notifier != nil && params.Notification != nil {
-		receiverID := params.Notification.ReceiverID
-		if !receiverID.Valid || receiverID.String == "" {
-			receiverID = structs.StringToNullableString(id)
-		}
+	// 3. Prepare and Send Notifications
+	if notifier != nil && len(params.Notifications) > 0 {
+		for _, n := range params.Notifications {
+			receiverID := n.ReceiverID
+			if !receiverID.Valid || receiverID.String == "" {
+				receiverID = structs.StringToNullableString(id)
+			}
 
-		notif := NotificationEntry{
-			ReceiverID: receiverID,
-			ActorID:    structs.StringToNullableString(id),
-			TargetID:   params.Notification.TargetID,
-			TargetType: params.Notification.TargetType,
-			Title:      params.Notification.Title,
-			Message:    params.Notification.Message,
-			Type:       params.Notification.Type,
+			notif := NotificationEntry{
+				ReceiverID: receiverID,
+				ActorID:    structs.StringToNullableString(id),
+				TargetID:   n.TargetID,
+				TargetType: n.TargetType,
+				Title:      n.Title,
+				Message:    n.Message,
+				Type:       n.Type,
+			}
+			err := notifier.Send(ctx, notif)
+			if err != nil {
+				log.Printf(
+					`[Audit:Dispatch] {Send Notification}: %v`,
+					err,
+				)
+			}
 		}
-		_ = notifier.Send(ctx, notif)
 	}
 }

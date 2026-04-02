@@ -119,5 +119,6 @@ type RepositoryInterface interface {
 		statusName string,
 		adminNotes string,
 	) error
+	GetUserIDBySlipID(ctx context.Context, id string) (string, error)
 	Delete(ctx context.Context, id string) error
 }

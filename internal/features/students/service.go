@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/pdf"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"golang.org/x/sync/errgroup"
 )
@@ -21,26 +23,32 @@ import (
 // Service provides student-related business logic and data access.
 type Service struct {
 	repo         RepositoryInterface
-	locationsSvc *locations.Service
-	logService   logs.ServiceInterface
+	locationsSvc locations.ServiceInterface
+	userService  users.ServiceInterface
+	logService   audit.Logger
+	notifService audit.Notifier
 	cfg          *config.Config
-	pdfSvc       *pdf.Service
+	pdfService   *pdf.Service
 }
 
 // NewService creates a new student service instance.
 func NewService(
 	repo RepositoryInterface,
-	locationsSvc *locations.Service,
-	logService logs.ServiceInterface,
+	locationsSvc locations.ServiceInterface,
+	userService users.ServiceInterface,
+	logService audit.Logger,
+	notifService audit.Notifier,
 	cfg *config.Config,
-	pdfSvc *pdf.Service,
+	pdfService *pdf.Service,
 ) *Service {
 	return &Service{
 		repo:         repo,
 		locationsSvc: locationsSvc,
+		userService:  userService,
 		logService:   logService,
+		notifService: notifService,
 		cfg:          cfg,
-		pdfSvc:       pdfSvc,
+		pdfService:   pdfService,
 	}
 }
 
@@ -1109,8 +1117,40 @@ func (s *Service) SaveIIRDraft(
 
 	draftID, err := s.repo.UpsertIIRDraft(ctx, draft)
 	if err != nil {
+		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+			Log: &audit.LogParams{
+				Level:    audit.LevelError,
+				Category: audit.CategoryAudit,
+				Action:   audit.ActionIIRUpdateFailed,
+				Message: fmt.Sprintf(
+					"Failed to save IIR draft for User #%s",
+					userID,
+				),
+				Metadata: &audit.LogMetadata{
+					EntityType: constants.IIREntityType,
+					NewValues:  req,
+					Error:      err.Error(),
+				},
+			},
+		})
 		return 0, fmt.Errorf("failed to save IIR draft: %w", err)
 	}
+
+	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+		Log: &audit.LogParams{
+			Level:    audit.LevelInfo,
+			Category: audit.CategoryAudit,
+			Action:   audit.ActionIIRDraftSaved,
+			Message: fmt.Sprintf(
+				"IIR draft saved for User #%s",
+				userID,
+			),
+			Metadata: &audit.LogMetadata{
+				EntityType: constants.IIREntityType,
+				NewValues:  req,
+			},
+		},
+	})
 
 	return draftID, nil
 }
@@ -1190,8 +1230,84 @@ func (s *Service) SubmitStudentIIR(
 		},
 	)
 	if err != nil {
+		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+			Log: &audit.LogParams{
+				Level:    audit.LevelError,
+				Category: audit.CategoryAudit,
+				Action:   audit.ActionIIRCreateFailed,
+				Message: fmt.Sprintf(
+					"Failed to submit IIR for User #%s",
+					userID,
+				),
+				Metadata: &audit.LogMetadata{
+					EntityType: constants.IIREntityType,
+					NewValues:  req,
+					Error:      err.Error(),
+				},
+			},
+		})
 		return "", err
 	}
+
+	// Fetch personalized notification targets
+	student, _ := s.userService.GetUserByID(ctx, userID)
+	studentName := "A student"
+	if student != nil {
+		studentName = fmt.Sprintf("%s %s", student.FirstName, student.LastName)
+	}
+
+	counselorIDs, _ := s.userService.GetUserIDsByRole(
+		ctx,
+		int(constants.CounselorRoleID),
+	)
+
+	notifications := []audit.NotificationParams{
+		{
+			ReceiverID: structs.StringToNullableString(userID),
+			TargetID:   structs.StringToNullableString(iirID),
+			TargetType: structs.StringToNullableString(constants.IIREntityType),
+			Title:      "IIR Submitted Successfully",
+			Message: fmt.Sprintf(
+				"Your Individual Inventory Record (#%s) has been submitted.",
+				iirID,
+			),
+			Type: constants.IIREntityType,
+		},
+	}
+
+	for _, cid := range counselorIDs {
+		notifications = append(notifications, audit.NotificationParams{
+			ReceiverID: structs.StringToNullableString(cid),
+			TargetID:   structs.StringToNullableString(iirID),
+			TargetType: structs.StringToNullableString(constants.IIREntityType),
+			Title:      "New IIR Submission",
+			Message: fmt.Sprintf(
+				"Student %s has submitted their IIR (#%s).",
+				studentName,
+				iirID,
+			),
+			Type: constants.IIREntityType,
+		})
+	}
+
+	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+		Log: &audit.LogParams{
+			Level:    audit.LevelInfo,
+			Category: audit.CategoryAudit,
+			Action:   audit.ActionIIRSubmitted,
+			Message:  fmt.Sprintf("IIR #%s submitted", iirID),
+			TargetID: structs.StringToNullableString(iirID),
+			TargetType: structs.StringToNullableString(
+				constants.IIREntityType,
+			),
+			Metadata: &audit.LogMetadata{
+				EntityType: constants.IIREntityType,
+				EntityID:   iirID,
+				NewValues:  req,
+			},
+		},
+		Notifications: notifications,
+	})
 
 	return iirID, nil
 }
@@ -1646,7 +1762,7 @@ func (s *Service) GenerateIIR(
 		DateToday: s.GetFormattedDate(time.Now().Format("2006-01-02")),
 	}
 
-	pdfBytes, err := s.pdfSvc.GenerateFromTemplate(ctx, templatePath, data)
+	pdfBytes, err := s.pdfService.GenerateFromTemplate(ctx, templatePath, data)
 	if err != nil {
 		return nil, "", fmt.Errorf(
 			"failed to generate pdf from template: %w",

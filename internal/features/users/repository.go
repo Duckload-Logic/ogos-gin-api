@@ -132,3 +132,13 @@ func (r *Repository) UnblockUser(
 	_, err := tx.ExecContext(ctx, query, userID)
 	return err
 }
+
+func (r *Repository) GetUserIDsByRole(
+	ctx context.Context,
+	roleID int,
+) ([]string, error) {
+	var userIDs []string
+	query := `SELECT id FROM users WHERE role_id = ?`
+	err := r.db.SelectContext(ctx, &userIDs, query, roleID)
+	return userIDs, err
+}

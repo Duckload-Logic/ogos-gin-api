@@ -12,11 +12,21 @@ import (
 )
 
 type Service struct {
-	repo RepositoryInterface
+	repo         RepositoryInterface
+	notifService audit.Notifier
+	userSvc      audit.UserGetter
 }
 
-func NewService(repo RepositoryInterface) *Service {
-	return &Service{repo: repo}
+func NewService(
+	repo RepositoryInterface,
+	notifService audit.Notifier,
+	userSvc audit.UserGetter,
+) *Service {
+	return &Service{
+		repo:         repo,
+		notifService: notifService,
+		userSvc:      userSvc,
+	}
 }
 
 func (s *Service) GetDB() datastore.DB {
@@ -37,7 +47,7 @@ func (s *Service) Record(
 
 	// Safety net: extract trace ID from context if not provided
 	if !entry.TraceID.Valid || entry.TraceID.String == "" {
-		_, _, _, _, trace := audit.ExtractMeta(ctx)
+		_, _, _, _, _, trace := audit.ExtractMeta(ctx)
 		if trace != "" {
 			entry.TraceID = structs.StringToNullableString(trace)
 		}
@@ -60,8 +70,41 @@ func (s *Service) Record(
 	}
 
 	if err := s.repo.Record(ctx, tx, sysLog); err != nil {
-		log.Printf("Failed to record system log: %v", err)
+		log.Printf("[Record] {Database Insertion}: %v", err)
 		return
+	}
+
+	// Notify Superadmins for critical events
+	if level == audit.LevelError || entry.Category == audit.CategorySecurity {
+		s.notifySuperadmins(ctx, entry)
+	}
+}
+
+func (s *Service) notifySuperadmins(ctx context.Context, entry audit.LogEntry) {
+	if s.userSvc == nil || s.notifService == nil {
+		return
+	}
+
+	// Fetch Superadmin IDs (Role ID 3)
+	adminIDs, err := s.userSvc.GetUserIDsByRole(ctx, 3)
+	if err != nil {
+		log.Printf("[notifySuperadmins] {Fetch Admins}: %v", err)
+		return
+	}
+
+	title := "Critical System Alert"
+	if entry.Category == audit.CategorySecurity {
+		title = "Security Breach/Alert"
+	}
+
+	for _, adminID := range adminIDs {
+		s.notifService.Send(ctx, audit.NotificationEntry{
+			ReceiverID: structs.StringToNullableString(adminID),
+			ActorID:    entry.UserID,
+			Title:      title,
+			Message:    fmt.Sprintf("[%s] %s: %s", entry.Action, entry.Level, entry.Message),
+			Type:       "SystemAlert",
+		})
 	}
 }
 

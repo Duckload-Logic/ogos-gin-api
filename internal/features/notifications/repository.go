@@ -22,7 +22,7 @@ func (r *Repository) GetByUserID(
 ) ([]NotificationModel, error) {
 	query := fmt.Sprintf(`
 		SELECT %s FROM notifications
-		WHERE user_id = ?
+		WHERE receiver_id = ?
 		ORDER BY created_at DESC
 	`, datastore.GetColumns(NotificationModel{}))
 

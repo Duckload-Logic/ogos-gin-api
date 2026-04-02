@@ -17,15 +17,14 @@ func RegisterRoutes(
 	routes := rg.Group("/notifications")
 	routes.Use(middleware.AuthMiddleware(redis))
 
-	userResourceLookup := middleware.OwnershipMiddleware(db, "userId")
-
 	userRoutes := routes.Group("/")
 	userRoutes.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
 		int(constants.CounselorRoleID),
+		int(constants.SuperAdminRoleID),
 	))
 	{
-		userRoutes.GET("/:userId", userResourceLookup, h.GetNotifications)
+		userRoutes.GET("/me", h.GetNotifications)
 
 		userRoutes.PATCH("/:id/read", h.PatchNotificationRead)
 	}

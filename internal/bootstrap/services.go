@@ -41,15 +41,19 @@ func getServices(
 	cfg *config.Config,
 	redis *datastore.RedisClient,
 ) *Services {
-	systemLogService := logs.NewService(repos.SystemLogRepo)
 	notificationsService := notifications.NewService(repos.NotificationRepo)
+	userService := users.NewService(repos.UserRepo)
+	systemLogService := logs.NewService(
+		repos.SystemLogRepo,
+		notificationsService,
+		userService,
+	)
 	apiKeyService := apikeys.NewService(
 		repos.APIKeyRepo,
 		systemLogService,
 		notificationsService,
 	)
 	authService := auth.NewService(repos.UserRepo, redis)
-	userService := users.NewService(repos.UserRepo)
 	locationsService := locations.NewService(repos.LocationsRepo)
 
 	gotenbergClient := gotenberg.NewClient(cfg.GotenbergURL)
@@ -58,22 +62,30 @@ func getServices(
 	studentService := students.NewService(
 		repos.StudentRepo,
 		locationsService,
+		userService,
 		systemLogService,
+		notificationsService,
 		cfg,
 		pdfService,
 	)
-	noteService := notes.NewService(repos.NoteRepo)
+	noteService := notes.NewService(
+		repos.NoteRepo,
+		systemLogService,
+		notificationsService,
+	)
 	externalStudentService := external.NewService(repos.ExternalStudentRepo)
 	appointmentService := appointments.NewService(
 		repos.AppointmentRepo,
 		notificationsService,
 		systemLogService,
+		userService,
 	)
 	slipService := slips.NewService(
 		repos.SlipRepo,
 		systemLogService,
 		notificationsService,
 		fileStorage,
+		userService,
 	)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo)
 

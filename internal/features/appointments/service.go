@@ -19,17 +19,20 @@ type Service struct {
 	repo         RepositoryInterface
 	notifService audit.Notifier
 	logService   audit.Logger
+	userService  users.ServiceInterface
 }
 
 func NewService(
 	repo RepositoryInterface,
 	notifService audit.Notifier,
 	logService audit.Logger,
+	userService users.ServiceInterface,
 ) *Service {
 	return &Service{
 		repo:         repo,
 		notifService: notifService,
 		logService:   logService,
+		userService:  userService,
 	}
 }
 
@@ -80,6 +83,44 @@ func (s *Service) CreateAppointment(
 		return nil, err
 	}
 
+	// Fetch personalized notification targets
+	userID := audit.ExtractUserID(ctx)
+	student, _ := s.userService.GetUserByID(ctx, userID)
+	studentName := "A student"
+	if student != nil {
+		studentName = fmt.Sprintf("%s %s", student.FirstName, student.LastName)
+	}
+
+	counselorIDs, _ := s.userService.GetUserIDsByRole(
+		ctx,
+		int(constants.CounselorRoleID),
+	)
+
+	notifications := []audit.NotificationParams{
+		{
+			ReceiverID: structs.StringToNullableString(userID),
+			TargetID:   structs.StringToNullableString(appt.ID),
+			TargetType: structs.StringToNullableString(constants.AppointmentEntityType),
+			Title:      "Appointment Created Successfully",
+			Message:    "Your appointment has been created and is pending approval.",
+			Type:       constants.AppointmentEntityType,
+		},
+	}
+
+	for _, cid := range counselorIDs {
+		notifications = append(notifications, audit.NotificationParams{
+			ReceiverID: structs.StringToNullableString(cid),
+			TargetID:   structs.StringToNullableString(appt.ID),
+			TargetType: structs.StringToNullableString(constants.AppointmentEntityType),
+			Title:      "New Appointment Request",
+			Message: fmt.Sprintf(
+				"New appointment request received from %s.",
+				studentName,
+			),
+			Type: constants.AppointmentEntityType,
+		})
+	}
+
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
 			Level:    audit.LevelInfo,
@@ -92,15 +133,7 @@ func (s *Service) CreateAppointment(
 				NewValues:  req,
 			},
 		},
-		Notification: &audit.NotificationParams{
-			TargetID: structs.StringToNullableString(appt.ID),
-			TargetType: structs.StringToNullableString(
-				constants.AppointmentEntityType,
-			),
-			Title:   fmt.Sprintf("Appointment #%s Created", appt.ID),
-			Message: "Your appointment has been created and is pending approval.",
-			Type:    constants.AppointmentEntityType,
-		},
+		Notifications: notifications,
 	})
 
 	return appt, nil
@@ -448,6 +481,39 @@ func (s *Service) UpdateAppointment(
 		return err
 	}
 
+	// Fetch student UserID for notification
+	studentUserID, _ := s.repo.GetUserIDByAppointmentID(ctx, id)
+
+	notifications := []audit.NotificationParams{
+		{
+			ReceiverID: structs.StringToNullableString(studentUserID),
+			TargetID:   structs.StringToNullableString(id),
+			TargetType: structs.StringToNullableString(constants.AppointmentEntityType),
+			Title:      "Appointment Status Updated By %s",
+			Message: fmt.Sprintf(
+				"Appointment scheduled on %s at %s has been updated to '%s'",
+				req.WhenDate,
+				req.TimeSlot.Time,
+				req.Status.Name,
+			),
+			Type: constants.AppointmentEntityType,
+		},
+		{
+			TargetID: structs.StringToNullableString(id),
+			TargetType: structs.StringToNullableString(
+				constants.AppointmentEntityType,
+			),
+			Title: "Appointment Updated Successfully",
+			Message: fmt.Sprintf(
+				"You have successfully updated the status of appointment scheduled on %s at %s to '%s'.",
+				req.WhenDate,
+				req.TimeSlot.Time,
+				req.Status.Name,
+			),
+			Type: constants.AppointmentEntityType,
+		},
+	}
+
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
 			Level:    audit.LevelInfo,
@@ -461,19 +527,7 @@ func (s *Service) UpdateAppointment(
 				NewValues:  req,
 			},
 		},
-		Notification: &audit.NotificationParams{
-			ReceiverID: structs.StringToNullableString(req.User.ID),
-			TargetID:   structs.StringToNullableString(id),
-			TargetType: structs.StringToNullableString(
-				constants.AppointmentEntityType,
-			),
-			Title: fmt.Sprintf("Appointment #%s Updated", id),
-			Message: fmt.Sprintf(
-				"Your appointment has been updated. New status: %s",
-				req.Status.Name,
-			),
-			Type: constants.AppointmentEntityType,
-		},
+		Notifications: notifications,
 	})
 
 	return nil

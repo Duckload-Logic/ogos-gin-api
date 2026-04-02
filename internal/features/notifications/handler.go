@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,13 +17,14 @@ func NewHandler(service ServiceInterface) *Handler {
 }
 
 func (h *Handler) GetNotifications(c *gin.Context) {
-	userID := c.Param("userId")
+	userID := c.MustGet("userID").(string)
 
 	notifications, err := h.service.GetUserNotifications(
 		c.Request.Context(),
 		userID,
 	)
 	if err != nil {
+		log.Printf("[GetNotifications] {Database Query}: %v", err)
 		response.SendError(
 			c,
 			"Failed to fetch notifications",

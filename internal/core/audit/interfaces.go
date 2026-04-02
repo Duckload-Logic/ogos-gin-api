@@ -15,3 +15,8 @@ type Logger interface {
 type Notifier interface {
 	Send(ctx context.Context, notif NotificationEntry) error
 }
+
+// UserGetter defines the interface for fetching user IDs by role.
+type UserGetter interface {
+	GetUserIDsByRole(ctx context.Context, roleID int) ([]string, error)
+}

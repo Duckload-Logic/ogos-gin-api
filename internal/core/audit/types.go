@@ -61,12 +61,14 @@ const (
 	ActionNoteDeleted      = "NOTE_DELETED"
 	ActionNoteDeleteFailed = "NOTE_DELETE_FAILED"
 
-	ActionStudentRecordCreated      = "STUDENT_RECORD_CREATED"
-	ActionStudentRecordCreateFailed = "STUDENT_RECORD_CREATE_FAILED"
-	ActionStudentRecordUpdated      = "STUDENT_RECORD_UPDATED"
-	ActionStudentRecordUpdateFailed = "STUDENT_RECORD_UPDATE_FAILED"
-	ActionStudentRecordDeleted      = "STUDENT_RECORD_DELETED"
-	ActionStudentRecordDeleteFailed = "STUDENT_RECORD_DELETE_FAILED"
+	ActionIIRCreated      = "IIR_CREATED"
+	ActionIIRCreateFailed = "IIR_CREATE_FAILED"
+	ActionIIRUpdated      = "IIR_UPDATED"
+	ActionIIRUpdateFailed = "IIR_UPDATE_FAILED"
+	ActionIIRDeleted      = "IIR_DELETED"
+	ActionIIRDeleteFailed = "IIR_DELETE_FAILED"
+	ActionIIRDraftSaved   = "IIR_DRAFT_SAVED"
+	ActionIIRSubmitted     = "IIR_SUBMITTED"
 )
 
 // System log actions — track system-level events

@@ -27,20 +27,23 @@ type Service struct {
 	repo         RepositoryInterface
 	logService   audit.Logger
 	notifService audit.Notifier
-	storage      storage.FileStorage
+	fileStorage  storage.FileStorage
+	userService  users.ServiceInterface
 }
 
 func NewService(
 	repo RepositoryInterface,
 	logService audit.Logger,
 	notifService audit.Notifier,
-	storage storage.FileStorage,
+	fileStorage storage.FileStorage,
+	userService users.ServiceInterface,
 ) *Service {
 	return &Service{
 		repo:         repo,
 		logService:   logService,
 		notifService: notifService,
-		storage:      storage,
+		fileStorage:  fileStorage,
+		userService:  userService,
 	}
 }
 
@@ -434,16 +437,57 @@ func (s *Service) SubmitExcuseSlip(
 					Error:      err.Error(),
 				},
 			},
-			Notification: &audit.NotificationParams{
-				Title: fmt.Sprintf("Slip Creation Failed for IIR #%s", iirID),
-				Message: fmt.Sprintf(
-					"An error occurred while creating the slip: %s",
-					err.Error(),
-				),
-				Type: constants.SlipEntityType,
+			Notifications: []audit.NotificationParams{
+				{
+					Title: fmt.Sprintf("Slip Creation Failed for IIR #%s", iirID),
+					Message: fmt.Sprintf(
+						"An error occurred while creating the slip: %s",
+						err.Error(),
+					),
+					Type: constants.SlipEntityType,
+				},
 			},
 		})
 		return nil, err
+	}
+
+	// Fetch personalized notification targets
+	userID := audit.ExtractUserID(ctx)
+	student, _ := s.userService.GetUserByID(ctx, userID)
+	studentName := "A student"
+	if student != nil {
+		studentName = fmt.Sprintf("%s %s", student.FirstName, student.LastName)
+	}
+
+	counselorIDs, _ := s.userService.GetUserIDsByRole(
+		ctx,
+		int(constants.CounselorRoleID),
+	)
+
+	notifications := []audit.NotificationParams{
+		{
+			ReceiverID: structs.StringToNullableString(userID),
+			TargetID:   structs.StringToNullableString(slip.ID),
+			TargetType: structs.StringToNullableString(constants.SlipEntityType),
+			Title:      "Admission Slip Submitted Successfully",
+			Message:    "Your admission slip request has been submitted.",
+			Type:       constants.SlipEntityType,
+		},
+	}
+
+	for _, cid := range counselorIDs {
+		notifications = append(notifications, audit.NotificationParams{
+			ReceiverID: structs.StringToNullableString(cid),
+			TargetID:   structs.StringToNullableString(slip.ID),
+			TargetType: structs.StringToNullableString(constants.SlipEntityType),
+			Title:      "New Admission Slip Request",
+			Message: fmt.Sprintf(
+				"New admission slip request received from %s for %s.",
+				studentName,
+				slip.DateOfAbsence,
+			),
+			Type: constants.SlipEntityType,
+		})
 	}
 
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
@@ -458,6 +502,7 @@ func (s *Service) SubmitExcuseSlip(
 				NewValues:  slip,
 			},
 		},
+		Notifications: notifications,
 	})
 
 	return slip, nil
@@ -482,7 +527,7 @@ func (s *Service) uploadToBlob(
 	contentType := http.DetectContentType(data)
 	reader := bytes.NewReader(data)
 
-	return s.storage.Upload(ctx, blobPath, reader, contentType)
+	return s.fileStorage.Upload(ctx, blobPath, reader, contentType)
 }
 
 // DownloadAttachment streams the attachment from Azure Blob Storage.
@@ -502,7 +547,7 @@ func (s *Service) DownloadAttachment(
 	// Convert URL path "/slips/hash/file" to blob path "slips/hash/file"
 	blobPath := strings.TrimPrefix(attachment.FileURL, "/")
 
-	if err := s.storage.Download(ctx, blobPath, writer); err != nil {
+	if err := s.fileStorage.Download(ctx, blobPath, writer); err != nil {
 		return nil, fmt.Errorf("failed to download file: %w", err)
 	}
 
@@ -549,7 +594,7 @@ func (s *Service) UpdateExcuseSlipStatus(
 							Category: audit.CategoryAudit,
 							Action:   audit.ActionSlipFailed,
 							Message: fmt.Sprintf(
-								"Failed to update status for slip #%s: %s",
+								"Failed to update status for admission slip #%s: %s",
 								id,
 								err.Error(),
 							),
@@ -559,18 +604,50 @@ func (s *Service) UpdateExcuseSlipStatus(
 								Error:      err.Error(),
 							},
 						},
-						Notification: &audit.NotificationParams{
-							Title: "Slip Status Update Failed",
-							Message: fmt.Sprintf(
-								"Failed to update status for slip #%s: %s",
-								id,
-								err.Error(),
-							),
-							Type: constants.SlipEntityType,
+						Notifications: []audit.NotificationParams{
+							{
+								Title: "Admission Slip Status Update Failed",
+								Message: fmt.Sprintf(
+									"Failed to update status for admission slip #%s: %s",
+									id,
+									err.Error(),
+								),
+								Type: constants.SlipEntityType,
+							},
 						},
 					},
 				)
 				return err
+			}
+
+			// Fetch student UserID for notification
+			studentUserID, _ := s.repo.GetUserIDBySlipID(ctx, id)
+
+			notifications := []audit.NotificationParams{
+				{
+					ReceiverID: structs.StringToNullableString(studentUserID),
+					TargetID:   structs.StringToNullableString(id),
+					TargetType: structs.StringToNullableString(constants.SlipEntityType),
+					Title:      "Admission Slip Updated",
+					Message: fmt.Sprintf(
+						"Status for your admission slip has been updated to '%s'",
+						newStatus,
+					),
+					Type: constants.SlipEntityType,
+				},
+				{
+					TargetID: structs.StringToNullableString(id),
+					TargetType: structs.StringToNullableString(
+						constants.SlipEntityType,
+					),
+					Title: "Admission Slip Updated Successfully",
+					Message: fmt.Sprintf(
+						"You have successfully updated the status of admission slip #%s to '%s'.",
+						id,
+						newStatus,
+					),
+					Type: constants.SlipEntityType,
+				},
 			}
 
 			audit.Dispatch(
@@ -584,7 +661,7 @@ func (s *Service) UpdateExcuseSlipStatus(
 						Category: audit.CategoryAudit,
 						Action:   audit.ActionSlipStatusUpdated,
 						Message: fmt.Sprintf(
-							"Excuse slip #%s status changed to '%s'",
+							"Admission slip #%s status changed to '%s'",
 							id,
 							newStatus,
 						),
@@ -598,19 +675,7 @@ func (s *Service) UpdateExcuseSlipStatus(
 							},
 						},
 					},
-					Notification: &audit.NotificationParams{
-						TargetID: structs.StringToNullableString(id),
-						TargetType: structs.StringToNullableString(
-							constants.SlipEntityType,
-						),
-						Title: "Slip Status Updated",
-						Message: fmt.Sprintf(
-							"Status for slip #%s changed to '%s'",
-							id,
-							newStatus,
-						),
-						Type: constants.SlipEntityType,
-					},
+					Notifications: notifications,
 				},
 			)
 			return nil

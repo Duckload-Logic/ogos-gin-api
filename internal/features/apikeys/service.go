@@ -116,10 +116,12 @@ func (s *Service) GenerateKey(
 				NewValues:  req,
 			},
 		},
-		Notification: &audit.NotificationParams{
-			Type:    constants.APIKeyEntityType,
-			Title:   "API Key created",
-			Message: fmt.Sprintf("API key '%s' has been created", req.Name),
+		Notifications: []audit.NotificationParams{
+			{
+				Title:   "API Key Created",
+				Message: fmt.Sprintf("A new API key '%s' has been created.", req.Name),
+				Type:    constants.APIKeyEntityType,
+			},
 		},
 	})
 

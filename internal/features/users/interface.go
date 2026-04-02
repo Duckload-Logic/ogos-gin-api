@@ -14,6 +14,7 @@ type ServiceInterface interface {
 		email string,
 		authType string,
 	) (*GetUserResponse, error)
+	GetUserIDsByRole(ctx context.Context, roleID int) ([]string, error)
 }
 
 type RepositoryInterface interface {
@@ -25,6 +26,7 @@ type RepositoryInterface interface {
 		email string,
 		authType string,
 	) (*User, error)
+	GetUserIDsByRole(ctx context.Context, roleID int) ([]string, error)
 	CreateUser(ctx context.Context, tx datastore.DB, user User) error
 	BlockUser(ctx context.Context, tx datastore.DB, userID string) error
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error

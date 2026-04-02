@@ -55,7 +55,7 @@ func getHandlers(
 		UserHandler:      users.NewHandler(services.UserService),
 		LocationsHandler: locations.NewHandler(services.LocationsService),
 		StudentHandler:   students.NewHandler(services.StudentService),
-		NoteHandler:      notes.NewHandler(services.NoteService),
+		NoteHandler:      notes.NewHandler(services.NoteService, services.SystemLogService),
 		ExternalStudentHandler: external.NewHandler(
 			services.ExternalStudentService,
 		),

@@ -39,6 +39,13 @@ func (s *Service) GetUserByEmail(
 	return s.mapUserModelToResponse(user), nil
 }
 
+func (s *Service) GetUserIDsByRole(
+	ctx context.Context,
+	roleID int,
+) ([]string, error) {
+	return s.repo.GetUserIDsByRole(ctx, roleID)
+}
+
 func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
 	role, err := s.repo.GetRoleByID(context.Background(), user.RoleID)
 	if err != nil {

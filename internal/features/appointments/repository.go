@@ -110,6 +110,21 @@ func (r *Repository) GetAppointment(
 	return &appt, nil
 }
 
+func (r *Repository) GetUserIDByAppointmentID(
+	ctx context.Context,
+	id string,
+) (string, error) {
+	var userID string
+	query := `
+		SELECT ir.user_id
+		FROM appointments a
+		JOIN iir_records ir ON a.iir_id = ir.id
+		WHERE a.id = ?
+	`
+	err := r.db.GetContext(ctx, &userID, query, id)
+	return userID, err
+}
+
 func (r *Repository) GetDailyStatusCount(
 	ctx context.Context,
 	startDate, endDate string,

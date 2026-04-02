@@ -6,14 +6,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 )
 
 type Handler struct {
-	service ServiceInterface
+	service    ServiceInterface
+	logService logs.ServiceInterface
 }
 
-func NewHandler(service ServiceInterface) *Handler {
-	return &Handler{service: service}
+func NewHandler(
+	service ServiceInterface,
+	logService logs.ServiceInterface,
+) *Handler {
+	return &Handler{
+		service:    service,
+		logService: logService,
+	}
 }
 
 func (h *Handler) GetSignificantNotes(

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 )
@@ -35,12 +36,22 @@ func AuditContextMiddleware() gin.HandlerFunc {
 			}
 		}
 
+		roleID := ""
+		if val, exists := c.Get("roleID"); exists {
+			if r, ok := val.(int); ok {
+				roleID = fmt.Sprintf("%d", r)
+			} else if rs, ok := val.(string); ok {
+				roleID = rs
+			}
+		}
+
 		ctx := audit.WithContext(
 			c.Request.Context(),
 			ipAddress,
 			userAgent,
 			userID,
 			userEmail.(string),
+			roleID,
 			traceID,
 		)
 		c.Request = c.Request.WithContext(ctx)
