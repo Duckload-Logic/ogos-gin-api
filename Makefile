@@ -65,7 +65,7 @@ swagger-internal:
 	./internal/features/auth,\
 	./internal/features/users,\
 	./internal/features/appointments,\
-	./internal/features/excuseslips,\
+	./internal/features/slips,\
 	./internal/features/students
 	--output ./docs/internal \
     --instanceName internal
