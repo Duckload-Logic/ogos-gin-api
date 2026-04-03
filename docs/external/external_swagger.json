@@ -1,9 +1,9 @@
 {
     "swagger": "2.0",
     "info": {
-        "title": "DuckLoad API",
+        "title": "Student data API",
         "contact": {},
-        "version": "1.0"
+        "version": "2.0"
     },
     "basePath": "/api/v1",
     "paths": {
@@ -297,23 +297,14 @@
         "external.OGOSListStudentsResponse": {
             "type": "object",
             "properties": {
-                "page": {
-                    "type": "integer"
-                },
-                "pageSize": {
-                    "type": "integer"
+                "meta": {
+                    "$ref": "#/definitions/structs.PaginationMetadata"
                 },
                 "students": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/external.OGOSStudentDTO"
                     }
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "totalPages": {
-                    "type": "integer"
                 }
             }
         },
@@ -493,6 +484,23 @@
                 }
             }
         },
+        "structs.PaginationMetadata": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
         "students.Course": {
             "type": "object",
             "properties": {
@@ -522,7 +530,7 @@
     "securityDefinitions": {
         "ApiKeyAuth": {
             "type": "apiKey",
-            "name": "x-api-key",
+            "name": "Authorization",
             "in": "header"
         }
     }

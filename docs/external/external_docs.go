@@ -305,23 +305,14 @@ const docTemplateexternal = `{
         "external.OGOSListStudentsResponse": {
             "type": "object",
             "properties": {
-                "page": {
-                    "type": "integer"
-                },
-                "pageSize": {
-                    "type": "integer"
+                "meta": {
+                    "$ref": "#/definitions/structs.PaginationMetadata"
                 },
                 "students": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/external.OGOSStudentDTO"
                     }
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "totalPages": {
-                    "type": "integer"
                 }
             }
         },
@@ -501,6 +492,23 @@ const docTemplateexternal = `{
                 }
             }
         },
+        "structs.PaginationMetadata": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
         "students.Course": {
             "type": "object",
             "properties": {
@@ -530,7 +538,7 @@ const docTemplateexternal = `{
     "securityDefinitions": {
         "ApiKeyAuth": {
             "type": "apiKey",
-            "name": "x-api-key",
+            "name": "Authorization",
             "in": "header"
         }
     }
@@ -538,11 +546,11 @@ const docTemplateexternal = `{
 
 // SwaggerInfoexternal holds exported Swagger Info so clients can modify it
 var SwaggerInfoexternal = &swag.Spec{
-	Version:          "1.0",
+	Version:          "2.0",
 	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "DuckLoad API",
+	Title:            "Student data API",
 	Description:      "",
 	InfoInstanceName: "external",
 	SwaggerTemplate:  docTemplateexternal,
