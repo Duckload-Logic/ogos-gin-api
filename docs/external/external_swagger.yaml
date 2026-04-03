@@ -46,8 +46,6 @@ definitions:
         type: string
       suffixName:
         type: string
-      userId:
-        type: string
       yearLevel:
         type: integer
     type: object
@@ -156,7 +154,132 @@ info:
   title: Student data API
   version: "2.0"
 paths:
-  /students/external:
+  /students/external/{studentNumber}:
+    get:
+      consumes:
+      - application/json
+      description: Get student information by user ID
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/external.OGOSStudentDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get student by user ID
+      tags:
+      - External Students
+  /students/external/{studentNumber}/addresses:
+    get:
+      consumes:
+      - application/json
+      description: Get all addresses of a student by their student number
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/external.OGOSStudentAddressDTO'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get student addresses by student number
+      tags:
+      - External Students
+  /students/external/{studentNumber}/personal-info:
+    get:
+      consumes:
+      - application/json
+      description: Get personal information of a student by their student number
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/external.OGOSStudentPersonalInfoDTO'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      summary: Get personal information by student number
+      tags:
+      - External Students
+  /students/external/profiles:
     get:
       consumes:
       - application/json
@@ -213,131 +336,6 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: List students
-      tags:
-      - External Students
-  /students/external/addresses/{studentNumber}:
-    get:
-      consumes:
-      - application/json
-      description: Get all addresses of a student by their student number
-      parameters:
-      - description: Student number of the student
-        in: path
-        name: studentNumber
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/external.OGOSStudentAddressDTO'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Get student addresses by student number
-      tags:
-      - External Students
-  /students/external/by-id/{userID}:
-    get:
-      consumes:
-      - application/json
-      description: Get student information by user ID
-      parameters:
-      - description: User ID of the student
-        in: path
-        name: userID
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/external.OGOSStudentDTO'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Get student by user ID
-      tags:
-      - External Students
-  /students/external/personal-info/{studentNumber}:
-    get:
-      consumes:
-      - application/json
-      description: Get personal information of a student by their student number
-      parameters:
-      - description: Student number of the student
-        in: path
-        name: studentNumber
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/external.OGOSStudentPersonalInfoDTO'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - ApiKeyAuth: []
-      summary: Get personal information by student number
       tags:
       - External Students
 securityDefinitions:

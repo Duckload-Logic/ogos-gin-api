@@ -15,7 +15,7 @@ const docTemplateexternal = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/students/external": {
+        "/students/external/profiles": {
             "get": {
                 "security": [
                     {
@@ -105,7 +105,71 @@ const docTemplateexternal = `{
                 }
             }
         },
-        "/students/external/addresses/{studentNumber}": {
+        "/students/external/{studentNumber}": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get student information by user ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "External Students"
+                ],
+                "summary": "Get student by user ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student number of the student",
+                        "name": "studentNumber",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/external.OGOSStudentDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/external/{studentNumber}/addresses": {
             "get": {
                 "security": [
                     {
@@ -172,71 +236,7 @@ const docTemplateexternal = `{
                 }
             }
         },
-        "/students/external/by-id/{userID}": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Get student information by user ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "External Students"
-                ],
-                "summary": "Get student by user ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID of the student",
-                        "name": "userID",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/external.OGOSStudentDTO"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/students/external/personal-info/{studentNumber}": {
+        "/students/external/{studentNumber}/personal-info": {
             "get": {
                 "security": [
                     {
@@ -370,9 +370,6 @@ const docTemplateexternal = `{
                     "type": "string"
                 },
                 "suffixName": {
-                    "type": "string"
-                },
-                "userId": {
                     "type": "string"
                 },
                 "yearLevel": {
