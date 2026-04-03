@@ -21,7 +21,6 @@ func (r *Repository) ListStudents(
 	query := `
 		SELECT
 			sp.student_number AS student_number,
-			u.id AS user_id,
 			u.first_name AS first_name,
 			u.middle_name AS middle_name,
 			u.last_name AS last_name,
@@ -87,14 +86,13 @@ func (r *Repository) ListStudents(
 	return students, total, nil
 }
 
-func (r *Repository) GetStudentByUserID(
+func (r *Repository) GetStudentByStudentNumber(
 	ctx context.Context,
-	userID string,
+	studentNumber string,
 ) (*OGOSStudentView, error) {
 	query := `
 		SELECT
 			sp.student_number AS student_number,
-			u.id AS user_id,
 			u.first_name AS first_name,
 			u.middle_name AS middle_name,
 			u.last_name AS last_name,
@@ -109,12 +107,12 @@ func (r *Repository) GetStudentByUserID(
 		JOIN iir_records i ON i.user_id = u.id
 		JOIN student_personal_info sp ON sp.iir_id = i.id
 		JOIN courses c ON sp.course_id = c.id
-		WHERE u.id = ?
+		WHERE sp.student_number = ?
 		LIMIT 1
 	`
 
 	var student OGOSStudentView
-	err := r.db.GetContext(ctx, &student, query, userID)
+	err := r.db.GetContext(ctx, &student, query, studentNumber)
 	if err != nil {
 		return nil, err
 	}

@@ -20,7 +20,6 @@ type OGOSListStudentsResponse struct {
 
 type OGOSStudentDTO struct {
 	StudentNumber string `json:"studentNumber"`
-	UserID        string `json:"userId"`
 
 	FirstName  string                 `json:"firstName"`
 	MiddleName structs.NullableString `json:"middleName,omitempty"`
@@ -36,20 +35,22 @@ type OGOSStudentDTO struct {
 }
 
 type OGOSStudentPersonalInfoDTO struct {
-	StudentNumber string          `json:"studentNumber"`
-	Gender        students.Gender `json:"gender"`
-	DateOfBirth   string          `json:"dateOfBirth"`
-	PlaceOfBirth  string          `json:"placeOfBirth"`
-	HeightFt      float32         `json:"heightFt"`
-	WeightKg      float32         `json:"weightKg"`
+	StudentNumber string `json:"studentNumber"`
+
+	Gender       students.Gender `json:"gender"`
+	DateOfBirth  string          `json:"dateOfBirth"`
+	PlaceOfBirth string          `json:"placeOfBirth"`
+	HeightFt     float32         `json:"heightFt"`
+	WeightKg     float32         `json:"weightKg"`
 }
 
 type OGOSStudentAddressDTO struct {
-	StudentNumber string                 `json:"studentNumber"`
-	AddressType   string                 `json:"addressType,omitempty"`
-	StreetDetail  string                 `json:"streetDetail"`
-	Barangay      locations.Barangay     `json:"barangay"`
-	City          locations.City         `json:"city"`
-	Province      *locations.ProvinceDTO `json:"province,omitempty"`
-	Region        locations.Region       `json:"region,omitempty"`
+	StudentNumber string `json:"studentNumber"`
+
+	AddressType  string                 `json:"addressType,omitempty"`
+	StreetDetail string                 `json:"streetDetail"`
+	Barangay     locations.Barangay     `json:"barangay"`
+	City         locations.City         `json:"city"`
+	Province     *locations.ProvinceDTO `json:"province,omitempty"`
+	Region       locations.Region       `json:"region,omitempty"`
 }

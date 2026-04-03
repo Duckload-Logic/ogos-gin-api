@@ -3,11 +3,11 @@ package external
 import "database/sql"
 
 type OGOSStudentView struct {
-	StudentNumber string         `db:"student_number"`
-	UserID        string         `db:"user_id"`
-	FirstName     string         `db:"first_name"`
-	MiddleName    sql.NullString `db:"middle_name,omitempty"`
-	LastName      string         `db:"last_name"`
+	StudentNumber string `db:"student_number"`
+
+	FirstName  string         `db:"first_name"`
+	MiddleName sql.NullString `db:"middle_name,omitempty"`
+	LastName   string         `db:"last_name"`
 
 	Email        string `db:"email"`
 	MobileNumber string `db:"mobile_number"`
@@ -20,13 +20,14 @@ type OGOSStudentView struct {
 }
 
 type OGOSStudentPersonalInfoView struct {
-	StudentNumber string  `db:"student_number"`
-	GenderID      int     `db:"gender_id"`
-	GenderName    string  `db:"gender_name"`
-	DateOfBirth   string  `db:"date_of_birth"`
-	PlaceOfBirth  string  `db:"place_of_birth"`
-	HeightFt      float32 `db:"height_ft"`
-	WeightKg      float32 `db:"weight_kg"`
+	StudentNumber string `db:"student_number"`
+
+	GenderID     int     `db:"gender_id"`
+	GenderName   string  `db:"gender_name"`
+	DateOfBirth  string  `db:"date_of_birth"`
+	PlaceOfBirth string  `db:"place_of_birth"`
+	HeightFt     float32 `db:"height_ft"`
+	WeightKg     float32 `db:"weight_kg"`
 }
 
 type OGOSStudentAddressView struct {

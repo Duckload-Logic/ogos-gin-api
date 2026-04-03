@@ -9,9 +9,9 @@ type ServiceInterface interface {
 		ctx context.Context,
 		req OGOSListStudentsRequest,
 	) (OGOSListStudentsResponse, error)
-	GetStudentByUserID(
+	GetStudentByStudentNumber(
 		ctx context.Context,
-		userID string,
+		studentNumber string,
 	) (*OGOSStudentDTO, error)
 	GetPersonalInfoByStudentNumber(
 		ctx context.Context,
@@ -28,9 +28,9 @@ type RepositoryInterface interface {
 		ctx context.Context,
 		req OGOSListStudentsRequest,
 	) ([]OGOSStudentView, int, error)
-	GetStudentByUserID(
+	GetStudentByStudentNumber(
 		ctx context.Context,
-		userID string,
+		studentNumber string,
 	) (*OGOSStudentView, error)
 	GetPersonalInfoByStudentNumber(
 		ctx context.Context,

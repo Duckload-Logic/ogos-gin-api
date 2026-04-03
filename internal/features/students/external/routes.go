@@ -15,11 +15,11 @@ func RegisterRoutes(
 	routes := rg.Group("/students/external")
 	routes.Use(middleware.APIKeyMiddleware(validator))
 
-	routes.GET("", h.GetStudents)
-	routes.GET("/by-id/:userID", h.GetStudentByUserID)
+	routes.GET("/profiles", h.GetStudents)
+	routes.GET("/:studentNumber", h.GetStudentByStudentNumber)
 	routes.GET(
-		"/personal-info/:studentNumber",
+		"/:studentNumber/personal-info",
 		h.GetPersonalInfoByStudentNumber,
 	)
-	routes.GET("/addresses/:studentNumber", h.GetAddressByStudentNumber)
+	routes.GET("/:studentNumber/addresses", h.GetAddressByStudentNumber)
 }

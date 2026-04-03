@@ -34,7 +34,7 @@ func NewHandler(service ServiceInterface) *Handler {
 // @Success 200 {object} OGOSListStudentsResponse
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Failure 500 {object} map[string]string "Internal Server Error"
-// @Router /students/external [get]
+// @Router /students/external/profiles [get]
 func (h *Handler) GetStudents(c *gin.Context) {
 	var req OGOSListStudentsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -65,22 +65,22 @@ func (h *Handler) GetStudents(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param userID path string true "User ID of the student"
+// @Param studentNumber path string true "Student number of the student"
 // @Success 200 {object} OGOSStudentDTO
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
-// @Router /students/external/by-id/{userID} [get]
-func (h *Handler) GetStudentByUserID(c *gin.Context) {
-	userID := c.Param("userID")
-	if userID == "" {
-		response.SendFail(c, gin.H{"error": "userID parameter is required"})
+// @Router /students/external/{studentNumber} [get]
+func (h *Handler) GetStudentByStudentNumber(c *gin.Context) {
+	studentNumber := c.Param("studentNumber")
+	if studentNumber == "" {
+		response.SendFail(c, gin.H{"error": "studentNumber parameter is required"})
 		return
 	}
 
-	student, err := h.service.GetStudentByUserID(c.Request.Context(), userID)
+	student, err := h.service.GetStudentByStudentNumber(c.Request.Context(), studentNumber)
 	if err != nil {
-		log.Printf("[GetStudentByUserID] {Service Get}: %v", err)
+		log.Printf("[GetStudentByStudentNumber] {Service Get}: %v", err)
 		response.SendError(
 			c,
 			string(constants.ErrInternalServerError),
@@ -114,7 +114,7 @@ func (h *Handler) GetStudentByUserID(c *gin.Context) {
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
-// @Router /students/external/personal-info/{studentNumber} [get]
+// @Router /students/external/{studentNumber}/personal-info [get]
 func (h *Handler) GetPersonalInfoByStudentNumber(c *gin.Context) {
 	studentNumber := c.Param("studentNumber")
 	if studentNumber == "" {
@@ -164,7 +164,7 @@ func (h *Handler) GetPersonalInfoByStudentNumber(c *gin.Context) {
 // @Failure 400 {object} map[string]string "Bad Request"
 // @Failure 404 {object} map[string]string "Not Found"
 // @Failure 500 {object} map[string]string "Internal Server Error"
-// @Router /students/external/addresses/{studentNumber} [get]
+// @Router /students/external/{studentNumber}/addresses [get]
 func (h *Handler) GetAddressByStudentNumber(c *gin.Context) {
 	studentNumber := c.Param("studentNumber")
 	if studentNumber == "" {
