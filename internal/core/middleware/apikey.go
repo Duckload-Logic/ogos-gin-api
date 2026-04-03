@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,12 +24,29 @@ func APIKeyMiddleware(validate APIKeyValidator) gin.HandlerFunc {
 			logSvc, _ = svc.(SecurityLogger)
 		}
 
-		key := c.GetHeader("X-API-Key")
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "API key is required (Authorization header)"},
+			)
+			return
+		}
 
+		// Extract the API key from the Authorization header
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "Invalid Authorization header format"},
+			)
+			return
+		}
+
+		key := strings.TrimPrefix(authHeader, "Bearer ")
 		if key == "" {
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
-				gin.H{"error": "API key is required (X-API-Key header)"},
+				gin.H{"error": "API key cannot be empty"},
 			)
 			return
 		}

@@ -24,8 +24,8 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/swag/example/basic/docs"
 
-	docs "github.com/olazo-johnalbert/duckload-api/docs"
 	externalDocs "github.com/olazo-johnalbert/duckload-api/docs/external"
 )
 

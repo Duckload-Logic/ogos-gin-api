@@ -12,13 +12,13 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/server"
 )
 
-// @title           DuckLoad API
-// @version         1.0
+// @title           Student data API
+// @version         2.0
 // @BasePath        /api/v1
 
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
-// @name x-api-key
+// @name Authorization
 
 // @securityDefinitions.authorization BearerAuth
 // @in header
