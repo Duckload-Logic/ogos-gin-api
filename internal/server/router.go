@@ -3,30 +3,31 @@ package server
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	docs "github.com/olazo-johnalbert/duckload-api/docs/internal_docs"
 	"github.com/olazo-johnalbert/duckload-api/internal/bootstrap"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/middleware"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/m2mclients"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/students/integrations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/swaggo/swag/example/basic/docs"
 
-	externalDocs "github.com/olazo-johnalbert/duckload-api/docs/external"
+	integrationDocs "github.com/olazo-johnalbert/duckload-api/docs/integrations"
 )
 
 func NewRouter(
@@ -34,31 +35,23 @@ func NewRouter(
 	handlers *bootstrap.Handlers,
 	cfg *config.Config,
 ) *gin.Engine {
-	localOrigins := []string{
-		"http://localhost:8080",
-		"http://127.0.0.1:8080",
-		"http://localhost:5173",
-	}
-
-	prodOrigins := []string{
-		"https://pupt-ogos.dllbsit2027.com",
-		"https://lemon-field-0c62e2800.1.azurestaticapps.net",
-	}
-
-	var origins []string
 	log.Printf("PRODUCTION MODE: %v", cfg.IsProduction)
 	if cfg.IsProduction {
 		gin.SetMode(gin.ReleaseMode)
-		origins = prodOrigins
 	} else {
 		gin.SetMode(gin.DebugMode)
-		origins = localOrigins
 	}
 
 	g := gin.Default()
 
 	corsConfig := cors.Config{
-		AllowOrigins: origins,
+		AllowOriginFunc: func(origin string) bool {
+			if cfg.IsProduction {
+				return strings.HasSuffix(origin, ".dllbsit2027.com")
+			}
+
+			return strings.HasPrefix(origin, "http://localhost")
+		},
 		AllowMethods: []string{
 			"GET",
 			"POST",
@@ -73,7 +66,6 @@ func NewRouter(
 			"Accept",
 			"Authorization",
 			"X-Requested-With",
-			"x-api-key",
 			"X-Trace-ID",
 		},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -97,15 +89,15 @@ func NewRouter(
 	apiV1Routes := g.Group("/api/v1")
 
 	apiV1Routes.GET("/docs/internal/*any", func(c *gin.Context) {
-		docs.SwaggerInfo.Host = c.Request.Host
+		docs.SwaggerInfointernal.Host = c.Request.Host
 		ginSwagger.WrapHandler(swaggerFiles.Handler,
 			ginSwagger.InstanceName("internal"),
 		)(c)
 	})
-	apiV1Routes.GET("/docs/external/*any", func(c *gin.Context) {
-		externalDocs.SwaggerInfoexternal.Host = c.Request.Host
+	apiV1Routes.GET("/docs/integrations/*any", func(c *gin.Context) {
+		integrationDocs.SwaggerInfointegrations.Host = c.Request.Host
 		ginSwagger.WrapHandler(swaggerFiles.Handler,
-			ginSwagger.InstanceName("external"),
+			ginSwagger.InstanceName("integrations"),
 		)(c)
 	})
 
@@ -148,7 +140,11 @@ func NewRouter(
 		handlers.AnalyticsHandler,
 		handlers.Redis,
 	)
-	apikeys.RegisterRoutes(apiV1Routes, handlers.APIKeyHandler, handlers.Redis)
+	m2mclients.RegisterRoutes(
+		apiV1Routes,
+		handlers.M2MClientHandler,
+		handlers.Redis,
+	)
 	notifications.RegisterRoutes(
 		db,
 		apiV1Routes,
@@ -158,10 +154,9 @@ func NewRouter(
 	logs.RegisterRoutes(apiV1Routes, handlers.SystemLogHandler, handlers.Redis)
 	notes.RegisterRoutes(db, apiV1Routes, handlers.NoteHandler, handlers.Redis)
 
-	external.RegisterRoutes(
+	integrations.RegisterRoutes(
 		apiV1Routes,
-		handlers.ExternalStudentHandler,
-		handlers.APIKeyHandler.GetService().ValidateKeyFunc(),
+		handlers.IntegrationStudentHandler,
 		handlers.Redis,
 	)
 	return g
