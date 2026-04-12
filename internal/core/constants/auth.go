@@ -2,6 +2,18 @@ package constants
 
 import "time"
 
+const (
+	ClaimsIssuer = "pupt-ogos-api"
+)
+
+type AuthType string
+
+const (
+	AuthTypeNative AuthType = "native"
+	AuthTypeM2M    AuthType = "m2m"
+	AuthTypeIDP    AuthType = "idp"
+)
+
 // OAuth 2.0 parameter constants for IDP integration
 const (
 	// ResponseTypeCode is the OAuth 2.0 response_type parameter value
@@ -26,11 +38,13 @@ const (
 
 	// AccessTokenMaxAge is the maximum age in seconds for access token
 	// cookie (30 minutes = 1800 seconds)
-	AccessTokenMaxAge = 1800
+	AccessTokenMaxAge    = 1800
+	M2MAccessTokenMaxAge = 3600
 
 	// RefreshTokenMaxAge is the maximum age in seconds for refresh token
 	// cookie (12 hours = 43200 seconds)
-	RefreshTokenMaxAge = 43200
+	RefreshTokenMaxAge    = 43200
+	M2MRefreshTokenMaxAge = 86400
 
 	// CookiePathRoot sets cookies to be accessible from root path
 	CookiePathRoot = "/"

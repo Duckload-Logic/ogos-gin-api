@@ -26,13 +26,7 @@ type Config struct {
 
 	IDPClientID     string
 	IDPClientSecret string
-	IDPRedirectURI  string
-	IDPLoginURL     string
-	IDPLogoutURL    string
-	IDPTokenURL     string
-	IDPUserinfoURL  string
-	IDPRefreshURL   string
-	IDPSessionURL   string
+	IDPBaseUrl      string
 
 	RedisHost string
 	RedisPort string
@@ -40,6 +34,11 @@ type Config struct {
 	RedisDB   int
 
 	GotenbergURL string
+
+	SendGridAPIKey string
+
+	MailPitHost string
+	MailPitPort int
 }
 
 func LoadConfig() *Config {
@@ -66,13 +65,7 @@ func LoadConfig() *Config {
 
 		IDPClientID:     os.Getenv("IDP_CLIENT_ID"),
 		IDPClientSecret: os.Getenv("IDP_CLIENT_SECRET"),
-		IDPRedirectURI:  os.Getenv("IDP_REDIRECT_URI"),
-		IDPLoginURL:     os.Getenv("IDP_LOGIN_ENDPOINT"),
-		IDPLogoutURL:    os.Getenv("IDP_LOGOUT_ENDPOINT"),
-		IDPTokenURL:     os.Getenv("IDP_TOKEN_ENDPOINT"),
-		IDPUserinfoURL:  os.Getenv("IDP_USERINFO_ENDPOINT"),
-		IDPRefreshURL:   os.Getenv("IDP_REFRESH_ENDPOINT"),
-		IDPSessionURL:   os.Getenv("IDP_SESSION_ENDPOINT"),
+		IDPBaseUrl:      os.Getenv("IDP_BASE_URL"),
 
 		RedisHost: os.Getenv("REDIS_HOST"),
 		RedisPort: os.Getenv("REDIS_PORT"),
@@ -86,6 +79,18 @@ func LoadConfig() *Config {
 		}(),
 
 		GotenbergURL: os.Getenv("GOTENBERG_URL"),
+
+		SendGridAPIKey: os.Getenv("SENDGRID_API_KEY"),
+
+		MailPitHost: os.Getenv("MAILPIT_HOST"),
+		MailPitPort: func() int {
+			port, err := strconv.Atoi(os.Getenv("MAILPIT_PORT"))
+			if err != nil {
+				return 0
+			}
+
+			return port
+		}(),
 	}
 
 	validateConfig(config)
@@ -115,9 +120,6 @@ func validateConfig(config *Config) {
 	if config.WebsitesPort == "" {
 		panic("WEBSITES_PORT is required")
 	}
-	if config.LocalUploadDIR == "" && !config.IsProduction {
-		panic("UPLOAD_DIR is required for local storage")
-	}
 	if config.IsProduction {
 		if config.AzureStorageConnectionString == "" {
 			panic(
@@ -127,6 +129,20 @@ func validateConfig(config *Config) {
 		if config.AzureContainerName == "" {
 			panic("AZURE_CONTAINER_NAME is required for Azure Blob Storage")
 		}
+		if config.SendGridAPIKey == "" {
+			panic("SENDGRID_API_KEY is required for production")
+		}
+	}
+	if !config.IsProduction {
+		if config.LocalUploadDIR == "" {
+			panic("UPLOAD_DIR is required for local storage")
+		}
+		if config.MailPitHost == "" {
+			panic("MAILPIT_HOST is required for local development")
+		}
+		if config.MailPitPort == 0 {
+			panic("MAILPIT_PORT is required for local development")
+		}
 	}
 	if config.IDPClientID == "" {
 		panic("IDP_CLIENT_ID is required")
@@ -134,26 +150,8 @@ func validateConfig(config *Config) {
 	if config.IDPClientSecret == "" {
 		panic("IDP_CLIENT_SECRET is required")
 	}
-	if config.IDPRedirectURI == "" {
-		panic("IDP_REDIRECT_URI is required")
-	}
-	if config.IDPLoginURL == "" {
-		panic("IDP_LOGIN_ENDPOINT is required")
-	}
-	if config.IDPLogoutURL == "" {
-		panic("IDP_LOGOUT_ENDPOINT is required")
-	}
-	if config.IDPTokenURL == "" {
-		panic("IDP_TOKEN_ENDPOINT is required")
-	}
-	if config.IDPUserinfoURL == "" {
-		panic("IDP_USERINFO_ENDPOINT is required")
-	}
-	if config.IDPRefreshURL == "" {
-		panic("IDP_REFRESH_ENDPOINT is required")
-	}
-	if config.IDPSessionURL == "" {
-		panic("IDP_SESSION_ENDPOINT is required")
+	if config.IDPBaseUrl == "" {
+		panic("IDP_BASE_URL is required")
 	}
 
 	if config.RedisHost == "" {
