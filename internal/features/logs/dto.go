@@ -53,3 +53,9 @@ type LogStatsDTO struct {
 	Category string `json:"category" db:"category"`
 	Count    int    `json:"count"    db:"count"`
 }
+
+type LogActivityDTO struct {
+	Time     string `json:"time"     db:"time"`
+	Requests int    `json:"requests" db:"requests"`
+	Errors   int    `json:"errors"   db:"errors"`
+}

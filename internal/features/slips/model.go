@@ -24,6 +24,7 @@ type SlipWithDetailsView struct {
 	UserMiddleName sql.NullString `json:"userMiddleName"       db:"user_middle_name"`
 	UserLastName   string         `json:"userLastName"         db:"user_last_name"`
 	UserEmail      string         `json:"userEmail"            db:"user_email"`
+	StudentNumber  string         `json:"studentNumber"        db:"student_number"`
 	Reason         string         `json:"reason"               db:"reason"`
 	DateOfAbsence  string         `json:"dateOfAbsence"        db:"date_of_absence"`
 	DateNeeded     string         `json:"dateNeeded"           db:"date_needed"`

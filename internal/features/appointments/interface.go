@@ -14,7 +14,7 @@ type ServiceInterface interface {
 		iirID string,
 		req AppointmentDTO,
 	) (*Appointment, error)
-	GetAppointmentByID(ctx context.Context, id string) (*Appointment, error)
+	GetAppointmentByID(ctx context.Context, id string) (*AppointmentDTO, error)
 	GetDailyStatusCount(
 		ctx context.Context,
 		startDate string,
@@ -50,7 +50,10 @@ type RepositoryInterface interface {
 	GetDB() *sqlx.DB
 	GetTimeSlots(ctx context.Context, date string) ([]TimeSlot, error)
 	GetCategories(ctx context.Context) ([]AppointmentCategory, error)
-	GetAppointment(ctx context.Context, id string) (*Appointment, error)
+	GetAppointment(
+		ctx context.Context,
+		id string,
+	) (*AppointmentWithDetailsView, error)
 	GetDailyStatusCount(
 		ctx context.Context,
 		startDate, endDate string,

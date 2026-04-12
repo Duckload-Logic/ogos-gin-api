@@ -314,6 +314,41 @@ func (h *Handler) GetSlipListByIIR(c *gin.Context) {
 	response.SendSuccess(c, slips)
 }
 
+// GetSlipByID godoc
+// @Summary      Get excuse slip by ID
+// @Description  Retrieves details for a specific excuse slip.
+// @Tags         ExcuseSlips
+// @Produce      json
+// @Param        id   path      string  true  "Slip ID"
+// @Success      200  {object} SlipDTO
+// @Failure      404  {object} map[string]string
+// @Failure      500  {object} map[string]string
+// @Router       /slips/id/{id} [get]
+func (h *Handler) GetSlipByID(c *gin.Context) {
+	idParam := c.Param("id")
+	slip, err := h.service.GetSlipByID(c.Request.Context(), idParam)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			response.SendFail(
+				c,
+				gin.H{"error": "Excuse slip not found"},
+				http.StatusNotFound,
+			)
+			return
+		}
+		log.Printf("[GetSlipByID] {Fetch Slip}: %v", err)
+		response.SendError(
+			c,
+			"Internal server error",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, slip)
+}
+
 // GetSlipAttachmentList godoc
 // @Summary      Get slip attachments
 // @Description  Retrieves attachments for a specific slip.

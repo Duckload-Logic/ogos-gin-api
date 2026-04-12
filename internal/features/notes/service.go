@@ -45,11 +45,12 @@ func (s *Service) GetStudentSignificantNotes(
 	var noteDTOs []SignificantNoteDTO
 	for _, n := range notes {
 		noteDTOs = append(noteDTOs, SignificantNoteDTO{
-			ID:        n.ID,
-			Note:      n.Note,
-			Remarks:   n.Remarks,
-			CreatedAt: n.CreatedAt,
-			UpdatedAt: n.UpdatedAt,
+			ID:            n.ID,
+			AppointmentID: n.AppointmentID.String,
+			Note:          n.Note,
+			Remarks:       n.Remarks,
+			CreatedAt:     n.CreatedAt,
+			UpdatedAt:     n.UpdatedAt,
 		})
 	}
 
@@ -62,8 +63,12 @@ func (s *Service) CreateSignificantNote(
 	noteReq SignificantNoteDTO,
 ) error {
 	note := &SignificantNote{
-		ID:      uuid.New().String(),
-		IIRID:   sql.NullString{String: iirID, Valid: true},
+		ID:    uuid.New().String(),
+		IIRID: sql.NullString{String: iirID, Valid: true},
+		AppointmentID: sql.NullString{
+			String: noteReq.AppointmentID,
+			Valid:  noteReq.AppointmentID != "",
+		},
 		Note:    noteReq.Note,
 		Remarks: noteReq.Remarks,
 	}
@@ -110,4 +115,11 @@ func (s *Service) CreateSignificantNote(
 	})
 
 	return nil
+}
+
+func (s *Service) HasNoteForAppointment(
+	ctx context.Context,
+	appointmentID string,
+) (bool, error) {
+	return s.repo.HasNoteForAppointment(ctx, appointmentID)
 }

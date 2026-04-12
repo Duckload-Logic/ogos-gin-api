@@ -15,6 +15,10 @@ type ServiceInterface interface {
 		iirID string,
 		noteReq SignificantNoteDTO,
 	) error
+	HasNoteForAppointment(
+		ctx context.Context,
+		appointmentID string,
+	) (bool, error)
 }
 
 // RepositoryInterface defines the data access layer for managing student notes.
@@ -27,4 +31,8 @@ type RepositoryInterface interface {
 		ctx context.Context,
 		sn *SignificantNote,
 	) (string, error)
+	HasNoteForAppointment(
+		ctx context.Context,
+		appointmentID string,
+	) (bool, error)
 }

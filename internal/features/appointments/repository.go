@@ -18,9 +18,11 @@ const appointmentsBaseQuery = `
 	SELECT
 		a.id,
 		ir.id AS iir_id,
+		spi.student_number AS student_number,
 		u.first_name AS user_first_name,
 		u.middle_name AS user_middle_name,
 		u.last_name AS user_last_name,
+		u.email AS user_email,
 		a.reason AS reason,
 		a.admin_notes AS admin_notes,
 		a.when_date AS when_date,
@@ -36,6 +38,7 @@ const appointmentsBaseQuery = `
 	FROM appointments a
 	LEFT JOIN iir_records ir ON a.iir_id = ir.id
 	LEFT JOIN users u ON ir.user_id = u.id
+	LEFT JOIN student_personal_info spi ON ir.id = spi.iir_id
 	JOIN time_slots ts ON a.time_slot_id = ts.id
 	JOIN appointment_categories ac ON
 		a.appointment_category_id = ac.id
@@ -88,14 +91,13 @@ func (r *Repository) GetCategories(
 func (r *Repository) GetAppointment(
 	ctx context.Context,
 	id string,
-) (*Appointment, error) {
+) (*AppointmentWithDetailsView, error) {
 	query := fmt.Sprintf(`
-		SELECT %s
-		FROM appointments
-		WHERE id = ?
-	`, datastore.GetColumns(Appointment{}))
+		%s
+		WHERE a.id = ?
+	`, appointmentsBaseQuery)
 
-	var appt Appointment
+	var appt AppointmentWithDetailsView
 	err := r.db.GetContext(ctx, &appt, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -192,10 +194,6 @@ func (r *Repository) applyFilters(
 	if startDate != "" {
 		query += " AND a.when_date >= ?"
 		args = append(args, startDate)
-	}
-	if endDate != "" {
-		query += " AND a.when_date <= ?"
-		args = append(args, endDate)
 	}
 	if iirID != nil {
 		query += " AND a.iir_id = ?"
@@ -476,6 +474,7 @@ func (r *Repository) GetAppointmentStats(
 			COUNT(a.id) AS count
 		FROM statuses as2
 		LEFT JOIN appointments a ON %s
+		WHERE as2.status_type IN ('appointment', 'both')
 		GROUP BY as2.id, as2.name
 		ORDER BY as2.id
 	`, joinCondition)

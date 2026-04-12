@@ -8,7 +8,9 @@ import (
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/datetime"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 
@@ -20,6 +22,7 @@ type Service struct {
 	notifService audit.Notifier
 	logService   audit.Logger
 	userService  users.ServiceInterface
+	noteService  notes.ServiceInterface
 }
 
 func NewService(
@@ -27,12 +30,14 @@ func NewService(
 	notifService audit.Notifier,
 	logService audit.Logger,
 	userService users.ServiceInterface,
+	noteService notes.ServiceInterface,
 ) *Service {
 	return &Service{
 		repo:         repo,
 		notifService: notifService,
 		logService:   logService,
 		userService:  userService,
+		noteService:  noteService,
 	}
 }
 
@@ -100,10 +105,12 @@ func (s *Service) CreateAppointment(
 		{
 			ReceiverID: structs.StringToNullableString(userID),
 			TargetID:   structs.StringToNullableString(appt.ID),
-			TargetType: structs.StringToNullableString(constants.AppointmentEntityType),
-			Title:      "Appointment Created Successfully",
-			Message:    "Your appointment has been created and is pending approval.",
-			Type:       constants.AppointmentEntityType,
+			TargetType: structs.StringToNullableString(
+				constants.AppointmentEntityType,
+			),
+			Title:   "Appointment Created Successfully",
+			Message: "Your appointment has been created and is pending approval.",
+			Type:    constants.AppointmentEntityType,
 		},
 	}
 
@@ -111,8 +118,10 @@ func (s *Service) CreateAppointment(
 		notifications = append(notifications, audit.NotificationParams{
 			ReceiverID: structs.StringToNullableString(cid),
 			TargetID:   structs.StringToNullableString(appt.ID),
-			TargetType: structs.StringToNullableString(constants.AppointmentEntityType),
-			Title:      "New Appointment Request",
+			TargetType: structs.StringToNullableString(
+				constants.AppointmentEntityType,
+			),
+			Title: "New Appointment Request",
 			Message: fmt.Sprintf(
 				"New appointment request received from %s.",
 				studentName,
@@ -142,8 +151,51 @@ func (s *Service) CreateAppointment(
 func (s *Service) GetAppointmentByID(
 	ctx context.Context,
 	id string,
-) (*Appointment, error) {
-	return s.repo.GetAppointment(ctx, id)
+) (*AppointmentDTO, error) {
+	appt, err := s.repo.GetAppointment(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	dto := &AppointmentDTO{
+		ID: appt.ID,
+		User: users.GetUserResponse{
+			ID:        "",
+			FirstName: appt.UserFirstName,
+			MiddleName: structs.FromSqlNull(
+				appt.UserMiddleName,
+			),
+			LastName: appt.UserLastName,
+			Email:    appt.UserEmail,
+		},
+		IIRID:         appt.IIRID,
+		StudentNumber: appt.StudentNumber,
+		Reason:        structs.FromSqlNull(appt.Reason),
+		AdminNotes: structs.FromSqlNull(
+			appt.AdminNotes,
+		),
+		WhenDate: appt.WhenDate,
+		TimeSlot: TimeSlot{
+			ID:   appt.TimeSlotID,
+			Time: appt.TimeSlotTime,
+		},
+		AppointmentCategory: AppointmentCategory{
+			ID:   appt.CategoryID,
+			Name: appt.CategoryName,
+		},
+		Status: AppointmentStatus{
+			ID:       appt.StatusID,
+			Name:     appt.StatusName,
+			ColorKey: appt.StatusColorKey,
+		},
+		CreatedAt: appt.CreatedAt,
+		UpdatedAt: appt.UpdatedAt,
+	}
+
+	hasNote, _ := s.noteService.HasNoteForAppointment(ctx, id)
+	dto.HasSignificantNote = hasNote
+
+	return dto, nil
 }
 
 func (s *Service) GetDailyStatusCount(
@@ -211,7 +263,7 @@ func (s *Service) ListAppointments(
 			),
 			LastName: appt.UserLastName,
 		}
-		dtos = append(dtos, AppointmentDTO{
+		dto := AppointmentDTO{
 			ID:     appt.ID,
 			User:   userDTO,
 			Reason: structs.FromSqlNull(appt.Reason),
@@ -234,7 +286,12 @@ func (s *Service) ListAppointments(
 			},
 			CreatedAt: appt.CreatedAt,
 			UpdatedAt: appt.UpdatedAt,
-		})
+		}
+
+		hasNote, _ := s.noteService.HasNoteForAppointment(ctx, appt.ID)
+		dto.HasSignificantNote = hasNote
+
+		dtos = append(dtos, dto)
 	}
 
 	total, err := s.repo.GetTotalAppointmentsCount(
@@ -286,7 +343,7 @@ func (s *Service) GetAppointmentsByUserID(
 			),
 			LastName: appt.UserLastName,
 		}
-		dtos = append(dtos, AppointmentDTO{
+		dto := AppointmentDTO{
 			ID:     appt.ID,
 			User:   userDTO,
 			Reason: structs.FromSqlNull(appt.Reason),
@@ -309,7 +366,12 @@ func (s *Service) GetAppointmentsByUserID(
 			},
 			CreatedAt: appt.CreatedAt,
 			UpdatedAt: appt.UpdatedAt,
-		})
+		}
+
+		hasNote, _ := s.noteService.HasNoteForAppointment(ctx, appt.ID)
+		dto.HasSignificantNote = hasNote
+
+		dtos = append(dtos, dto)
 	}
 
 	total, err := s.repo.GetTotalAppointmentsCount(
@@ -361,7 +423,7 @@ func (s *Service) GetAppointmentsByIIRID(
 			),
 			LastName: appt.UserLastName,
 		}
-		dtos = append(dtos, AppointmentDTO{
+		dto := AppointmentDTO{
 			ID:     appt.ID,
 			User:   userDTO,
 			Reason: structs.FromSqlNull(appt.Reason),
@@ -384,7 +446,12 @@ func (s *Service) GetAppointmentsByIIRID(
 			},
 			CreatedAt: appt.CreatedAt,
 			UpdatedAt: appt.UpdatedAt,
-		})
+		}
+
+		hasNote, _ := s.noteService.HasNoteForAppointment(ctx, appt.ID)
+		dto.HasSignificantNote = hasNote
+
+		dtos = append(dtos, dto)
 	}
 
 	total, err := s.repo.GetTotalAppointmentsCount(
@@ -481,34 +548,38 @@ func (s *Service) UpdateAppointment(
 		return err
 	}
 
+	newAppt, _ := s.repo.GetAppointment(ctx, id)
+
 	// Fetch student UserID for notification
 	studentUserID, _ := s.repo.GetUserIDByAppointmentID(ctx, id)
 
 	notifications := []audit.NotificationParams{
 		{
 			ReceiverID: structs.StringToNullableString(studentUserID),
-			TargetID:   structs.StringToNullableString(id),
-			TargetType: structs.StringToNullableString(constants.AppointmentEntityType),
-			Title:      "Appointment Status Updated By %s",
+			TargetID:   structs.StringToNullableString(newAppt.ID),
+			TargetType: structs.StringToNullableString(
+				constants.AppointmentEntityType,
+			),
+			Title: "Appointment Status Updated By %s",
 			Message: fmt.Sprintf(
 				"Appointment scheduled on %s at %s has been updated to '%s'",
-				req.WhenDate,
-				req.TimeSlot.Time,
-				req.Status.Name,
+				datetime.FormatDate(newAppt.WhenDate),
+				datetime.FormatTime(newAppt.TimeSlotTime),
+				newAppt.StatusName,
 			),
 			Type: constants.AppointmentEntityType,
 		},
 		{
-			TargetID: structs.StringToNullableString(id),
+			TargetID: structs.StringToNullableString(oldAppt.ID),
 			TargetType: structs.StringToNullableString(
 				constants.AppointmentEntityType,
 			),
 			Title: "Appointment Updated Successfully",
 			Message: fmt.Sprintf(
 				"You have successfully updated the status of appointment scheduled on %s at %s to '%s'.",
-				req.WhenDate,
-				req.TimeSlot.Time,
-				req.Status.Name,
+				datetime.FormatDate(newAppt.WhenDate),
+				datetime.FormatTime(newAppt.TimeSlotTime),
+				newAppt.StatusName,
 			),
 			Type: constants.AppointmentEntityType,
 		},
@@ -529,6 +600,35 @@ func (s *Service) UpdateAppointment(
 		},
 		Notifications: notifications,
 	})
+
+	// Add special prompt for counselors if appointment is completed
+	// status_id 3 = Completed
+	if req.Status.ID == 3 {
+		hasNote, _ := s.noteService.HasNoteForAppointment(ctx, id)
+		if !hasNote {
+			audit.Dispatch(
+				ctx,
+				s.logService,
+				s.notifService,
+				audit.DispatchParams{
+					Notifications: []audit.NotificationParams{
+						{
+							ReceiverID: structs.StringToNullableString(
+								audit.ExtractUserID(ctx),
+							),
+							TargetID: structs.StringToNullableString(id),
+							TargetType: structs.StringToNullableString(
+								constants.AppointmentEntityType,
+							),
+							Title:   "Action Required: Significant Note",
+							Message: "Appointment completed. Please record any significant notes or incidents for this student.",
+							Type:    constants.AppointmentEntityType,
+						},
+					},
+				},
+			)
+		}
+	}
 
 	return nil
 }

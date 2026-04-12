@@ -52,9 +52,11 @@ type Appointment struct {
 type AppointmentWithDetailsView struct {
 	ID             string         `db:"id"`
 	IIRID          string         `db:"iir_id"`
+	StudentNumber  string         `db:"student_number"`
 	UserFirstName  string         `db:"user_first_name"`
 	UserMiddleName sql.NullString `db:"user_middle_name"`
 	UserLastName   string         `db:"user_last_name"`
+	UserEmail      string         `db:"user_email"`
 	Reason         sql.NullString `db:"reason"`
 	AdminNotes     sql.NullString `db:"admin_notes"`
 	WhenDate       string         `db:"when_date"`

@@ -21,12 +21,14 @@ type ListSlipsDTO struct {
 
 type SlipDTO struct {
 	ID            string                 `json:"id,omitempty"`
+	IIRID         string                 `json:"iirId,omitempty"`
 	User          users.GetUserResponse  `json:"user,omitempty"`
-	Reason        string                 `json:"reason"               form:"reason"        binding:"required"`
-	DateOfAbsence string                 `json:"dateOfAbsence"        form:"dateOfAbsence" binding:"required"`
-	DateNeeded    string                 `json:"dateNeeded"           form:"dateNeeded"    binding:"required"`
+	StudentNumber string                 `json:"studentNumber,omitempty"`
+	Reason        string                 `json:"reason"                  form:"reason"        binding:"required"`
+	DateOfAbsence string                 `json:"dateOfAbsence"           form:"dateOfAbsence" binding:"required"`
+	DateNeeded    string                 `json:"dateNeeded"              form:"dateNeeded"    binding:"required"`
 	AdminNotes    structs.NullableString `json:"adminNotes,omitempty"`
-	Category      SlipCategory           `json:"category"             form:"categoryId"    binding:"required"`
+	Category      SlipCategory           `json:"category"                form:"categoryId"    binding:"required"`
 	Status        SlipStatus             `json:"status,omitempty"`
 	CreatedAt     time.Time              `json:"createdAt,omitempty"`
 	UpdatedAt     time.Time              `json:"updatedAt,omitempty"`
