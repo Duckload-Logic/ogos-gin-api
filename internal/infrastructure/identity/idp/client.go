@@ -261,8 +261,7 @@ func (c *IDPClient) Logout(
 	accessToken string,
 ) (*IDPLogoutResponse, error) {
 	payload := map[string]string{
-		"access_token": accessToken,
-		"client_id":    cfg.IDPClientID,
+		"client_id": cfg.IDPClientID,
 	}
 
 	jsonBody, err := json.Marshal(payload)
@@ -276,6 +275,7 @@ func (c *IDPClient) Logout(
 		fmt.Sprintf("%s/auth/logout", cfg.IDPBaseUrl),
 		bytes.NewReader(jsonBody),
 	)
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 	if err != nil {
 		return nil, fmt.Errorf("[IDPClient] {Create Logout Request}: %w", err)
 	}
