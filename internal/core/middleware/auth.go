@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
@@ -52,14 +53,20 @@ func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 
 		// Validate against Redis using the Token ID (jti)
 		if redis != nil {
-			tokenKey := "session:" + claims.ID
+			jti := sessions.NewJTI(claims.ID)
+			tokenKey := jti.ToSessionKey()
 			val, err := redis.Get(c.Request.Context(), tokenKey)
 			if err != nil {
 				log.Printf(
 					"[AuthMiddleware] {Redis}: Session %s missing or "+
-						"expired for UserID: %s",
+						"revoked for ID: %s",
 					claims.ID,
-					claims.UserID,
+					func() string {
+						if claims.M2MClientID != "" {
+							return "M2M:" + claims.M2MClientID
+						}
+						return "User:" + claims.UserID
+					}(),
 				)
 				c.AbortWithStatusJSON(
 					http.StatusUnauthorized,
@@ -77,10 +84,15 @@ func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 			}
 		}
 
-		// Set user info in context
-		c.Set("userID", claims.UserID)
-		c.Set("userEmail", claims.UserEmail)
-		c.Set("roleID", claims.RoleID)
+		// Set info in context
+		if claims.M2MClientID != "" {
+			c.Set("m2mClientID", claims.M2MClientID)
+			c.Set("isM2M", true)
+		} else {
+			c.Set("userID", claims.UserID)
+			c.Set("userEmail", claims.UserEmail)
+			c.Set("roleID", claims.RoleID)
+		}
 		c.Set("tokenType", claims.TokenType)
 
 		c.Next()

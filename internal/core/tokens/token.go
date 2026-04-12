@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 )
 
 type Service struct {
@@ -29,7 +30,7 @@ func (s *Service) GenerateToken(
 	roleID int,
 	roleName string,
 	tokenType string,
-	expireMinutes int,
+	expireSeconds int,
 ) (string, *Claims, error) {
 	claims := &Claims{
 		UserEmail: userEmail,
@@ -38,10 +39,10 @@ func (s *Service) GenerateToken(
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(
-				time.Duration(expireMinutes) * time.Minute),
+				time.Duration(expireSeconds) * time.Second),
 			),
 			IssuedAt: jwt.NewNumericDate(time.Now()),
-			Issuer:   "pupt-ogos-api",
+			Issuer:   constants.ClaimsIssuer,
 			ID:       uuid.New().String(),
 		},
 	}
@@ -91,10 +92,4 @@ func (s *Service) ParseTokenUnverified(tokenString string) (
 	}
 
 	return claims, nil
-}
-
-func (s *Service) InvalidateToken(tokenString string) error {
-	// TODO: Implement token invalidation (e.g., using a blacklist or token
-	// store)
-	return nil
 }

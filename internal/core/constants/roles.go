@@ -6,15 +6,5 @@ const (
 	StudentRoleID RoleID = iota + 1
 	CounselorRoleID
 	SuperAdminRoleID
+	DeveloperRoleID
 )
-
-type Role struct {
-	ID   RoleID
-	Name string
-}
-
-var Roles = map[RoleID]Role{
-	StudentRoleID:    {ID: StudentRoleID, Name: "STUDENT"},
-	CounselorRoleID:  {ID: CounselorRoleID, Name: "COUNSELOR"},
-	SuperAdminRoleID: {ID: SuperAdminRoleID, Name: "SUPERADMIN"},
-}

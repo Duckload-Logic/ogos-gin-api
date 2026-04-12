@@ -150,7 +150,7 @@ func fetchJSON(url string, target interface{}) error {
 func fetchAll() (*PSGCData, error) {
 	data := &PSGCData{}
 
-	// 1. Regions
+	// Regions
 	fmt.Println("Fetching regions...")
 	var regions []PSGCRegion
 	if err := fetchJSON(psgcBaseURL+"/regions", &regions); err != nil {
@@ -159,7 +159,7 @@ func fetchAll() (*PSGCData, error) {
 	data.Regions = regions
 	fmt.Printf("  %d regions\n", len(regions))
 
-	// 2. Provinces per region
+	// Provinces per region
 	fmt.Println("Fetching provinces...")
 	for _, reg := range regions {
 		var provs []apiProvince
@@ -177,7 +177,7 @@ func fetchAll() (*PSGCData, error) {
 	}
 	fmt.Printf("  %d provinces\n", len(data.Provinces))
 
-	// 3. Cities/municipalities — fetch from regions FIRST (authoritative
+	// Cities/municipalities — fetch from regions FIRST (authoritative
 	// region mapping),
 	// then enrich with province codes from the province-level fetch.
 	fmt.Println("Fetching cities/municipalities...")
@@ -248,7 +248,7 @@ func fetchAll() (*PSGCData, error) {
 	}
 	fmt.Printf("  %d cities/municipalities\n", len(data.Cities))
 
-	// 4. Barangays per city
+	// Barangays per city
 	fmt.Println("Fetching barangays (this will take a while)...")
 	for i, city := range data.Cities {
 		var brgys []apiBarangay

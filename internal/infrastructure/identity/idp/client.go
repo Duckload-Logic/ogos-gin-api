@@ -57,7 +57,7 @@ func (c *IDPClient) ExchangeCodeForToken(
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		cfg.IDPTokenURL,
+		fmt.Sprintf("%s/auth/token", cfg.IDPBaseUrl),
 		bytes.NewReader(body),
 	)
 	if err != nil {
@@ -112,7 +112,7 @@ func (c *IDPClient) GetUserInfo(
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		cfg.IDPUserinfoURL,
+		fmt.Sprintf("%s/me", cfg.IDPBaseUrl),
 		nil,
 	)
 	if err != nil {
@@ -172,14 +172,7 @@ func (c *IDPClient) RefreshToken(
 		return nil, fmt.Errorf("[IDPClient] {Marshal JSON}: %w", err)
 	}
 
-	// Use IDPRefreshURL if provided, else fall back to something?
-	// The requirement said /auth/refresh is called.
-	url := cfg.IDPRefreshURL
-	if url == "" {
-		// Fallback to TokenURL if RefreshURL is not set (legacy behavior or
-		// generic)
-		url = cfg.IDPTokenURL
-	}
+	url := fmt.Sprintf("%s/auth/refresh", cfg.IDPBaseUrl)
 
 	req, err := http.NewRequestWithContext(
 		ctx,
@@ -226,7 +219,7 @@ func (c *IDPClient) ValidateSession(
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
-		cfg.IDPSessionURL,
+		fmt.Sprintf("%s/auth/session", cfg.IDPBaseUrl),
 		nil,
 	)
 	if err != nil {
@@ -265,11 +258,11 @@ func (c *IDPClient) ValidateSession(
 func (c *IDPClient) Logout(
 	ctx context.Context,
 	cfg *config.Config,
+	accessToken string,
 ) (*IDPLogoutResponse, error) {
-	url := cfg.IDPLogoutURL
-
 	payload := map[string]string{
-		"client_id": cfg.IDPClientID,
+		"access_token": accessToken,
+		"client_id":    cfg.IDPClientID,
 	}
 
 	jsonBody, err := json.Marshal(payload)
@@ -280,7 +273,7 @@ func (c *IDPClient) Logout(
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		url,
+		fmt.Sprintf("%s/auth/logout", cfg.IDPBaseUrl),
 		bytes.NewReader(jsonBody),
 	)
 	if err != nil {
