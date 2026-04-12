@@ -1,0 +1,496 @@
+basePath: /api/v1
+definitions:
+  integrations.ListStudentsSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/integrations.OGOSListStudentsResponse'
+      status:
+        allOf:
+        - $ref: '#/definitions/response.JSendStatus'
+        example: success
+    type: object
+  integrations.OGOSListStudentsResponse:
+    properties:
+      meta:
+        $ref: '#/definitions/structs.PaginationMetadata'
+      students:
+        items:
+          $ref: '#/definitions/integrations.OGOSStudentDTO'
+        type: array
+    type: object
+  integrations.OGOSStudentAddressDTO:
+    properties:
+      addressType:
+        type: string
+      barangay:
+        $ref: '#/definitions/locations.Barangay'
+      city:
+        $ref: '#/definitions/locations.City'
+      province:
+        $ref: '#/definitions/locations.ProvinceDTO'
+      region:
+        $ref: '#/definitions/locations.Region'
+      streetDetail:
+        type: string
+      studentNumber:
+        type: string
+    type: object
+  integrations.OGOSStudentDTO:
+    properties:
+      course:
+        $ref: '#/definitions/students.Course'
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      middleName:
+        $ref: '#/definitions/structs.NullableString'
+      mobileNumber:
+        type: string
+      section:
+        type: string
+      studentNumber:
+        type: string
+      suffixName:
+        type: string
+      yearLevel:
+        type: integer
+    type: object
+  integrations.OGOSStudentPersonalInfoDTO:
+    properties:
+      dateOfBirth:
+        type: string
+      gender:
+        $ref: '#/definitions/students.Gender'
+      heightFt:
+        type: number
+      placeOfBirth:
+        type: string
+      studentNumber:
+        type: string
+      weightKg:
+        type: number
+    type: object
+  integrations.StudentAddressSuccessResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/integrations.OGOSStudentAddressDTO'
+        type: array
+      status:
+        allOf:
+        - $ref: '#/definitions/response.JSendStatus'
+        example: success
+    type: object
+  integrations.StudentPersonalInfoSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/integrations.OGOSStudentPersonalInfoDTO'
+      status:
+        allOf:
+        - $ref: '#/definitions/response.JSendStatus'
+        example: success
+    type: object
+  integrations.StudentSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/integrations.OGOSStudentDTO'
+      status:
+        example: success
+        type: string
+    type: object
+  locations.Barangay:
+    properties:
+      cityId:
+        type: integer
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  locations.City:
+    properties:
+      code:
+        type: string
+      district:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      provinceCode:
+        type: string
+      regionCode:
+        type: string
+      type:
+        type: string
+      zipCode:
+        type: string
+    type: object
+  locations.ProvinceDTO:
+    properties:
+      code:
+        $ref: '#/definitions/structs.NullableString'
+      id:
+        type: integer
+      name:
+        $ref: '#/definitions/structs.NullableString'
+      regionCode:
+        $ref: '#/definitions/structs.NullableString'
+    type: object
+  locations.Region:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  m2mclients.M2MRefreshTokenRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  m2mclients.M2MTokenRequest:
+    properties:
+      clientId:
+        type: string
+      clientSecret:
+        type: string
+    required:
+    - clientId
+    - clientSecret
+    type: object
+  m2mclients.M2MTokenResponse:
+    properties:
+      accessToken:
+        type: string
+      expiresIn:
+        description: Seconds
+        type: integer
+      refreshToken:
+        type: string
+      tokenType:
+        type: string
+    type: object
+  m2mclients.M2MTokenSuccessResponse:
+    properties:
+      data:
+        $ref: '#/definitions/m2mclients.M2MTokenResponse'
+      status:
+        example: success
+        type: string
+    type: object
+  response.CommonErrorResponse:
+    properties:
+      code:
+        example: 400
+        type: integer
+      data: {}
+      message:
+        example: Detailed error message
+        type: string
+      status:
+        example: fail
+        type: string
+    type: object
+  response.JSendStatus:
+    enum:
+    - success
+    - fail
+    - error
+    type: string
+    x-enum-varnames:
+    - StatusSuccess
+    - StatusFail
+    - StatusError
+  structs.NullableString:
+    properties:
+      string:
+        type: string
+      valid:
+        description: Valid is true if String is not NULL
+        type: boolean
+    type: object
+  structs.PaginationMetadata:
+    properties:
+      page:
+        type: integer
+      pagesSize:
+        type: integer
+      total:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  students.Course:
+    properties:
+      code:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  students.Gender:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+info:
+  contact: {}
+  title: Student data API
+  version: "2.0"
+paths:
+  /auth/m2m/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refreshes an existing M2M session using a valid refresh token.
+      parameters:
+      - description: Refresh Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/m2mclients.M2MRefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/m2mclients.M2MTokenSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+      summary: M2M Token Refresh
+      tags:
+      - Auth
+  /auth/m2m/token:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges client credentials (client_id and client_secret) for
+        an M2M access token.
+      parameters:
+      - description: M2M Credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/m2mclients.M2MTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/m2mclients.M2MTokenSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+      summary: M2M Token Exchange
+      tags:
+      - Auth
+  /integrations/students/{studentNumber}:
+    get:
+      consumes:
+      - application/json
+      description: Get student information by student number
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/integrations.StudentSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get student by student number
+      tags:
+      - External Students
+  /integrations/students/{studentNumber}/addresses:
+    get:
+      consumes:
+      - application/json
+      description: Get all addresses of a student by their student number
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/integrations.StudentAddressSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get student addresses by student number
+      tags:
+      - External Students
+  /integrations/students/{studentNumber}/personal-info:
+    get:
+      consumes:
+      - application/json
+      description: Get personal information of a student by their student number
+      parameters:
+      - description: Student number of the student
+        in: path
+        name: studentNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/integrations.StudentPersonalInfoSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get personal information by student number
+      tags:
+      - External Students
+  /integrations/students/profiles:
+    get:
+      consumes:
+      - application/json
+      description: Get a paginated list of students with optional filters
+      parameters:
+      - description: Search term for student name or number
+        in: query
+        name: search
+        type: string
+      - description: Filter by course ID
+        in: query
+        name: course_id
+        type: integer
+      - description: Filter by gender ID
+        in: query
+        name: gender_id
+        type: integer
+      - description: Filter by year level
+        in: query
+        name: year_level
+        type: integer
+      - description: Order by field (first_name, last_name, student_number, created_at,
+          updated_at, year_level, course_id)
+        in: query
+        name: order_by
+        type: string
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page for pagination
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/integrations.ListStudentsSuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.CommonErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List students
+      tags:
+      - External Students
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
