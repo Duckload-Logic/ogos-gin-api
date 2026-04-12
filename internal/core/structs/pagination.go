@@ -35,8 +35,8 @@ func (r *PaginationRequest) SetDefaults(defaultOrderBy string) {
 type PaginationMetadata struct {
 	Total      int `json:"total"`
 	Page       int `json:"page"`
-	PageSize   int `json:"page_size"`
-	TotalPages int `json:"total_pages"`
+	PageSize   int `json:"pagesSize"`
+	TotalPages int `json:"totalPages"`
 }
 
 // CalculateMetadata generates pagination metadata.

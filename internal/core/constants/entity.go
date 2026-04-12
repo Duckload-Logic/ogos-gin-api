@@ -8,5 +8,5 @@ const (
 	SystemEntityType      = "System"
 	GeneralEntityType     = "General"
 	LogEntityType         = "Log"
-	APIKeyEntityType      = "APIKey"
+	M2MClientEntityType   = "M2MClient"
 )

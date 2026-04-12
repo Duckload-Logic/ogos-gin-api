@@ -68,17 +68,19 @@ const (
 	ActionIIRDeleted      = "IIR_DELETED"
 	ActionIIRDeleteFailed = "IIR_DELETE_FAILED"
 	ActionIIRDraftSaved   = "IIR_DRAFT_SAVED"
-	ActionIIRSubmitted     = "IIR_SUBMITTED"
+	ActionIIRSubmitted    = "IIR_SUBMITTED"
 )
 
 // System log actions — track system-level events
 const (
-	ActionAPIKeyCreated       = "API_KEY_CREATED"
-	ActionAPIKeyRevoked       = "API_KEY_REVOKED"
-	ActionSettingChanged      = "SETTING_CHANGED"
-	ActionAPIKeyCreateFailed  = "API_KEY_CREATE_FAILED"
-	ActionAPIKeyRevokeFailed  = "API_KEY_REVOKE_FAILED"
-	ActionSettingChangeFailed = "SETTING_CHANGE_FAILED"
+	ActionM2MClientCreated            = "M2M_CLIENT_CREATED"
+	ActionM2MClientRevoked            = "M2M_CLIENT_REVOKED"
+	ActionM2MClientSecretRotated      = "M2M_CLIENT_SECRET_ROTATED"
+	ActionSettingChanged              = "SETTING_CHANGED"
+	ActionM2MClientCreateFailed       = "M2M_CLIENT_CREATE_FAILED"
+	ActionM2MClientRevokeFailed       = "M2M_CLIENT_REVOKE_FAILED"
+	ActionM2MClientSecretRotateFailed = "M2M_CLIENT_SECRET_ROTATE_FAILED"
+	ActionSettingChangeFailed         = "SETTING_CHANGE_FAILED"
 )
 
 // Security log actions — track authentication and access events
@@ -90,8 +92,11 @@ const (
 	ActionAccessDenied      = "ACCESS_DENIED"
 	ActionRateLimitExceeded = "RATE_LIMIT_EXCEEDED"
 	ActionInvalidToken      = "INVALID_TOKEN"
-	ActionAPIKeyUsed        = "API_KEY_USED"
-	ActionAPIKeyInvalid     = "API_KEY_INVALID"
+	ActionM2MClientUsed     = "M2M_CLIENT_USED"
+	ActionM2MClientInvalid  = "M2M_CLIENT_INVALID"
+	ActionM2MAuthSuccess    = "M2M_AUTH_SUCCESS"
+	ActionM2MAuthFailed     = "M2M_AUTH_FAILED"
+	ActionM2MTokenRefreshed = "M2M_TOKEN_REFRESHED"
 )
 
 // LogEntry is the input struct used by other services to record a log.

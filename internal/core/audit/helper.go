@@ -44,10 +44,10 @@ func Dispatch(
 	notifier Notifier,
 	params DispatchParams,
 ) {
-	// 1. Extract Meta
+	// Extract Meta
 	id, ip, ua, email, _, trace := ExtractMeta(ctx)
 
-	// 2. Prepare and Record Log
+	// Prepare and Record Log
 	if logger != nil && params.Log != nil {
 		entry := LogEntry{
 			Level:      params.Log.Level,
@@ -66,7 +66,7 @@ func Dispatch(
 		logger.Record(ctx, params.Tx, entry)
 	}
 
-	// 3. Prepare and Send Notifications
+	// Prepare and Send Notifications
 	if notifier != nil && len(params.Notifications) > 0 {
 		for _, n := range params.Notifications {
 			receiverID := n.ReceiverID
