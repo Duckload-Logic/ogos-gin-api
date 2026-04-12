@@ -36,7 +36,6 @@ type ServiceInterface interface {
 		cfg *config.Config,
 	) (string, string, error)
 	GetMe(ctx context.Context, userID, tokenType string) (*MeResponse, error)
-	ParseIDPRoles(roles []string) []string
 	Logout(
 		ctx context.Context,
 		token string,

@@ -828,65 +828,6 @@ func (s *Service) GetIDPUserInfo(
 	return userInfo, nil
 }
 
-// ParseIDPRoles sanitizes role strings received from the IDP.
-func (s *Service) ParseIDPRoles(roles []string) []string {
-	parsedRoles := make([]string, 0, len(roles))
-	for _, role := range roles {
-		// Split by ":" and take the last part
-		parts := strings.Split(role, ":")
-		if len(parts) > 1 {
-			parsedRoles = append(parsedRoles, parts[len(parts)-1])
-		} else {
-			parsedRoles = append(parsedRoles, role)
-		}
-	}
-	return parsedRoles
-}
-
-// mapIDPRolesToInternalID translates IDP tags to internal role IDs.
-// Tags format: tag:student, tag:admin, tag:superadmin
-func (s *Service) mapIDPRolesToInternalID(roles []string) int {
-	// Priority order: superadmin > admin > student
-	hasAdmin := false
-	hasSuper := false
-	hasStudent := false
-
-	for _, r := range roles {
-		if r == "" {
-			continue
-		}
-
-		// Safely split and check for parts to avoid panics on missing colon
-		parts := strings.Split(r, ":")
-		rolePart := ""
-		if len(parts) > 1 {
-			rolePart = strings.ToLower(parts[1])
-		} else {
-			rolePart = strings.ToLower(parts[0])
-		}
-
-		switch rolePart {
-		case "superadmin":
-			hasSuper = true
-		case "admin":
-			hasAdmin = true
-		case "student":
-			hasStudent = true
-		}
-	}
-
-	if hasSuper {
-		return int(constants.SuperAdminRoleID)
-	}
-	if hasAdmin {
-		return int(constants.CounselorRoleID)
-	}
-	if hasStudent {
-		return int(constants.StudentRoleID)
-	}
-
-	return int(constants.StudentRoleID) // Default to Student
-}
 
 // ValidateIDPSession checks if the provided session ID is valid on the IDP.
 func (s *Service) ValidateIDPSession(
