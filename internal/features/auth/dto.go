@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+)
 
 type TTL int
 
@@ -10,14 +14,14 @@ const (
 )
 
 type MeResponse struct {
-	ID         string    `json:"id"`
-	Email      string    `json:"email"`
-	FirstName  string    `json:"firstName"`
-	LastName   string    `json:"lastName"`
-	MiddleName string    `json:"middleName,omitempty"`
-	CreatedAt  time.Time `json:"createdAt"`
-	Roles      []string  `json:"roles"`
-	Type       string    `json:"type"` // "native" or "idp"
+	ID         string     `json:"id"`
+	Email      string     `json:"email"`
+	FirstName  string     `json:"firstName"`
+	LastName   string     `json:"lastName"`
+	MiddleName string     `json:"middleName,omitempty"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	Role       users.Role `json:"role"`
+	Type       string     `json:"type"` // "native" or "idp"
 }
 
 type IDPRefreshRequest struct {
@@ -29,11 +33,14 @@ type LoginDTO struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type TokenDTO struct {
-	Token        string `json:"token"`
-	RefreshToken string `json:"refreshToken,omitempty"`
+type RegisterDTO struct {
+	Email      string `json:"email"      binding:"required,email"`
+	Password   string `json:"password"   binding:"required,min=8"`
+	FirstName  string `json:"firstName"  binding:"required"`
+	LastName   string `json:"lastName"   binding:"required"`
+	MiddleName string `json:"middleName"`
 }
 
-type RefreshTokenDTO struct {
-	RefreshToken string `json:"refreshToken" binding:"required"`
+type VerifyDTO struct {
+	VerificationOTP string `json:"otp" binding:"required"`
 }
