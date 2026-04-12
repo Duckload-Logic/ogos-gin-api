@@ -29,23 +29,23 @@ FROM tools AS dev
 COPY . .
 # Docs generation for development
 # RUN swag init -g main.go --parseDependency --parseInternal \
-#     --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students \
-#     --output ./docs/internal --instanceName internal
+#     --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/slips,./internal/features/students \
+#     --output ./docs/internal_docs --instanceName internal
 # RUN swag init -g main.go --parseDependency --parseInternal \
-#     --dir ./cmd/api,./internal/features/students/external \
-#     --output ./docs/external --instanceName external
+#     --dir ./cmd/api,./internal/features/students/integrations,./internal/features/m2mclients \
+#     --output ./docs/integrations --instanceName integrations
 CMD ["air"]
 
 ################################################################################
 # Builder stage for production
 FROM tools AS builder
 COPY . .
-# RUN swag init -g main.go --parseDependency --parseInternal \
-#     --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/excuseslips,./internal/features/students \
-#     --output ./docs/internal --instanceName internal
 RUN swag init -g main.go --parseDependency --parseInternal \
-    --dir ./cmd/api,./internal/features/students/external \
-    --output ./docs/external --instanceName external
+    --dir ./cmd/api,./internal/features/auth,./internal/features/users,./internal/features/appointments,./internal/features/slips,./internal/features/students \
+    --output ./docs/internal_docs --instanceName internal
+RUN swag init -g main.go --parseDependency --parseInternal \
+    --dir ./cmd/api,./internal/features/students/integrations,./internal/features/m2mclients \
+    --output ./docs/integrations --instanceName integrations
 # Implement build cache to speed up successive builds
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
