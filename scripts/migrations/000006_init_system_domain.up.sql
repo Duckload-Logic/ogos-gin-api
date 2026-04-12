@@ -2,22 +2,25 @@
 -- SYSTEM DOMAIN
 -- ============================================================================
 
-CREATE TABLE api_keys (
+CREATE TABLE m2m_clients (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    key_hash VARCHAR(64) NOT NULL UNIQUE,
-    key_prefix VARCHAR(8) NOT NULL,
+    user_id CHAR(36) NOT NULL,
+    client_name VARCHAR(100) NOT NULL,
+    client_id VARCHAR(36) NOT NULL UNIQUE,
+    client_secret_hash VARCHAR(64) NOT NULL,
+    client_description VARCHAR(255) NOT NULL,
     scopes JSON DEFAULT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    is_verified TINYINT(1) NOT NULL DEFAULT 0,
     last_used_at TIMESTAMP NULL DEFAULT NULL,
     expires_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
-CREATE UNIQUE INDEX unique_idx_api_keys_key_hash ON api_keys(key_hash ASC);
-CREATE INDEX idx_api_keys_key_hash ON api_keys(key_hash ASC);
-CREATE INDEX idx_api_keys_is_active ON api_keys(is_active ASC);
+CREATE UNIQUE INDEX unique_idx_m2m_clients_client_id ON m2m_clients(client_id ASC);
+CREATE INDEX idx_m2m_clients_user_id ON m2m_clients(user_id ASC);
+CREATE INDEX idx_m2m_clients_is_active ON m2m_clients(is_active ASC);
 
 CREATE TABLE notifications (
     id CHAR(36) NOT NULL PRIMARY KEY,

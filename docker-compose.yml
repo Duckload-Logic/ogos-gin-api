@@ -1,54 +1,6 @@
 version: "3.8"
 
 services:
-    api:
-        build:
-            context: .
-            dockerfile: Dockerfile
-            target: ${DOCKER_STAGE:-dev}
-        image: capstone-gin-api
-        container_name: capstone-gin-api
-        deploy:
-            resources:
-                limits:
-                    cpus: "0.50"
-                    memory: 512M
-        ports:
-            - ${WEBSITES_PORT}:8080
-        environment:
-            DB_HOST: ${DB_HOST}
-            DB_PORT: ${DB_PORT}
-            DB_USER: ${DB_USER}
-            DB_PASS: ${DB_PASS}
-            DB_NAME: ${DB_NAME}
-            DB_TLS: ${DB_TLS}
-            WEBSITES_PORT: ${WEBSITES_PORT}
-            JWT_SECRET: ${JWT_SECRET}
-            UPLOAD_DIR: ${UPLOAD_DIR}
-            AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING}
-            AZURE_CONTAINER_NAME: ${AZURE_CONTAINER_NAME}
-            REDIS_HOST: ${REDIS_HOST}
-            REDIS_PORT: ${REDIS_PORT}
-            REDIS_PASS: ${REDIS_PASS}
-            REDIS_DB: ${REDIS_DB}
-            IDP_CLIENT_ID: ${IDP_CLIENT_ID}
-            IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET}
-            IDP_REDIRECT_URI: ${IDP_REDIRECT_URI}
-            IDP_LOGIN_ENDPOINT: ${IDP_LOGIN_ENDPOINT}
-            IDP_TOKEN_ENDPOINT: ${IDP_TOKEN_ENDPOINT}
-            IDP_USERINFO_ENDPOINT: ${IDP_USERINFO_ENDPOINT}
-            IDP_REFRESH_ENDPOINT: ${IDP_REFRESH_ENDPOINT}
-        depends_on:
-            redis:
-                condition: service_healthy
-            mysql:
-                condition: service_healthy
-        networks:
-            - app-network
-        volumes:
-            - .:/app
-            - ./uploads:/app/uploads
-
     redis:
         image: redis:alpine
         container_name: capstone-redis
@@ -104,6 +56,20 @@ services:
                     memory: 512M
         ports:
             - "3001:3000"
+        networks:
+            - app-network
+
+    mailpit:
+        image: axllent/mailpit:latest
+        container_name: capstone-mailpit
+        deploy:
+            resources:
+                limits:
+                    cpus: "0.25"
+                    memory: 256M
+        ports:
+            - "1025:1025"
+            - "8025:8025"
         networks:
             - app-network
 

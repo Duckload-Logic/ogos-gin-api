@@ -33,7 +33,7 @@ func createStudent(index int, password string) {
 	studentEmail := fmt.Sprintf("student%d@university.edu",
 		index+1) // guarantee unique
 
-	// 1. users
+	// users
 	user := users.User{
 		ID:        uuid.New().String(),
 		RoleID:    1, // Student
@@ -83,16 +83,16 @@ func generateFullStudentIIR(
 		log.Fatalf("[Seeder] {Upsert IIRRecord}: %v", err)
 	}
 
-	// 3. selected reasons
+	// selected reasons
 	insertSelectedReasons(ctx, tx, iirID)
 
-	// 4. addresses (residential & provincial)
+	// addresses (residential & provincial)
 	resAddr1 := insertAddress(ctx, tx)
 	resAddr2 := insertAddress(ctx, tx)
 	insertStudentAddress(ctx, tx, iirID, resAddr1, "Residential")
 	insertStudentAddress(ctx, tx, iirID, resAddr2, "Provincial")
 
-	// 5. related persons (father, mother, optional guardian)
+	// related persons (father, mother, optional guardian)
 	father := insertRelatedPerson(ctx, tx)
 	mother := insertRelatedPerson(ctx, tx)
 	father.AddressID = &resAddr1
@@ -112,7 +112,7 @@ func generateFullStudentIIR(
 		guardian = &g
 	}
 
-	// 6. link related persons
+	// link related persons
 	linkFamilyMembers(
 		ctx,
 		tx,
@@ -123,7 +123,7 @@ func generateFullStudentIIR(
 		guardianScenario,
 	)
 
-	// 7. student_personal_info
+	// student_personal_info
 	emergency := deriveEmergencyContact(father, mother, guardian,
 		guardianScenario, resAddr1, resAddr2)
 	emergencyContactID := insertEmergencyContact(ctx, tx, iirID,
@@ -131,47 +131,47 @@ func generateFullStudentIIR(
 	insertPersonalInfo(ctx, tx, iirID, dob, index,
 		emergencyContactID)
 
-	// 8. family background
+	// family background
 	familyBgID := insertFamilyBackground(ctx, tx, iirID)
 
-	// 9. sibling supports (if employed siblings > 0)
+	// sibling supports (if employed siblings > 0)
 	insertSiblingSupports(ctx, tx, familyBgID)
 
-	// 10. educational background
+	// educational background
 	ebID := insertEducationalBackground(ctx, tx, iirID)
 
-	// 11. school details for each educational level
+	// school details for each educational level
 	insertSchoolDetails(ctx, tx, ebID, birthYear, index)
 
-	// 12. health records
+	// health records
 	insertStudentHealthRecords(ctx, tx, iirID)
 
-	// 13. consultations
+	// consultations
 	insertConsultations(ctx, tx, iirID)
 
-	// 14. test results
+	// test results
 	insertTestResults(ctx, tx, iirID)
 
-	// 16. finances
+	// finances
 	sfID := insertStudentFinances(ctx, tx, iirID)
 
-	// 17. financial supports
+	// financial supports
 	insertFinancialSupports(ctx, tx, sfID)
 
-	// 18. activities
+	// activities
 	insertActivities(ctx, tx, iirID)
 
-	// 19. subject preferences
+	// subject preferences
 	insertSubjectPreferences(ctx, tx, iirID)
 
-	// 20. hobbies
+	// hobbies
 	insertHobbies(ctx, tx, iirID)
 
 	// Collect appointment and admission slip IDs for notes
 	appointmentIDs := []string{}
 	admissionSlipIDs := []string{}
 
-	// 21. admission slip (30% chance)
+	// admission slip (30% chance)
 	if rand.Float32() < 0.3 {
 		slipID := insertAdmissionSlip(ctx, tx, iirID)
 		if slipID != "" {
@@ -180,7 +180,7 @@ func generateFullStudentIIR(
 		}
 	}
 
-	// 22. appointment (30% chance)
+	// appointment (30% chance)
 	if rand.Float32() < 0.3 {
 		for i := 0; i < rand.Intn(5)+1; i++ {
 			// up to 5 appointments per student
@@ -192,7 +192,7 @@ func generateFullStudentIIR(
 		}
 	}
 
-	// 15. significant notes (after appointments/slips created)
+	// significant notes (after appointments/slips created)
 	insertSignificantNotes(ctx, tx, iirID, appointmentIDs,
 		admissionSlipIDs)
 

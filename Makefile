@@ -66,17 +66,18 @@ swagger-internal:
 	./internal/features/users,\
 	./internal/features/appointments,\
 	./internal/features/slips,\
-	./internal/features/students
-	--output ./docs/internal \
+	./internal/features/students \
+	--output ./docs/internal_docs \
     --instanceName internal
 
-swagger-external:
+swagger-integrations:
 	swag init -g main.go \
 	--parseDependency --parseInternal \
 	--dir ./cmd/api,\
-	./internal/features/students/external \
-	--output ./docs/external \
-	--instanceName external
+	./internal/features/students/integrations,\
+	./internal/features/m2mclients \
+	--output ./docs/integrations \
+	--instanceName integrations
 
 compose-up:
 	docker-compose --env-file $(ENV) up --build
