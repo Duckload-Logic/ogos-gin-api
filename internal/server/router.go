@@ -89,7 +89,7 @@ func NewRouter(
 	apiV1Routes := g.Group("/api/v1")
 
 	apiV1Routes.GET("/docs/internal/*any", func(c *gin.Context) {
-		docs.SwaggerInfo.Host = c.Request.Host
+		docs.SwaggerInfointernal.Host = c.Request.Host
 		ginSwagger.WrapHandler(swaggerFiles.Handler,
 			ginSwagger.InstanceName("internal"),
 		)(c)
