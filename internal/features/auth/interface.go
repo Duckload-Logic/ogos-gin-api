@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/identity/idp"
@@ -14,9 +15,19 @@ type ServiceInterface interface {
 		ctx context.Context,
 		email, password string,
 	) (string, string, string, error)
+	RegisterUser(
+		ctx context.Context,
+		req RegisterDTO,
+	) (string, error)
+	ResendVerification(ctx context.Context, registrationID string) error
+	VerifyUser(
+		ctx context.Context,
+		registrationID string,
+		verificationOTP string,
+	) (string, string, error)
 	RefreshToken(
 		ctx context.Context,
-		accessTokenJTI string,
+		accessTokenJTI sessions.JTIDTO,
 		cfg *config.Config,
 	) (string, string, error)
 	RefreshIDPToken(

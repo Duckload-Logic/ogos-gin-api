@@ -27,17 +27,26 @@ func RegisterDebugRoutes(
 			}
 
 			if secret != expectedSecret {
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized debug access"})
+				c.JSON(
+					http.StatusUnauthorized,
+					gin.H{"error": "Unauthorized debug access"},
+				)
 				return
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(
+				context.Background(),
+				5*time.Second,
+			)
 			defer cancel()
 
 			// Get all keys
 			keys, err := redis.Client.Keys(ctx, "*").Result()
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				c.JSON(
+					http.StatusInternalServerError,
+					gin.H{"error": err.Error()},
+				)
 				return
 			}
 
