@@ -23,6 +23,7 @@ func main() {
 	numCounselors := 5 // number of counselors (admins)
 	numSuperAdmin := 4 // number of super admins
 	numWorkers := 10   // number of concurrent student workers
+	numDevelopers := 2 // number of developers
 	passwordHash := fakePasswordHash()
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
@@ -109,6 +110,23 @@ func main() {
 	}
 	close(jobs)
 	wg.Wait()
+
+	// create developers
+	developerJobs := make(chan int, numDevelopers)
+	var developerWg sync.WaitGroup
+	for dw := 0; dw < numDevelopers; dw++ {
+		developerWg.Add(1)
+		go func() {
+			defer developerWg.Done()
+			createDeveloper(dw, passwordHash)
+		}()
+	}
+
+	for i := 0; i < numDevelopers; i++ {
+		developerJobs <- i
+	}
+	close(developerJobs)
+	developerWg.Wait()
 
 	fmt.Println("Dummy data generation completed successfully.")
 	log.Println("Time taken:", time.Since(startTime))
