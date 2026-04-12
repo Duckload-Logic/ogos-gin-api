@@ -1177,38 +1177,38 @@ func (s *Service) SubmitStudentIIR(
 				return fmt.Errorf("failed to create IIR record: %w", err)
 			}
 
-			// 1. Save Student Personal Info
+			// Save Student Personal Info
 			if err := s.saveStudentPersonalInfo(ctx, tx, iirID, req.Student.StudentPersonalInfoDTO); err != nil {
 				return err
 			}
 
-			// 2. Save Student Addresses
+			// Save Student Addresses
 			if err := s.saveStudentAddresses(ctx, tx, iirID, req.Student.Addresses); err != nil {
 				return err
 			}
 
-			// 3. Save Educational Background
+			// Save Educational Background
 			if err := s.saveEducationalBackground(ctx, tx, iirID, req.Education); err != nil {
 				return err
 			}
 
-			// 4. Save Family Background (Background, Sibling Support, and
+			// Save Family Background (Background, Sibling Support, and
 			// Related Persons)
 			if err := s.saveFamilyBackground(ctx, tx, iirID, req); err != nil {
 				return err
 			}
 
-			// 5. Save Health Record and Consultations
+			// Save Health Record and Consultations
 			if err := s.saveStudentHealthRecord(ctx, tx, iirID, req); err != nil {
 				return err
 			}
 
-			// 6. Save Financial Info
+			// Save Financial Info
 			if err := s.saveStudentFinance(ctx, tx, iirID, req.Family.Finance); err != nil {
 				return err
 			}
 
-			// 7. Save Interests (Activities, Subject Preferences, Hobbies)
+			// Save Interests (Activities, Subject Preferences, Hobbies)
 			if err := s.saveStudentInterests(ctx, tx, iirID, req); err != nil {
 				return err
 			}

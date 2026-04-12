@@ -37,3 +37,16 @@ type DashboardResponseDTO struct {
 	// Study Environment
 	QuietStudyPlace []DemographicStatDTO `json:"quietStudyPlace"`
 }
+
+type MonthlyVisitorStatDTO struct {
+	Month string `json:"month"`
+	Count int    `json:"count"`
+}
+
+type AdminDashboardResponseDTO struct {
+	TotalStudents     int                     `json:"totalStudents"`
+	TotalReports      int                     `json:"totalReports"`
+	TotalAppointments int                     `json:"totalAppointments"`
+	TotalSlips        int                     `json:"totalSlips"`
+	MonthlyVisitors   []MonthlyVisitorStatDTO `json:"monthlyVisitors"`
+}

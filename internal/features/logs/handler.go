@@ -161,6 +161,23 @@ func (h *Handler) GetLogStats(c *gin.Context) {
 	response.SendSuccess(c, stats)
 }
 
+// GetActivityStats returns log counts grouped by hour for the last 24 hours
+func (h *Handler) GetActivityStats(c *gin.Context) {
+	stats, err := h.service.GetActivityStats(c.Request.Context())
+	if err != nil {
+		log.Printf("[GetActivityStats] {GetActivityStats}: %v", err)
+		response.SendError(
+			c,
+			"Failed to retrieve log activity stats",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, stats)
+}
+
 // GetMyLogs retrieves activity logs for the currently authenticated user.
 func (h *Handler) GetMyLogs(c *gin.Context) {
 	userEmail := c.MustGet("userEmail").(string)

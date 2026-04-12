@@ -94,6 +94,43 @@ func (s *Service) GetDashboard(
 	return dashboard, nil
 }
 
+func (s *Service) GetAdminDashboard(
+	ctx context.Context,
+) (*AdminDashboardResponseDTO, error) {
+	totalStudents, err := s.repo.GetTotalStudents(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalReports, err := s.repo.GetTotalReports(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalAppointments, err := s.repo.GetTotalAppointments(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalSlips, err := s.repo.GetTotalSlips(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	monthlyVisitors, err := s.repo.GetMonthlyVisitorStats(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AdminDashboardResponseDTO{
+		TotalStudents:     totalStudents,
+		TotalReports:      totalReports,
+		TotalAppointments: totalAppointments,
+		TotalSlips:        totalSlips,
+		MonthlyVisitors:   monthlyVisitors,
+	}, nil
+}
+
 func (s *Service) mapToDTO(
 	rawStats []AggregatedStatModel,
 	totalStudents int,

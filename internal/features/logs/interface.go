@@ -27,6 +27,7 @@ type ServiceInterface interface {
 		ctx context.Context,
 		startDate, endDate string,
 	) ([]LogStatsDTO, error)
+	GetActivityStats(ctx context.Context) ([]LogActivityDTO, error)
 }
 
 type RepositoryInterface interface {
@@ -46,4 +47,5 @@ type RepositoryInterface interface {
 		ctx context.Context,
 		startDate, endDate string,
 	) ([]LogStatsDTO, error)
+	GetActivityStats(ctx context.Context) ([]LogActivityDTO, error)
 }

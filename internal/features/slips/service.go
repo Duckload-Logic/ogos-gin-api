@@ -65,6 +65,50 @@ func (s *Service) GetSlipCategories(
 	return categories, nil
 }
 
+func (s *Service) GetSlipByID(
+	ctx context.Context,
+	id string,
+) (*SlipDTO, error) {
+	slip, err := s.repo.GetSlipByIDWithDetails(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if slip == nil {
+		return nil, fmt.Errorf("slip not found")
+	}
+
+	return &SlipDTO{
+		ID:    slip.ID,
+		IIRID: slip.IIRID,
+		User: users.GetUserResponse{
+			FirstName: slip.UserFirstName,
+			MiddleName: structs.FromSqlNull(
+				slip.UserMiddleName,
+			),
+			LastName: slip.UserLastName,
+			Email:    slip.UserEmail,
+		},
+		StudentNumber: slip.StudentNumber,
+		Reason:        slip.Reason,
+		DateOfAbsence: slip.DateOfAbsence,
+		DateNeeded:    slip.DateNeeded,
+		AdminNotes: structs.FromSqlNull(
+			slip.AdminNotes,
+		),
+		Category: SlipCategory{
+			ID:   slip.CategoryID,
+			Name: slip.CategoryName,
+		},
+		Status: SlipStatus{
+			ID:       slip.StatusID,
+			Name:     slip.StatusName,
+			ColorKey: slip.StatusColorKey,
+		},
+		CreatedAt: slip.CreatedAt,
+		UpdatedAt: slip.UpdatedAt,
+	}, nil
+}
+
 func (s *Service) GetUrgentSlips(
 	ctx context.Context,
 	req *ListSlipRequest,
@@ -148,7 +192,8 @@ func (s *Service) GetAllExcuseSlips(
 	var slipDTOs []SlipDTO
 	for s := range slips {
 		slipDTOs = append(slipDTOs, SlipDTO{
-			ID: slips[s].ID,
+			ID:    slips[s].ID,
+			IIRID: slips[s].IIRID,
 			User: users.GetUserResponse{
 				ID:        "",
 				FirstName: slips[s].UserFirstName,
@@ -158,6 +203,7 @@ func (s *Service) GetAllExcuseSlips(
 				LastName: slips[s].UserLastName,
 				Email:    slips[s].UserEmail,
 			},
+			StudentNumber: slips[s].StudentNumber,
 			Reason:        slips[s].Reason,
 			DateOfAbsence: slips[s].DateOfAbsence,
 			DateNeeded:    slips[s].DateNeeded,
@@ -204,7 +250,8 @@ func (s *Service) GetExcuseSlipsByIIRID(
 	var slipDTOs []SlipDTO
 	for s := range slips {
 		slipDTOs = append(slipDTOs, SlipDTO{
-			ID: slips[s].ID,
+			ID:    slips[s].ID,
+			IIRID: slips[s].IIRID,
 			User: users.GetUserResponse{
 				ID:        "",
 				FirstName: slips[s].UserFirstName,
@@ -214,6 +261,7 @@ func (s *Service) GetExcuseSlipsByIIRID(
 				LastName: slips[s].UserLastName,
 				Email:    slips[s].UserEmail,
 			},
+			StudentNumber: slips[s].StudentNumber,
 			Reason:        slips[s].Reason,
 			DateOfAbsence: slips[s].DateOfAbsence,
 			DateNeeded:    slips[s].DateNeeded,
@@ -439,7 +487,10 @@ func (s *Service) SubmitExcuseSlip(
 			},
 			Notifications: []audit.NotificationParams{
 				{
-					Title: fmt.Sprintf("Slip Creation Failed for IIR #%s", iirID),
+					Title: fmt.Sprintf(
+						"Slip Creation Failed for IIR #%s",
+						iirID,
+					),
 					Message: fmt.Sprintf(
 						"An error occurred while creating the slip: %s",
 						err.Error(),
@@ -468,10 +519,12 @@ func (s *Service) SubmitExcuseSlip(
 		{
 			ReceiverID: structs.StringToNullableString(userID),
 			TargetID:   structs.StringToNullableString(slip.ID),
-			TargetType: structs.StringToNullableString(constants.SlipEntityType),
-			Title:      "Admission Slip Submitted Successfully",
-			Message:    "Your admission slip request has been submitted.",
-			Type:       constants.SlipEntityType,
+			TargetType: structs.StringToNullableString(
+				constants.SlipEntityType,
+			),
+			Title:   "Admission Slip Submitted Successfully",
+			Message: "Your admission slip request has been submitted.",
+			Type:    constants.SlipEntityType,
 		},
 	}
 
@@ -479,8 +532,10 @@ func (s *Service) SubmitExcuseSlip(
 		notifications = append(notifications, audit.NotificationParams{
 			ReceiverID: structs.StringToNullableString(cid),
 			TargetID:   structs.StringToNullableString(slip.ID),
-			TargetType: structs.StringToNullableString(constants.SlipEntityType),
-			Title:      "New Admission Slip Request",
+			TargetType: structs.StringToNullableString(
+				constants.SlipEntityType,
+			),
+			Title: "New Admission Slip Request",
 			Message: fmt.Sprintf(
 				"New admission slip request received from %s for %s.",
 				studentName,
@@ -627,8 +682,10 @@ func (s *Service) UpdateExcuseSlipStatus(
 				{
 					ReceiverID: structs.StringToNullableString(studentUserID),
 					TargetID:   structs.StringToNullableString(id),
-					TargetType: structs.StringToNullableString(constants.SlipEntityType),
-					Title:      "Admission Slip Updated",
+					TargetType: structs.StringToNullableString(
+						constants.SlipEntityType,
+					),
+					Title: "Admission Slip Updated",
 					Message: fmt.Sprintf(
 						"Status for your admission slip has been updated to '%s'",
 						newStatus,

@@ -102,8 +102,13 @@ func (s *Service) notifySuperadmins(ctx context.Context, entry audit.LogEntry) {
 			ReceiverID: structs.StringToNullableString(adminID),
 			ActorID:    entry.UserID,
 			Title:      title,
-			Message:    fmt.Sprintf("[%s] %s: %s", entry.Action, entry.Level, entry.Message),
-			Type:       "SystemAlert",
+			Message: fmt.Sprintf(
+				"[%s] %s: %s",
+				entry.Action,
+				entry.Level,
+				entry.Message,
+			),
+			Type: "SystemAlert",
 		})
 	}
 }
@@ -170,6 +175,13 @@ func (s *Service) GetStats(
 	startDate, endDate string,
 ) ([]LogStatsDTO, error) {
 	return s.repo.GetStats(ctx, startDate, endDate)
+}
+
+// GetActivityStats returns log counts grouped by hour for the last 24 hours
+func (s *Service) GetActivityStats(
+	ctx context.Context,
+) ([]LogActivityDTO, error) {
+	return s.repo.GetActivityStats(ctx)
 }
 
 func (s *Service) mapLogsToDTOs(logs []SystemLog) []SystemLogDTO {

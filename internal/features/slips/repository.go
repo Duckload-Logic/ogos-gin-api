@@ -26,6 +26,7 @@ const slipsBaseQuery = `
 		u.middle_name AS user_middle_name,
 		u.last_name AS user_last_name,
 		u.email AS user_email,
+		spi.student_number AS student_number,
 		slp.reason AS reason,
 		slp.date_of_absence AS date_of_absence,
 		slp.date_needed AS date_needed,
@@ -39,6 +40,7 @@ const slipsBaseQuery = `
 		slp.updated_at AS updated_at
 	FROM admission_slips slp
 	JOIN iir_records ir ON slp.iir_id = ir.id
+	JOIN student_personal_info spi ON ir.id = spi.iir_id
 	JOIN users u ON ir.user_id = u.id
 	JOIN admission_slip_categories c ON slp.category_id = c.id
 	JOIN statuses s ON slp.status_id = s.id
@@ -406,6 +408,22 @@ func (r *Repository) GetSlipByID(
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get slip by ID: %w", err)
+	}
+	return &slip, nil
+}
+
+func (r *Repository) GetSlipByIDWithDetails(
+	ctx context.Context,
+	id string,
+) (*SlipWithDetailsView, error) {
+	var slip SlipWithDetailsView
+	query := slipsBaseQuery + " WHERE slp.id = ?"
+	err := r.db.GetContext(ctx, &slip, query, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get slip with details: %w", err)
 	}
 	return &slip, nil
 }

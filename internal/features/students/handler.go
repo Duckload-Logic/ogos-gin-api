@@ -227,8 +227,7 @@ func (h *Handler) GetActivityOptions(c *gin.Context) {
 // @Param        page       query     int     false  "Page number" default(1)
 // @Param        page_size  query     int     false  "Number of records per page" default(20)
 // @Success      200        {object}  ListStudentsResponse
-// @Failure      500        {object}
-// map[string]string "Failed to list students"
+// @Failure      500        {object}  map[string]string "Failed to list students"
 // @Router       /students [get]
 func (h *Handler) GetStudentList(c *gin.Context) {
 	var req ListStudentsRequest

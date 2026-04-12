@@ -79,3 +79,20 @@ func (r *Repository) CreateSignificantNote(
 		},
 	)
 }
+
+func (r *Repository) HasNoteForAppointment(
+	ctx context.Context,
+	appointmentID string,
+) (bool, error) {
+	var count int
+	query := "SELECT COUNT(*) FROM significant_notes WHERE appointment_id = ?"
+	err := r.db.GetContext(ctx, &count, query, appointmentID)
+	if err != nil {
+		return false, fmt.Errorf(
+			"failed to check for existing note: %w",
+			err,
+		)
+	}
+
+	return count > 0, nil
+}

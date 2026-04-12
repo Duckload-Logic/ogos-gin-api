@@ -183,6 +183,30 @@ func (r *Repository) GetStats(
 	return stats, nil
 }
 
+// GetActivityStats returns log counts grouped by hour for the last 24 hours
+func (r *Repository) GetActivityStats(
+	ctx context.Context,
+) ([]LogActivityDTO, error) {
+	query := `
+		SELECT 
+			DATE_FORMAT(created_at, '%Y-%m-%d %H:00') as time,
+			COUNT(CASE WHEN level != 'ERROR' THEN 1 END) as requests,
+			COUNT(CASE WHEN level = 'ERROR' THEN 1 END) as errors
+		FROM system_logs
+		WHERE created_at >= NOW() - INTERVAL 24 HOUR
+		GROUP BY time
+		ORDER BY time ASC
+	`
+
+	var stats []LogActivityDTO
+	err := r.db.SelectContext(ctx, &stats, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get log activity stats: %w", err)
+	}
+
+	return stats, nil
+}
+
 // toNullString converts a value to sql.NullString
 func toNullString(v interface{}) sql.NullString {
 	if v == nil {

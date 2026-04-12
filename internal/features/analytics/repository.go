@@ -24,13 +24,65 @@ func (r *Repository) GetTotalStudents(ctx context.Context) (int, error) {
 	return total, err
 }
 
+func (r *Repository) GetTotalReports(ctx context.Context) (int, error) {
+	var total int
+	err := r.db.GetContext(
+		ctx,
+		&total,
+		"SELECT COUNT(*) FROM significant_notes",
+	)
+	return total, err
+}
+
+func (r *Repository) GetTotalAppointments(ctx context.Context) (int, error) {
+	var total int
+	err := r.db.GetContext(
+		ctx,
+		&total,
+		`SELECT COUNT(*) FROM appointments
+		 WHERE status_id != (SELECT id FROM statuses WHERE name = 'Cancelled')`,
+	)
+	return total, err
+}
+
+func (r *Repository) GetTotalSlips(ctx context.Context) (int, error) {
+	var total int
+	err := r.db.GetContext(
+		ctx,
+		&total,
+		"SELECT COUNT(*) FROM admission_slips",
+	)
+	return total, err
+}
+
+func (r *Repository) GetMonthlyVisitorStats(
+	ctx context.Context,
+) ([]MonthlyVisitorStatDTO, error) {
+	// Last 6 months inclusive of current month
+	query := `
+		SELECT
+			DATE_FORMAT(when_date, '%b') as month,
+			COUNT(*) as count
+		FROM appointments
+		WHERE when_date >=
+			DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL 5 MONTH)
+		  AND status_id =
+			(SELECT id FROM statuses WHERE name = 'Completed')
+		GROUP BY DATE_FORMAT(when_date, '%Y-%m'), month
+		ORDER BY DATE_FORMAT(when_date, '%Y-%m') ASC;
+	`
+	var stats []MonthlyVisitorStatDTO
+	err := r.db.SelectContext(ctx, &stats, query)
+	return stats, err
+}
+
 // --- PERSONAL INFORMATION ---
 
 func (r *Repository) GetAgeStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			CAST(TIMESTAMPDIFF(YEAR, spi.date_of_birth, CURDATE()) AS CHAR) AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -47,7 +99,7 @@ func (r *Repository) GetCivilStatusStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(status_name, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -65,7 +117,7 @@ func (r *Repository) GetReligionStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(religion_name, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -83,7 +135,7 @@ func (r *Repository) GetCityAddressStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(sa.city, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -102,7 +154,7 @@ func (r *Repository) GetMonthlyIncomeStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(ir.range_text, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -120,7 +172,7 @@ func (r *Repository) GetOrdinalPositionStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			CAST(fb.ordinal_position AS CHAR) AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -137,7 +189,7 @@ func (r *Repository) GetFatherEducationStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(rp.educational_level, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -155,7 +207,7 @@ func (r *Repository) GetMotherEducationStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(rp.educational_level, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -173,7 +225,7 @@ func (r *Repository) GetParentsMaritalStatusStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(pst.status_name, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -191,7 +243,7 @@ func (r *Repository) GetQuietStudyPlaceStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			CASE WHEN fb.have_quiet_place_to_study = 1 THEN 'Yes' ELSE 'No' END AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -210,8 +262,8 @@ func (r *Repository) GetHSGWAStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
-			CASE 
+		SELECT
+			CASE
 				WHEN spi.high_school_gwa >= 95.00 THEN '95.00 - 100.00'
 				WHEN spi.high_school_gwa >= 90.00 THEN '90.00 - 94.99'
 				WHEN spi.high_school_gwa >= 85.00 THEN '85.00 - 89.99'
@@ -234,7 +286,7 @@ func (r *Repository) GetElementaryStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -254,7 +306,7 @@ func (r *Repository) GetJuniorHighStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -274,7 +326,7 @@ func (r *Repository) GetSeniorHighStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -294,7 +346,7 @@ func (r *Repository) GetNatureOfSchoolingStats(
 	ctx context.Context,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(eb.nature_of_schooling, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -323,7 +375,7 @@ func (r *Repository) getSchoolTypeStats(
 	levelName string,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(sd.school_type, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -347,7 +399,7 @@ func (r *Repository) getParentEducationStats(
 	parentType string,
 ) ([]AggregatedStatModel, error) {
 	query := `
-		SELECT 
+		SELECT
 			COALESCE(ed.level_name, 'Not Indicated') AS category,
 			SUM(CASE WHEN g.name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.name = 'Female' THEN 1 ELSE 0 END) as female_count,

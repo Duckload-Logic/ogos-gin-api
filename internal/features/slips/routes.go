@@ -44,6 +44,7 @@ func RegisterRoutes(
 		int(constants.StudentRoleID),
 	))
 	{
+		sharedRoutes.GET("/id/:id", h.GetSlipByID)
 		sharedRoutes.GET("/stats", h.GetSlipStatsList)
 		sharedRoutes.GET(
 			"/id/:id/attachments",

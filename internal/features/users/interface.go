@@ -15,6 +15,13 @@ type ServiceInterface interface {
 		authType string,
 	) (*GetUserResponse, error)
 	GetUserIDsByRole(ctx context.Context, roleID int) ([]string, error)
+	ListUsers(
+		ctx context.Context,
+		params ListUsersParams,
+	) (*ListUsersResponse, error)
+	GetRoleDistribution(ctx context.Context) ([]RoleDistributionDTO, error)
+	BlockUser(ctx context.Context, userID string) error
+	UnblockUser(ctx context.Context, userID string) error
 }
 
 type RepositoryInterface interface {
@@ -27,6 +34,8 @@ type RepositoryInterface interface {
 		authType string,
 	) (*User, error)
 	GetUserIDsByRole(ctx context.Context, roleID int) ([]string, error)
+	ListUsers(ctx context.Context, params ListUsersParams) ([]User, int, error)
+	GetRoleDistribution(ctx context.Context) ([]RoleDistributionDTO, error)
 	CreateUser(ctx context.Context, tx datastore.DB, user User) error
 	BlockUser(ctx context.Context, tx datastore.DB, userID string) error
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error

@@ -64,7 +64,7 @@ func (r *Repository) GetRoleByID(
 }
 
 func (r *Repository) GetUserByEmail(
-	ctx context.Context, email string, authType string,
+	ctx context.Context, email, authType string,
 ) (*User, error) {
 	var user User
 
@@ -141,4 +141,76 @@ func (r *Repository) GetUserIDsByRole(
 	query := `SELECT id FROM users WHERE role_id = ?`
 	err := r.db.SelectContext(ctx, &userIDs, query, roleID)
 	return userIDs, err
+}
+
+func (r *Repository) ListUsers(
+	ctx context.Context,
+	params ListUsersParams,
+) ([]User, int, error) {
+	var users []User
+	var total int
+
+	baseQuery := `FROM users WHERE 1=1`
+	args := []interface{}{}
+
+	if params.RoleID > 0 {
+		baseQuery += ` AND role_id = ?`
+		args = append(args, params.RoleID)
+	}
+
+	if params.Search != "" {
+		baseQuery += ` AND (email LIKE ? OR first_name LIKE ? OR last_name LIKE ?)`
+		like := "%" + params.Search + "%"
+		args = append(args, like, like, like)
+	}
+
+	if params.Active != nil {
+		baseQuery += ` AND is_active = ?`
+		activeVal := 0
+		if *params.Active {
+			activeVal = 1
+		}
+		args = append(args, activeVal)
+	}
+
+	// Count total
+	countQuery := `SELECT COUNT(*) ` + baseQuery
+	err := r.db.GetContext(ctx, &total, countQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated users
+	selectQuery := fmt.Sprintf(`SELECT %s `, datastore.GetColumns(User{})) +
+		baseQuery + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+
+	limit := params.PageSize
+	offset := (params.Page - 1) * params.PageSize
+	args = append(args, limit, offset)
+
+	err = r.db.SelectContext(ctx, &users, selectQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return users, total, nil
+}
+
+func (r *Repository) GetRoleDistribution(
+	ctx context.Context,
+) ([]RoleDistributionDTO, error) {
+	query := `
+		SELECT r.name as role_name, COUNT(u.id) as count
+		FROM user_roles r
+		LEFT JOIN users u ON u.role_id = r.id
+		GROUP BY r.name
+	`
+
+	var distribution []RoleDistributionDTO
+	err := r.db.SelectContext(ctx, &distribution, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get role distribution: %w", err)
+	}
+
+	return distribution, nil
 }

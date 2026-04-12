@@ -92,3 +92,118 @@ func (h *Handler) GetUserByEmail(c *gin.Context) {
 
 	response.SendSuccess(c, resp)
 }
+
+// GetUsers godoc
+// @Summary      List all users
+// @Description  Retrieves a paginated list of all users with filtering options.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Param        page       query     int     false  "Page number"
+// @Param        page_size  query     int     false  "Items per page"
+// @Param        role_id    query     int     false  "Filter by role"
+// @Param        search     query     string  false  "Search by name/email"
+// @Param        active     query     bool    false  "Filter by status"
+// @Success      200        {object}  ListUsersResponse
+// @Router       /users/all [get]
+func (h *Handler) GetUsers(c *gin.Context) {
+	var params ListUsersParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.service.ListUsers(c.Request.Context(), params)
+	if err != nil {
+		log.Printf("[GetUsers] {ListUsers}: %v", err)
+		response.SendError(
+			c,
+			"Failed to list users",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, resp)
+}
+
+// GetRoleDistribution godoc
+// @Summary      Get user role distribution
+// @Description  Returns the count of users for each role in the system.
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Success      200      {array}   RoleDistributionDTO
+// @Router       /users/distribution [get]
+func (h *Handler) GetRoleDistribution(c *gin.Context) {
+	resp, err := h.service.GetRoleDistribution(c.Request.Context())
+	if err != nil {
+		log.Printf("[GetRoleDistribution] {GetRoleDistribution}: %v", err)
+		response.SendError(
+			c,
+			"Failed to get role distribution",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, resp)
+}
+
+func (h *Handler) PostBlockUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		log.Printf(
+			"[BlockUser] {Check Param ID}: User ID parameter is required",
+		)
+		response.SendFail(
+			c,
+			gin.H{"error": "User ID parameter is required"},
+		)
+		return
+	}
+
+	err := h.service.BlockUser(c.Request.Context(), userID)
+	if err != nil {
+		log.Printf("[BlockUser] {BlockUser}: %v", err)
+		response.SendError(
+			c,
+			"Failed to block user",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, gin.H{"message": "User blocked successfully"})
+}
+
+func (h *Handler) PostUnblockUser(c *gin.Context) {
+	userID := c.Param("id")
+	if userID == "" {
+		log.Printf(
+			"[PostUnblockUser] {Check Param ID}: User ID parameter is required",
+		)
+		response.SendFail(
+			c,
+			gin.H{"error": "User ID parameter is required"},
+		)
+		return
+	}
+
+	err := h.service.UnblockUser(c.Request.Context(), userID)
+	if err != nil {
+		log.Printf("[UnblockUser] {UnblockUser}: %v", err)
+		response.SendError(
+			c,
+			"Failed to unblock user",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, gin.H{"message": "User unblocked successfully"})
+}

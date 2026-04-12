@@ -9,7 +9,7 @@ type NotificationModel struct {
 	ID string `db:"id" json:"id"`
 
 	// Entities involved in the notification
-	ReceiverID sql.NullString `db:"receiver_id"     json:"receiverId"`
+	ReceiverID sql.NullString `db:"receiver_id" json:"receiverId"`
 	ActorID    sql.NullString `db:"actor_id"    json:"actorId,omitempty"`
 	TargetID   sql.NullString `db:"target_id"   json:"targetId,omitempty"`
 	TargetType sql.NullString `db:"target_type" json:"targetType,omitempty"`

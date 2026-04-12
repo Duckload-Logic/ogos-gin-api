@@ -39,6 +39,7 @@ type ServiceInterface interface {
 		ctx context.Context,
 		attachmentID string,
 	) (*SlipAttachment, error)
+	GetSlipByID(ctx context.Context, id string) (*SlipDTO, error)
 	SubmitExcuseSlip(
 		ctx context.Context,
 		iirID string,
@@ -103,6 +104,10 @@ type RepositoryInterface interface {
 		iirID string,
 		req *ListSlipRequest,
 	) ([]SlipWithDetailsView, error)
+	GetSlipByIDWithDetails(
+		ctx context.Context,
+		id string,
+	) (*SlipWithDetailsView, error)
 	GetSlipByID(ctx context.Context, id string) (*Slip, error)
 	GetSlipAttachments(
 		ctx context.Context,

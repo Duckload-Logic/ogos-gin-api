@@ -3,9 +3,10 @@ package notes
 import "time"
 
 type SignificantNoteDTO struct {
-	ID        string    `json:"id,omitempty"`
-	Note      string    `json:"note"                binding:"required"`
-	Remarks   string    `json:"remarks"             binding:"required"`
-	CreatedAt time.Time `json:"createdAt,omitempty"                    db:"created_at"`
-	UpdatedAt time.Time `json:"updatedAt,omitempty"                    db:"updated_at"`
+	ID            string    `json:"id,omitempty"`
+	AppointmentID string    `json:"appointmentId,omitempty"`
+	Note          string    `json:"note"                    binding:"required"`
+	Remarks       string    `json:"remarks"                 binding:"required"`
+	CreatedAt     time.Time `json:"createdAt,omitempty"                        db:"created_at"`
+	UpdatedAt     time.Time `json:"updatedAt,omitempty"                        db:"updated_at"`
 }

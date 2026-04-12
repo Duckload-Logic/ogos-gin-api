@@ -24,4 +24,20 @@ func RegisterRoutes(
 
 	userRoutes.GET("/me", h.GetMe)
 	userRoutes.GET("", h.GetUserByEmail)
+	userRoutes.GET("/all",
+		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
+		h.GetUsers,
+	)
+	userRoutes.GET("/distribution",
+		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
+		h.GetRoleDistribution,
+	)
+	userRoutes.POST("/:id/block",
+		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
+		h.PostBlockUser,
+	)
+	userRoutes.POST("/:id/unblock",
+		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
+		h.PostUnblockUser,
+	)
 }
