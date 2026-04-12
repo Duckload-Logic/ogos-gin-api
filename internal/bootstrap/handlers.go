@@ -4,35 +4,35 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/apikeys"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/m2mclients"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notifications"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/students/external"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/students/integrations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Handlers struct {
-	DB                     *sqlx.DB
-	AuthHandler            *auth.Handler
-	UserHandler            *users.Handler
-	LocationsHandler       *locations.Handler
-	StudentHandler         *students.Handler
-	NoteHandler            *notes.Handler
-	ExternalStudentHandler *external.Handler
-	AppointmentHandler     *appointments.Handler
-	SlipHandler            *slips.Handler
-	AnalyticsHandler       *analytics.Handler
-	APIKeyHandler          *apikeys.Handler
-	NotificationsHandler   *notifications.Handler
-	SystemLogHandler       *logs.Handler
-	Redis                  *datastore.RedisClient
+	DB                        *sqlx.DB
+	AuthHandler               *auth.Handler
+	UserHandler               *users.Handler
+	LocationsHandler          *locations.Handler
+	StudentHandler            *students.Handler
+	NoteHandler               *notes.Handler
+	IntegrationStudentHandler *integrations.Handler
+	AppointmentHandler        *appointments.Handler
+	SlipHandler               *slips.Handler
+	AnalyticsHandler          *analytics.Handler
+	M2MClientHandler          *m2mclients.Handler
+	NotificationsHandler      *notifications.Handler
+	SystemLogHandler          *logs.Handler
+	Redis                     *datastore.RedisClient
 }
 
 func getHandlers(
@@ -55,16 +55,19 @@ func getHandlers(
 		UserHandler:      users.NewHandler(services.UserService),
 		LocationsHandler: locations.NewHandler(services.LocationsService),
 		StudentHandler:   students.NewHandler(services.StudentService),
-		NoteHandler:      notes.NewHandler(services.NoteService, services.SystemLogService),
-		ExternalStudentHandler: external.NewHandler(
-			services.ExternalStudentService,
+		NoteHandler: notes.NewHandler(
+			services.NoteService,
+			services.SystemLogService,
+		),
+		IntegrationStudentHandler: integrations.NewHandler(
+			services.IntegrationStudentService,
 		),
 		AppointmentHandler: appointments.NewHandler(
 			services.AppointmentService,
 		),
 		SlipHandler:          slips.NewHandler(services.SlipService),
 		AnalyticsHandler:     analyticsHandler,
-		APIKeyHandler:        apikeys.NewHandler(services.APIKeyService),
+		M2MClientHandler:     m2mclients.NewHandler(services.M2MClientService),
 		NotificationsHandler: notificationsHandler,
 		SystemLogHandler:     systemLogHandler,
 		Redis:                redis,

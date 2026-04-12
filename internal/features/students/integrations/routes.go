@@ -1,0 +1,27 @@
+package integrations
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/middleware"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
+)
+
+func RegisterRoutes(
+	rg *gin.RouterGroup,
+	h *Handler,
+	redis *datastore.RedisClient,
+) {
+	routes := rg.Group("/integrations/students")
+	routes.Use(middleware.AuthMiddleware(redis))
+
+	routes.POST("/linker", h.PostLinkStudent)
+	routes.POST("/linker/code", h.PostEmailVerificationCode)
+
+	routes.GET("/profiles", h.GetStudents)
+	routes.GET("/:studentNumber", h.GetStudentByStudentNumber)
+	routes.GET(
+		"/:studentNumber/personal-info",
+		h.GetPersonalInfoByStudentNumber,
+	)
+	routes.GET("/:studentNumber/addresses", h.GetAddressByStudentNumber)
+}
