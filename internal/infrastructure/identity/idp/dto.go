@@ -29,10 +29,9 @@ type IDPTokenResponse struct {
 
 // IDPUserInfo represents user information from IDP userinfo endpoint
 type IDPUserInfo struct {
-	ID         string   `json:"id"`
-	Email      string   `json:"email"`
-	FirstName  string   `json:"first_name"`
-	LastName   string   `json:"last_name"`
-	MiddleName string   `json:"middle_name,omitempty"`
-	Roles      []string `json:"roles,omitempty"`
+	ID         string `json:"id"`
+	Email      string `json:"email"`
+	FirstName  string `json:"first_name"`
+	LastName   string `json:"last_name"`
+	MiddleName string `json:"middle_name,omitempty"`
 }

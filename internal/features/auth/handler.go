@@ -389,8 +389,9 @@ func (h *Handler) PostLogout(c *gin.Context) {
 		tType = tt
 	}
 
+	var logoutUrl string
 	if tokenString != "" {
-		_ = h.service.Logout(
+		logoutUrl, _ = h.service.Logout(
 			c.Request.Context(),
 			tokenString,
 			tType,
@@ -431,7 +432,10 @@ func (h *Handler) PostLogout(c *gin.Context) {
 		)
 	}
 
-	response.SendSuccess(c, gin.H{"message": "Logout successful"})
+	response.SendSuccess(c, gin.H{
+		"message":   "Logout successful",
+		"logoutUrl": logoutUrl,
+	})
 }
 
 // IDP integration handlers
@@ -609,6 +613,11 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 // @Success      200 {object} map[string]string
 // @Failure      401 {object} map[string]string
 // @Router       /auth/idp/session [get]
+func (h *Handler) GetIDPLogoutRedirect(c *gin.Context) {
+	logoutURL := h.service.GetIDPLogoutURL(h.cfg)
+	c.Redirect(http.StatusFound, logoutURL)
+}
+
 func (h *Handler) GetIDPValidateSession(c *gin.Context) {
 	sessionID, err := c.Cookie("idp_session")
 	if err != nil {

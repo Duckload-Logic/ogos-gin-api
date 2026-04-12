@@ -575,12 +575,12 @@ func (s *Service) Logout(
 	token string,
 	tokenType string,
 	cfg *config.Config,
-) error {
+) (string, error) {
 	// Identify the session using the Access Token JTI
 	claims, err := tokens.NewService().ParseTokenUnverified(token)
 	if err != nil {
 		log.Printf("[AuthService:Logout] {Parse Error}: %v", err)
-		return nil // Move on since we can't identify the session
+		return "", nil // Move on since we can't identify the session
 	}
 	accessJTI := claims.ID
 
@@ -609,18 +609,22 @@ func (s *Service) Logout(
 		log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
 	}
 
-	// Call IDP logout if IDP token
-	if tokenType == string(constants.AuthTypeIDP) && idpToken != "" {
-		_, err = s.idpClient.Logout(ctx, cfg, idpToken)
-		if err != nil {
-			log.Printf("[AuthService:Logout] {IDP Logout Error}: %v", err)
-			return err
+	// Generate IDP logout URL if IDP token
+	if tokenType == string(constants.AuthTypeIDP) {
+		// Even if server-side logout fails, we want the browser to redirect
+		if idpToken != "" {
+			_, _ = s.idpClient.Logout(ctx, cfg, idpToken)
 		}
 
-		return nil
+		logoutURL := fmt.Sprintf(
+			"%s/auth/logout?client_id=%s",
+			cfg.IDPBaseUrl,
+			cfg.IDPClientID,
+		)
+		return logoutURL, nil
 	}
 
-	return nil
+	return "", nil
 }
 
 // IDP integration methods
@@ -689,10 +693,6 @@ func (s *Service) PostIDPTokenExchange(
 	idpAccessToken := tokenResp.AccessToken
 	idpRefreshToken := tokenResp.RefreshToken
 
-	// Dynamic Role Mapping from IDP Tags
-	// Logic: Identify tag:admin, tag:student, tag:superadmin at runtime
-	appRoleID := s.mapIDPRolesToInternalID(userInfo.Roles)
-
 	// Upsert IDP user into native database
 	// This ensures non-existing users are added and existing ones
 	// are synchronized
@@ -702,7 +702,7 @@ func (s *Service) PostIDPTokenExchange(
 		func(tx datastore.DB) error {
 			return s.repo.CreateUser(ctx, tx, users.User{
 				ID:           userInfo.ID,
-				RoleID:       appRoleID,
+				RoleID:       1,
 				FirstName:    userInfo.FirstName,
 				LastName:     userInfo.LastName,
 				Email:        userInfo.Email,
@@ -722,7 +722,7 @@ func (s *Service) PostIDPTokenExchange(
 	appUserID := userInfo.ID
 
 	// Map Role ID to Name for frontend redirection
-	role, err := s.repo.GetRoleByID(ctx, appRoleID)
+	role, err := s.repo.GetRoleByID(ctx, 1)
 	roleName := "student"
 	if err == nil && role != nil {
 		roleName = role.Name
@@ -732,7 +732,7 @@ func (s *Service) PostIDPTokenExchange(
 	appAccessToken, accessClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		appUserID,
-		appRoleID,
+		1,
 		"",
 		string(constants.AuthTypeIDP),
 		constants.AccessTokenMaxAge,
@@ -747,7 +747,7 @@ func (s *Service) PostIDPTokenExchange(
 	appRefreshToken, refreshClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		appUserID,
-		appRoleID,
+		1,
 		"",
 		string(constants.AuthTypeIDP),
 		constants.RefreshTokenMaxAge,
@@ -895,6 +895,14 @@ func (s *Service) ValidateIDPSession(
 	cfg *config.Config,
 ) (*idp.IDPSessionResponse, error) {
 	return s.idpClient.ValidateSession(ctx, sessionID, cfg)
+}
+
+func (s *Service) GetIDPLogoutURL(cfg *config.Config) string {
+	return fmt.Sprintf(
+		"%s/auth/logout?client_id=%s",
+		cfg.IDPBaseUrl,
+		cfg.IDPClientID,
+	)
 }
 
 func (s *Service) BlockUser(ctx context.Context, userID string) error {

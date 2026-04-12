@@ -42,7 +42,7 @@ type ServiceInterface interface {
 		token string,
 		tokenType string,
 		cfg *config.Config,
-	) error
+	) (string, error)
 	GetAuthorizeURL(cfg *config.Config) (string, error)
 	PostIDPTokenExchange(
 		ctx context.Context,
@@ -59,6 +59,7 @@ type ServiceInterface interface {
 		sessionID string,
 		cfg *config.Config,
 	) (*idp.IDPSessionResponse, error)
+	GetIDPLogoutURL(cfg *config.Config) string
 	BlockUser(ctx context.Context, userID string) error
 	UnblockUser(ctx context.Context, userID string) error
 }
