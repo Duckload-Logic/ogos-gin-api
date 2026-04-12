@@ -7,59 +7,310 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/email"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/identity/idp"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service struct {
-	repo      RepositoryInterface
-	idpClient *idp.IDPClient
-	redis     *datastore.RedisClient
+	repo           RepositoryInterface
+	idpClient      *idp.IDPClient
+	redis          *datastore.RedisClient
+	sessionService *sessions.Service
+	emailer        email.Emailer
 }
 
-// NewService creates a new auth service instance.
 func NewService(
 	repo RepositoryInterface,
 	redis *datastore.RedisClient,
+	sessionService *sessions.Service,
+	emailer email.Emailer,
 ) *Service {
 	return &Service{
-		repo:      repo,
-		idpClient: idp.NewIDPClient(),
-		redis:     redis,
+		repo:           repo,
+		idpClient:      idp.NewIDPClient(),
+		redis:          redis,
+		sessionService: sessionService,
+		emailer:        emailer,
 	}
 }
 
-// tokenService is now called inline to ensure environment variables are loaded
+// RegisterUser handles native user registration.
+func (s *Service) RegisterUser(
+	ctx context.Context,
+	req RegisterDTO,
+) (string, error) {
+	// Check if user already exists
+	existingUser, _ := s.repo.GetUserByEmail(
+		ctx,
+		req.Email,
+		string(constants.AuthTypeNative),
+	)
+	if existingUser != nil {
+		return "", errors.New("user already exists")
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword(
+		[]byte(req.Password),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %v", err)
+	}
+
+	transactionID := uuid.NewString()
+
+	// Create user object
+	user := users.User{
+		ID:        uuid.NewString(),
+		Email:     req.Email,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		MiddleName: sql.NullString{
+			String: req.MiddleName,
+			Valid:  req.MiddleName != "",
+		},
+		PasswordHash: sql.NullString{
+			String: string(hashedPassword),
+			Valid:  true,
+		},
+		RoleID:   int(constants.DeveloperRoleID),
+		AuthType: string(constants.AuthTypeNative),
+		IsActive: 0,
+	}
+
+	verificationOTP, err := s.get6DigitOTP()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate verification token: %v", err)
+	}
+	hashedOTP, err := bcrypt.GenerateFromPassword(
+		[]byte(verificationOTP),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate verification token: %v", err)
+	}
+
+	// Use a map for storage to include the hidden PasswordHash
+	storageData := map[string]interface{}{
+		"user":         user,
+		"passwordHash": user.PasswordHash,
+	}
+
+	userJSON, err := json.Marshal(storageData)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal user: %v", err)
+	}
+
+	// Store in Redis using the UUID (transactionID)
+	val := map[string]string{
+		"registrationID":    transactionID,
+		"verificationToken": string(hashedOTP),
+		"user":              string(userJSON),
+	}
+	err = s.sessionService.StoreToken(
+		ctx,
+		sessions.NewJTI(transactionID),
+		val,
+		300,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to store token in redis: %v", err)
+	}
+
+	if err := s.validateEmailDomain(req.Email); err != nil {
+		return "", err
+	}
+
+	err = s.sendVerificationEmail(ctx, verificationOTP, req.Email)
+	if err != nil {
+		return "", err
+	}
+
+	return transactionID, nil
+}
+
+func (s *Service) ResendVerification(
+	ctx context.Context,
+	registrationID string,
+) error {
+	val, err := s.sessionService.GetToken(ctx, sessions.NewJTI(registrationID))
+	if err != nil {
+		return fmt.Errorf("failed to get token from redis: %v", err)
+	}
+
+	verificationOTP, err := s.get6DigitOTP()
+	if err != nil {
+		return fmt.Errorf("failed to generate verification token: %v", err)
+	}
+
+	hashedOTP, err := bcrypt.GenerateFromPassword(
+		[]byte(verificationOTP),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to generate verification token: %v", err)
+	}
+
+	val["verificationToken"] = string(hashedOTP)
+	err = s.sessionService.StoreToken(
+		ctx,
+		sessions.NewJTI(registrationID),
+		val,
+		300,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to store token in redis: %v", err)
+	}
+
+	var storageData struct {
+		User users.User `json:"user"`
+	}
+	err = json.Unmarshal([]byte(val["user"]), &storageData)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal user: %v", err)
+	}
+	user := storageData.User
+
+	if err := s.validateEmailDomain(user.Email); err != nil {
+		return err
+	}
+
+	err = s.sendVerificationEmail(ctx, verificationOTP, user.Email)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Service) get6DigitOTP() (string, error) {
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      constants.ClaimsIssuer,
+		AccountName: constants.FromEmail(),
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to generate verification token: %v", err)
+	}
+
+	verificationOTP, err := totp.GenerateCode(key.Secret(), time.Now())
+	if err != nil {
+		return "", fmt.Errorf("failed to generate verification token: %v", err)
+	}
+
+	return verificationOTP, nil
+}
+
+func (s *Service) validateEmailDomain(email string) error {
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return errors.New("invalid email format")
+	}
+	domain := parts[1]
+	mx, err := net.LookupMX(domain)
+	if err != nil || len(mx) == 0 {
+		return fmt.Errorf("email domain %s is unreachable", domain)
+	}
+	return nil
+}
+
+func (s *Service) sendVerificationEmail(
+	ctx context.Context,
+	verificationOTP, receiverEmail string,
+) error {
+	isSent, err := s.emailer.SendOTP(ctx, receiverEmail, verificationOTP)
+	if err != nil {
+		return fmt.Errorf("failed to send verification email: %v", err)
+	}
+	if !isSent {
+		return errors.New("failed to send verification email")
+	}
+
+	return nil
+}
+
+func (s *Service) VerifyUser(
+	ctx context.Context,
+	registrationID string,
+	verificationOTP string,
+) (string, string, error) {
+	// Get user from Redis
+	val, err := s.sessionService.GetToken(ctx, sessions.NewJTI(registrationID))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get token from redis: %v", err)
+	}
+
+	// Verify OTP
+	err = bcrypt.CompareHashAndPassword(
+		[]byte(val["verificationToken"]),
+		[]byte(verificationOTP),
+	)
+	if err != nil {
+		return "", "", errors.New("invalid credentials")
+	}
+
+	var storageData struct {
+		User         users.User     `json:"user"`
+		PasswordHash sql.NullString `json:"passwordHash"`
+	}
+
+	err = json.Unmarshal([]byte(val["user"]), &storageData)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to unmarshal user data: %v", err)
+	}
+
+	user := storageData.User
+	user.PasswordHash = storageData.PasswordHash
+
+	user.IsActive = 1
+
+	// Run in transaction
+	err = datastore.RunInTransaction(
+		ctx,
+		s.repo.(*users.Repository).GetDB(),
+		func(tx datastore.DB) error {
+			return s.repo.CreateUser(ctx, tx, user)
+		},
+	)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create user: %v", err)
+	}
+
+	return user.ID, user.Email, nil
+}
 
 // AuthenticateUser handles native email/password authentication.
 func (s *Service) AuthenticateUser(
 	ctx context.Context, email, password string,
 ) (string, string, string, error) {
 	// Fetch user from database (Native only)
-	user, err := s.repo.GetUserByEmail(ctx, email, "native")
+	user, err := s.repo.GetUserByEmail(
+		ctx,
+		email,
+		string(constants.AuthTypeNative),
+	)
 	if err != nil {
 		return "", "", "", errors.New("invalid credentials")
 	}
-
-	log.Printf(`[AuthService:AuthenticateUser] {Get User}: %v`, user)
 
 	// Compare hashed password
 	if !user.PasswordHash.Valid {
 		return "", "", "", errors.New("invalid credentials")
 	}
-	log.Printf(
-		`[AuthService:AuthenticateUser] {Password Hash}: %v`,
-		user.PasswordHash.String,
-	)
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash.String),
 		[]byte(password),
@@ -68,15 +319,13 @@ func (s *Service) AuthenticateUser(
 		return "", "", "", errors.New("invalid credentials")
 	}
 
-	log.Printf(`[AuthService:AuthenticateUser] {Password Match}: %v`, err)
-
 	// Generate the token
 	token, claims, err := tokens.NewService().GenerateToken(
 		user.Email,
 		user.ID,
 		user.RoleID,
 		"",
-		"native",
+		string(constants.AuthTypeNative),
 		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
@@ -89,7 +338,7 @@ func (s *Service) AuthenticateUser(
 		user.ID,
 		user.RoleID,
 		"",
-		"native",
+		string(constants.AuthTypeNative),
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
@@ -97,22 +346,20 @@ func (s *Service) AuthenticateUser(
 	}
 
 	// Store in Redis using the Token ID (jti)
-	err = s.storeTokenInRedis(
+	val := map[string]string{
+		"userID":          user.ID,
+		"tokenType":       string(constants.AuthTypeNative),
+		"appRefreshToken": refreshToken,
+	}
+	err = s.sessionService.StoreToken(
 		ctx,
-		user.ID,
-		claims.ID,
-		refreshToken,
-		"native",
-		nil,
-		constants.AccessTokenMaxAge,
+		sessions.NewJTI(claims.ID),
+		val,
+		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to store token in redis: %v", err)
 	}
-	log.Printf(
-		`[AuthService:AuthenticateUser] {Redis Store}:
-		 Successfully stored token in redis`,
-	)
 
 	return user.ID, token, refreshToken, nil
 }
@@ -120,19 +367,13 @@ func (s *Service) AuthenticateUser(
 // RefreshToken generates a new access token using a valid session handle.
 func (s *Service) RefreshToken(
 	ctx context.Context,
-	accessTokenJTI string,
+	accessTokenJTI sessions.JTIDTO,
 	cfg *config.Config,
 ) (string, string, error) {
-	// 1. Get session from Redis
-	key := fmt.Sprintf("%s%s", constants.RedisSessionKeyPrefix, accessTokenJTI)
-	sessionData, err := s.redis.Get(ctx, key)
+	// Get session from Redis
+	session, err := s.sessionService.GetToken(ctx, accessTokenJTI)
 	if err != nil {
 		return "", "", errors.New("Session expired or invalid")
-	}
-
-	var session map[string]string
-	if err := json.Unmarshal([]byte(sessionData), &session); err != nil {
-		return "", "", errors.New("Failed to parse session data")
 	}
 
 	refreshToken := session["appRefreshToken"]
@@ -140,20 +381,16 @@ func (s *Service) RefreshToken(
 		return "", "", errors.New("Refresh token missing from session")
 	}
 
-	// 2. Validate App Refresh Token
+	// Validate App Refresh Token
 	claims, err := tokens.NewService().ValidateToken(refreshToken)
 	if err != nil {
 		return "", "", errors.New("Invalid refresh token")
 	}
 
 	// Check token type
-	if claims.TokenType == "idp" {
+	if claims.TokenType == string(constants.AuthTypeIDP) {
 		// Get IDP refresh token from Redis
-		idpRefreshKey := fmt.Sprintf(
-			"%s%s",
-			constants.RedisIDPRefreshKeyPrefix,
-			claims.ID,
-		)
+		idpRefreshKey := sessions.NewJTI(claims.ID).ToIDPRefreshKey()
 		idpRefreshToken, err := s.redis.Get(ctx, idpRefreshKey)
 		if err != nil {
 			return "", "", fmt.Errorf(
@@ -174,7 +411,7 @@ func (s *Service) RefreshToken(
 				claims.UserID,
 				claims.RoleID,
 				"",
-				"idp",
+				string(constants.AuthTypeIDP),
 				constants.AccessTokenMaxAge,
 			)
 		if err != nil {
@@ -187,7 +424,7 @@ func (s *Service) RefreshToken(
 				claims.UserID,
 				claims.RoleID,
 				"",
-				"idp",
+				string(constants.AuthTypeIDP),
 				constants.RefreshTokenMaxAge,
 			)
 		if err != nil {
@@ -195,26 +432,24 @@ func (s *Service) RefreshToken(
 		}
 
 		// Update Redis: App Access session
-		idpAccess := tokenResp.AccessToken
-		err = s.storeTokenInRedis(
+		val := map[string]string{
+			"userID":          claims.UserID,
+			"tokenType":       string(constants.AuthTypeIDP),
+			"appRefreshToken": newAppRefreshToken,
+			"idpAccessToken":  tokenResp.AccessToken,
+		}
+		err = s.sessionService.StoreToken(
 			ctx,
-			claims.UserID,
-			accessClaims.ID,
-			newAppRefreshToken,
-			"idp",
-			&idpAccess,
-			constants.AccessTokenMaxAge,
+			sessions.NewJTI(accessClaims.ID),
+			val,
+			constants.RefreshTokenMaxAge,
 		)
 		if err != nil {
 			return "", "", err
 		}
 
 		// Update Redis: IDP Refresh linked to NEW App Refresh Token's ID
-		newIdpRefreshKey := fmt.Sprintf(
-			"%s%s",
-			constants.RedisIDPRefreshKeyPrefix,
-			refreshClaims.ID,
-		)
+		newIdpRefreshKey := sessions.NewJTI(refreshClaims.ID).ToIDPRefreshKey()
 		idpRefreshTokenToStore := tokenResp.RefreshToken
 		if idpRefreshTokenToStore == "" {
 			idpRefreshTokenToStore = idpRefreshToken
@@ -230,7 +465,7 @@ func (s *Service) RefreshToken(
 		}
 
 		// Clean up OLD session and IDP refresh keys
-		_ = s.redis.Del(ctx, key)
+		_ = s.sessionService.DeleteToken(ctx, accessTokenJTI)
 		_ = s.redis.Del(ctx, idpRefreshKey)
 
 		return newAppAccessToken, newAppRefreshToken, nil
@@ -242,7 +477,7 @@ func (s *Service) RefreshToken(
 		claims.UserID,
 		claims.RoleID,
 		"",
-		"native",
+		string(constants.AuthTypeNative),
 		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
@@ -254,7 +489,7 @@ func (s *Service) RefreshToken(
 		claims.UserID,
 		claims.RoleID,
 		"",
-		"native",
+		string(constants.AuthTypeNative),
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
@@ -262,21 +497,23 @@ func (s *Service) RefreshToken(
 	}
 
 	// Update Redis using new jti
-	err = s.storeTokenInRedis(
+	val := map[string]string{
+		"userID":          claims.UserID,
+		"tokenType":       string(constants.AuthTypeNative),
+		"appRefreshToken": newRefreshToken,
+	}
+	err = s.sessionService.StoreToken(
 		ctx,
-		claims.UserID,
-		newClaims.ID,
-		newRefreshToken,
-		"native",
-		nil,
-		constants.AccessTokenMaxAge,
+		sessions.NewJTI(newClaims.ID),
+		val,
+		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", err
 	}
 
 	// Clean up OLD session key
-	_ = s.redis.Del(ctx, key)
+	_ = s.sessionService.DeleteToken(ctx, accessTokenJTI)
 
 	return newToken, newRefreshToken, nil
 }
@@ -315,7 +552,7 @@ func (s *Service) GetMe(
 			LastName:   user.LastName,
 			MiddleName: user.MiddleName.String,
 			CreatedAt:  user.CreatedAt.Time,
-			Roles:      []string{"user"},
+			Role:       users.Role{},
 			Type:       tokenType,
 		}, nil
 	}
@@ -327,54 +564,9 @@ func (s *Service) GetMe(
 		LastName:   user.LastName,
 		MiddleName: user.MiddleName.String,
 		CreatedAt:  user.CreatedAt.Time,
-		Roles:      []string{role.Name},
+		Role:       *role,
 		Type:       tokenType,
 	}, nil
-}
-
-// ParseIDPRoles sanitizes role strings received from the IDP.
-func (s *Service) ParseIDPRoles(roles []string) []string {
-	parsedRoles := make([]string, 0, len(roles))
-	for _, role := range roles {
-		// Split by ":" and take the last part
-		parts := strings.Split(role, ":")
-		if len(parts) > 1 {
-			parsedRoles = append(parsedRoles, parts[len(parts)-1])
-		} else {
-			parsedRoles = append(parsedRoles, role)
-		}
-	}
-	return parsedRoles
-}
-
-func (s *Service) storeTokenInRedis(
-	ctx context.Context,
-	userID, jti, appRefreshToken, tokenType string,
-	idpAccessToken *string,
-	expiryMinutes int,
-) error {
-	key := fmt.Sprintf("%s%s", constants.RedisSessionKeyPrefix, jti)
-	val := map[string]string{
-		"userID":          userID,
-		"tokenType":       tokenType,
-		"appRefreshToken": appRefreshToken,
-	}
-	if idpAccessToken != nil {
-		val["idpAccessToken"] = *idpAccessToken
-	}
-	valJSON, _ := json.Marshal(val)
-
-	err := s.redis.Set(
-		ctx,
-		key,
-		valJSON,
-		time.Duration(expiryMinutes)*time.Minute,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to store token in redis: %v", err)
-	}
-
-	return nil
 }
 
 // Logout invalidates the user's session in Redis and optionally the IDP.
@@ -384,7 +576,7 @@ func (s *Service) Logout(
 	tokenType string,
 	cfg *config.Config,
 ) error {
-	// 1. Identify the session using the Access Token JTI
+	// Identify the session using the Access Token JTI
 	claims, err := tokens.NewService().ParseTokenUnverified(token)
 	if err != nil {
 		log.Printf("[AuthService:Logout] {Parse Error}: %v", err)
@@ -393,41 +585,33 @@ func (s *Service) Logout(
 	accessJTI := claims.ID
 
 	// Fetch the session data to find linked refresh tokens
-	sessionKey := fmt.Sprintf(
-		"%s%s",
-		constants.RedisSessionKeyPrefix,
-		accessJTI,
-	)
-	sessionData, _ := s.redis.Get(ctx, sessionKey)
+	sessionData, _ := s.sessionService.GetToken(ctx, sessions.NewJTI(accessJTI))
+	var idpToken string
+	if sessionData != nil {
+		idpToken = sessionData["idpAccessToken"]
+	}
 
 	// Delete any linked IDP refresh tokens
-	if sessionData != "" {
-		var session map[string]string
-		if err := json.Unmarshal([]byte(sessionData), &session); err == nil {
-			if appRefreshToken := session["appRefreshToken"]; appRefreshToken != "" {
-				// Get refresh token claims to identify IDP refresh key
-				rClaims, err := tokens.NewService().
-					ParseTokenUnverified(appRefreshToken)
-				if err == nil {
-					idpKey := fmt.Sprintf(
-						"%s%s",
-						constants.RedisIDPRefreshKeyPrefix,
-						rClaims.ID,
-					)
-					_ = s.redis.Del(ctx, idpKey)
-				}
+	if sessionData != nil {
+		if appRefreshToken := sessionData["appRefreshToken"]; appRefreshToken != "" {
+			// Get refresh token claims to identify IDP refresh key
+			rClaims, err := tokens.NewService().
+				ParseTokenUnverified(appRefreshToken)
+			if err == nil {
+				idpKey := sessions.NewJTI(rClaims.ID).ToIDPRefreshKey()
+				_ = s.redis.Del(ctx, idpKey)
 			}
 		}
 	}
 
-	// 4. Delete the primary session key
-	if err := s.redis.Del(ctx, sessionKey); err != nil {
+	// Delete the primary session key
+	if err := s.sessionService.DeleteToken(ctx, sessions.NewJTI(accessJTI)); err != nil {
 		log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
 	}
 
-	// 5. Return the IDP logout URL if appropriate
-	if tokenType == "idp" {
-		_, err = s.idpClient.Logout(ctx, cfg)
+	// Call IDP logout if IDP token
+	if tokenType == string(constants.AuthTypeIDP) && idpToken != "" {
+		_, err = s.idpClient.Logout(ctx, cfg, idpToken)
 		if err != nil {
 			log.Printf("[AuthService:Logout] {IDP Logout Error}: %v", err)
 			return err
@@ -460,7 +644,7 @@ func (s *Service) GetAuthorizeURL(
 
 	authURL := fmt.Sprintf(
 		"%s?%s",
-		cfg.IDPLoginURL,
+		fmt.Sprintf("%s/auth/authorize", cfg.IDPBaseUrl),
 		params.Encode(),
 	)
 
@@ -522,7 +706,7 @@ func (s *Service) PostIDPTokenExchange(
 				FirstName:    userInfo.FirstName,
 				LastName:     userInfo.LastName,
 				Email:        userInfo.Email,
-				AuthType:     "idp",
+				AuthType:     string(constants.AuthTypeIDP),
 				PasswordHash: sql.NullString{Valid: false},
 				IsActive:     1,
 			})
@@ -550,8 +734,8 @@ func (s *Service) PostIDPTokenExchange(
 		appUserID,
 		appRoleID,
 		"",
-		"idp",
-		constants.AccessTokenMaxAge/60,
+		string(constants.AuthTypeIDP),
+		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", "", "", "", fmt.Errorf(
@@ -565,8 +749,8 @@ func (s *Service) PostIDPTokenExchange(
 		appUserID,
 		appRoleID,
 		"",
-		"idp",
-		constants.RefreshTokenMaxAge/60,
+		string(constants.AuthTypeIDP),
+		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
 		return "", "", "", "", "", fmt.Errorf(
@@ -576,14 +760,17 @@ func (s *Service) PostIDPTokenExchange(
 	}
 
 	// Store App Access Token in Redis using its ID (jti)
-	if err := s.storeTokenInRedis(
+	val := map[string]string{
+		"userID":          appUserID,
+		"tokenType":       string(constants.AuthTypeIDP),
+		"appRefreshToken": appRefreshToken,
+		"idpAccessToken":  idpAccessToken,
+	}
+	if err := s.sessionService.StoreToken(
 		ctx,
-		appUserID,
-		accessClaims.ID,
-		appRefreshToken,
-		"idp",
-		&idpAccessToken,
-		constants.AccessTokenMaxAge/60,
+		sessions.NewJTI(accessClaims.ID),
+		val,
+		constants.RefreshTokenMaxAge,
 	); err != nil {
 		return "", "", "", "", "", fmt.Errorf(
 			"[AuthService] {Store Access in Redis}: %w",
@@ -593,11 +780,7 @@ func (s *Service) PostIDPTokenExchange(
 
 	// Store IDP Refresh Token in Redis associated with the App
 	// Refresh Token's ID (jti)
-	idpRefreshKey := fmt.Sprintf(
-		"%s%s",
-		constants.RedisIDPRefreshKeyPrefix,
-		refreshClaims.ID,
-	)
+	idpRefreshKey := sessions.NewJTI(refreshClaims.ID).ToIDPRefreshKey()
 	idpRefreshTokenToStore := idpRefreshToken
 	if idpRefreshTokenToStore == "" {
 		// This shouldn't happen on initial login, but good for
@@ -643,6 +826,21 @@ func (s *Service) GetIDPUserInfo(
 		)
 	}
 	return userInfo, nil
+}
+
+// ParseIDPRoles sanitizes role strings received from the IDP.
+func (s *Service) ParseIDPRoles(roles []string) []string {
+	parsedRoles := make([]string, 0, len(roles))
+	for _, role := range roles {
+		// Split by ":" and take the last part
+		parts := strings.Split(role, ":")
+		if len(parts) > 1 {
+			parsedRoles = append(parsedRoles, parts[len(parts)-1])
+		} else {
+			parsedRoles = append(parsedRoles, role)
+		}
+	}
+	return parsedRoles
 }
 
 // mapIDPRolesToInternalID translates IDP tags to internal role IDs.

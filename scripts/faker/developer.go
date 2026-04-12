@@ -1,0 +1,55 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log"
+
+	"github.com/brianvoe/gofakeit/v6"
+	"github.com/google/uuid"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
+)
+
+func createDeveloper(index int, passwordHash string) {
+	// Generate unique identifier
+	userID := uuid.New().String()
+
+	// Generate developer data
+	firstName := gofakeit.FirstName()
+	lastName := gofakeit.LastName()
+	email := fmt.Sprintf(
+		"developer%d@university.edu",
+		index+1,
+	)
+
+	// Create developer user
+	user := users.User{
+		ID:        userID,
+		Email:     email,
+		FirstName: firstName,
+		LastName:  lastName,
+		PasswordHash: sql.NullString{
+			String: passwordHash,
+			Valid:  true,
+		},
+		RoleID:   int(constants.DeveloperRoleID),
+		AuthType: string(constants.AuthTypeNative),
+		IsActive: 1,
+	}
+
+	// Save to database
+	if err := usersRepo.CreateUser(context.Background(), db, user); err != nil {
+		log.Printf("Failed to create developer %d: %v\n", index+1, err)
+		return
+	}
+
+	log.Printf(
+		"Created developer: %s %s (%s / %s)\n",
+		firstName,
+		lastName,
+		email,
+		passwordHash,
+	)
+}

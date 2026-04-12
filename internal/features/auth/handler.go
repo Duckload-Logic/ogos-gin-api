@@ -11,6 +11,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
@@ -53,7 +54,7 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	userID, token, _, err := h.service.AuthenticateUser(
+	userID, token, refreshToken, err := h.service.AuthenticateUser(
 		c,
 		req.Email,
 		req.Password,
@@ -94,8 +95,13 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	}
 	// Access token: short-lived, HTTP-only, Secure in production
 	c.SetCookie(
-		"access_token", token, int(constants.AccessTokenMaxAge), "/",
-		"", h.cfg.IsProduction, true) // 30 minutes
+		"access_token", token, int(constants.RefreshTokenMaxAge), "/",
+		"", h.cfg.IsProduction, true) // Persist for refresh window
+
+	// Refresh token: long-lived, HTTP-only, Secure in production
+	c.SetCookie(
+		"refresh_token", refreshToken, int(constants.RefreshTokenMaxAge), "/",
+		"", h.cfg.IsProduction, true)
 
 	// Log success
 	h.logService.Record(
@@ -117,6 +123,105 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	response.SendSuccess(c, gin.H{"message": "Login successful"})
 }
 
+// PostRegister godoc
+// @Summary      User registration
+// @Description  Creates a new developer account.
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request body      RegisterDTO true "Registration Data"
+// @Success      201     {object}  map[string]string "Success message"
+// @Failure      400     {object}  map[string]string
+// @Failure      409     {object}  map[string]string
+// @Router       /auth/register [post]
+func (h *Handler) PostRegister(c *gin.Context) {
+	var req RegisterDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	registrationID, err := h.service.RegisterUser(c.Request.Context(), req)
+	if err != nil {
+		status := http.StatusBadRequest
+		if err.Error() == "user already exists" {
+			status = http.StatusConflict
+		}
+		response.SendFail(c, gin.H{"error": err.Error()}, status)
+		return
+	}
+
+	response.SendSuccess(
+		c,
+		gin.H{"registrationId": registrationID},
+		http.StatusCreated,
+	)
+}
+
+func (h *Handler) PostResendVerification(c *gin.Context) {
+	registrationID := c.Query("registration_id")
+	if registrationID == "" {
+		response.SendFail(c, gin.H{"error": "Registration ID is required"})
+		return
+	}
+
+	err := h.service.ResendVerification(c.Request.Context(), registrationID)
+	if err != nil {
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	response.SendSuccess(
+		c,
+		gin.H{"message": "Verification email sent successfully"},
+	)
+}
+
+func (h *Handler) PostVerify(c *gin.Context) {
+	registrationID := c.Query("registration_id")
+	if registrationID == "" {
+		response.SendFail(c, gin.H{"error": "Registration ID is required"})
+		return
+	}
+
+	var req VerifyDTO
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	userID, userEmail, err := h.service.VerifyUser(
+		c.Request.Context(),
+		registrationID,
+		req.VerificationOTP,
+	)
+	if err != nil {
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Log success
+	h.logService.Record(
+		c.Request.Context(),
+		h.logService.GetDB(),
+		audit.LogEntry{
+			Level:    audit.LevelInfo,
+			Category: audit.CategorySecurity,
+			Action:   audit.ActionUserCreated,
+			Message: fmt.Sprintf(
+				"Developer %s registered successfully",
+				userEmail,
+			),
+			UserID:    structs.StringToNullableString(userID),
+			UserEmail: structs.StringToNullableString(userEmail),
+			IPAddress: structs.StringToNullableString(c.ClientIP()),
+			UserAgent: structs.StringToNullableString(c.Request.UserAgent()),
+		},
+	)
+
+	response.SendSuccess(c, gin.H{"message": "User verified successfully"})
+}
+
 // PostRefreshToken godoc
 // @Summary      Refresh JWT token
 // @Description  Refreshes the JWT token using the refresh token cookie.
@@ -127,7 +232,7 @@ func (h *Handler) PostLogin(c *gin.Context) {
 // @Failure      401 {object} map[string]string
 // @Router       /auth/refresh [post]
 func (h *Handler) PostRefreshToken(c *gin.Context) {
-	// 1. Get Access Token (which contains the session Handle/JTI)
+	// Get Access Token (which contains the session Handle/JTI)
 	accessToken, err := c.Cookie(constants.AccessTokenCookieName)
 	if err != nil {
 		authHeader := c.GetHeader("Authorization")
@@ -145,7 +250,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		return
 	}
 
-	// 2. Parse token UNVERIFIED to get the JTI (it might be expired)
+	// Parse token UNVERIFIED to get the JTI (it might be expired)
 	tokenService := tokens.NewService()
 	claims, err := tokenService.ParseTokenUnverified(accessToken)
 	if err != nil {
@@ -160,10 +265,10 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	// 3. Refresh using the JTI
+	// Refresh using the JTI
 	newToken, _, err := h.service.RefreshToken(
 		c,
-		claims.ID,
+		sessions.NewJTI(claims.ID),
 		h.cfg,
 	)
 	if err != nil {
@@ -188,7 +293,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		return
 	}
 
-	// 4. Set new access token cookie
+	// Set new access token cookie
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
@@ -198,7 +303,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	c.SetCookie(
 		constants.AccessTokenCookieName,
 		newToken,
-		int(constants.AccessTokenMaxAge),
+		int(constants.RefreshTokenMaxAge),
 		"/",
 		"",
 		h.cfg.IsProduction,
@@ -378,7 +483,7 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
-// @Param        request body IDPTokenExchangeRequest true "Code & State"
+// @Param        request body idp.IDPTokenExchangeRequest true "Code & State"
 // @Success      200 {object} map[string]interface{}
 // @Failure      400 {object} map[string]string
 // @Failure      401 {object} map[string]string
@@ -407,7 +512,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	}
 
 	// Perform token exchange
-	accessToken, _, userID, userEmail, roleName,
+	accessToken, refreshToken, userID, userEmail, roleName,
 		err := h.service.PostIDPTokenExchange(
 		c.Request.Context(),
 		req.Code,
@@ -421,7 +526,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 				Category: audit.CategorySecurity,
 				Action:   audit.ActionLoginFailed,
 				Message: fmt.Sprintf(
-					"[PostIDPToken] {Service Call}: %s",
+					"[PostIDPTokenExchange] {Service Call}: %s",
 					err.Error(),
 				),
 				IPAddress: structs.StringToNullableString(c.ClientIP()),
@@ -430,7 +535,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 				),
 			},
 		)
-		log.Printf("[PostIDPToken] {Service Call}: %v", err)
+		log.Printf("[PostIDPTokenExchange] {Service Call}: %v", err)
 		response.SendFail(
 			c,
 			gin.H{"error": err.Error()},
@@ -450,7 +555,18 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	c.SetCookie(
 		constants.AccessTokenCookieName,
 		accessToken,
-		constants.AccessTokenMaxAge,
+		constants.RefreshTokenMaxAge,
+		constants.CookiePathRoot,
+		"",
+		h.cfg.IsProduction,
+		true,
+	)
+
+	// Set refresh token cookie
+	c.SetCookie(
+		constants.RefreshTokenCookieName,
+		refreshToken,
+		constants.RefreshTokenMaxAge,
 		constants.CookiePathRoot,
 		"",
 		h.cfg.IsProduction,
@@ -482,7 +598,6 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		"userEmail": userEmail,
 		"role":      roleName,
 		"message":   "Login successful",
-		"roles":     []string{roleName},
 	})
 }
 
