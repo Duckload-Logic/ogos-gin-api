@@ -40,4 +40,18 @@ func RegisterRoutes(
 		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
 		h.PostUnblockUser,
 	)
+
+	// Session & Activity Audit (Super Admin only)
+	userRoutes.GET("/:id/sessions",
+		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
+		h.GetUserSessions,
+	)
+	userRoutes.DELETE("/:id/sessions/:session_id",
+		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
+		h.DeleteUserSession,
+	)
+	userRoutes.GET("/:id/activity",
+		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
+		h.GetUserActivity,
+	)
 }

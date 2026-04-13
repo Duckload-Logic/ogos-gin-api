@@ -58,6 +58,8 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		c,
 		req.Email,
 		req.Password,
+		ip,
+		ua,
 	)
 	if err != nil {
 		h.logService.Record(
@@ -270,6 +272,8 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		c,
 		sessions.NewJTI(claims.ID),
 		h.cfg,
+		ip,
+		ua,
 	)
 	if err != nil {
 		h.logService.Record(
@@ -521,6 +525,8 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		c.Request.Context(),
 		req.Code,
 		h.cfg,
+		c.ClientIP(),
+		c.Request.UserAgent(),
 	)
 	if err != nil {
 		h.logService.Record(

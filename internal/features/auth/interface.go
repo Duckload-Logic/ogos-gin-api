@@ -13,7 +13,7 @@ import (
 type ServiceInterface interface {
 	AuthenticateUser(
 		ctx context.Context,
-		email, password string,
+		email, password, ipAddress, userAgent string,
 	) (string, string, string, error)
 	RegisterUser(
 		ctx context.Context,
@@ -29,6 +29,7 @@ type ServiceInterface interface {
 		ctx context.Context,
 		accessTokenJTI sessions.JTIDTO,
 		cfg *config.Config,
+		ipAddress, userAgent string,
 	) (string, string, error)
 	RefreshIDPToken(
 		ctx context.Context,
@@ -47,6 +48,7 @@ type ServiceInterface interface {
 		ctx context.Context,
 		code string,
 		cfg *config.Config,
+		ipAddress, userAgent string,
 	) (string, string, string, string, string, error)
 	GetIDPUserInfo(
 		ctx context.Context,

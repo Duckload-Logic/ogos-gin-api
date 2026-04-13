@@ -1,20 +1,35 @@
 package users
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 )
 
 type Handler struct {
-	service ServiceInterface
+	service        ServiceInterface
+	sessionService *sessions.Service
+	logService     logs.ServiceInterface
 }
 
 // NewHandler creates a new users handler.
-func NewHandler(service ServiceInterface) *Handler {
-	return &Handler{service: service}
+func NewHandler(
+	service ServiceInterface,
+	sessionService *sessions.Service,
+	logService logs.ServiceInterface,
+) *Handler {
+	return &Handler{
+		service:        service,
+		sessionService: sessionService,
+		logService:     logService,
+	}
 }
 
 // ========================================
@@ -206,4 +221,86 @@ func (h *Handler) PostUnblockUser(c *gin.Context) {
 	}
 
 	response.SendSuccess(c, gin.H{"message": "User unblocked successfully"})
+}
+
+func (h *Handler) GetUserSessions(c *gin.Context) {
+	targetUserID := c.Param("id")
+	if targetUserID == "" {
+		response.SendFail(c, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	sessions, err := h.sessionService.ListUserSessions(c.Request.Context(), targetUserID)
+	if err != nil {
+		log.Printf("[GetUserSessions] {ListUserSessions}: %v", err)
+		response.SendError(c, "Failed to list user sessions", http.StatusInternalServerError, nil)
+		return
+	}
+
+	response.SendSuccess(c, sessions)
+}
+
+func (h *Handler) DeleteUserSession(c *gin.Context) {
+	targetUserID := c.Param("id")
+	jti := c.Param("session_id")
+	if targetUserID == "" || jti == "" {
+		response.SendFail(c, gin.H{"error": "User ID and Session ID are required"})
+		return
+	}
+
+	err := h.sessionService.DeleteUserToken(c.Request.Context(), targetUserID, sessions.NewJTI(jti))
+	if err != nil {
+		log.Printf("[DeleteUserSession] {DeleteUserToken}: %v", err)
+		response.SendError(c, "Failed to revoke session", http.StatusInternalServerError, nil)
+		return
+	}
+
+	// Audit log for session revocation
+	adminEmail := c.MustGet("userEmail").(string)
+	adminID := c.MustGet("userID").(string)
+
+	h.logService.Record(c.Request.Context(), h.logService.GetDB(), audit.LogEntry{
+		Level:    audit.LevelWarning,
+		Category: audit.CategorySecurity,
+		Action:   audit.ActionLogout, // Or add a new ActionSessionRevoked
+		Message:  fmt.Sprintf("Superadmin %s revoked session %s for user %s", adminEmail, jti, targetUserID),
+		UserID:   structs.StringToNullableString(adminID),
+		TargetID: structs.StringToNullableString(targetUserID),
+	})
+
+	response.SendSuccess(c, gin.H{"message": "Session revoked successfully"})
+}
+
+func (h *Handler) GetUserActivity(c *gin.Context) {
+	targetUserID := c.Param("id")
+	if targetUserID == "" {
+		response.SendFail(c, gin.H{"error": "User ID is required"})
+		return
+	}
+
+	// Fetch user email first because the logs repo mostly filters by email
+	user, err := h.service.GetUserByID(c.Request.Context(), targetUserID)
+	if err != nil {
+		log.Printf("[GetUserActivity] {GetUserByID}: %v", err)
+		response.SendError(c, "Failed to find user", http.StatusNotFound, nil)
+		return
+	}
+
+	var req logs.ListSystemLogsRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Force filter by target user's email
+	req.UserEmail = user.Email
+
+	result, err := h.logService.ListLogs(c.Request.Context(), req)
+	if err != nil {
+		log.Printf("[GetUserActivity] {ListLogs}: %v", err)
+		response.SendError(c, "Failed to retrieve user activity", http.StatusInternalServerError, nil)
+		return
+	}
+
+	response.SendSuccess(c, result)
 }

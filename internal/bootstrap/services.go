@@ -36,6 +36,7 @@ type Services struct {
 	M2MClientService          m2mclients.ServiceInterface
 	NotificationsService      notifications.ServiceInterface
 	SystemLogService          logs.ServiceInterface
+	SessionService            *sessions.Service
 }
 
 func getServices(
@@ -118,5 +119,6 @@ func getServices(
 		M2MClientService:          m2mClientService,
 		NotificationsService:      notificationsService,
 		SystemLogService:          systemLogService,
+		SessionService:            sessionService,
 	}
 }

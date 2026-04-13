@@ -295,7 +295,7 @@ func (s *Service) VerifyUser(
 
 // AuthenticateUser handles native email/password authentication.
 func (s *Service) AuthenticateUser(
-	ctx context.Context, email, password string,
+	ctx context.Context, email, password, ipAddress, userAgent string,
 ) (string, string, string, error) {
 	// Fetch user from database (Native only)
 	user, err := s.repo.GetUserByEmail(
@@ -304,19 +304,23 @@ func (s *Service) AuthenticateUser(
 		string(constants.AuthTypeNative),
 	)
 	if err != nil {
-		return "", "", "", errors.New("invalid credentials")
+		return "", "", "", errors.New("Invalid credentials")
+	}
+
+	if user.IsActive == 0 {
+		return "", "", "", errors.New("User is not active")
 	}
 
 	// Compare hashed password
 	if !user.PasswordHash.Valid {
-		return "", "", "", errors.New("invalid credentials")
+		return "", "", "", errors.New("Invalid credentials")
 	}
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash.String),
 		[]byte(password),
 	)
 	if err != nil {
-		return "", "", "", errors.New("invalid credentials")
+		return "", "", "", errors.New("Invalid credentials")
 	}
 
 	// Generate the token
@@ -329,7 +333,7 @@ func (s *Service) AuthenticateUser(
 		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", errors.New("failed to generate session")
+		return "", "", "", errors.New("Failed to generate session")
 	}
 
 	// Generate refresh token
@@ -342,7 +346,7 @@ func (s *Service) AuthenticateUser(
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", errors.New("failed to generate refresh token")
+		return "", "", "", errors.New("Failed to generate refresh token")
 	}
 
 	// Store in Redis using the Token ID (jti)
@@ -350,15 +354,18 @@ func (s *Service) AuthenticateUser(
 		"userID":          user.ID,
 		"tokenType":       string(constants.AuthTypeNative),
 		"appRefreshToken": refreshToken,
+		"ipAddress":       ipAddress,
+		"userAgent":       userAgent,
 	}
-	err = s.sessionService.StoreToken(
+	err = s.sessionService.StoreUserToken(
 		ctx,
+		user.ID,
 		sessions.NewJTI(claims.ID),
 		val,
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", fmt.Errorf("failed to store token in redis: %v", err)
+		return "", "", "", fmt.Errorf("Failed to store token in redis: %v", err)
 	}
 
 	return user.ID, token, refreshToken, nil
@@ -369,6 +376,7 @@ func (s *Service) RefreshToken(
 	ctx context.Context,
 	accessTokenJTI sessions.JTIDTO,
 	cfg *config.Config,
+	ipAddress, userAgent string,
 ) (string, string, error) {
 	// Get session from Redis
 	session, err := s.sessionService.GetToken(ctx, accessTokenJTI)
@@ -465,7 +473,7 @@ func (s *Service) RefreshToken(
 		}
 
 		// Clean up OLD session and IDP refresh keys
-		_ = s.sessionService.DeleteToken(ctx, accessTokenJTI)
+		_ = s.sessionService.DeleteUserToken(ctx, claims.UserID, accessTokenJTI)
 		_ = s.redis.Del(ctx, idpRefreshKey)
 
 		return newAppAccessToken, newAppRefreshToken, nil
@@ -501,9 +509,12 @@ func (s *Service) RefreshToken(
 		"userID":          claims.UserID,
 		"tokenType":       string(constants.AuthTypeNative),
 		"appRefreshToken": newRefreshToken,
+		"ipAddress":       ipAddress,
+		"userAgent":       userAgent,
 	}
-	err = s.sessionService.StoreToken(
+	err = s.sessionService.StoreUserToken(
 		ctx,
+		claims.UserID,
 		sessions.NewJTI(newClaims.ID),
 		val,
 		constants.RefreshTokenMaxAge,
@@ -513,7 +524,7 @@ func (s *Service) RefreshToken(
 	}
 
 	// Clean up OLD session key
-	_ = s.sessionService.DeleteToken(ctx, accessTokenJTI)
+	_ = s.sessionService.DeleteUserToken(ctx, claims.UserID, accessTokenJTI)
 
 	return newToken, newRefreshToken, nil
 }
@@ -605,8 +616,15 @@ func (s *Service) Logout(
 	}
 
 	// Delete the primary session key
-	if err := s.sessionService.DeleteToken(ctx, sessions.NewJTI(accessJTI)); err != nil {
-		log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
+	if userID := claims.UserID; userID != "" {
+		if err := s.sessionService.DeleteUserToken(ctx, userID, sessions.NewJTI(accessJTI)); err != nil {
+			log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
+		}
+	} else {
+		// Fallback for M2M or cases where userID missing
+		if err := s.sessionService.DeleteToken(ctx, sessions.NewJTI(accessJTI)); err != nil {
+			log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
+		}
 	}
 
 	// Generate IDP logout URL if IDP token
@@ -670,6 +688,7 @@ func (s *Service) PostIDPTokenExchange(
 	ctx context.Context,
 	code string,
 	cfg *config.Config,
+	ipAddress, userAgent string,
 ) (string, string, string, string, string, error) {
 	// Exchange authorization code for IDP tokens
 	tokenResp, err := s.idpClient.ExchangeCodeForToken(ctx, code, cfg)
@@ -781,24 +800,27 @@ func (s *Service) PostIDPTokenExchange(
 		)
 	}
 
-	// Store App Access Token in Redis using its ID (jti)
-	val := map[string]string{
-		"userID":          appUserID,
-		"tokenType":       string(constants.AuthTypeIDP),
-		"appRefreshToken": appRefreshToken,
-		"idpAccessToken":  idpAccessToken,
-	}
-	if err := s.sessionService.StoreToken(
-		ctx,
-		sessions.NewJTI(accessClaims.ID),
-		val,
-		constants.RefreshTokenMaxAge,
-	); err != nil {
-		return "", "", "", "", "", fmt.Errorf(
-			"[AuthService] {Store Access in Redis}: %w",
-			err,
-		)
-	}
+		// Update Redis: App Access session
+		val := map[string]string{
+			"userID":          appUserID,
+			"tokenType":       string(constants.AuthTypeIDP),
+			"appRefreshToken": appRefreshToken,
+			"idpAccessToken":  idpAccessToken,
+			"ipAddress":       ipAddress,
+			"userAgent":       userAgent,
+		}
+		if err := s.sessionService.StoreUserToken(
+			ctx,
+			appUserID,
+			sessions.NewJTI(accessClaims.ID),
+			val,
+			constants.RefreshTokenMaxAge,
+		); err != nil {
+			return "", "", "", "", "", fmt.Errorf(
+				"[AuthService] {Store Access in Redis}: %w",
+				err,
+			)
+		}
 
 	// Store IDP Refresh Token in Redis associated with the App
 	// Refresh Token's ID (jti)

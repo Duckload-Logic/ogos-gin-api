@@ -52,7 +52,11 @@ func getHandlers(
 			services.SystemLogService,
 			cfg,
 		),
-		UserHandler:      users.NewHandler(services.UserService),
+		UserHandler: users.NewHandler(
+			services.UserService,
+			services.SessionService,
+			services.SystemLogService,
+		),
 		LocationsHandler: locations.NewHandler(services.LocationsService),
 		StudentHandler:   students.NewHandler(services.StudentService),
 		NoteHandler: notes.NewHandler(

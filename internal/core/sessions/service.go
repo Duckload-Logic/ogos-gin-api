@@ -59,8 +59,77 @@ func (s *Service) GetToken(
 	return data, nil
 }
 
-// DeleteToken removes a session from Redis.
+// DeleteToken removes session data from Redis.
 func (s *Service) DeleteToken(ctx context.Context, jti JTIDTO) error {
 	key := jti.ToSessionKey()
 	return s.redis.Del(ctx, key)
+}
+
+// StoreUserToken saves session data and links it to a user for auditing.
+func (s *Service) StoreUserToken(
+	ctx context.Context,
+	userID string,
+	jti JTIDTO,
+	data map[string]string,
+	expireSeconds int,
+) error {
+	// Store the session data
+	if err := s.StoreToken(ctx, jti, data, expireSeconds); err != nil {
+		return err
+	}
+
+	// Link to user sessions set
+	userKey := ToUserSessionsKey(userID)
+	err := s.redis.Client.SAdd(ctx, userKey, jti.Value).Err()
+	if err != nil {
+		return fmt.Errorf("failed to link session to user: %w", err)
+	}
+
+	// Set expiration on the set if it's new (or refresh it)
+	// We use the same expiration as the token for simplicity
+	s.redis.Client.Expire(ctx, userKey, time.Duration(expireSeconds)*time.Second)
+
+	return nil
+}
+
+// DeleteUserToken removes a session and its link to the user.
+func (s *Service) DeleteUserToken(
+	ctx context.Context,
+	userID string,
+	jti JTIDTO,
+) error {
+	// Unlink from user
+	userKey := ToUserSessionsKey(userID)
+	s.redis.Client.SRem(ctx, userKey, jti.Value)
+
+	// Delete session data
+	return s.DeleteToken(ctx, jti)
+}
+
+// ListUserSessions returns all active session data for a user.
+func (s *Service) ListUserSessions(
+	ctx context.Context,
+	userID string,
+) ([]map[string]string, error) {
+	userKey := ToUserSessionsKey(userID)
+	jtis, err := s.redis.Client.SMembers(ctx, userKey).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list user sessions: %w", err)
+	}
+
+	sessions := make([]map[string]string, 0, len(jtis))
+	for _, jtiVal := range jtis {
+		jti := NewJTI(jtiVal)
+		data, err := s.GetToken(ctx, jti)
+		if err != nil {
+			// Session might have expired individually, clean up the set
+			s.redis.Client.SRem(ctx, userKey, jtiVal)
+			continue
+		}
+		// Add JTI to the data map for the frontend
+		data["jti"] = jtiVal
+		sessions = append(sessions, data)
+	}
+
+	return sessions, nil
 }

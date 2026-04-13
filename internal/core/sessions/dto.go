@@ -27,3 +27,9 @@ func (j JTIDTO) ToSessionKey() string {
 func (j JTIDTO) ToIDPRefreshKey() string {
 	return fmt.Sprintf("%s%s", constants.RedisIDPRefreshKeyPrefix, j.Value)
 }
+
+// ToUserSessionsKey returns the Redis key for the set of sessions belonging
+// to a specific user.
+func ToUserSessionsKey(userId string) string {
+	return fmt.Sprintf("user:sessions:%s", userId)
+}
