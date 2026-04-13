@@ -18,7 +18,8 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-const slipsBaseQuery = `
+const (
+	slipsBaseQuery = `
 	SELECT
 		slp.id AS id,
 		slp.iir_id AS iir_id,
@@ -45,6 +46,8 @@ const slipsBaseQuery = `
 	JOIN admission_slip_categories c ON slp.category_id = c.id
 	JOIN statuses s ON slp.status_id = s.id
 `
+	orderSlipsCreatedDesc = " ORDER BY slp.created_at DESC LIMIT ? OFFSET ?"
+)
 
 func (r *Repository) GetDB() *sqlx.DB {
 	return r.db
@@ -326,7 +329,7 @@ func (r *Repository) GetAll(
 ) ([]SlipWithDetailsView, error) {
 	query, args := r.applyFilters(slipsBaseQuery+" WHERE 1=1", nil, req, nil)
 
-	query += " ORDER BY slp.created_at DESC LIMIT ? OFFSET ?"
+	query += orderSlipsCreatedDesc
 	args = append(args, req.PageSize, req.GetOffset())
 
 	var slips []SlipWithDetailsView
@@ -350,7 +353,7 @@ func (r *Repository) GetByUserID(
 		nil,
 	)
 
-	query += " ORDER BY slp.created_at DESC LIMIT ? OFFSET ?"
+	query += orderSlipsCreatedDesc
 	args = append(args, req.PageSize, req.GetOffset())
 
 	var slips []SlipWithDetailsView
@@ -377,7 +380,7 @@ func (r *Repository) GetByIIRID(
 		nil,
 	)
 
-	query += " ORDER BY slp.created_at DESC LIMIT ? OFFSET ?"
+	query += orderSlipsCreatedDesc
 	args = append(args, req.PageSize, req.GetOffset())
 
 	var slips []SlipWithDetailsView

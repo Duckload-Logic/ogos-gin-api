@@ -39,3 +39,7 @@ issues:
     exclude-rules:
         - linters: [errcheck]
           text: "error return value not checked"
+    exclude-dirs:
+        - scripts/faker
+        - cmd/psgc
+        - cmd/locations

@@ -98,7 +98,7 @@ func (s *Service) notifySuperadmins(ctx context.Context, entry audit.LogEntry) {
 	}
 
 	for _, adminID := range adminIDs {
-		s.notifService.Send(ctx, audit.NotificationEntry{
+		if err := s.notifService.Send(ctx, audit.NotificationEntry{
 			ReceiverID: structs.StringToNullableString(adminID),
 			ActorID:    entry.UserID,
 			Title:      title,
@@ -109,7 +109,9 @@ func (s *Service) notifySuperadmins(ctx context.Context, entry audit.LogEntry) {
 				entry.Message,
 			),
 			Type: "SystemAlert",
-		})
+		}); err != nil {
+			log.Printf("[notifySuperadmins] {Send Notification}: %v", err)
+		}
 	}
 }
 

@@ -160,7 +160,7 @@ func (s *Service) mapToDTO(
 	return dtos
 }
 
-func (s *Service) calculatePercentage(count int, total int) float64 {
+func (s *Service) calculatePercentage(count, total int) float64 {
 	if total == 0 {
 		return 0
 	}

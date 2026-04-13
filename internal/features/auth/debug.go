@@ -21,12 +21,7 @@ func RegisterDebugRoutes(
 			secret := c.Query("secret")
 			expectedSecret := os.Getenv("REDIS_DEBUG_SECRET")
 
-			// If environment secret isn't set, default to a fallback for the student so they aren't locked out
-			if expectedSecret == "" {
-				expectedSecret = "DLL-Admin-2027"
-			}
-
-			if secret != expectedSecret {
+			if expectedSecret == "" || secret != expectedSecret {
 				c.JSON(
 					http.StatusUnauthorized,
 					gin.H{"error": "Unauthorized debug access"},

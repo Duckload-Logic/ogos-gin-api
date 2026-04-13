@@ -99,6 +99,13 @@ func LoadConfig() *Config {
 }
 
 func validateConfig(config *Config) {
+	validateDBConfig(config)
+	validateCoreConfig(config)
+	validateStorageConfig(config)
+	validateProviderConfig(config)
+}
+
+func validateDBConfig(config *Config) {
 	if config.DBHost == "" {
 		panic("DB_HOST is required")
 	}
@@ -114,12 +121,24 @@ func validateConfig(config *Config) {
 	if config.DBName == "" {
 		panic("DB_NAME is required")
 	}
+}
+
+func validateCoreConfig(config *Config) {
 	if config.JWTSecret == "" {
 		panic("JWT_SECRET is required")
 	}
 	if config.WebsitesPort == "" {
 		panic("WEBSITES_PORT is required")
 	}
+	if config.RedisHost == "" {
+		panic("REDIS_HOST is required")
+	}
+	if config.RedisPort == "" {
+		panic("REDIS_PORT is required")
+	}
+}
+
+func validateStorageConfig(config *Config) {
 	if config.IsProduction {
 		if config.AzureStorageConnectionString == "" {
 			panic(
@@ -129,14 +148,19 @@ func validateConfig(config *Config) {
 		if config.AzureContainerName == "" {
 			panic("AZURE_CONTAINER_NAME is required for Azure Blob Storage")
 		}
-		if config.SendGridAPIKey == "" {
-			panic("SENDGRID_API_KEY is required for production")
-		}
-	}
-	if !config.IsProduction {
+	} else {
 		if config.LocalUploadDIR == "" {
 			panic("UPLOAD_DIR is required for local storage")
 		}
+	}
+}
+
+func validateProviderConfig(config *Config) {
+	if config.IsProduction {
+		if config.SendGridAPIKey == "" {
+			panic("SENDGRID_API_KEY is required for production")
+		}
+	} else {
 		if config.MailPitHost == "" {
 			panic("MAILPIT_HOST is required for local development")
 		}
@@ -144,6 +168,7 @@ func validateConfig(config *Config) {
 			panic("MAILPIT_PORT is required for local development")
 		}
 	}
+
 	if config.IDPClientID == "" {
 		panic("IDP_CLIENT_ID is required")
 	}
@@ -152,12 +177,5 @@ func validateConfig(config *Config) {
 	}
 	if config.IDPBaseUrl == "" {
 		panic("IDP_BASE_URL is required")
-	}
-
-	if config.RedisHost == "" {
-		panic("REDIS_HOST is required")
-	}
-	if config.RedisPort == "" {
-		panic("REDIS_PORT is required")
 	}
 }

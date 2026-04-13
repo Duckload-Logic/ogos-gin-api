@@ -18,7 +18,8 @@ func NewService(repo RepositoryInterface) *Service {
 
 // GetUserByID retrieves a user by their ID.
 func (s *Service) GetUserByID(
-	ctx context.Context, userID string,
+	ctx context.Context,
+	userID string,
 ) (*GetUserResponse, error) {
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
@@ -30,7 +31,9 @@ func (s *Service) GetUserByID(
 
 // GetUserByEmail retrieves a user by their email and auth type.
 func (s *Service) GetUserByEmail(
-	ctx context.Context, email string, authType string,
+	ctx context.Context,
+	email string,
+	authType string,
 ) (*GetUserResponse, error) {
 	user, err := s.repo.GetUserByEmail(ctx, email, authType)
 	if err != nil {

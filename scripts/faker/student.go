@@ -393,7 +393,7 @@ func insertPersonalInfo(
 	genderID := randomChoice(genderIDs).(int)
 
 	info := &students.StudentPersonalInfo{
-		IIRID: iirID,
+		IIRID:         iirID,
 		StudentNumber: studentNumber,
 		GenderID:      genderID,
 		CivilStatusID: civilStatusID,

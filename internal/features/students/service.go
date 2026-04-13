@@ -1319,7 +1319,7 @@ func (s *Service) saveStudentPersonalInfo(
 	dto StudentPersonalInfoDTO,
 ) error {
 	if err := s.repo.UpsertStudentPersonalInfo(ctx, tx, &StudentPersonalInfo{
-		IIRID: iirID,
+		IIRID:         iirID,
 		StudentNumber: dto.StudentNumber,
 		GenderID:      dto.Gender.ID,
 		CivilStatusID: dto.CivilStatus.ID,
@@ -1791,45 +1791,4 @@ func (s *Service) GetFormattedDate(date string) string {
 	}
 
 	return t.Format(outputLayout)
-}
-
-func (s *Service) getAge(dateOfBirth string) int {
-	today := time.Now()
-	bday, err := time.Parse("2006-01-02", dateOfBirth)
-	if err != nil {
-		return 0
-	}
-
-	return today.Year() - bday.Year()
-}
-
-func (s *Service) getFullAddress(address locations.AddressDTO) string {
-	return fmt.Sprintf(
-		"%s, %s, %s, %s, %s",
-		address.StreetDetail,
-		address.Barangay.Name,
-		address.City.Name,
-		address.Province.Name,
-		address.Region.Name,
-	)
-}
-
-func (s *Service) getFullName(firstName, middleName, lastName string) string {
-	return fmt.Sprintf("%s, %s %s", lastName, firstName, middleName)
-}
-
-// truncate returns a string limited to n characters.
-func (s *Service) truncate(str string, n int) string {
-	if len(str) <= n {
-		return str
-	}
-	return str[:n]
-}
-
-// ptrIntToStr safely converts a *int to a string.
-func (s *Service) ptrIntToStr(i *int) string {
-	if i == nil {
-		return "0"
-	}
-	return fmt.Sprintf("%d", *i)
 }

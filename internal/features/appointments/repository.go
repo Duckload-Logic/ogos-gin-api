@@ -14,6 +14,11 @@ type Repository struct {
 	db *sqlx.DB
 }
 
+const (
+	filterWhenDateGe = " AND a.when_date >= ?"
+	filterWhenDateLe = " AND a.when_date <= ?"
+)
+
 const appointmentsBaseQuery = `
 	SELECT
 		a.id,
@@ -192,8 +197,12 @@ func (r *Repository) applyFilters(
 		args = append(args, statusID)
 	}
 	if startDate != "" {
-		query += " AND a.when_date >= ?"
+		query += filterWhenDateGe
 		args = append(args, startDate)
+	}
+	if endDate != "" {
+		query += filterWhenDateLe
+		args = append(args, endDate)
 	}
 	if iirID != nil {
 		query += " AND a.iir_id = ?"
@@ -216,14 +225,15 @@ func (r *Repository) List(
 		query += " AND a.status_id IN (?)"
 		args = append(args, statusIDList)
 	}
-	if startDate != "" {
-		query += " AND a.when_date >= ?"
-		args = append(args, startDate)
-	}
-	if endDate != "" {
-		query += " AND a.when_date <= ?"
-		args = append(args, endDate)
-	}
+	query, args = r.applyFilters(
+		query,
+		args,
+		"", // statusIDs handled separately with IN clause
+		startDate,
+		endDate,
+		nil,
+	)
+
 	if search != "" {
 		query += ` AND (u.first_name LIKE ? OR
 			u.middle_name LIKE ? OR u.last_name LIKE ? OR

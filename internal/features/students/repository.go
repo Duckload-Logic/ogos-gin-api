@@ -284,8 +284,11 @@ func (r *Repository) applyStudentFilters(
 
 // Retrieve - List
 func (r *Repository) ListStudents(
-	ctx context.Context, search string, offset int, limit int, orderBy string,
-	courseID int, genderID int, yearLevel int,
+	ctx context.Context,
+	search string,
+	offset, limit int,
+	orderBy string,
+	courseID, genderID, yearLevel int,
 ) ([]StudentProfileView, error) {
 	query := `
         SELECT

@@ -741,16 +741,16 @@ func (s *Service) PostIDPTokenExchange(
 				}
 
 				localUser = &users.User{
-					ID:           userInfo.ID,
-					Email:        userInfo.Email,
-					RoleID:       assignedRoleID,
-					FirstName:    userInfo.FirstName,
-					LastName:     userInfo.LastName,
+					ID:        userInfo.ID,
+					Email:     userInfo.Email,
+					RoleID:    assignedRoleID,
+					FirstName: userInfo.FirstName,
+					LastName:  userInfo.LastName,
 					SuffixName: sql.NullString{
 						String: userInfo.SuffixName,
 						Valid:  userInfo.SuffixName != "",
 					},
-					AuthType: string(constants.AuthTypeIDP),
+					AuthType:     string(constants.AuthTypeIDP),
 					PasswordHash: sql.NullString{Valid: false},
 					IsActive:     1,
 				}
@@ -810,27 +810,27 @@ func (s *Service) PostIDPTokenExchange(
 		)
 	}
 
-		// Update Redis: App Access session
-		val := map[string]string{
-			"userID":          appUserID,
-			"tokenType":       string(constants.AuthTypeIDP),
-			"appRefreshToken": appRefreshToken,
-			"idpAccessToken":  idpAccessToken,
-			"ipAddress":       ipAddress,
-			"userAgent":       userAgent,
-		}
-		if err := s.sessionService.StoreUserToken(
-			ctx,
-			appUserID,
-			sessions.NewJTI(accessClaims.ID),
-			val,
-			constants.RefreshTokenMaxAge,
-		); err != nil {
-			return "", "", "", "", "", fmt.Errorf(
-				"[AuthService] {Store Access in Redis}: %w",
-				err,
-			)
-		}
+	// Update Redis: App Access session
+	val := map[string]string{
+		"userID":          appUserID,
+		"tokenType":       string(constants.AuthTypeIDP),
+		"appRefreshToken": appRefreshToken,
+		"idpAccessToken":  idpAccessToken,
+		"ipAddress":       ipAddress,
+		"userAgent":       userAgent,
+	}
+	if err := s.sessionService.StoreUserToken(
+		ctx,
+		appUserID,
+		sessions.NewJTI(accessClaims.ID),
+		val,
+		constants.RefreshTokenMaxAge,
+	); err != nil {
+		return "", "", "", "", "", fmt.Errorf(
+			"[AuthService] {Store Access in Redis}: %w",
+			err,
+		)
+	}
 
 	// Store IDP Refresh Token in Redis associated with the App
 	// Refresh Token's ID (jti)

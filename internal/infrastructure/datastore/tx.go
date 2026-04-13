@@ -39,7 +39,9 @@ func RunInTransaction(
 	}
 
 	// Always defer rollback. If Commit is called, Rollback does nothing.
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	if err := fn(tx); err != nil {
 		return err
@@ -60,7 +62,9 @@ func NewRunInTransaction[T any](
 	}
 
 	// Always defer rollback. If Commit is called, Rollback does nothing.
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	result, err = fn(tx)
 	if err != nil {

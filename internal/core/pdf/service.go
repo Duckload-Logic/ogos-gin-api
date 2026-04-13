@@ -34,9 +34,60 @@ func (s *Service) GenerateFromTemplate(
 	templatePath string,
 	data interface{},
 ) ([]byte, error) {
-	tmpl := template.New(filepath.Base(templatePath)).Funcs(template.FuncMap{
+	tmpl := template.New(filepath.Base(templatePath)).Funcs(getTemplateFuncs())
+
+	tmpl, err := tmpl.ParseFiles(templatePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return nil, fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	pdfBytes, err := s.gotenberg.ConvertHTML(ctx, buf.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert html to pdf: %w", err)
+	}
+
+	return pdfBytes, nil
+}
+
+func getTemplateFuncs() template.FuncMap {
+	funcs := template.FuncMap{}
+
+	// Merges multiple FuncMaps
+	maps := []template.FuncMap{
+		getBasicHelpers(),
+		getDateHelpers(),
+		getSupportHelpers(),
+		getActivityHelpers(),
+		getRelationHelpers(),
+		getEduHelpers(),
+		getConsultHelpers(),
+	}
+
+	for _, m := range maps {
+		for k, v := range m {
+			funcs[k] = v
+		}
+	}
+
+	return funcs
+}
+
+func getBasicHelpers() template.FuncMap {
+	return template.FuncMap{
 		"sub": func(a, b int) int { return a - b },
 		"add": func(a, b int) int { return a + b },
+		"ptrInt": func(i *int) int {
+			if i == nil {
+				return 0
+			}
+			return *i
+		},
+		"makeSlice": func(args ...interface{}) []interface{} { return args },
 		"iterate": func(n int) []int {
 			var i []int
 			for j := 0; j < n; j++ {
@@ -44,6 +95,47 @@ func (s *Service) GenerateFromTemplate(
 			}
 			return i
 		},
+	}
+}
+
+func getDateHelpers() template.FuncMap {
+	return template.FuncMap{
+		"formatDate": func(dateStr string) string {
+			if dateStr == "" {
+				return ""
+			}
+			if len(dateStr) > 10 {
+				dateStr = dateStr[:10]
+			}
+			t, err := time.Parse("2006-01-02", dateStr)
+			if err != nil {
+				return dateStr
+			}
+			return t.Format("January 02, 2006")
+		},
+		"calculateAge": func(birthDate string) int {
+			if birthDate == "" {
+				return 0
+			}
+			if len(birthDate) > 10 {
+				birthDate = birthDate[:10]
+			}
+			t, err := time.Parse("2006-01-02", birthDate)
+			if err != nil {
+				return 0
+			}
+			today := time.Now()
+			age := today.Year() - t.Year()
+			if today.YearDay() < t.YearDay() {
+				age--
+			}
+			return age
+		},
+	}
+}
+
+func getSupportHelpers() template.FuncMap {
+	return template.FuncMap{
 		"hasSiblingSupport": func(supports interface{}, target string) bool {
 			v := reflect.ValueOf(supports)
 			if v.Kind() != reflect.Slice {
@@ -70,6 +162,11 @@ func (s *Service) GenerateFromTemplate(
 			}
 			return false
 		},
+	}
+}
+
+func getActivityHelpers() template.FuncMap {
+	return template.FuncMap{
 		"hasActivity": func(activities interface{}, target string) bool {
 			v := reflect.ValueOf(activities)
 			if v.Kind() != reflect.Slice {
@@ -78,9 +175,7 @@ func (s *Service) GenerateFromTemplate(
 			for i := 0; i < v.Len(); i++ {
 				item := reflect.Indirect(v.Index(i))
 				if item.FieldByName("ActivityOption").
-					FieldByName("Category").
-					String() ==
-					target {
+					FieldByName("Category").String() == target {
 					return true
 				}
 			}
@@ -96,65 +191,22 @@ func (s *Service) GenerateFromTemplate(
 			}
 			return ""
 		},
-		"formatDate": func(dateStr string) string {
-			if dateStr == "" {
-				return ""
-			}
-			// Handle cases where dateStr might have time component
-			if len(dateStr) > 10 {
-				dateStr = dateStr[:10]
-			}
-			t, err := time.Parse("2006-01-02", dateStr)
-			if err != nil {
-				return dateStr // return original if parse fails
-			}
-			return t.Format("January 02, 2006")
-		},
-		"calculateAge": func(birthDate string) int {
-			if birthDate == "" {
-				return 0
-			}
-			// Debug: print the incoming birthDate string
-			fmt.Printf("[PDF_HELPER] calculateAge input: %q\n", birthDate)
+	}
+}
 
-			// Handle cases where birthDate might have time component
-			if len(birthDate) > 10 {
-				birthDate = birthDate[:10]
-			}
-			t, err := time.Parse("2006-01-02", birthDate)
-			if err != nil {
-				fmt.Printf("[PDF_HELPER] calculateAge parse error: %v\n", err)
-				return 0
-			}
-			today := time.Now()
-			age := today.Year() - t.Year()
-			if today.YearDay() < t.YearDay() {
-				age--
-			}
-			return age
-		},
-		"ptrInt": func(i *int) int {
-			if i == nil {
-				return 0
-			}
-			return *i
-		},
-		"makeSlice": func(args ...interface{}) []interface{} {
-			return args
-		},
+func getRelationHelpers() template.FuncMap {
+	return template.FuncMap{
 		"getRelatedPerson": func(persons interface{}, role string) interface{} {
 			v := reflect.ValueOf(persons)
 			if v.Kind() != reflect.Slice {
 				return nil
 			}
-
 			for i := 0; i < v.Len(); i++ {
 				p := v.Index(i)
 				isParent := p.FieldByName("IsParent").Bool()
 				isGuardian := p.FieldByName("IsGuardian").Bool()
 				relName := p.FieldByName("Relationship").
-					FieldByName("RelationshipName").
-					String()
+					FieldByName("RelationshipName").String()
 
 				switch role {
 				case "Father":
@@ -171,9 +223,13 @@ func (s *Service) GenerateFromTemplate(
 					}
 				}
 			}
-
 			return nil
 		},
+	}
+}
+
+func getEduHelpers() template.FuncMap {
+	return template.FuncMap{
 		"getEduBackground": func(schools interface{}, level string) interface{} {
 			v := reflect.ValueOf(schools)
 			if v.Kind() != reflect.Slice {
@@ -182,14 +238,18 @@ func (s *Service) GenerateFromTemplate(
 			for i := 0; i < v.Len(); i++ {
 				s := v.Index(i)
 				lvl := s.FieldByName("EducationalLevel").
-					FieldByName("LevelName").
-					String()
+					FieldByName("LevelName").String()
 				if lvl == level {
 					return s.Interface()
 				}
 			}
 			return nil
 		},
+	}
+}
+
+func getConsultHelpers() template.FuncMap {
+	return template.FuncMap{
 		"getConsultation": func(consults interface{}, profType string) interface{} {
 			v := reflect.ValueOf(consults)
 			if v.Kind() != reflect.Slice {
@@ -204,22 +264,5 @@ func (s *Service) GenerateFromTemplate(
 			}
 			return nil
 		},
-	})
-
-	tmpl, err := tmpl.ParseFiles(templatePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("failed to execute template: %w", err)
-	}
-
-	pdfBytes, err := s.gotenberg.ConvertHTML(ctx, buf.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert html to pdf: %w", err)
-	}
-
-	return pdfBytes, nil
 }
