@@ -93,6 +93,7 @@ func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 			c.Set("userEmail", claims.UserEmail)
 			c.Set("roleID", claims.RoleID)
 		}
+		log.Printf("[AuthMiddleware] {Token Type}: %s", claims.TokenType)
 		c.Set("tokenType", claims.TokenType)
 
 		c.Next()
