@@ -23,15 +23,25 @@ func RegisterRoutes(
 	// Protected Management Routes
 	m2mMgmt := rg.Group("/m2m-clients")
 	m2mMgmt.Use(middleware.AuthMiddleware(redis))
-	m2mMgmt.Use(middleware.RoleMiddleware(
-		int(constants.SuperAdminRoleID),
-		int(constants.DeveloperRoleID),
-	))
 	{
-		m2mMgmt.GET("", h.GetM2MClients)
-		m2mMgmt.POST("", h.PostM2MClient)
-		m2mMgmt.PATCH("/:id/verify", h.PatchVerifyClient)
-		m2mMgmt.POST("/:id/secret", h.PostM2MSecret)
-		m2mMgmt.DELETE("/:id", h.DeleteM2MClient)
+		// Common routes for both Developer and Superadmin
+		common := m2mMgmt.Group("")
+		common.Use(middleware.RoleMiddleware(
+			int(constants.SuperAdminRoleID),
+			int(constants.DeveloperRoleID),
+		))
+		{
+			common.GET("", h.GetM2MClients)
+			common.POST("", h.PostM2MClient)
+			common.POST("/:id/secret", h.PostM2MSecret)
+			common.DELETE("/:id", h.DeleteM2MClient)
+		}
+
+		// Admin-only routes
+		adminOnly := m2mMgmt.Group("")
+		adminOnly.Use(middleware.RoleMiddleware(int(constants.SuperAdminRoleID)))
+		{
+			adminOnly.PATCH("/:id/verify", h.PatchVerifyClient)
+		}
 	}
 }

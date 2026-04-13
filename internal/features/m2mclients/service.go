@@ -93,7 +93,7 @@ func (s *Service) CreateClient(
 		ClientSecretHash:  secretHash,
 		ClientDescription: req.ClientDescription,
 		Scopes:            scopesJSON,
-		IsVerified:        true, // Auto-verified for now
+		IsVerified:        false,
 		IsActive:          true,
 		ExpiresAt:         expiresAt,
 	}
@@ -138,6 +138,10 @@ func (s *Service) CreateClient(
 		},
 	})
 
+	if !client.IsVerified {
+		dto.ClientID = "********"
+	}
+
 	return &CreateM2MClientResponse{
 		M2MClientDTO: dto,
 		ClientSecret: plaintextSecret,
@@ -163,6 +167,10 @@ func (s *Service) Authenticate(
 
 	if !client.IsActive {
 		return nil, fmt.Errorf("client has been revoked")
+	}
+
+	if !client.IsVerified {
+		return nil, fmt.Errorf("client is pending superadmin verification")
 	}
 
 	if client.ExpiresAt.Valid && client.ExpiresAt.Time.Before(time.Now()) {
@@ -312,11 +320,11 @@ func (s *Service) RefreshToken(
 	return newTokens, nil
 }
 
-// ListClients returns all M2M clients for a specific user.
 func (s *Service) ListClients(
 	ctx context.Context,
 	userID string,
 	includeRevoked bool,
+	roleID int,
 ) ([]M2MClientDTO, error) {
 	clients, err := s.repo.List(ctx, userID, includeRevoked)
 	if err != nil {
@@ -325,7 +333,15 @@ func (s *Service) ListClients(
 
 	dtos := make([]M2MClientDTO, len(clients))
 	for i, c := range clients {
-		dtos[i] = mapClientToDTO(c)
+		dto := mapClientToDTO(c)
+
+		// Masking logic: Hide sensitive info if not verified and not superadmin
+		if roleID != int(constants.SuperAdminRoleID) && !c.IsVerified {
+			dto.ClientID = "********"
+			dto.Scopes = []string{"********"}
+		}
+
+		dtos[i] = dto
 	}
 	return dtos, nil
 }

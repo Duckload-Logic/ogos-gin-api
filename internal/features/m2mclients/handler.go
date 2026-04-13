@@ -161,6 +161,7 @@ func (h *Handler) GetM2MClients(c *gin.Context) {
 		c.Request.Context(),
 		userID,
 		includeRevoked,
+		roleID,
 	)
 	if err != nil {
 		log.Printf("[GetM2MClients] {ListClients}: %v", err)

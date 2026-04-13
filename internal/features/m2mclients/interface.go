@@ -29,6 +29,7 @@ type ServiceInterface interface {
 		ctx context.Context,
 		userID string,
 		includeRevoked bool,
+		roleID int,
 	) ([]M2MClientDTO, error)
 	RevokeClient(ctx context.Context, id int) error
 	RegenerateSecret(ctx context.Context, id int) (string, error)
