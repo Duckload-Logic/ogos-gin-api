@@ -389,7 +389,9 @@ func (h *Handler) PostLogout(c *gin.Context) {
 
 	tokenType, _ := c.Get("tokenType")
 	tType := "native"
+	log.Printf("[PostLogout] {Token Type}: %v", tokenType)
 	if tt, ok := tokenType.(string); ok {
+		log.Printf("[PostLogout] {Token Type}: %s", tt)
 		tType = tt
 	}
 
