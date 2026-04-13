@@ -512,7 +512,7 @@ func (s *Service) SubmitExcuseSlip(
 
 	counselorIDs, _ := s.userService.GetUserIDsByRole(
 		ctx,
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 	)
 
 	notifications := []audit.NotificationParams{

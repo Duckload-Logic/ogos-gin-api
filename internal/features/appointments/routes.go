@@ -21,7 +21,7 @@ func RegisterRoutes(
 
 	adminOnly := routes.Group("")
 	adminOnly.Use(middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 	))
 	{
 		adminOnly.GET("", h.GetAppointmentList)
@@ -43,7 +43,7 @@ func RegisterRoutes(
 	sharedRoutes := routes.Group("")
 	sharedRoutes.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 	))
 	{
 		sharedRoutes.GET("/id/:id", h.GetAppointmentByID)

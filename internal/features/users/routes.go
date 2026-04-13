@@ -18,7 +18,7 @@ func RegisterRoutes(
 	userRoutes.Use(middleware.AuthMiddleware(redis))
 	userRoutes.Use(middleware.RoleMiddleware(
 		int(constants.SuperAdminRoleID),
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 		int(constants.StudentRoleID),
 	))
 

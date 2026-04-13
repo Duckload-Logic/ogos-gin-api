@@ -16,7 +16,7 @@ func OwnershipMiddleware(db *sqlx.DB, paramName string) gin.HandlerFunc {
 		roleID := c.MustGet("roleID").(int)
 
 		// Allow counselors and super admins to bypass
-		if roleID == int(constants.CounselorRoleID) ||
+		if roleID == int(constants.AdminRoleID) ||
 			roleID == int(constants.SuperAdminRoleID) {
 			c.Next()
 			return

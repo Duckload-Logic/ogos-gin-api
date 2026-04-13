@@ -51,7 +51,7 @@ func RegisterRoutes(
 
 	counselorRoutes := inventoryRoutes.Group("/")
 	counselorRoutes.Use(middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 	))
 	{
 		counselorRoutes.GET("/records", h.GetStudentList)
@@ -60,7 +60,7 @@ func RegisterRoutes(
 	userRoutes := inventoryRoutes.Group("/")
 	userRoutes.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 	))
 	{
 		userRoutes.GET(

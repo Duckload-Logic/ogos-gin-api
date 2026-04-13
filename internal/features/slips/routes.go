@@ -21,7 +21,7 @@ func RegisterRoutes(
 
 	adminOnly := routes.Group("")
 	adminOnly.Use(middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 	))
 	{
 		adminOnly.GET("", h.GetSlipList)
@@ -40,7 +40,7 @@ func RegisterRoutes(
 
 	sharedRoutes := routes.Group("")
 	sharedRoutes.Use(middleware.RoleMiddleware(
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 		int(constants.StudentRoleID),
 	))
 	{

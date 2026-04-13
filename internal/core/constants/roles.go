@@ -4,7 +4,7 @@ type RoleID int
 
 const (
 	StudentRoleID RoleID = iota + 1
-	CounselorRoleID
+	AdminRoleID
 	SuperAdminRoleID
 	DeveloperRoleID
 )

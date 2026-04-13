@@ -20,7 +20,7 @@ func RegisterRoutes(
 	userRoutes := routes.Group("/")
 	userRoutes.Use(middleware.RoleMiddleware(
 		int(constants.StudentRoleID),
-		int(constants.CounselorRoleID),
+		int(constants.AdminRoleID),
 		int(constants.SuperAdminRoleID),
 	))
 	{
