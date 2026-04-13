@@ -294,7 +294,7 @@ func (r *Repository) ListStudents(
 			u.first_name,
 			u.middle_name,
 			u.last_name,
-			spi.suffix_name,
+			u.suffix_name,
 			spi.gender_id,
 			u.email,
 			spi.student_number,

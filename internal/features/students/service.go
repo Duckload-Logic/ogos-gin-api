@@ -1319,8 +1319,7 @@ func (s *Service) saveStudentPersonalInfo(
 	dto StudentPersonalInfoDTO,
 ) error {
 	if err := s.repo.UpsertStudentPersonalInfo(ctx, tx, &StudentPersonalInfo{
-		IIRID:         iirID,
-		SuffixName:    structs.ToSqlNull(dto.SuffixName),
+		IIRID: iirID,
 		StudentNumber: dto.StudentNumber,
 		GenderID:      dto.Gender.ID,
 		CivilStatusID: dto.CivilStatus.ID,

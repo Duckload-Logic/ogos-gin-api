@@ -43,6 +43,7 @@ func createStudent(index int, password string) {
 			gofakeit.FirstName(),
 		),
 		LastName:     gofakeit.LastName(),
+		SuffixName:   nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
 		Email:        studentEmail,
 		PasswordHash: sql.NullString{Valid: true, String: password},
 		AuthType:     "native",
@@ -390,21 +391,9 @@ func insertPersonalInfo(
 
 	civilStatusID := chooseCivilStatusID()
 	genderID := randomChoice(genderIDs).(int)
-	nameSuffix := ""
-	if genderID == 1 {
-		if gofakeit.Bool() {
-			nameSuffix = gofakeit.RandomString(
-				[]string{"Jr.", "Sr.", "III", "IV"},
-			)
-		}
-	}
 
 	info := &students.StudentPersonalInfo{
 		IIRID: iirID,
-		SuffixName: sql.NullString{
-			String: nameSuffix,
-			Valid:  nameSuffix != "",
-		},
 		StudentNumber: studentNumber,
 		GenderID:      genderID,
 		CivilStatusID: civilStatusID,

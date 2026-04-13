@@ -303,8 +303,6 @@ func (c *IDPClient) Logout(
 			logoutResp.Message = "Logout successful"
 		}
 
-		log.Printf("[IDPClient] Logout successful: %s", string(bodyBytes))
-
 		return &logoutResp, nil
 	}
 

@@ -14,6 +14,7 @@ CREATE TABLE users (
     first_name VARCHAR(100) NOT NULL,
     middle_name VARCHAR(100) DEFAULT NULL,
     last_name VARCHAR(100) NOT NULL,
+    suffix_name VARCHAR(50) DEFAULT NULL,
     password_hash VARCHAR(255) DEFAULT NULL,
     auth_type VARCHAR(20) NOT NULL DEFAULT 'native',
     is_active TINYINT(1) DEFAULT 1,

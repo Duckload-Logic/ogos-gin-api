@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
@@ -21,6 +22,7 @@ func createSuperAdmin(index int, password string) {
 		FirstName:    "Super",
 		MiddleName:   randomMiddleName(),
 		LastName:     "Admin",
+		SuffixName:   sql.NullString{Valid: false},
 		Email:        email,
 		PasswordHash: sql.NullString{Valid: true, String: password},
 		AuthType:     "native",
@@ -52,6 +54,7 @@ func createCounselor(index int, password string) {
 		FirstName:    firstName,
 		MiddleName:   randomMiddleName(),
 		LastName:     lastName,
+		SuffixName:   nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
 		Email:        email,
 		PasswordHash: sql.NullString{Valid: true, String: password},
 		AuthType:     "native",

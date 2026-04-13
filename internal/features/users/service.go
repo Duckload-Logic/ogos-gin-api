@@ -93,6 +93,7 @@ func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
 		FirstName:  user.FirstName,
 		MiddleName: structs.FromSqlNull(user.MiddleName),
 		LastName:   user.LastName,
+		SuffixName: structs.FromSqlNull(user.SuffixName),
 		Email:      user.Email,
 		IsActive:   user.IsActive == 1,
 		CreatedAt:  user.CreatedAt.Time.String(),

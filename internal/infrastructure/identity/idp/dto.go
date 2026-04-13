@@ -34,4 +34,5 @@ type IDPUserInfo struct {
 	FirstName  string `json:"first_name"`
 	LastName   string `json:"last_name"`
 	MiddleName string `json:"middle_name,omitempty"`
+	SuffixName string `json:"suffix_name,omitempty"`
 }

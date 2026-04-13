@@ -123,10 +123,10 @@ type StudentSelectedReason struct {
 }
 
 type StudentPersonalInfo struct {
-	ID            int            `db:"id"             json:"id"`
-	IIRID         string         `db:"iir_id"         json:"iirId"`
-	SuffixName    sql.NullString `db:"suffix_name"    json:"suffixName,omitempty"`
-	StudentNumber string         `db:"student_number" json:"studentNumber"`
+	ID    int    `db:"id"             json:"id"`
+	IIRID string `db:"iir_id"         json:"iirId"`
+
+	StudentNumber string `db:"student_number" json:"studentNumber"`
 
 	// Personal Details
 	GenderID      int `db:"gender_id"       json:"genderId"`

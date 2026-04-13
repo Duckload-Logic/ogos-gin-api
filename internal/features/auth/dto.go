@@ -18,6 +18,7 @@ type MeResponse struct {
 	Email      string     `json:"email"`
 	FirstName  string     `json:"firstName"`
 	LastName   string     `json:"lastName"`
+	SuffixName string     `json:"suffixName,omitempty"`
 	MiddleName string     `json:"middleName,omitempty"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	Role       users.Role `json:"role"`
@@ -38,6 +39,7 @@ type RegisterDTO struct {
 	Password   string `json:"password"   binding:"required,min=8"`
 	FirstName  string `json:"firstName"  binding:"required"`
 	LastName   string `json:"lastName"   binding:"required"`
+	SuffixName string `json:"suffixName"`
 	MiddleName string `json:"middleName"`
 }
 

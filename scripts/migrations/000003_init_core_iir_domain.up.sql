@@ -105,7 +105,6 @@ CREATE INDEX idx_emergency_contacts_address_id ON emergency_contacts(address_id 
 CREATE TABLE student_personal_info (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     iir_id CHAR(36) NOT NULL,
-    suffix_name VARCHAR(50) DEFAULT NULL,
     student_number VARCHAR(20) NOT NULL UNIQUE,
     gender_id INT NOT NULL,
     civil_status_id INT NOT NULL,

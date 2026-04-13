@@ -13,6 +13,7 @@ type User struct {
 	FirstName    string         `db:"first_name"    json:"firstName"`
 	MiddleName   sql.NullString `db:"middle_name"   json:"middleName"`
 	LastName     string         `db:"last_name"     json:"lastName"`
+	SuffixName   sql.NullString `db:"suffix_name"   json:"suffixName"`
 	Email        string         `db:"email"         json:"email"`
 	PasswordHash sql.NullString `db:"password_hash" json:"passwordHash"`
 	AuthType     string         `db:"auth_type"     json:"authType"`

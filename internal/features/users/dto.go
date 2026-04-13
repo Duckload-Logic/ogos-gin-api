@@ -8,6 +8,7 @@ type GetUserResponse struct {
 	FirstName  string                 `json:"firstName"`
 	MiddleName structs.NullableString `json:"middleName,omitempty"`
 	LastName   string                 `json:"lastName"`
+	SuffixName structs.NullableString `json:"suffixName,omitempty"`
 	Email      string                 `json:"email,omitempty"`
 	IsActive   bool                   `json:"isActive"`
 	CreatedAt  string                 `json:"createdAt,omitempty"`
@@ -19,6 +20,7 @@ type CreateUserRequest struct {
 	FirstName  string `json:"firstName"  binding:"required"`
 	MiddleName string `json:"middleName"`
 	LastName   string `json:"lastName"   binding:"required"`
+	SuffixName string `json:"suffixName"`
 	Email      string `json:"email"      binding:"required,email"`
 	Password   string `json:"password"   binding:"required,min=8"`
 }

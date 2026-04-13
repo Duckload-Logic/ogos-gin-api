@@ -26,10 +26,12 @@ func createDeveloper(index int, passwordHash string) {
 
 	// Create developer user
 	user := users.User{
-		ID:        userID,
-		Email:     email,
-		FirstName: firstName,
-		LastName:  lastName,
+		ID:         userID,
+		Email:      email,
+		FirstName:  firstName,
+		LastName:   lastName,
+		MiddleName: randomMiddleName(),
+		SuffixName: sql.NullString{Valid: false},
 		PasswordHash: sql.NullString{
 			String: passwordHash,
 			Valid:  true,

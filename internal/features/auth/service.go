@@ -84,6 +84,10 @@ func (s *Service) RegisterUser(
 			String: req.MiddleName,
 			Valid:  req.MiddleName != "",
 		},
+		SuffixName: sql.NullString{
+			String: req.SuffixName,
+			Valid:  req.SuffixName != "",
+		},
 		PasswordHash: sql.NullString{
 			String: string(hashedPassword),
 			Valid:  true,
@@ -561,6 +565,7 @@ func (s *Service) GetMe(
 			Email:      user.Email,
 			FirstName:  user.FirstName,
 			LastName:   user.LastName,
+			SuffixName: user.SuffixName.String,
 			MiddleName: user.MiddleName.String,
 			CreatedAt:  user.CreatedAt.Time,
 			Role:       users.Role{},
@@ -573,6 +578,7 @@ func (s *Service) GetMe(
 		Email:      user.Email,
 		FirstName:  user.FirstName,
 		LastName:   user.LastName,
+		SuffixName: user.SuffixName.String,
 		MiddleName: user.MiddleName.String,
 		CreatedAt:  user.CreatedAt.Time,
 		Role:       *role,
@@ -740,7 +746,11 @@ func (s *Service) PostIDPTokenExchange(
 					RoleID:       assignedRoleID,
 					FirstName:    userInfo.FirstName,
 					LastName:     userInfo.LastName,
-					AuthType:     string(constants.AuthTypeIDP),
+					SuffixName: sql.NullString{
+						String: userInfo.SuffixName,
+						Valid:  userInfo.SuffixName != "",
+					},
+					AuthType: string(constants.AuthTypeIDP),
 					PasswordHash: sql.NullString{Valid: false},
 					IsActive:     1,
 				}
