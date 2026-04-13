@@ -14,21 +14,7 @@ import (
 
 func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var tokenString string
-
-		// ... (cookie and header logic)
-		cookie, err := c.Cookie("access_token")
-		if err == nil && cookie != "" {
-			tokenString = cookie
-		}
-
-		if tokenString == "" {
-			authHeader := c.GetHeader("Authorization")
-			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
-				tokenString = strings.TrimPrefix(authHeader, "Bearer ")
-			}
-		}
-
+		tokenString := getTokenString(c)
 		if tokenString == "" {
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
@@ -37,13 +23,9 @@ func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 			return
 		}
 
-		// Validate JWT signature and expiration first
 		claims, err := tokens.NewService().ValidateToken(tokenString)
 		if err != nil {
-			log.Printf(
-				"[AuthMiddleware] {Token}: Invalid or expired token: %v",
-				err,
-			)
+			log.Printf("[AuthMiddleware] {Token}: Invalid or expired: %v", err)
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
 				gin.H{"error": "Invalid or expired token"},
@@ -51,50 +33,87 @@ func AuthMiddleware(redis *datastore.RedisClient) gin.HandlerFunc {
 			return
 		}
 
-		// Validate against Redis using the Token ID (jti)
 		if redis != nil {
-			jti := sessions.NewJTI(claims.ID)
-			tokenKey := jti.ToSessionKey()
-			val, err := redis.Get(c.Request.Context(), tokenKey)
-			if err != nil {
-				log.Printf(
-					"[AuthMiddleware] {Redis}: Session %s missing or "+
-						"revoked for ID: %s",
-					claims.ID,
-					func() string {
-						if claims.M2MClientID != "" {
-							return "M2M:" + claims.M2MClientID
-						}
-						return "User:" + claims.UserID
-					}(),
-				)
-				c.AbortWithStatusJSON(
-					http.StatusUnauthorized,
-					gin.H{"error": "Session has been revoked or expired"},
-				)
+			if !validateSession(c, redis, claims) {
 				return
 			}
-
-			// Parse session data
-			var sessionData map[string]string
-			if err := json.Unmarshal([]byte(val), &sessionData); err == nil {
-				if idpToken, ok := sessionData["idpAccessToken"]; ok {
-					c.Set("idpAccessToken", idpToken)
-				}
-			}
 		}
 
-		// Set info in context
-		if claims.M2MClientID != "" {
-			c.Set("m2mClientID", claims.M2MClientID)
-			c.Set("isM2M", true)
-		} else {
-			c.Set("userID", claims.UserID)
-			c.Set("userEmail", claims.UserEmail)
-			c.Set("roleID", claims.RoleID)
+		if claims.M2MClientID != "" && !validateM2MPath(c, claims.M2MClientID) {
+			return
 		}
-		c.Set("tokenType", claims.TokenType)
 
+		setContextInfo(c, claims)
 		c.Next()
 	}
+}
+
+func getTokenString(c *gin.Context) string {
+	if cookie, err := c.Cookie("access_token"); err == nil && cookie != "" {
+		return cookie
+	}
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimPrefix(authHeader, "Bearer ")
+	}
+	return ""
+}
+
+func validateSession(
+	c *gin.Context,
+	redis *datastore.RedisClient,
+	claims *tokens.Claims,
+) bool {
+	jti := sessions.NewJTI(claims.ID)
+	val, err := redis.Get(c.Request.Context(), jti.ToSessionKey())
+	if err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized,
+			gin.H{"error": "Session has been revoked or expired"},
+		)
+		return false
+	}
+
+	var sessionData map[string]string
+	if err := json.Unmarshal([]byte(val), &sessionData); err == nil {
+		if idpToken, ok := sessionData["idpAccessToken"]; ok {
+			c.Set("idpAccessToken", idpToken)
+		}
+		if isVerified, ok := sessionData["isVerified"]; ok {
+			c.Set("isVerified", isVerified == "true")
+		}
+		if clientName, ok := sessionData["clientName"]; ok {
+			c.Set("clientName", clientName)
+		}
+	}
+	return true
+}
+
+func validateM2MPath(c *gin.Context, clientID string) bool {
+	fullPath := c.Request.URL.Path
+	if !strings.HasPrefix(fullPath, "/api/v1/integrations/students") {
+		log.Printf(
+			"[AuthMiddleware] {Security}: M2M %s unauthorized path: %s",
+			clientID,
+			fullPath,
+		)
+		c.AbortWithStatusJSON(
+			http.StatusForbidden,
+			gin.H{"error": "M2M clients are restricted to student integration routes"},
+		)
+		return false
+	}
+	return true
+}
+
+func setContextInfo(c *gin.Context, claims *tokens.Claims) {
+	if claims.M2MClientID != "" {
+		c.Set("m2mClientID", claims.M2MClientID)
+		c.Set("isM2M", true)
+	} else {
+		c.Set("userID", claims.UserID)
+		c.Set("userEmail", claims.UserEmail)
+		c.Set("roleID", claims.RoleID)
+	}
+	c.Set("tokenType", claims.TokenType)
 }

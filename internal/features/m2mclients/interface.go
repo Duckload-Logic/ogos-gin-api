@@ -32,6 +32,7 @@ type ServiceInterface interface {
 	) ([]M2MClientDTO, error)
 	RevokeClient(ctx context.Context, id int) error
 	RegenerateSecret(ctx context.Context, id int) (string, error)
+	VerifyClient(ctx context.Context, id int) error
 }
 
 type RepositoryInterface interface {
@@ -50,6 +51,12 @@ type RepositoryInterface interface {
 		tx datastore.DB,
 		id int,
 		secretHash string,
+	) error
+	UpdateVerificationStatus(
+		ctx context.Context,
+		tx datastore.DB,
+		id int,
+		isVerified bool,
 	) error
 	TouchLastUsed(ctx context.Context, tx datastore.DB, id int) error
 }

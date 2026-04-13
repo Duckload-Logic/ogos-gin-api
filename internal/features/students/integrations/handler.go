@@ -114,6 +114,71 @@ func (h *Handler) GetStudentByStudentNumber(c *gin.Context) {
 	response.SendSuccess(c, student)
 }
 
+// GetStudentByUserID godoc
+// @Summary Get student by IDP User ID
+// @Description Get student information by their common IDP User ID (UUID)
+// @Tags External Students
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param userID path string true "Common IDP User ID (UUID)"
+// @Success 200 {object} StudentSuccessResponse
+// @Failure 401 {object} response.CommonErrorResponse "Unauthorized"
+// @Failure 403 {object} response.CommonErrorResponse "Forbidden"
+// @Failure 404 {object} response.CommonErrorResponse "Not Found"
+// @Failure 500 {object} response.CommonErrorResponse "Internal Server Error"
+// @Router /integrations/students/idp/{userID} [get]
+func (h *Handler) GetStudentByUserID(c *gin.Context) {
+	userID := c.Param("userID")
+	if userID == "" {
+		response.SendFail(
+			c,
+			gin.H{"error": "userID parameter is required"},
+		)
+		return
+	}
+
+	// For M2M calls, ensure the client is formally verified (Partner status)
+	isM2M, _ := c.Get("isM2M")
+	isVerified, _ := c.Get("isVerified")
+	if m2m, _ := isM2M.(bool); m2m {
+		if verified, _ := isVerified.(bool); !verified {
+			response.SendFail(
+				c,
+				gin.H{"error": "Only formally verified Partner Systems can query by UUID"},
+				http.StatusForbidden,
+			)
+			return
+		}
+	}
+
+	student, err := h.service.GetStudentByUserID(
+		c.Request.Context(),
+		userID,
+	)
+	if err != nil {
+		log.Printf("[GetStudentByUserID] {Service Get}: %v", err)
+		response.SendError(
+			c,
+			string(constants.ErrInternalServerError),
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	if student == nil {
+		response.SendFail(
+			c,
+			gin.H{"error": constants.ErrNotFound},
+			http.StatusNotFound,
+		)
+		return
+	}
+
+	response.SendSuccess(c, student)
+}
+
 // GetPersonalInfoByStudentNumber godoc
 // @Summary Get personal information by student number
 // @Description Get personal information of a student by their student number

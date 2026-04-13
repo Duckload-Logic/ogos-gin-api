@@ -19,6 +19,7 @@ func RegisterRoutes(
 
 	routes.GET("/profiles", h.GetStudents)
 	routes.GET("/:studentNumber", h.GetStudentByStudentNumber)
+	routes.GET("/idp/:userID", h.GetStudentByUserID)
 	routes.GET(
 		"/:studentNumber/personal-info",
 		h.GetPersonalInfoByStudentNumber,

@@ -13,6 +13,10 @@ type ServiceInterface interface {
 		ctx context.Context,
 		studentNumber string,
 	) (*OGOSStudentDTO, error)
+	GetStudentByUserID(
+		ctx context.Context,
+		userID string,
+	) (*OGOSStudentDTO, error)
 	GetPersonalInfoByStudentNumber(
 		ctx context.Context,
 		studentNumber string,
@@ -31,6 +35,10 @@ type RepositoryInterface interface {
 	GetStudentByStudentNumber(
 		ctx context.Context,
 		studentNumber string,
+	) (*OGOSStudentView, error)
+	GetStudentByUserID(
+		ctx context.Context,
+		userID string,
 	) (*OGOSStudentView, error)
 	GetPersonalInfoByStudentNumber(
 		ctx context.Context,

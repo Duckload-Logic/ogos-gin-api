@@ -120,6 +120,40 @@ func (r *Repository) GetStudentByStudentNumber(
 	return &student, nil
 }
 
+func (r *Repository) GetStudentByUserID(
+	ctx context.Context,
+	userID string,
+) (*OGOSStudentView, error) {
+	query := `
+		SELECT
+			sp.student_number AS student_number,
+			u.first_name AS first_name,
+			u.middle_name AS middle_name,
+			u.last_name AS last_name,
+			u.email AS email,
+			sp.mobile_number AS mobile_number,
+			c.id AS course_id,
+			c.code AS course_code,
+			c.course_name AS course_name,
+			sp.year_level AS year_level,
+			sp.section AS section
+		FROM users u
+		JOIN iir_records i ON i.user_id = u.id
+		JOIN student_personal_info sp ON sp.iir_id = i.id
+		JOIN courses c ON sp.course_id = c.id
+		WHERE u.id = ?
+		LIMIT 1
+	`
+
+	var student OGOSStudentView
+	err := r.db.GetContext(ctx, &student, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &student, nil
+}
+
 func (r *Repository) GetPersonalInfoByStudentNumber(
 	ctx context.Context,
 	studentNumber string,

@@ -74,24 +74,46 @@ func (h *Handler) PostM2MToken(c *gin.Context) {
 		req.ClientSecret,
 	)
 	if err != nil {
-		log.Printf("[PostM2MToken] {Authenticate}: %v", err)
-		response.SendError(c, err.Error(), http.StatusUnauthorized, nil)
+		response.SendFail(c, gin.H{"error": err.Error()}, http.StatusUnauthorized)
 		return
 	}
 
-	tokenResp, err := h.service.IssueToken(c.Request.Context(), client)
+	tokens, err := h.service.IssueToken(c.Request.Context(), client)
 	if err != nil {
-		log.Printf("[PostM2MToken] {IssueToken}: %v", err)
 		response.SendError(
 			c,
-			"Failed to issue token",
+			string(constants.ErrInternalServerError),
 			http.StatusInternalServerError,
 			nil,
 		)
 		return
 	}
 
-	response.SendSuccess(c, tokenResp)
+	response.SendSuccess(c, tokens)
+}
+
+// PatchVerifyClient
+func (h *Handler) PatchVerifyClient(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		response.SendFail(c, gin.H{"error": "invalid client ID"})
+		return
+	}
+
+	err = h.service.VerifyClient(c.Request.Context(), id)
+	if err != nil {
+		log.Printf("[PatchVerifyClient] {Service Verify}: %v", err)
+		response.SendError(
+			c,
+			string(constants.ErrInternalServerError),
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, gin.H{"message": "Client verified successfully"})
 }
 
 // PostM2MRefresh godoc

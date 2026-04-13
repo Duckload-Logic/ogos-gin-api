@@ -30,6 +30,7 @@ func RegisterRoutes(
 	{
 		m2mMgmt.GET("", h.GetM2MClients)
 		m2mMgmt.POST("", h.PostM2MClient)
+		m2mMgmt.PATCH("/:id/verify", h.PatchVerifyClient)
 		m2mMgmt.POST("/:id/secret", h.PostM2MSecret)
 		m2mMgmt.DELETE("/:id", h.DeleteM2MClient)
 	}

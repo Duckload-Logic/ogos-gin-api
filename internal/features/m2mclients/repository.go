@@ -123,6 +123,20 @@ func (r *Repository) UpdateSecret(
 	return nil
 }
 
+func (r *Repository) UpdateVerificationStatus(
+	ctx context.Context,
+	tx datastore.DB,
+	id int,
+	isVerified bool,
+) error {
+	query := `UPDATE m2m_clients SET is_verified = ? WHERE id = ?`
+	_, err := tx.ExecContext(ctx, query, isVerified, id)
+	if err != nil {
+		return fmt.Errorf("failed to update verification status: %w", err)
+	}
+	return nil
+}
+
 func (r *Repository) TouchLastUsed(
 	ctx context.Context,
 	tx datastore.DB,

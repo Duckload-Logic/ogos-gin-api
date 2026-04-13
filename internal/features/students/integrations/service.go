@@ -81,6 +81,32 @@ func (s *Service) GetStudentByStudentNumber(
 	}, nil
 }
 
+func (s *Service) GetStudentByUserID(
+	ctx context.Context,
+	userID string,
+) (*OGOSStudentDTO, error) {
+	student, err := s.repo.GetStudentByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &OGOSStudentDTO{
+		StudentNumber: student.StudentNumber,
+		FirstName:     student.FirstName,
+		MiddleName:    structs.FromSqlNull(student.MiddleName),
+		LastName:      student.LastName,
+		Email:         student.Email,
+		MobileNumber:  student.MobileNumber,
+		Course: students.Course{
+			ID:         student.CourseID,
+			Code:       student.CourseCode,
+			CourseName: student.CourseName,
+		},
+		YearLevel: student.YearLevel,
+		Section:   student.Section,
+	}, nil
+}
+
 func (s *Service) GetPersonalInfoByStudentNumber(
 	ctx context.Context,
 	studentNumber string,

@@ -206,6 +206,7 @@ func (s *Service) IssueToken(
 		"clientId":   client.ClientID,
 		"clientName": client.ClientName,
 		"tokenType":  string(constants.AuthTypeM2M),
+		"isVerified": fmt.Sprintf("%t", client.IsVerified),
 	}
 	err = s.sessionService.StoreToken(
 		ctx,
@@ -429,6 +430,51 @@ func (s *Service) RevokeClient(ctx context.Context, id int) error {
 						Action:   audit.ActionM2MClientRevoked,
 						Message: fmt.Sprintf(
 							"M2M client #%d has been revoked",
+							id,
+						),
+						Metadata: &audit.LogMetadata{
+							EntityType: constants.M2MClientEntityType,
+							EntityID:   fmt.Sprintf("%d", id),
+						},
+					},
+				},
+			)
+
+			return nil
+		},
+	)
+}
+
+// VerifyClient toggles the verified status of an M2M client.
+func (s *Service) VerifyClient(ctx context.Context, id int) error {
+	return datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			// Get current status is not strictly necessary for a 단순 toggle
+			// but we use it for audit logging.
+			// However, the task implies a "Verification" endpoint, usually
+			// setting it to true. Let's make it a toggle for flexibility.
+
+			// For simplicity and following user request "VerifyClient",
+			// I'll set it to true.
+			err := s.repo.UpdateVerificationStatus(ctx, tx, id, true)
+			if err != nil {
+				return err
+			}
+
+			audit.Dispatch(
+				ctx,
+				s.logService,
+				s.notifService,
+				audit.DispatchParams{
+					Tx: tx,
+					Log: &audit.LogParams{
+						Level:    audit.LevelInfo,
+						Category: audit.CategorySystem,
+						Action:   audit.ActionM2MClientVerified,
+						Message: fmt.Sprintf(
+							"M2M client #%d has been verified",
 							id,
 						),
 						Metadata: &audit.LogMetadata{
