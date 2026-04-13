@@ -693,36 +693,58 @@ func (s *Service) PostIDPTokenExchange(
 	idpAccessToken := tokenResp.AccessToken
 	idpRefreshToken := tokenResp.RefreshToken
 
-	// Upsert IDP user into native database
-	// This ensures non-existing users are added and existing ones
-	// are synchronized
-	err = datastore.RunInTransaction(
-		ctx,
-		s.repo.(*users.Repository).GetDB(),
-		func(tx datastore.DB) error {
-			return s.repo.CreateUser(ctx, tx, users.User{
-				ID:           userInfo.ID,
-				RoleID:       1,
-				FirstName:    userInfo.FirstName,
-				LastName:     userInfo.LastName,
-				Email:        userInfo.Email,
-				AuthType:     string(constants.AuthTypeIDP),
-				PasswordHash: sql.NullString{Valid: false},
-				IsActive:     1,
-			})
-		},
-	)
-	if err != nil {
-		return "", "", "", "", "", fmt.Errorf(
-			"[AuthService] {Provision IDP User}: %w",
-			err,
+	// Perform JIT Provisioning & Whitelist Gate
+	// User Existence Check (Anchor Lookup using IDP UUID as local ID)
+	localUser, err := s.repo.GetUserByID(ctx, userInfo.ID)
+	if err == sql.ErrNoRows {
+		// JIT Provisioning (First Login Only)
+		err = datastore.RunInTransaction(
+			ctx,
+			s.repo.(*users.Repository).GetDB(),
+			func(tx datastore.DB) error {
+				// Condition A: Whitelist Verification
+				whitelistRoleID, err := s.repo.CheckUserWhitelist(ctx, userInfo.Email)
+
+				var assignedRoleID int
+				if err == nil {
+					assignedRoleID = whitelistRoleID
+				} else if err == sql.ErrNoRows {
+					// Default assigned role to Student
+					assignedRoleID = int(constants.StudentRoleID)
+				} else {
+					return err
+				}
+
+				localUser = &users.User{
+					ID:           userInfo.ID,
+					Email:        userInfo.Email,
+					RoleID:       assignedRoleID,
+					FirstName:    userInfo.FirstName,
+					LastName:     userInfo.LastName,
+					AuthType:     string(constants.AuthTypeIDP),
+					PasswordHash: sql.NullString{Valid: false},
+					IsActive:     1,
+				}
+
+				// Insert provisioned user utilizing existing repository method
+				return s.repo.CreateUser(ctx, tx, *localUser)
+			},
 		)
+		if err != nil {
+			return "", "", "", "", "", fmt.Errorf(
+				"[AuthService] {Provision IDP User}: %w",
+				err,
+			)
+		}
+	} else if err != nil {
+		// Database failure during Anchor Lookup
+		return "", "", "", "", "", fmt.Errorf("[AuthService] {Anchor Check}: %w", err)
 	}
 
-	appUserID := userInfo.ID
+	appUserID := localUser.ID
 
 	// Map Role ID to Name for frontend redirection
-	role, err := s.repo.GetRoleByID(ctx, 1)
+	role, err := s.repo.GetRoleByID(ctx, localUser.RoleID)
 	roleName := "student"
 	if err == nil && role != nil {
 		roleName = role.Name
@@ -732,7 +754,7 @@ func (s *Service) PostIDPTokenExchange(
 	appAccessToken, accessClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		appUserID,
-		1,
+		localUser.RoleID,
 		"",
 		string(constants.AuthTypeIDP),
 		constants.AccessTokenMaxAge,
@@ -747,7 +769,7 @@ func (s *Service) PostIDPTokenExchange(
 	appRefreshToken, refreshClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		appUserID,
-		1,
+		localUser.RoleID,
 		"",
 		string(constants.AuthTypeIDP),
 		constants.RefreshTokenMaxAge,
@@ -781,15 +803,10 @@ func (s *Service) PostIDPTokenExchange(
 	// Store IDP Refresh Token in Redis associated with the App
 	// Refresh Token's ID (jti)
 	idpRefreshKey := sessions.NewJTI(refreshClaims.ID).ToIDPRefreshKey()
-	idpRefreshTokenToStore := idpRefreshToken
-	if idpRefreshTokenToStore == "" {
-		// This shouldn't happen on initial login, but good for
-		// robustness
-	}
 	err = s.redis.Set(
 		ctx,
 		idpRefreshKey,
-		idpRefreshTokenToStore,
+		idpRefreshToken,
 		time.Duration(constants.RefreshTokenMaxAge)*time.Second,
 	)
 	if err != nil {
@@ -827,7 +844,6 @@ func (s *Service) GetIDPUserInfo(
 	}
 	return userInfo, nil
 }
-
 
 // ValidateIDPSession checks if the provided session ID is valid on the IDP.
 func (s *Service) ValidateIDPSession(

@@ -47,6 +47,13 @@ func (r *Repository) GetUserByID(
 	return &user, nil
 }
 
+func (r *Repository) CheckUserWhitelist(ctx context.Context, email string) (int, error) {
+	var roleID int
+	query := `SELECT role_id FROM whitelists WHERE email = ?`
+	err := r.db.GetContext(ctx, &roleID, query, email)
+	return roleID, err
+}
+
 func (r *Repository) GetRoleByID(
 	ctx context.Context, roleID int,
 ) (*Role, error) {

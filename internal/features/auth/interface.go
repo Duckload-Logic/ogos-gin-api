@@ -74,4 +74,5 @@ type RepositoryInterface interface {
 	CreateUser(ctx context.Context, tx datastore.DB, user users.User) error
 	BlockUser(ctx context.Context, tx datastore.DB, userID string) error
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error
+	CheckUserWhitelist(ctx context.Context, email string) (int, error)
 }
