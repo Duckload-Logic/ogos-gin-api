@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
@@ -108,7 +109,7 @@ func (s *Service) notifySuperadmins(ctx context.Context, entry audit.LogEntry) {
 				entry.Level,
 				entry.Message,
 			),
-			Type: "SystemAlert",
+			Type: constants.SystemEntityType,
 		}); err != nil {
 			log.Printf("[notifySuperadmins] {Send Notification}: %v", err)
 		}
