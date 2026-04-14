@@ -719,8 +719,12 @@ func (s *Service) PostIDPTokenExchange(
 	idpRefreshToken := tokenResp.RefreshToken
 
 	// Perform JIT Provisioning & Whitelist Gate
-	// User Existence Check (Anchor Lookup using IDP UUID as local ID)
-	localUser, err := s.repo.GetUserByID(ctx, userInfo.ID)
+	// User Existence Check (Anchor Lookup using Email)
+	localUser, err := s.repo.GetUserByEmail(
+		ctx,
+		userInfo.Email,
+		string(constants.AuthTypeIDP),
+	)
 	if err == sql.ErrNoRows {
 		// JIT Provisioning (First Login Only)
 		err = datastore.RunInTransaction(
@@ -728,7 +732,10 @@ func (s *Service) PostIDPTokenExchange(
 			s.repo.(*users.Repository).GetDB(),
 			func(tx datastore.DB) error {
 				// Condition A: Whitelist Verification
-				whitelistRoleID, err := s.repo.CheckUserWhitelist(ctx, userInfo.Email)
+				whitelistRoleID, err := s.repo.CheckUserWhitelist(
+					ctx,
+					userInfo.Email,
+				)
 
 				var assignedRoleID int
 				if err == nil {
@@ -741,7 +748,7 @@ func (s *Service) PostIDPTokenExchange(
 				}
 
 				localUser = &users.User{
-					ID:        userInfo.ID,
+					ID:        uuid.NewString(),
 					Email:     userInfo.Email,
 					RoleID:    assignedRoleID,
 					FirstName: userInfo.FirstName,
@@ -767,7 +774,10 @@ func (s *Service) PostIDPTokenExchange(
 		}
 	} else if err != nil {
 		// Database failure during Anchor Lookup
-		return "", "", "", "", "", fmt.Errorf("[AuthService] {Anchor Check}: %w", err)
+		return "", "", "", "", "", fmt.Errorf(
+			"[AuthService] {Anchor Check}: %w",
+			err,
+		)
 	}
 
 	appUserID := localUser.ID

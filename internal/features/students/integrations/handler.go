@@ -63,7 +63,7 @@ func (h *Handler) GetStudents(c *gin.Context) {
 	response.SendSuccess(c, resp)
 }
 
-// GetStudentByUserID godoc
+// GetStudentByStudentNumber godoc
 // @Summary Get student by student number
 // @Description Get student information by student number
 // @Tags External Students
@@ -114,26 +114,26 @@ func (h *Handler) GetStudentByStudentNumber(c *gin.Context) {
 	response.SendSuccess(c, student)
 }
 
-// GetStudentByUserID godoc
-// @Summary Get student by IDP User ID
-// @Description Get student information by their common IDP User ID (UUID)
+// GetStudentByEmail godoc
+// @Summary Get student by Email
+// @Description Get student information by their email
 // @Tags External Students
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param userID path string true "Common IDP User ID (UUID)"
+// @Param email query string true "Student Email"
 // @Success 200 {object} StudentSuccessResponse
 // @Failure 401 {object} response.CommonErrorResponse "Unauthorized"
 // @Failure 403 {object} response.CommonErrorResponse "Forbidden"
 // @Failure 404 {object} response.CommonErrorResponse "Not Found"
 // @Failure 500 {object} response.CommonErrorResponse "Internal Server Error"
-// @Router /integrations/students/idp/{userID} [get]
-func (h *Handler) GetStudentByUserID(c *gin.Context) {
-	userID := c.Param("userID")
-	if userID == "" {
+// @Router /integrations/students/profile [get]
+func (h *Handler) GetStudentByEmail(c *gin.Context) {
+	email := c.Query("email")
+	if email == "" {
 		response.SendFail(
 			c,
-			gin.H{"error": "userID parameter is required"},
+			gin.H{"error": "email query parameter is required"},
 		)
 		return
 	}
@@ -145,19 +145,19 @@ func (h *Handler) GetStudentByUserID(c *gin.Context) {
 		if verified, _ := isVerified.(bool); !verified {
 			response.SendFail(
 				c,
-				gin.H{"error": "Only formally verified Partner Systems can query by UUID"},
+				gin.H{"error": "Only formally verified Partner Systems can query by email"},
 				http.StatusForbidden,
 			)
 			return
 		}
 	}
 
-	student, err := h.service.GetStudentByUserID(
+	student, err := h.service.GetStudentByEmail(
 		c.Request.Context(),
-		userID,
+		email,
 	)
 	if err != nil {
-		log.Printf("[GetStudentByUserID] {Service Get}: %v", err)
+		log.Printf("[GetStudentByEmail] {Service Get}: %v", err)
 		response.SendError(
 			c,
 			string(constants.ErrInternalServerError),

@@ -81,11 +81,11 @@ func (s *Service) GetStudentByStudentNumber(
 	}, nil
 }
 
-func (s *Service) GetStudentByUserID(
+func (s *Service) GetStudentByEmail(
 	ctx context.Context,
-	userID string,
+	email string,
 ) (*OGOSStudentDTO, error) {
-	student, err := s.repo.GetStudentByUserID(ctx, userID)
+	student, err := s.repo.GetStudentByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
