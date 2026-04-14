@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
 )
@@ -24,6 +25,28 @@ func nullStringIf(cond bool, val string) sql.NullString {
 func fakePasswordHash() string {
 	// static hash for all dummy users
 	return "$2y$10$gxeDD.IKlEkqJmqmyVxy6eU9tFvC4ZK8KL3VZc2ex3BvNLo8DL5Dq"
+}
+
+func stringToNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{Valid: false}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
+
+func stringToNullTime(s string) sql.NullTime {
+	if s == "" {
+		return sql.NullTime{Valid: false}
+	}
+	t, err := time.Parse("2006-01-02 15:04:05", s)
+	if err != nil {
+		// attempt date only
+		t, err = time.Parse("2006-01-02", s)
+		if err != nil {
+			return sql.NullTime{Valid: false}
+		}
+	}
+	return sql.NullTime{Time: t, Valid: true}
 }
 
 // helper: random choice from slice

@@ -12,33 +12,38 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
-func createDeveloper(index int, passwordHash string) {
-	// Generate unique identifier
-	userID := uuid.New().String()
+func createDeveloper(index int, passwordHash string, userFromCSV *users.User) {
+	var user users.User
+	if userFromCSV != nil {
+		user = *userFromCSV
+	} else {
+		// Generate unique identifier
+		userID := uuid.New().String()
 
-	// Generate developer data
-	firstName := gofakeit.FirstName()
-	lastName := gofakeit.LastName()
-	email := fmt.Sprintf(
-		"developer%d@university.edu",
-		index+1,
-	)
+		// Generate developer data
+		firstName := gofakeit.FirstName()
+		lastName := gofakeit.LastName()
+		email := fmt.Sprintf(
+			"developer%d@gmail.com",
+			index+1,
+		)
 
-	// Create developer user
-	user := users.User{
-		ID:         userID,
-		Email:      email,
-		FirstName:  firstName,
-		LastName:   lastName,
-		MiddleName: randomMiddleName(),
-		SuffixName: sql.NullString{Valid: false},
-		PasswordHash: sql.NullString{
-			String: passwordHash,
-			Valid:  true,
-		},
-		RoleID:   int(constants.DeveloperRoleID),
-		AuthType: string(constants.AuthTypeNative),
-		IsActive: 1,
+		// Create developer user
+		user = users.User{
+			ID:         userID,
+			Email:      email,
+			FirstName:  firstName,
+			LastName:   lastName,
+			MiddleName: randomMiddleName(),
+			SuffixName: sql.NullString{Valid: false},
+			PasswordHash: sql.NullString{
+				String: passwordHash,
+				Valid:  true,
+			},
+			RoleID:   int(constants.DeveloperRoleID),
+			AuthType: string(constants.AuthTypeNative),
+			IsActive: 1,
+		}
 	}
 
 	// Save to database
@@ -49,9 +54,9 @@ func createDeveloper(index int, passwordHash string) {
 
 	log.Printf(
 		"Created developer: %s %s (%s / %s)\n",
-		firstName,
-		lastName,
-		email,
-		passwordHash,
+		user.FirstName,
+		user.LastName,
+		user.Email,
+		user.PasswordHash.String,
 	)
 }

@@ -13,20 +13,25 @@ import (
 )
 
 // createSuperAdmin creates a super admin user.
-func createSuperAdmin(index int, password string) {
-	email := fmt.Sprintf("superadmin%d@university.edu", index+1)
+func createSuperAdmin(index int, password string, userFromCSV *users.User) {
+	var user users.User
+	if userFromCSV != nil {
+		user = *userFromCSV
+	} else {
+		email := fmt.Sprintf("superadmin%d@gmail.com", index+1)
 
-	user := users.User{
-		ID:           uuid.New().String(),
-		RoleID:       3, // Super Admin
-		FirstName:    "Super",
-		MiddleName:   randomMiddleName(),
-		LastName:     "Admin",
-		SuffixName:   sql.NullString{Valid: false},
-		Email:        email,
-		PasswordHash: sql.NullString{Valid: true, String: password},
-		AuthType:     "native",
-		IsActive:     1,
+		user = users.User{
+			ID:           uuid.New().String(),
+			RoleID:       3, // Super Admin
+			FirstName:    "Super",
+			MiddleName:   randomMiddleName(),
+			LastName:     "Admin",
+			SuffixName:   sql.NullString{Valid: false},
+			Email:        email,
+			PasswordHash: sql.NullString{Valid: true, String: password},
+			AuthType:     "native",
+			IsActive:     1,
+		}
 	}
 
 	err := usersRepo.CreateUser(context.Background(), db, user)
@@ -43,22 +48,27 @@ func createSuperAdmin(index int, password string) {
 }
 
 // createCounselor creates a counselor (admin) user and profile.
-func createCounselor(index int, password string) {
-	firstName := gofakeit.FirstName()
-	lastName := gofakeit.LastName()
-	email := fmt.Sprintf("counselor%d@university.edu", index+1)
+func createCounselor(index int, password string, userFromCSV *users.User) {
+	var user users.User
+	if userFromCSV != nil {
+		user = *userFromCSV
+	} else {
+		firstName := gofakeit.FirstName()
+		lastName := gofakeit.LastName()
+		email := fmt.Sprintf("counselor%d@gmail.com", index+1)
 
-	user := users.User{
-		ID:           uuid.New().String(),
-		RoleID:       2, // Counselor
-		FirstName:    firstName,
-		MiddleName:   randomMiddleName(),
-		LastName:     lastName,
-		SuffixName:   nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
-		Email:        email,
-		PasswordHash: sql.NullString{Valid: true, String: password},
-		AuthType:     "native",
-		IsActive:     1,
+		user = users.User{
+			ID:           uuid.New().String(),
+			RoleID:       2, // Counselor
+			FirstName:    firstName,
+			MiddleName:   randomMiddleName(),
+			LastName:     lastName,
+			SuffixName:   nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
+			Email:        email,
+			PasswordHash: sql.NullString{Valid: true, String: password},
+			AuthType:     "native",
+			IsActive:     1,
+		}
 	}
 
 	err := usersRepo.CreateUser(context.Background(), db, user)
@@ -83,5 +93,5 @@ func createCounselor(index int, password string) {
 		log.Fatalf("[Seeder] {Create Counselor Profile}: %v", err)
 	}
 
-	fmt.Printf("Created counselor: %s %s\n", firstName, lastName)
+	fmt.Printf("Created counselor: %s %s\n", user.FirstName, user.LastName)
 }

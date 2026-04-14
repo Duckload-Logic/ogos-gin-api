@@ -2,6 +2,7 @@ package integrations
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
@@ -87,6 +88,10 @@ func (s *Service) GetStudentByEmail(
 ) (*OGOSStudentDTO, error) {
 	student, err := s.repo.GetStudentByEmail(ctx, email)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("Student not found")
+		}
+
 		return nil, err
 	}
 

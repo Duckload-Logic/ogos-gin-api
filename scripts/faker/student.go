@@ -17,7 +17,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
-func createStudent(index int, password string) {
+func createStudent(index int, password string, userFromCSV *users.User) {
 	ctx := context.Background()
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -30,24 +30,33 @@ func createStudent(index int, password string) {
 		time.Date(1995, 1, 1, 0, 0, 0, 0, time.UTC),
 		time.Now().AddDate(-18, 0, 0))
 	birthYear := dob.Year()
-	studentEmail := fmt.Sprintf("student%d@university.edu",
-		index+1) // guarantee unique
 
-	// users
-	user := users.User{
-		ID:        uuid.New().String(),
-		RoleID:    1, // Student
-		FirstName: gofakeit.FirstName(),
-		MiddleName: nullStringIf(
-			gofakeit.Bool(),
-			gofakeit.FirstName(),
-		),
-		LastName:     gofakeit.LastName(),
-		SuffixName:   nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
-		Email:        studentEmail,
-		PasswordHash: sql.NullString{Valid: true, String: password},
-		AuthType:     "native",
-		IsActive:     1,
+	var user users.User
+	if userFromCSV != nil {
+		user = *userFromCSV
+	} else {
+		studentEmail := fmt.Sprintf("student%d@gmail.com",
+			index+1) // guarantee unique
+
+		// users
+		user = users.User{
+			ID:        uuid.New().String(),
+			RoleID:    1, // Student
+			FirstName: gofakeit.FirstName(),
+			MiddleName: nullStringIf(
+				gofakeit.Bool(),
+				gofakeit.FirstName(),
+			),
+			LastName:   gofakeit.LastName(),
+			SuffixName: nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
+			Email:      studentEmail,
+			PasswordHash: sql.NullString{
+				Valid:  true,
+				String: password,
+			},
+			AuthType: "native",
+			IsActive: 1,
+		}
 	}
 
 	err = usersRepo.CreateUser(ctx, tx, user)
@@ -57,12 +66,9 @@ func createStudent(index int, password string) {
 
 	insertNotifications(ctx, tx, user.ID)
 
-	if rand.Float32() < 0.7 {
-		generateFullStudentIIR(ctx, tx, user.ID, dob, birthYear, index)
-	}
+	generateFullStudentIIR(ctx, tx, user.ID, dob, birthYear, index)
 
 	tx.Commit()
-	fmt.Printf("Created student %d\n", index+1)
 }
 
 func generateFullStudentIIR(
@@ -197,7 +203,7 @@ func generateFullStudentIIR(
 	insertSignificantNotes(ctx, tx, iirID, appointmentIDs,
 		admissionSlipIDs)
 
-	fmt.Printf("Created student %d (iirID=%s)\n", index+1, iirID)
+	fmt.Printf("[Seeder] Created student %d | iirID: %s\n", index+1, iirID)
 }
 
 func linkFamilyMembers(

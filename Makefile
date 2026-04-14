@@ -18,10 +18,12 @@ migration:
 seed:
 	migrate create -ext sql -dir ./scripts/seeds -seq $(name)
 
-# Desc: To create fake data seed migration
-# Usage: make fake
+# Usage: make fakes [ARGS="--students-csv=..."]
 fakes:
-	go run ./scripts/faker
+	go run ./scripts/faker $(ARGS)
+
+backfill:
+	go run ./scripts/faker --backfill-iir
 
 # Desc: Fetch PSGC data from API and save to JSON (run once, commit the file)
 # Usage: make psgc-fetch
