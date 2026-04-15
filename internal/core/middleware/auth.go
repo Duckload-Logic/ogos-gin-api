@@ -116,4 +116,7 @@ func setContextInfo(c *gin.Context, claims *tokens.Claims) {
 		c.Set("roleID", claims.RoleID)
 	}
 	c.Set("tokenType", claims.TokenType)
+	if claims.IDPUserID != "" {
+		c.Set("idpUserID", claims.IDPUserID)
+	}
 }

@@ -633,11 +633,13 @@ func (s *Service) Logout(
 		}
 	}
 
+	userInfo, _ := s.idpClient.GetUserInfo(ctx, idpToken, cfg)
+
 	// Generate IDP logout URL if IDP token
 	if tokenType == string(constants.AuthTypeIDP) {
 		// Even if server-side logout fails, we want the browser to redirect
 		if idpToken != "" {
-			_, _ = s.idpClient.Logout(ctx, cfg, idpToken)
+			_, _ = s.idpClient.Logout(ctx, cfg, idpToken, userInfo.ID)
 		}
 
 		logoutURL := fmt.Sprintf(

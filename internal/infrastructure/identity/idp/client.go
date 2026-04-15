@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
@@ -259,21 +260,20 @@ func (c *IDPClient) Logout(
 	ctx context.Context,
 	cfg *config.Config,
 	accessToken string,
+	idpUserID string,
 ) (*IDPLogoutResponse, error) {
-	payload := map[string]string{
-		"client_id": cfg.IDPClientID,
-	}
-
-	jsonBody, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("[IDPClient] {Marshal JSON}: %w", err)
-	}
+	logoutUrl := fmt.Sprintf(
+		"%s/logout?client_id=%s&user_id=%s",
+		strings.TrimSuffix(cfg.IDPBaseUrl, "/api/v1"),
+		cfg.IDPClientID,
+		idpUserID,
+	)
 
 	req, err := http.NewRequestWithContext(
 		ctx,
-		http.MethodPost,
-		fmt.Sprintf("%s/auth/logout", cfg.IDPBaseUrl),
-		bytes.NewReader(jsonBody),
+		http.MethodGet,
+		logoutUrl,
+		nil,
 	)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 	if err != nil {

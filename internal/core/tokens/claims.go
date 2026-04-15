@@ -6,6 +6,7 @@ import (
 
 type Claims struct {
 	UserID      string `json:"userId"`
+	IDPUserID   string `json:"idpUserId"` // Only for IDP sessions
 	UserEmail   string `json:"userEmail"`
 	RoleID      int    `json:"roleId"`
 	TokenType   string `json:"tokenType"`   // "native", "idp", or "m2m"
