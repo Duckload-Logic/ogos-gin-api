@@ -213,22 +213,22 @@ type StudentConsultationDTO struct {
 
 type StudentActivityDTO struct {
 	ID                 int                    `json:"id,omitempty"`
-	ActivityOption     ActivityOption         `json:"activityOption"               binding:"required"`
+	ActivityOption     ActivityOption         `json:"activityOption"`
 	OtherSpecification structs.NullableString `json:"otherSpecification,omitempty"`
-	Role               string                 `json:"role"                         binding:"required"` // "Officer", "Member", "Other"
+	Role               string                 `json:"role"` // "Officer", "Member", "Other"
 	RoleSpecification  structs.NullableString `json:"roleSpecification,omitempty"`
 }
 
 type StudentSubjectPreferenceDTO struct {
 	ID          int    `json:"id,omitempty"`
-	SubjectName string `json:"subjectName"  binding:"required"`
+	SubjectName string `json:"subjectName"`
 	IsFavorite  bool   `json:"isFavorite"`
 }
 
 type StudentHobbyDTO struct {
 	ID           int    `json:"id,omitempty"`
-	HobbyName    string `json:"hobbyName"    binding:"required"`
-	PriorityRank int    `json:"priorityRank" binding:"required"`
+	HobbyName    string `json:"hobbyName"`
+	PriorityRank int    `json:"priorityRank"`
 }
 
 type TestResultDTO struct {

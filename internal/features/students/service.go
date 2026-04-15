@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -1676,6 +1677,9 @@ func (s *Service) saveStudentInterests(
 	}
 
 	for _, activityDTO := range dto.Interests.Activities {
+		if activityDTO.ActivityOption.ID == 0 || strings.TrimSpace(activityDTO.Role) == "" {
+			continue
+		}
 		if _, err := s.repo.CreateStudentActivity(ctx, tx, &StudentActivity{
 			IIRID:              iirID,
 			OptionID:           activityDTO.ActivityOption.ID,
@@ -1700,6 +1704,9 @@ func (s *Service) saveStudentInterests(
 	}
 
 	for _, prefDTO := range dto.Interests.SubjectPreferences {
+		if strings.TrimSpace(prefDTO.SubjectName) == "" {
+			continue
+		}
 		if _, err := s.repo.CreateStudentSubjectPreference(
 			ctx,
 			tx,
@@ -1722,6 +1729,9 @@ func (s *Service) saveStudentInterests(
 	}
 
 	for _, hobbyDTO := range dto.Interests.Hobbies {
+		if strings.TrimSpace(hobbyDTO.HobbyName) == "" {
+			continue
+		}
 		if _, err := s.repo.CreateStudentHobby(ctx, tx, &StudentHobby{
 			IIRID:        iirID,
 			HobbyName:    hobbyDTO.HobbyName,
