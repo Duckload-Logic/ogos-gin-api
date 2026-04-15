@@ -60,7 +60,6 @@ type ServiceInterface interface {
 		sessionID string,
 		cfg *config.Config,
 	) (*idp.IDPSessionResponse, error)
-	GetIDPLogoutURL(cfg *config.Config) string
 	BlockUser(ctx context.Context, userID string) error
 	UnblockUser(ctx context.Context, userID string) error
 }

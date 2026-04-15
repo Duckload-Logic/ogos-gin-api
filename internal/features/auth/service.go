@@ -635,22 +635,13 @@ func (s *Service) Logout(
 
 	userInfo, _ := s.idpClient.GetUserInfo(ctx, idpToken, cfg)
 
-	// Generate IDP logout URL if IDP token
-	if tokenType == string(constants.AuthTypeIDP) {
-		// Even if server-side logout fails, we want the browser to redirect
-		if idpToken != "" {
-			_, _ = s.idpClient.Logout(ctx, cfg, idpToken, userInfo.ID)
-		}
-
-		logoutURL := fmt.Sprintf(
-			"%s/auth/logout?client_id=%s",
-			cfg.IDPBaseUrl,
-			cfg.IDPClientID,
-		)
-		return logoutURL, nil
+	// Construct logout URL for front-channel redirect
+	if tokenType == string(constants.AuthTypeIDP) && userInfo != nil {
+		return s.idpClient.GetLogoutURL(cfg, userInfo.ID), nil
 	}
 
-	return "", nil
+	// Fallback redirect for native logout or incomplete IDP sessions
+	return "/", nil
 }
 
 // IDP integration methods
@@ -896,14 +887,6 @@ func (s *Service) ValidateIDPSession(
 	cfg *config.Config,
 ) (*idp.IDPSessionResponse, error) {
 	return s.idpClient.ValidateSession(ctx, sessionID, cfg)
-}
-
-func (s *Service) GetIDPLogoutURL(cfg *config.Config) string {
-	return fmt.Sprintf(
-		"%s/auth/logout?client_id=%s",
-		cfg.IDPBaseUrl,
-		cfg.IDPClientID,
-	)
 }
 
 func (s *Service) BlockUser(ctx context.Context, userID string) error {

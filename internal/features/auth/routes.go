@@ -23,17 +23,15 @@ func RegisterRoutes(
 			middleware.AuthMiddleware(redis),
 			h.GetMe,
 		)
-		authRoutes.POST(
+		authRoutes.GET(
 			"/logout",
 			middleware.AuthMiddleware(redis),
-			h.PostLogout,
+			h.GetLogout,
 		)
 
 		// IDP OAuth 2.0 routes
 		authRoutes.GET("/idp/authorize", h.GetAuthorizeURL)
 		authRoutes.POST("/idp/token", h.PostIDPToken)
-		authRoutes.GET("/idp/session", h.GetIDPValidateSession)
-		authRoutes.GET("/idp/logout", h.GetIDPLogoutRedirect)
 	}
 
 	// Internal Debugging (Redis Dashboard)

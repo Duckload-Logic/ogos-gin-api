@@ -367,13 +367,13 @@ func (h *Handler) GetMe(c *gin.Context) {
 	response.SendSuccess(c, resp)
 }
 
-// PostLogout godoc
+// GetLogout godoc
 // @Summary      User logout
 // @Description  Invalidates the user's tokens by clearing cookies.
 // @Tags         Auth
 // @Success      200 {object} map[string]string
-// @Router       /auth/logout [post]
-func (h *Handler) PostLogout(c *gin.Context) {
+// @Router       /auth/logout [get]
+func (h *Handler) GetLogout(c *gin.Context) {
 	// Extract token to invalidate in Redis
 	var tokenString string
 	cookie, err := c.Cookie("access_token")
@@ -436,10 +436,11 @@ func (h *Handler) PostLogout(c *gin.Context) {
 		)
 	}
 
-	response.SendSuccess(c, gin.H{
-		"message":   "Logout successful",
-		"logoutUrl": logoutUrl,
-	})
+	if logoutUrl == "" {
+		logoutUrl = "/"
+	}
+
+	c.Redirect(http.StatusFound, logoutUrl)
 }
 
 // IDP integration handlers
@@ -609,41 +610,4 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		"role":      roleName,
 		"message":   "Login successful",
 	})
-}
-
-// GetIDPValidateSession godoc
-// @Summary      Validate IDP session
-// @Description  Validates the current IDP session using the idp_session cookie.
-// @Tags         Auth
-// @Produce      json
-// @Success      200 {object} map[string]string
-// @Failure      401 {object} map[string]string
-// @Router       /auth/idp/session [get]
-func (h *Handler) GetIDPLogoutRedirect(c *gin.Context) {
-	logoutURL := h.service.GetIDPLogoutURL(h.cfg)
-	c.Redirect(http.StatusFound, logoutURL)
-}
-
-func (h *Handler) GetIDPValidateSession(c *gin.Context) {
-	sessionID, err := c.Cookie("idp_session")
-	if err != nil {
-		response.SendFail(
-			c,
-			gin.H{"error": "IDP session cookie missing"},
-			http.StatusUnauthorized,
-		)
-		return
-	}
-
-	resp, err := h.service.ValidateIDPSession(c, sessionID, h.cfg)
-	if err != nil {
-		response.SendFail(
-			c,
-			gin.H{"error": "Invalid IDP session"},
-			http.StatusUnauthorized,
-		)
-		return
-	}
-
-	response.SendSuccess(c, gin.H{"message": resp.Message})
 }

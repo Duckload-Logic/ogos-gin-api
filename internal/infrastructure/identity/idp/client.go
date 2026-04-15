@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -256,59 +255,14 @@ func (c *IDPClient) ValidateSession(
 	return &sessionResp, nil
 }
 
-func (c *IDPClient) Logout(
-	ctx context.Context,
+func (c *IDPClient) GetLogoutURL(
 	cfg *config.Config,
-	accessToken string,
 	idpUserID string,
-) (*IDPLogoutResponse, error) {
-	logoutUrl := fmt.Sprintf(
+) string {
+	return fmt.Sprintf(
 		"%s/logout?client_id=%s&user_id=%s",
 		strings.TrimSuffix(cfg.IDPBaseUrl, "/api/v1"),
 		cfg.IDPClientID,
 		idpUserID,
-	)
-
-	req, err := http.NewRequestWithContext(
-		ctx,
-		http.MethodGet,
-		logoutUrl,
-		nil,
-	)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	if err != nil {
-		return nil, fmt.Errorf("[IDPClient] {Create Logout Request}: %w", err)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("[IDPClient] {Execute Logout Request}: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("[IDPClient] Error reading logout body: %v", err)
-	}
-
-	if resp.StatusCode == http.StatusOK ||
-		resp.StatusCode == http.StatusNoContent {
-		var logoutResp IDPLogoutResponse
-		// Attempt to parse JSON if body is not empty
-		if len(bodyBytes) > 0 && bodyBytes[0] == '{' {
-			_ = json.Unmarshal(bodyBytes, &logoutResp)
-		}
-
-		if logoutResp.Message == "" {
-			logoutResp.Message = "Logout successful"
-		}
-
-		return &logoutResp, nil
-	}
-
-	return nil, fmt.Errorf(
-		"[IDPClient] {IDP Logout Failed}: status %d, body %s",
-		resp.StatusCode,
-		string(bodyBytes),
 	)
 }
