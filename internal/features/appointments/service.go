@@ -56,7 +56,7 @@ func (s *Service) CreateAppointment(
 		ID:                    uuid.New().String(),
 		IIRID:                 iirID,
 		Reason:                structs.ToSqlNull(req.Reason),
-		WhenDate:              req.WhenDate,
+		WhenDate:              strings.Split(req.WhenDate, "T")[0],
 		TimeSlotID:            req.TimeSlot.ID,
 		AppointmentCategoryID: req.AppointmentCategory.ID,
 		StatusID:              1,
@@ -516,7 +516,8 @@ func (s *Service) UpdateAppointment(
 		ID:                    id,
 		StatusID:              req.Status.ID,
 		Reason:                structs.ToSqlNull(req.Reason),
-		WhenDate:              req.WhenDate,
+		AdminNotes:           structs.ToSqlNull(req.AdminNotes),
+		WhenDate:              strings.Split(req.WhenDate, "T")[0],
 		TimeSlotID:            req.TimeSlot.ID,
 		AppointmentCategoryID: req.AppointmentCategory.ID,
 	}
@@ -632,4 +633,11 @@ func (s *Service) UpdateAppointment(
 	}
 
 	return nil
+}
+
+func (s *Service) GetUserIDByAppointmentID(
+	ctx context.Context,
+	id string,
+) (string, error) {
+	return s.repo.GetUserIDByAppointmentID(ctx, id)
 }

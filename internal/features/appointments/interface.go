@@ -44,6 +44,7 @@ type ServiceInterface interface {
 	) ([]AvailableTimeSlotView, error)
 	GetAppointmentStatuses(ctx context.Context) ([]AppointmentStatus, error)
 	UpdateAppointment(ctx context.Context, id string, req AppointmentDTO) error
+	GetUserIDByAppointmentID(ctx context.Context, id string) (string, error)
 }
 
 type RepositoryInterface interface {

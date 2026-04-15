@@ -15,4 +15,5 @@ type FileStorage interface {
 		contentType string,
 	) error
 	Download(ctx context.Context, path string, writer io.Writer) error
+	Delete(ctx context.Context, path string) error
 }

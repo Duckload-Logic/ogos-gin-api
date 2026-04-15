@@ -49,6 +49,7 @@ const (
 	ActionSlipCreated       = "SLIP_CREATED"
 	ActionSlipCreateFailed  = "SLIP_CREATE_FAILED"
 	ActionSlipStatusUpdated = "SLIP_STATUS_UPDATED"
+	ActionSlipUpdated       = "SLIP_UPDATED"
 	ActionSlipUpdateFailed  = "SLIP_UPDATE_FAILED"
 	ActionSlipDeleted       = "SLIP_DELETED"
 	ActionSlipDeleteFailed  = "SLIP_DELETE_FAILED"

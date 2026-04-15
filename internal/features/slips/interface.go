@@ -57,6 +57,13 @@ type ServiceInterface interface {
 		newStatus string,
 		adminNotes string,
 	) error
+	UpdateExcuseSlip(
+		ctx context.Context,
+		iirID string,
+		slipID string,
+		req CreateSlipRequest,
+		files []*multipart.FileHeader,
+	) (*Slip, error)
 }
 
 // RepositoryInterface defines the data access layer for managing excuse slips.
@@ -72,6 +79,16 @@ type RepositoryInterface interface {
 		ctx context.Context,
 		tx datastore.DB,
 		attachment *SlipAttachment,
+	) error
+	UpdateSlip(
+		ctx context.Context,
+		tx datastore.DB,
+		slip *Slip,
+	) error
+	DeleteSlipAttachments(
+		ctx context.Context,
+		tx datastore.DB,
+		slipID string,
 	) error
 	CheckStudentExistence(ctx context.Context, studentID int) (bool, error)
 	GetSlipStatuses(ctx context.Context) ([]SlipStatus, error)

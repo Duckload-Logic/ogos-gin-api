@@ -38,6 +38,7 @@ func RegisterRoutes(
 	{
 		studentOnly.GET("/me", h.GetAppointmentListByIIR)
 		studentOnly.POST("", h.PostAppointment)
+		studentOnly.POST("/id/:id/cancel", h.PostCancelAppointment)
 	}
 
 	sharedRoutes := routes.Group("")

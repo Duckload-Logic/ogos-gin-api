@@ -36,6 +36,7 @@ func RegisterRoutes(
 	{
 		studentOnly.GET("/me", h.GetSlipListByIIR)
 		studentOnly.POST("", h.PostSlip)
+		studentOnly.PATCH("/id/:id", h.PatchSlip)
 	}
 
 	sharedRoutes := routes.Group("")

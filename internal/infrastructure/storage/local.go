@@ -61,3 +61,11 @@ func (d *DiskStorage) Download(
 
 	return nil
 }
+
+func (d *DiskStorage) Delete(ctx context.Context, path string) error {
+	fullPath := filepath.Join(d.baseDir, filepath.FromSlash(path))
+	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+	return nil
+}

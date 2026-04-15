@@ -30,7 +30,7 @@ const appointmentsBaseQuery = `
 		u.email AS user_email,
 		a.reason AS reason,
 		a.admin_notes AS admin_notes,
-		a.when_date AS when_date,
+		DATE_FORMAT(a.when_date, '%Y-%m-%d') AS when_date,
 		a.created_at AS created_at,
 		a.updated_at AS updated_at,
 		ts.id AS time_slot_id,
@@ -540,6 +540,10 @@ func (r *Repository) UpdateAppointment(
 	if appt.Reason.Valid {
 		setQuery = append(setQuery, "reason = ?")
 		args = append(args, appt.Reason.String)
+	}
+	if appt.AdminNotes.Valid {
+		setQuery = append(setQuery, "admin_notes = ?")
+		args = append(args, appt.AdminNotes.String)
 	}
 	if appt.WhenDate != "" {
 		setQuery = append(setQuery, "when_date = ?")

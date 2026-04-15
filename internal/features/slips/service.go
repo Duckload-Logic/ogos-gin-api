@@ -342,28 +342,35 @@ func (s *Service) SubmitExcuseSlip(
 	req CreateSlipRequest,
 	files []*multipart.FileHeader,
 ) (*Slip, error) {
-	// Check File Size
-	if files[0].Size > MaxFileSize {
-		return nil, fmt.Errorf(
-			"file too large: maximum 5MB allowed",
-		)
-	}
-
-	// Check File Type
-	ext := strings.ToLower(filepath.Ext(files[0].Filename))
+	// Validate all files
 	allowedTypes := map[string]bool{
 		".pdf":  true,
 		".jpg":  true,
 		".jpeg": true,
 		".png":  true,
 	}
-	if !allowedTypes[ext] {
-		return nil, fmt.Errorf(
-			"invalid file type: PDF and images only",
-		)
+
+	for _, file := range files {
+		// Check File Size
+		if file.Size > MaxFileSize {
+			return nil, fmt.Errorf(
+				"file '%s' is too large: maximum 5MB allowed",
+				file.Filename,
+			)
+		}
+
+		// Check File Type
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if !allowedTypes[ext] {
+			return nil, fmt.Errorf(
+				"invalid file type for '%s': PDF and images only",
+				file.Filename,
+			)
+		}
 	}
 
-	parsedDate, err := time.Parse("2006-01-02", req.DateOfAbsence)
+	dateOfAbsence := strings.Split(req.DateOfAbsence, "T")[0]
+	parsedDate, err := time.Parse("2006-01-02", dateOfAbsence)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"invalid date format: YYYY-MM-DD",
@@ -380,8 +387,8 @@ func (s *Service) SubmitExcuseSlip(
 		fmt.Sprintf(
 			"%s%s%s%d",
 			iirID,
-			req.DateOfAbsence,
-			req.DateNeeded,
+			dateOfAbsence,
+			strings.Split(req.DateNeeded, "T")[0],
 			time.Now().UnixNano(),
 		),
 		8,
@@ -561,6 +568,136 @@ func (s *Service) SubmitExcuseSlip(
 	})
 
 	return slip, nil
+}
+
+func (s *Service) UpdateExcuseSlip(
+	ctx context.Context,
+	iirID string,
+	slipID string,
+	req CreateSlipRequest,
+	files []*multipart.FileHeader,
+) (*Slip, error) {
+	// 1. Fetch existing slip and validate ownership/status
+	existingSlip, err := s.repo.GetSlipByID(ctx, slipID)
+	if err != nil {
+		return nil, err
+	}
+	if existingSlip == nil {
+		return nil, fmt.Errorf("slip not found")
+	}
+	if existingSlip.IIRID != iirID {
+		return nil, fmt.Errorf("access denied")
+	}
+
+	// Only allow editing if status is Pending (1) or For Revision (9)
+	if existingSlip.StatusID != 1 && existingSlip.StatusID != 9 {
+		return nil, fmt.Errorf("cannot edit slip in current status")
+	}
+
+	// 2. Validate all files
+	allowedTypes := map[string]bool{
+		".pdf":  true,
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+	}
+	for _, file := range files {
+		if file.Size > MaxFileSize {
+			return nil, fmt.Errorf("file '%s' is too large", file.Filename)
+		}
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if !allowedTypes[ext] {
+			return nil, fmt.Errorf("invalid file type for '%s'", file.Filename)
+		}
+	}
+
+	// 3. Delete old attachments from storage
+	oldAttachments, err := s.repo.GetSlipAttachments(ctx, slipID)
+	if err == nil {
+		for _, att := range oldAttachments {
+			blobPath := strings.TrimPrefix(att.FileURL, "/")
+			_ = s.fileStorage.Delete(ctx, blobPath)
+		}
+	}
+
+	// 4. Upload new files
+	folderHash := hash.GetSHA256Hash(
+		fmt.Sprintf("%s%d", iirID, time.Now().UnixNano()),
+		8,
+	)
+	var fileURLs []string
+	for _, file := range files {
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		fileHash := hash.GetSHA256Hash(
+			fmt.Sprintf("%s%d", file.Filename, time.Now().UnixNano()),
+			16,
+		)
+		uniqueFileName := fileHash + ext
+		blobPath := fmt.Sprintf("slips/%s/%s", folderHash, uniqueFileName)
+
+		if err := s.uploadToBlob(ctx, file, blobPath); err != nil {
+			return nil, fmt.Errorf("failed to upload %s: %w", file.Filename, err)
+		}
+		fileURLs = append(fileURLs, fmt.Sprintf("/slips/%s/%s", folderHash, uniqueFileName))
+	}
+
+	// 5. Update database in transaction
+	updatedSlip := &Slip{
+		ID:            slipID,
+		IIRID:         iirID,
+		Reason:        req.Reason,
+		DateOfAbsence: req.DateOfAbsence,
+		DateNeeded:    req.DateNeeded,
+		CategoryID:    req.CategoryID,
+		StatusID:      1, // Reset to Pending
+	}
+
+	err = datastore.RunInTransaction(
+		ctx,
+		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			// Delete old attachment records
+			if err := s.repo.DeleteSlipAttachments(ctx, tx, slipID); err != nil {
+				return err
+			}
+			// Update slip
+			if err := s.repo.UpdateSlip(ctx, tx, updatedSlip); err != nil {
+				return err
+			}
+			// Save new attachments
+			for i, url := range fileURLs {
+				attachment := &SlipAttachment{
+					ID:       uuid.New().String(),
+					SlipID:   &slipID,
+					FileName: files[i].Filename,
+					FileURL:  url,
+				}
+				if err := s.repo.SaveSlipAttachment(ctx, tx, attachment); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
+		Log: &audit.LogParams{
+			Level:    audit.LevelInfo,
+			Category: audit.CategoryAudit,
+			Action:   audit.ActionSlipUpdated,
+			Message:  fmt.Sprintf("Excuse slip #%s updated", slipID),
+			Metadata: &audit.LogMetadata{
+				EntityType: constants.SlipEntityType,
+				EntityID:   slipID,
+				NewValues:  updatedSlip,
+			},
+		},
+	})
+
+	return updatedSlip, nil
 }
 
 func (s *Service) uploadToBlob(

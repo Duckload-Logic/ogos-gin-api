@@ -3,6 +3,7 @@ package slips
 import (
 	"fmt"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"strings"
 
@@ -71,6 +72,7 @@ func (h *Handler) PostSlip(c *gin.Context) {
 
 	var req CreateSlipRequest
 	if err := c.ShouldBind(&req); err != nil {
+		log.Printf("[PostSlip] {Bind Request}: %v", err)
 		response.SendFail(c, gin.H{"error": "Invalid request format"})
 		return
 	}
@@ -82,7 +84,16 @@ func (h *Handler) PostSlip(c *gin.Context) {
 		return
 	}
 
-	files := form.File["files"]
+	// Aggregate files from various document-specific fields used by the frontend
+	var files []*multipart.FileHeader
+	fieldNames := []string{"files", "cor", "excuseLetter", "parentId", "medicalCert"}
+
+	for _, field := range fieldNames {
+		if f := form.File[field]; len(f) > 0 {
+			files = append(files, f...)
+		}
+	}
+
 	if len(files) == 0 {
 		response.SendFail(c, gin.H{"error": "At least one file required"})
 		return
@@ -434,6 +445,63 @@ func (h *Handler) GetAttachmentFile(c *gin.Context) {
 // @Failure      404  {object} map[string]string
 // @Failure      500  {object} map[string]string
 // @Router       /slips/id/{id}/status [patch]
+func (h *Handler) PatchSlip(c *gin.Context) {
+	idParam := c.Param("id")
+	iirID, ok := getIIRIDFromContext(c)
+	if !ok {
+		return
+	}
+
+	var req CreateSlipRequest
+	if err := c.ShouldBind(&req); err != nil {
+		response.SendFail(c, gin.H{"error": "Invalid request format"})
+		return
+	}
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		response.SendFail(c, gin.H{"error": "Failed to parse form"})
+		return
+	}
+
+	var files []*multipart.FileHeader
+	fieldNames := []string{"files", "cor", "excuseLetter", "parentId", "medicalCert"}
+	for _, field := range fieldNames {
+		if f := form.File[field]; len(f) > 0 {
+			files = append(files, f...)
+		}
+	}
+
+	if len(files) == 0 {
+		response.SendFail(c, gin.H{"error": "At least one file required"})
+		return
+	}
+
+	slip, err := h.service.UpdateExcuseSlip(
+		c.Request.Context(),
+		iirID,
+		idParam,
+		req,
+		files,
+	)
+	if err != nil {
+		log.Printf("[PatchSlip] {Update Excuse Slip}: %v", err)
+		response.SendError(
+			c,
+			err.Error(),
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, gin.H{
+		"message": "Excuse slip updated successfully",
+		"slipId":  slip.ID,
+	}, http.StatusOK)
+}
+
+// PatchSlipStatus godoc
 func (h *Handler) PatchSlipStatus(c *gin.Context) {
 	idParam := c.Param("id")
 	var req UpdateStatusRequest

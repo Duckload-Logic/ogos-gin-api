@@ -91,3 +91,12 @@ func (b *BlobStorage) GetContentType(
 	}
 	return "application/octet-stream", nil
 }
+
+// Delete removes the blob from the container.
+func (b *BlobStorage) Delete(ctx context.Context, blobPath string) error {
+	_, err := b.client.DeleteBlob(ctx, b.containerName, blobPath, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete blob %q: %w", blobPath, err)
+	}
+	return nil
+}

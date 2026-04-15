@@ -29,8 +29,8 @@ const (
 		u.email AS user_email,
 		spi.student_number AS student_number,
 		slp.reason AS reason,
-		slp.date_of_absence AS date_of_absence,
-		slp.date_needed AS date_needed,
+		DATE_FORMAT(slp.date_of_absence, '%Y-%m-%d') AS date_of_absence,
+		DATE_FORMAT(slp.date_needed, '%Y-%m-%d') AS date_needed,
 		slp.admin_notes AS admin_notes,
 		c.id AS category_id,
 		c.name AS category_name,
@@ -98,6 +98,46 @@ func (r *Repository) SaveSlipAttachment(
 		return fmt.Errorf("failed to insert slip attachment: %w", err)
 	}
 
+	return nil
+}
+
+func (r *Repository) UpdateSlip(
+	ctx context.Context,
+	tx datastore.DB,
+	slip *Slip,
+) error {
+	query := `
+		UPDATE admission_slips
+		SET reason = ?, date_of_absence = ?, date_needed = ?, category_id = ?, status_id = ?, updated_at = NOW()
+		WHERE id = ?
+	`
+	_, err := tx.ExecContext(
+		ctx,
+		query,
+		slip.Reason,
+		slip.DateOfAbsence,
+		slip.DateNeeded,
+		slip.CategoryID,
+		slip.StatusID,
+		slip.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update slip: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Repository) DeleteSlipAttachments(
+	ctx context.Context,
+	tx datastore.DB,
+	slipID string,
+) error {
+	query := `DELETE FROM slip_attachments WHERE admission_slip_id = ?`
+	_, err := tx.ExecContext(ctx, query, slipID)
+	if err != nil {
+		return fmt.Errorf("failed to delete slip attachments: %w", err)
+	}
 	return nil
 }
 

@@ -4,10 +4,13 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 )
 
 type Handler struct {
@@ -444,6 +447,90 @@ func (h *Handler) GetAppointmentStatsList(c *gin.Context) {
 // @Failure      404  {object} map[string]string
 // @Failure      500  {object} map[string]string
 // @Router       /appointments/id/{id} [patch]
+type CancelAppointmentRequest struct {
+	Reason string `json:"reason"`
+}
+
+func (h *Handler) PostCancelAppointment(c *gin.Context) {
+	id := c.Param("id")
+	userID := audit.ExtractUserID(c.Request.Context())
+
+	// Validate ownership
+	ownerID, err := h.service.GetUserIDByAppointmentID(c.Request.Context(), id)
+	if err != nil {
+		response.SendError(c, "Failed to verify ownership", http.StatusInternalServerError, nil)
+		return
+	}
+	if ownerID != userID {
+		response.SendFail(c, gin.H{"error": "Access denied"}, http.StatusForbidden)
+		return
+	}
+
+	// Fetch appointment to check status
+	appt, err := h.service.GetAppointmentByID(c.Request.Context(), id)
+	if err != nil {
+		response.SendError(c, "Failed to fetch appointment", http.StatusInternalServerError, nil)
+		return
+	}
+
+	// Only allow cancellation of Pending or Scheduled appointments
+	statusName := strings.ToLower(appt.Status.Name)
+	if statusName != "pending" && statusName != "scheduled" {
+		response.SendFail(c, gin.H{"error": "Only pending or scheduled appointments can be cancelled"})
+		return
+	}
+
+	// Fetch all statuses to find 'Cancelled'
+	statuses, err := h.service.GetAppointmentStatuses(c.Request.Context())
+	if err != nil {
+		response.SendError(c, "Failed to fetch statuses", http.StatusInternalServerError, nil)
+		return
+	}
+
+	var cancelStatusID int
+	for _, s := range statuses {
+		if strings.ToLower(s.Name) == "cancelled" {
+			cancelStatusID = s.ID
+			break
+		}
+	}
+
+	if cancelStatusID == 0 {
+		response.SendError(c, "Cancelled status not found", http.StatusInternalServerError, nil)
+		return
+	}
+
+	var req CancelAppointmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// We allow empty body for backward compatibility or simple cancellations
+		// but if body is present, it should be valid JSON
+		if err.Error() != "EOF" {
+			log.Printf("[PostCancelAppointment] {BindJSON}: %v", err)
+		}
+	}
+
+	// Update appointment status
+	updateReq := *appt
+	updateReq.Status.ID = cancelStatusID
+
+	if req.Reason != "" {
+		if updateReq.AdminNotes.Valid && updateReq.AdminNotes.String != "" {
+			updateReq.AdminNotes.String += "\nStudent Cancellation: " + req.Reason
+		} else {
+			updateReq.AdminNotes = structs.StringToNullableString("Student Cancellation: " + req.Reason)
+		}
+	}
+
+	if err := h.service.UpdateAppointment(c.Request.Context(), id, updateReq); err != nil {
+		log.Printf("[PostCancelAppointment] {Update}: %v", err)
+		response.SendError(c, "Failed to cancel appointment", http.StatusInternalServerError, nil)
+		return
+	}
+
+	response.SendSuccess(c, gin.H{"message": "Appointment cancelled successfully"})
+}
+
+// PatchAppointment godoc
 func (h *Handler) PatchAppointment(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
