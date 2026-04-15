@@ -76,7 +76,7 @@ func (s *Service) Record(
 	}
 
 	// Notify Superadmins for critical events
-	if level == audit.LevelError || entry.Category == audit.CategorySecurity {
+	if level == audit.LevelError {
 		s.notifySuperadmins(ctx, entry)
 	}
 }
