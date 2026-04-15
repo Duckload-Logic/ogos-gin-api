@@ -552,6 +552,7 @@ func (s *Service) UpdateAppointment(
 
 	// Fetch student UserID for notification
 	studentUserID, _ := s.repo.GetUserIDByAppointmentID(ctx, id)
+	_, _, _, adminEmail, _, _ := audit.ExtractMeta(ctx)
 
 	notifications := []audit.NotificationParams{
 		{
@@ -560,7 +561,7 @@ func (s *Service) UpdateAppointment(
 			TargetType: structs.StringToNullableString(
 				constants.AppointmentEntityType,
 			),
-			Title: "Appointment Status Updated By %s",
+			Title: fmt.Sprintf("Appointment Status Updated By %s", adminEmail),
 			Message: fmt.Sprintf(
 				"Appointment scheduled on %s at %s has been updated to '%s'",
 				datetime.FormatDate(newAppt.WhenDate),
