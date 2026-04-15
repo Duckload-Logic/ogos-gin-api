@@ -711,51 +711,60 @@ func (s *Service) PostIDPTokenExchange(
 	idpAccessToken := tokenResp.AccessToken
 	idpRefreshToken := tokenResp.RefreshToken
 
-	// Perform JIT Provisioning & Whitelist Gate
+	// Whitelist Check: Authoritative role source for IDP users.
+	// We check this on every login to support dynamic role changes (promotions).
+	whitelistRoleID, whitelistErr := s.repo.CheckUserWhitelist(ctx, userInfo.Email)
+	log.Printf("whitelistRoleID: %v", whitelistRoleID)
+	log.Printf("whitelistErr: %v", whitelistErr)
+
 	// User Existence Check (Anchor Lookup using Email)
 	localUser, err := s.repo.GetUserByEmail(
 		ctx,
 		userInfo.Email,
 		string(constants.AuthTypeIDP),
 	)
-	if err == sql.ErrNoRows {
+
+	// Determine final role and if we need to sync with DB
+	var assignedRoleID int
+	if whitelistErr == nil {
+		assignedRoleID = whitelistRoleID
+	} else if errors.Is(whitelistErr, sql.ErrNoRows) {
+		// Not in whitelist. New users default to Student.
+		// Existing users keep their current role.
+		if err == sql.ErrNoRows {
+			assignedRoleID = int(constants.StudentRoleID)
+		} else {
+			assignedRoleID = localUser.RoleID
+		}
+	} else {
+		return "", "", "", "", "", fmt.Errorf(
+			"[AuthService] {Whitelist Check}: %w",
+			whitelistErr,
+		)
+	}
+
+	switch err {
+	case sql.ErrNoRows:
 		// JIT Provisioning (First Login Only)
+		localUser = &users.User{
+			ID:        uuid.NewString(),
+			Email:     userInfo.Email,
+			RoleID:    assignedRoleID,
+			FirstName: userInfo.FirstName,
+			LastName:  userInfo.LastName,
+			SuffixName: sql.NullString{
+				String: userInfo.SuffixName,
+				Valid:  userInfo.SuffixName != "",
+			},
+			AuthType:     string(constants.AuthTypeIDP),
+			PasswordHash: sql.NullString{Valid: false},
+			IsActive:     1,
+		}
+
 		err = datastore.RunInTransaction(
 			ctx,
 			s.repo.(*users.Repository).GetDB(),
 			func(tx datastore.DB) error {
-				// Condition A: Whitelist Verification
-				whitelistRoleID, err := s.repo.CheckUserWhitelist(
-					ctx,
-					userInfo.Email,
-				)
-
-				var assignedRoleID int
-				if err == nil {
-					assignedRoleID = whitelistRoleID
-				} else if err == sql.ErrNoRows {
-					// Default assigned role to Student
-					assignedRoleID = int(constants.StudentRoleID)
-				} else {
-					return err
-				}
-
-				localUser = &users.User{
-					ID:        uuid.NewString(),
-					Email:     userInfo.Email,
-					RoleID:    assignedRoleID,
-					FirstName: userInfo.FirstName,
-					LastName:  userInfo.LastName,
-					SuffixName: sql.NullString{
-						String: userInfo.SuffixName,
-						Valid:  userInfo.SuffixName != "",
-					},
-					AuthType:     string(constants.AuthTypeIDP),
-					PasswordHash: sql.NullString{Valid: false},
-					IsActive:     1,
-				}
-
-				// Insert provisioned user utilizing existing repository method
 				return s.repo.CreateUser(ctx, tx, *localUser)
 			},
 		)
@@ -765,8 +774,25 @@ func (s *Service) PostIDPTokenExchange(
 				err,
 			)
 		}
-	} else if err != nil {
-		// Database failure during Anchor Lookup
+	case nil:
+		// User exists. Sync role if it changed in the whitelist
+		if localUser.RoleID != assignedRoleID {
+			localUser.RoleID = assignedRoleID
+			err = datastore.RunInTransaction(
+				ctx,
+				s.repo.(*users.Repository).GetDB(),
+				func(tx datastore.DB) error {
+					return s.repo.CreateUser(ctx, tx, *localUser)
+				},
+			)
+			if err != nil {
+				return "", "", "", "", "", fmt.Errorf(
+					"[AuthService] {Update IDP User Role}: %w",
+					err,
+				)
+			}
+		}
+	default:
 		return "", "", "", "", "", fmt.Errorf(
 			"[AuthService] {Anchor Check}: %w",
 			err,

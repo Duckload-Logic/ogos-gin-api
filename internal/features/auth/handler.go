@@ -62,6 +62,9 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		ua,
 	)
 	if err != nil {
+		// Clear cookies on failure to prevent ghost sessions
+		h.clearAuthCookies(c)
+
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
@@ -90,20 +93,7 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	}
 
 	// Set cookies
-	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
-	} else {
-		c.SetSameSite(http.SameSiteLaxMode) // or omit – default is Lax
-	}
-	// Access token: short-lived, HTTP-only, Secure in production
-	c.SetCookie(
-		"access_token", token, int(constants.RefreshTokenMaxAge), "/",
-		"", h.cfg.IsProduction, true) // Persist for refresh window
-
-	// Refresh token: long-lived, HTTP-only, Secure in production
-	c.SetCookie(
-		"refresh_token", refreshToken, int(constants.RefreshTokenMaxAge), "/",
-		"", h.cfg.IsProduction, true)
+	h.setAuthCookies(c, token, refreshToken)
 
 	// Log success
 	h.logService.Record(
@@ -276,6 +266,9 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		ua,
 	)
 	if err != nil {
+		// Clear cookies on failure to prevent stale sessions
+		h.clearAuthCookies(c)
+
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
@@ -297,22 +290,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		return
 	}
 
-	// Set new access token cookie
-	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
-	} else {
-		c.SetSameSite(http.SameSiteLaxMode)
-	}
-
-	c.SetCookie(
-		constants.AccessTokenCookieName,
-		newToken,
-		int(constants.RefreshTokenMaxAge),
-		"/",
-		"",
-		h.cfg.IsProduction,
-		true,
-	)
+	h.setAuthCookies(c, newToken, "")
 
 	response.SendSuccess(c, gin.H{"message": "Session refreshed"})
 }
@@ -404,14 +382,7 @@ func (h *Handler) GetLogout(c *gin.Context) {
 	}
 
 	// Always clear cookies before any redirect or success response
-	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
-	} else {
-		c.SetSameSite(http.SameSiteLaxMode)
-	}
-
-	c.SetCookie("access_token", "", -1, "/", "", h.cfg.IsProduction, true)
-	c.SetCookie("refresh_token", "", -1, "/", "", h.cfg.IsProduction, true)
+	h.clearAuthCookies(c)
 
 	// Log event
 	userID, _ := c.Get("userID")
@@ -530,6 +501,9 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		c.Request.UserAgent(),
 	)
 	if err != nil {
+		// Clear cookies on failure to prevent ghost sessions
+		h.clearAuthCookies(c)
+
 		h.logService.Record(
 			c.Request.Context(),
 			h.logService.GetDB(),
@@ -556,33 +530,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	}
 
 	// Set cookies for frontend
-	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
-	} else {
-		c.SetSameSite(http.SameSiteLaxMode)
-	}
-
-	// Set access token cookie
-	c.SetCookie(
-		constants.AccessTokenCookieName,
-		accessToken,
-		constants.RefreshTokenMaxAge,
-		constants.CookiePathRoot,
-		"",
-		h.cfg.IsProduction,
-		true,
-	)
-
-	// Set refresh token cookie
-	c.SetCookie(
-		constants.RefreshTokenCookieName,
-		refreshToken,
-		constants.RefreshTokenMaxAge,
-		constants.CookiePathRoot,
-		"",
-		h.cfg.IsProduction,
-		true,
-	)
+	h.setAuthCookies(c, accessToken, refreshToken)
 
 	// Log success
 	h.logService.Record(
@@ -610,4 +558,63 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		"role":      roleName,
 		"message":   "Login successful",
 	})
+}
+
+func (h *Handler) setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
+	if h.cfg.IsProduction {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+
+	if accessToken != "" {
+		c.SetCookie(
+			constants.AccessTokenCookieName,
+			accessToken,
+			int(constants.RefreshTokenMaxAge),
+			constants.CookiePathRoot,
+			"",
+			h.cfg.IsProduction,
+			true,
+		)
+	}
+
+	if refreshToken != "" {
+		c.SetCookie(
+			constants.RefreshTokenCookieName,
+			refreshToken,
+			int(constants.RefreshTokenMaxAge),
+			constants.CookiePathRoot,
+			"",
+			h.cfg.IsProduction,
+			true,
+		)
+	}
+}
+
+func (h *Handler) clearAuthCookies(c *gin.Context) {
+	if h.cfg.IsProduction {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+
+	c.SetCookie(
+		constants.AccessTokenCookieName,
+		"",
+		-1,
+		constants.CookiePathRoot,
+		"",
+		h.cfg.IsProduction,
+		true,
+	)
+	c.SetCookie(
+		constants.RefreshTokenCookieName,
+		"",
+		-1,
+		constants.CookiePathRoot,
+		"",
+		h.cfg.IsProduction,
+		true,
+	)
 }
