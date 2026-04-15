@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -407,11 +408,39 @@ func (h *Handler) GetLogout(c *gin.Context) {
 		)
 	}
 
-	if logoutUrl == "" {
-		logoutUrl = "/"
+	// Determine redirection target
+	redirectTarget := "/"
+	if logoutUrl != "" {
+		redirectTarget = logoutUrl
 	}
 
-	c.Redirect(http.StatusFound, logoutUrl)
+	// Handle dynamic redirection for native/local sessions
+	if tType != string(constants.AuthTypeIDP) {
+		candidate := c.Query("redirect_uri")
+
+		if candidate != "" {
+			parsedURL, err := url.Parse(candidate)
+			if err == nil {
+				origin := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
+				if h.isAllowedOrigin(origin) {
+					redirectTarget = origin + "/"
+				}
+			}
+		}
+	}
+
+	c.Redirect(http.StatusFound, redirectTarget)
+}
+
+// isAllowedOrigin checks if the given origin is permitted for redirects.
+func (h *Handler) isAllowedOrigin(origin string) bool {
+	if h.cfg.IsProduction {
+		// Support subdomains of dllbsit2027.com
+		return strings.HasSuffix(origin, ".dllbsit2027.com")
+	}
+
+	// Support localhost development
+	return strings.HasPrefix(origin, "http://localhost")
 }
 
 // IDP integration handlers
