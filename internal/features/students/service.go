@@ -2,9 +2,9 @@ package students
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +20,9 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"golang.org/x/sync/errgroup"
 )
+
+//go:embed assets/iirf.html
+var iirTemplate string
 
 // Service provides student-related business logic and data access.
 type Service struct {
@@ -1755,14 +1758,6 @@ func (s *Service) GenerateIIR(
 		return nil, "", fmt.Errorf("failed to get student profile: %w", err)
 	}
 
-	templatePath := filepath.Join(
-		"internal",
-		"features",
-		"students",
-		"assets",
-		"iirf.html",
-	)
-
 	data := struct {
 		Profile   *ComprehensiveProfileDTO
 		DateToday string
@@ -1771,7 +1766,12 @@ func (s *Service) GenerateIIR(
 		DateToday: s.GetFormattedDate(time.Now().Format("2006-01-02")),
 	}
 
-	pdfBytes, err := s.pdfService.GenerateFromTemplate(ctx, templatePath, data)
+	pdfBytes, err := s.pdfService.GenerateFromContent(
+		ctx,
+		"iirf.html",
+		iirTemplate,
+		data,
+	)
 	if err != nil {
 		return nil, "", fmt.Errorf(
 			"failed to generate pdf from template: %w",
@@ -1780,7 +1780,8 @@ func (s *Service) GenerateIIR(
 	}
 
 	fileName := fmt.Sprintf(
-		"IIR_%s_%s.pdf",
+		"%s_IIR_%s_%s.pdf",
+		profile.Student.BasicInfo.LastName,
 		profile.Student.StudentNumber,
 		time.Now().Format("20060102"),
 	)

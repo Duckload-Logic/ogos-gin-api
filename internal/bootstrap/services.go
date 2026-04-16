@@ -104,7 +104,7 @@ func getServices(
 		fileStorage,
 		userService,
 	)
-	analyticsService := analytics.NewService(repos.AnalyticsRepo)
+	analyticsService := analytics.NewService(repos.AnalyticsRepo, redis)
 
 	return &Services{
 		AuthService:               authService,

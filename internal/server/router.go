@@ -68,7 +68,7 @@ func NewRouter(
 			"X-Requested-With",
 			"X-Trace-ID",
 		},
-		ExposeHeaders:    []string{"Content-Length"},
+		ExposeHeaders:    []string{"Content-Length", "Content-Disposition"},
 		AllowCredentials: true,
 	}
 

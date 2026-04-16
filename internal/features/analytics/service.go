@@ -3,14 +3,20 @@ package analytics
 import (
 	"context"
 	"math"
+
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Service struct {
-	repo RepositoryInterface
+	repo  RepositoryInterface
+	redis *datastore.RedisClient
 }
 
-func NewService(repo RepositoryInterface) *Service {
-	return &Service{repo: repo}
+func NewService(
+	repo RepositoryInterface,
+	redis *datastore.RedisClient,
+) *Service {
+	return &Service{repo: repo, redis: redis}
 }
 
 func (s *Service) GetDashboard(
@@ -96,6 +102,7 @@ func (s *Service) GetDashboard(
 
 func (s *Service) GetAdminDashboard(
 	ctx context.Context,
+	timeRange string,
 ) (*AdminDashboardResponseDTO, error) {
 	totalStudents, err := s.repo.GetTotalStudents(ctx)
 	if err != nil {
@@ -117,9 +124,18 @@ func (s *Service) GetAdminDashboard(
 		return nil, err
 	}
 
-	monthlyVisitors, err := s.repo.GetMonthlyVisitorStats(ctx)
+	monthlyVisitors, err := s.repo.GetMonthlyVisitorStats(ctx, timeRange)
 	if err != nil {
 		return nil, err
+	}
+
+	// Count live sessions (session: prefix)
+	liveSessions := 0
+	if s.redis != nil && s.redis.Client != nil {
+		keys, err := s.redis.Client.Keys(ctx, "session:*").Result()
+		if err == nil {
+			liveSessions = len(keys)
+		}
 	}
 
 	return &AdminDashboardResponseDTO{
@@ -127,6 +143,7 @@ func (s *Service) GetAdminDashboard(
 		TotalReports:      totalReports,
 		TotalAppointments: totalAppointments,
 		TotalSlips:        totalSlips,
+		LiveSessions:      liveSessions,
 		MonthlyVisitors:   monthlyVisitors,
 	}, nil
 }

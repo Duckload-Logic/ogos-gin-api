@@ -260,6 +260,7 @@ func (h *Handler) GetStudentProfile(c *gin.Context) {
 
 	profile, err := h.service.GetStudentProfile(c.Request.Context(), iirID)
 	if err != nil {
+		log.Printf("[GetStudentProfile] {Service Error}: %v", err)
 		response.SendError(
 			c,
 			"Failed to get student profile",
@@ -751,7 +752,7 @@ func (h *Handler) GenerateIIR(c *gin.Context) {
 
 	c.Header(
 		"Content-Disposition",
-		fmt.Sprintf("attachment; filename=%s", fileName),
+		fmt.Sprintf("attachment; filename=\"%s\"", fileName),
 	)
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))

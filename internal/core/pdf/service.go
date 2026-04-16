@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"html/template"
-	"path/filepath"
 	"reflect"
 	"time"
 )
@@ -27,16 +26,17 @@ func NewService(gotenberg GotenbergClient) *Service {
 	}
 }
 
-// GenerateFromTemplate renders an HTML template with data and converts it to
-// PDF.
-func (s *Service) GenerateFromTemplate(
+// GenerateFromContent renders an HTML template string with data and converts it
+// to PDF.
+func (s *Service) GenerateFromContent(
 	ctx context.Context,
-	templatePath string,
+	tmplName string,
+	tmplContent string,
 	data interface{},
 ) ([]byte, error) {
-	tmpl := template.New(filepath.Base(templatePath)).Funcs(getTemplateFuncs())
+	tmpl := template.New(tmplName).Funcs(getTemplateFuncs())
 
-	tmpl, err := tmpl.ParseFiles(templatePath)
+	tmpl, err := tmpl.Parse(tmplContent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}

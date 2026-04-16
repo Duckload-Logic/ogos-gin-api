@@ -57,19 +57,44 @@ func (r *Repository) GetTotalSlips(ctx context.Context) (int, error) {
 
 func (r *Repository) GetMonthlyVisitorStats(
 	ctx context.Context,
+	timeRange string,
 ) ([]MonthlyVisitorStatDTO, error) {
-	// Last 6 months inclusive of current month
+	var interval, format, groupBy, baseDate string
+
+	switch timeRange {
+	case "daily":
+		interval = "29 DAY"
+		format = "%d %b"
+		groupBy = "%Y-%m-%d"
+		baseDate = "CURDATE()"
+	case "weekly":
+		interval = "11 WEEK"
+		format = "Week %u"
+		groupBy = "%Y-%u"
+		baseDate = "DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)" // Start of current week
+	case "yearly":
+		interval = "4 YEAR"
+		format = "%Y"
+		groupBy = "%Y"
+		baseDate = "DATE_FORMAT(NOW(), '%Y-01-01')"
+	case "monthly":
+		fallthrough
+	default:
+		interval = "11 MONTH"
+		format = "%b"
+		groupBy = "%Y-%m"
+		baseDate = "DATE_FORMAT(NOW(), '%Y-%m-01')"
+	}
+
 	query := `
 		SELECT
-			DATE_FORMAT(when_date, '%b') as month,
-			COUNT(*) as count
-		FROM appointments
-		WHERE when_date >=
-			DATE_SUB(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL 5 MONTH)
-		  AND status_id =
-			(SELECT id FROM statuses WHERE name = 'Completed')
-		GROUP BY DATE_FORMAT(when_date, '%Y-%m'), month
-		ORDER BY DATE_FORMAT(when_date, '%Y-%m') ASC;
+			DATE_FORMAT(created_at, '` + format + `') as period,
+			SUM(CASE WHEN action = 'LOGIN_SUCCESS' THEN 1 ELSE 0 END) as logins,
+			COUNT(*) as activity
+		FROM system_logs
+		WHERE created_at >= DATE_SUB(` + baseDate + `, INTERVAL ` + interval + `)
+		GROUP BY DATE_FORMAT(created_at, '` + groupBy + `'), period
+		ORDER BY DATE_FORMAT(created_at, '` + groupBy + `') ASC;
 	`
 	var stats []MonthlyVisitorStatDTO
 	err := r.db.SelectContext(ctx, &stats, query)

@@ -39,8 +39,9 @@ type DashboardResponseDTO struct {
 }
 
 type MonthlyVisitorStatDTO struct {
-	Month string `json:"month"`
-	Count int    `json:"count"`
+	Period   string `json:"period"`
+	Logins   int    `json:"logins"`
+	Activity int    `json:"activity"`
 }
 
 type AdminDashboardResponseDTO struct {
@@ -48,5 +49,6 @@ type AdminDashboardResponseDTO struct {
 	TotalReports      int                     `json:"totalReports"`
 	TotalAppointments int                     `json:"totalAppointments"`
 	TotalSlips        int                     `json:"totalSlips"`
+	LiveSessions      int                     `json:"liveSessions"`
 	MonthlyVisitors   []MonthlyVisitorStatDTO `json:"monthlyVisitors"`
 }
