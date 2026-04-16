@@ -28,6 +28,16 @@ func NewBlobStorage(
 	}, nil
 }
 
+// EnsureContainer creates the container if it does not already exist.
+func (b *BlobStorage) EnsureContainer(ctx context.Context) error {
+	_, err := b.client.CreateContainer(ctx, b.containerName, nil)
+	if err != nil {
+		// Ignore if container already exists
+		return nil
+	}
+	return nil
+}
+
 // Upload uploads data from a reader to the given blob path.
 func (b *BlobStorage) Upload(
 	ctx context.Context,

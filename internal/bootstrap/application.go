@@ -1,7 +1,9 @@
 package bootstrap
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
@@ -30,6 +32,16 @@ func Initialize(db *sqlx.DB, cfg *config.Config) (*Application, error) {
 					err,
 				)
 			}
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			if err := blobStorage.EnsureContainer(ctx); err != nil {
+				return nil, fmt.Errorf(
+					"failed to ensure Azure container exists: %w",
+					err,
+				)
+			}
+
 			fileStorage = blobStorage
 		}
 		{
