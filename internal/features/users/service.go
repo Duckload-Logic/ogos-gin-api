@@ -70,11 +70,13 @@ func (s *Service) ListUsers(
 	totalPages := (total + params.PageSize - 1) / params.PageSize
 
 	return &ListUsersResponse{
-		Users:      dtos,
-		Total:      total,
-		Page:       params.Page,
-		PageSize:   params.PageSize,
-		TotalPages: totalPages,
+		Users: dtos,
+		Meta: structs.PaginationMetadata{
+			Total:      total,
+			Page:       params.Page,
+			PageSize:   params.PageSize,
+			TotalPages: totalPages,
+		},
 	}, nil
 }
 

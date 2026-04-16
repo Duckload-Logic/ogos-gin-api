@@ -34,11 +34,8 @@ type ListUsersParams struct {
 }
 
 type ListUsersResponse struct {
-	Users      []GetUserResponse `json:"users"`
-	Total      int               `json:"total"`
-	Page       int               `json:"page"`
-	PageSize   int               `json:"pageSize"`
-	TotalPages int               `json:"totalPages"`
+	Users []GetUserResponse          `json:"users"`
+	Meta  structs.PaginationMetadata `json:"meta"`
 }
 
 type RoleDistributionDTO struct {
