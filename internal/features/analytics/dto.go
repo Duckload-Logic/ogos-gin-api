@@ -39,9 +39,11 @@ type DashboardResponseDTO struct {
 }
 
 type MonthlyVisitorStatDTO struct {
-	Period   string `json:"period"`
-	Logins   int    `json:"logins"`
-	Activity int    `json:"activity"`
+	Period   string `json:"period"`   // Labels (Daily, Weekly, Monthly, Yearly)
+	Month    string `json:"month"`    // BC for react-web (Monthly only)
+	Logins   int    `json:"logins"`   // System Traffic specific
+	Activity int    `json:"activity"` // System Traffic specific
+	Count    int    `json:"count"`    // Generic count (Appointments or Logins)
 }
 
 type AdminDashboardResponseDTO struct {

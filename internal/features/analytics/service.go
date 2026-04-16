@@ -103,6 +103,7 @@ func (s *Service) GetDashboard(
 func (s *Service) GetAdminDashboard(
 	ctx context.Context,
 	timeRange string,
+	source string,
 ) (*AdminDashboardResponseDTO, error) {
 	totalStudents, err := s.repo.GetTotalStudents(ctx)
 	if err != nil {
@@ -124,7 +125,13 @@ func (s *Service) GetAdminDashboard(
 		return nil, err
 	}
 
-	monthlyVisitors, err := s.repo.GetMonthlyVisitorStats(ctx, timeRange)
+	var monthlyVisitors []MonthlyVisitorStatDTO
+	if source == "system" {
+		monthlyVisitors, err = s.repo.GetMonthlyVisitorStats(ctx, timeRange)
+	} else {
+		monthlyVisitors, err = s.repo.GetMonthlyAppointmentStats(ctx, timeRange)
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -89,12 +89,63 @@ func (r *Repository) GetMonthlyVisitorStats(
 	query := `
 		SELECT
 			DATE_FORMAT(created_at, '` + format + `') as period,
+			DATE_FORMAT(created_at, '` + format + `') as month,
 			SUM(CASE WHEN action = 'LOGIN_SUCCESS' THEN 1 ELSE 0 END) as logins,
-			COUNT(*) as activity
+			COUNT(*) as activity,
+			SUM(CASE WHEN action = 'LOGIN_SUCCESS' THEN 1 ELSE 0 END) as count
 		FROM system_logs
 		WHERE created_at >= DATE_SUB(` + baseDate + `, INTERVAL ` + interval + `)
-		GROUP BY DATE_FORMAT(created_at, '` + groupBy + `'), period
+		GROUP BY DATE_FORMAT(created_at, '` + groupBy + `'), period, month
 		ORDER BY DATE_FORMAT(created_at, '` + groupBy + `') ASC;
+	`
+	var stats []MonthlyVisitorStatDTO
+	err := r.db.SelectContext(ctx, &stats, query)
+	return stats, err
+}
+
+func (r *Repository) GetMonthlyAppointmentStats(
+	ctx context.Context,
+	timeRange string,
+) ([]MonthlyVisitorStatDTO, error) {
+	var interval, format, groupBy, baseDate string
+
+	switch timeRange {
+	case "daily":
+		interval = "29 DAY"
+		format = "%d %b"
+		groupBy = "%Y-%m-%d"
+		baseDate = "CURDATE()"
+	case "weekly":
+		interval = "11 WEEK"
+		format = "Week %u"
+		groupBy = "%Y-%u"
+		baseDate = "DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)"
+	case "yearly":
+		interval = "4 YEAR"
+		format = "%Y"
+		groupBy = "%Y"
+		baseDate = "DATE_FORMAT(NOW(), '%Y-01-01')"
+	case "monthly":
+		fallthrough
+	default:
+		interval = "11 MONTH"
+		format = "%b"
+		groupBy = "%Y-%m"
+		baseDate = "DATE_FORMAT(NOW(), '%Y-%m-01')"
+	}
+
+	query := `
+		SELECT
+			DATE_FORMAT(when_date, '` + format + `') as period,
+			DATE_FORMAT(when_date, '` + format + `') as month,
+			0 as logins,
+			0 as activity,
+			COUNT(*) as count
+		FROM appointments
+		WHERE when_date >= DATE_SUB(` + baseDate + `, INTERVAL ` + interval + `)
+		  AND status_id = (SELECT id FROM statuses WHERE name = 'Completed')
+		GROUP BY DATE_FORMAT(when_date, '` + groupBy + `'), period, month
+		ORDER BY DATE_FORMAT(when_date, '` + groupBy + `') ASC;
 	`
 	var stats []MonthlyVisitorStatDTO
 	err := r.db.SelectContext(ctx, &stats, query)

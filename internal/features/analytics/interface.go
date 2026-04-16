@@ -4,7 +4,7 @@ import "context"
 
 type ServiceInterface interface {
 	GetDashboard(ctx context.Context) (*DashboardResponseDTO, error)
-	GetAdminDashboard(ctx context.Context, timeRange string) (*AdminDashboardResponseDTO, error)
+	GetAdminDashboard(ctx context.Context, timeRange string, source string) (*AdminDashboardResponseDTO, error)
 }
 
 type RepositoryInterface interface {
@@ -32,4 +32,5 @@ type RepositoryInterface interface {
 	GetTotalAppointments(ctx context.Context) (int, error)
 	GetTotalSlips(ctx context.Context) (int, error)
 	GetMonthlyVisitorStats(ctx context.Context, timeRange string) ([]MonthlyVisitorStatDTO, error)
+	GetMonthlyAppointmentStats(ctx context.Context, timeRange string) ([]MonthlyVisitorStatDTO, error)
 }

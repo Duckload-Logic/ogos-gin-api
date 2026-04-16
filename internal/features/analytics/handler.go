@@ -35,8 +35,9 @@ func (h *Handler) GetAnalyticsDashboard(c *gin.Context) {
 func (h *Handler) GetAdminDashboard(c *gin.Context) {
 	ctx := c.Request.Context()
 	timeRange := c.DefaultQuery("range", "monthly")
+	source := c.DefaultQuery("source", "appointments")
 
-	dashboardData, err := h.service.GetAdminDashboard(ctx, timeRange)
+	dashboardData, err := h.service.GetAdminDashboard(ctx, timeRange, source)
 	if err != nil {
 		response.SendError(
 			c,
