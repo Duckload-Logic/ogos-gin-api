@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -133,6 +134,13 @@ func (r *Repository) GetEducationalLevels(
 	return levels, nil
 }
 
+// GetStudentStatuses retrieves all available student statuses.
+func (r *Repository) GetStudentStatuses(ctx context.Context) ([]StudentStatus, error) {
+	var statuses []StudentStatus
+	err := r.db.SelectContext(ctx, &statuses, "SELECT id, status_name FROM student_statuses")
+	return statuses, err
+}
+
 func (r *Repository) GetCourses(ctx context.Context) ([]Course, error) {
 	query := fmt.Sprintf(`
 		SELECT %s FROM courses ORDER BY id
@@ -222,6 +230,7 @@ func (r *Repository) GetTotalStudentsCount(
 	courseID int,
 	genderID int,
 	yearLevel int,
+	statusID int,
 ) (int, error) {
 	query, args := r.applyStudentFilters(
 		`SELECT COUNT(iir.id) FROM iir_records iir
@@ -233,6 +242,7 @@ func (r *Repository) GetTotalStudentsCount(
 		courseID,
 		genderID,
 		yearLevel,
+		statusID,
 	)
 
 	var total int
@@ -248,7 +258,7 @@ func (r *Repository) applyStudentFilters(
 	query string,
 	args []interface{},
 	search string,
-	courseID, genderID, yearLevel int,
+	courseID, genderID, yearLevel, statusID int,
 ) (string, []interface{}) {
 	if args == nil {
 		args = []interface{}{}
@@ -267,6 +277,11 @@ func (r *Repository) applyStudentFilters(
 	if yearLevel > 0 {
 		query += " AND spi.year_level = ?"
 		args = append(args, yearLevel)
+	}
+
+	if statusID > 0 {
+		query += " AND spi.status_id = ?"
+		args = append(args, statusID)
 	}
 
 	if search != "" {
@@ -288,7 +303,7 @@ func (r *Repository) ListStudents(
 	search string,
 	offset, limit int,
 	orderBy string,
-	courseID, genderID, yearLevel int,
+	courseID, genderID, yearLevel, statusID int,
 ) ([]StudentProfileView, error) {
 	query := `
         SELECT
@@ -303,10 +318,13 @@ func (r *Repository) ListStudents(
 			spi.student_number,
 			spi.course_id,
 			spi.section,
-			spi.year_level
+			spi.year_level,
+			spi.status_id,
+			ss.status_name
 		FROM iir_records iir
 		JOIN users u ON iir.user_id = u.id
 		JOIN student_personal_info spi ON iir.id = spi.iir_id
+		LEFT JOIN student_statuses ss ON spi.status_id = ss.id
 		WHERE iir.is_submitted = TRUE
     `
 
@@ -317,6 +335,7 @@ func (r *Repository) ListStudents(
 		courseID,
 		genderID,
 		yearLevel,
+		statusID,
 	)
 
 	allowedSortColumns := map[string]string{
@@ -364,6 +383,8 @@ func (r *Repository) ListStudents(
 			&student.CourseID,
 			&student.Section,
 			&student.YearLevel,
+			&student.StatusID,
+			&student.StatusName,
 		); err != nil {
 			return nil, err
 		}
@@ -2289,6 +2310,23 @@ func (r *Repository) DeleteSignificantNotesByIIRID(
 	})
 }
 
+// IsStudentLocked checks if a student's record is locked (Graduated, Archived, or Withdrawn).
+func (r *Repository) IsStudentLocked(ctx context.Context, iirID string) (bool, error) {
+	var statusID int
+	err := r.db.GetContext(ctx, &statusID,
+		"SELECT status_id FROM student_personal_info WHERE iir_id = ?", iirID)
+	if err != nil {
+		return false, err
+	}
+
+	// 2: Graduated, 4: Archived, 5: Withdrawn
+	if statusID == 2 || statusID == 4 || statusID == 5 {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func (r *Repository) deleteSignificantNotesByIIRIDTx(
 	ctx context.Context,
 	tx datastore.DB,
@@ -2300,4 +2338,94 @@ func (r *Repository) deleteSignificantNotesByIIRIDTx(
 		return fmt.Errorf("failed to delete significant notes: %w", err)
 	}
 	return nil
+}
+
+// BulkUpdateStudentStatus updates status_id (and optionally graduation_year)
+// for a set of students. When SelectAllMatching is true it builds a WHERE
+// clause from the request filters instead of an IN list, so every matching
+// record across all pages is affected in one query.
+func (r *Repository) BulkUpdateStudentStatus(
+	ctx context.Context,
+	req BulkUpdateStatusRequest,
+) error {
+	var args []interface{}
+	var setClause string
+
+	if req.GraduationYear != nil {
+		setClause = "SET status_id = ?, graduation_year = ?"
+		args = append(args, req.StatusID, *req.GraduationYear)
+	} else {
+		setClause = "SET status_id = ?"
+		args = append(args, req.StatusID)
+	}
+
+	base := fmt.Sprintf(
+		"UPDATE student_personal_info %s WHERE",
+		setClause,
+	)
+
+	if req.SelectAllMatching {
+		// Build dynamic WHERE from the supplied filter set.
+		var conditions []string
+		conditions = append(conditions, "status_id NOT IN (2, 4, 5)")
+
+		if req.Filters.Search != "" {
+			// Filter by name/email via subquery join.
+			conditions = append(conditions,
+				"iir_id IN ("+
+					"SELECT i.id FROM iir_records i "+
+					"JOIN users u ON u.id = i.user_id "+
+					"WHERE CONCAT(u.first_name,' ',u.last_name) "+
+					"LIKE ? OR u.email LIKE ?)",
+			)
+			like := "%" + req.Filters.Search + "%"
+			args = append(args, like, like)
+		}
+		if req.Filters.CourseID > 0 {
+			conditions = append(conditions, "course_id = ?")
+			args = append(args, req.Filters.CourseID)
+		}
+		if req.Filters.YearLevel > 0 {
+			conditions = append(conditions, "year_level = ?")
+			args = append(args, req.Filters.YearLevel)
+		}
+
+		// Exclude records the counselor explicitly un-checked.
+		if len(req.ExcludedIIRIDs) > 0 {
+			placeholders := strings.Repeat("?,", len(req.ExcludedIIRIDs))
+			placeholders = placeholders[:len(placeholders)-1]
+			conditions = append(conditions,
+				fmt.Sprintf("iir_id NOT IN (%s)", placeholders),
+			)
+			for _, id := range req.ExcludedIIRIDs {
+				args = append(args, id)
+			}
+		}
+
+		query := fmt.Sprintf(
+			"%s %s",
+			base,
+			strings.Join(conditions, " AND "),
+		)
+		_, err := r.db.ExecContext(ctx, query, args...)
+		return err
+	}
+
+	// Explicit ID list path.
+	if len(req.IIRIDs) == 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(req.IIRIDs))
+	placeholders = placeholders[:len(placeholders)-1]
+	for _, id := range req.IIRIDs {
+		args = append(args, id)
+	}
+
+	query := fmt.Sprintf(
+		"%s iir_id IN (%s) AND status_id NOT IN (2, 4, 5)",
+		base,
+		placeholders,
+	)
+	_, err := r.db.ExecContext(ctx, query, args...)
+	return err
 }
