@@ -16,6 +16,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
@@ -29,6 +30,7 @@ type Service struct {
 	notifService audit.Notifier
 	fileStorage  storage.FileStorage
 	userService  users.ServiceInterface
+	studentService students.ServiceInterface
 }
 
 func NewService(
@@ -37,13 +39,15 @@ func NewService(
 	notifService audit.Notifier,
 	fileStorage storage.FileStorage,
 	userService users.ServiceInterface,
+	studentService students.ServiceInterface,
 ) *Service {
 	return &Service{
-		repo:         repo,
-		logService:   logService,
-		notifService: notifService,
-		fileStorage:  fileStorage,
-		userService:  userService,
+		repo:           repo,
+		logService:     logService,
+		notifService:   notifService,
+		fileStorage:    fileStorage,
+		userService:    userService,
+		studentService: studentService,
 	}
 }
 
@@ -342,6 +346,15 @@ func (s *Service) SubmitExcuseSlip(
 	req CreateSlipRequest,
 	files []*multipart.FileHeader,
 ) (*Slip, error) {
+	// Graduated Student Protocol: Lock records for Graduated or Archived students
+	isLocked, err := s.studentService.IsStudentLocked(ctx, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check student status: %w", err)
+	}
+	if isLocked {
+		return nil, fmt.Errorf("cannot submit slip: student record is locked (Graduated/Archived)")
+	}
+
 	// Validate all files
 	allowedTypes := map[string]bool{
 		".pdf":  true,
@@ -577,6 +590,15 @@ func (s *Service) UpdateExcuseSlip(
 	req CreateSlipRequest,
 	files []*multipart.FileHeader,
 ) (*Slip, error) {
+	// Graduated Student Protocol: Lock records for Graduated or Archived students
+	isLocked, err := s.studentService.IsStudentLocked(ctx, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check student status: %w", err)
+	}
+	if isLocked {
+		return nil, fmt.Errorf("cannot update slip: student record is locked (Graduated/Archived)")
+	}
+
 	// 1. Fetch existing slip and validate ownership/status
 	existingSlip, err := s.repo.GetSlipByID(ctx, slipID)
 	if err != nil {

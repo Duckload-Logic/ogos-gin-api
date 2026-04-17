@@ -11,6 +11,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/datetime"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/notes"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 
@@ -18,11 +19,12 @@ import (
 )
 
 type Service struct {
-	repo         RepositoryInterface
-	notifService audit.Notifier
-	logService   audit.Logger
-	userService  users.ServiceInterface
-	noteService  notes.ServiceInterface
+	repo           RepositoryInterface
+	notifService   audit.Notifier
+	logService     audit.Logger
+	userService    users.ServiceInterface
+	noteService    notes.ServiceInterface
+	studentService students.ServiceInterface
 }
 
 func NewService(
@@ -31,13 +33,15 @@ func NewService(
 	logService audit.Logger,
 	userService users.ServiceInterface,
 	noteService notes.ServiceInterface,
+	studentService students.ServiceInterface,
 ) *Service {
 	return &Service{
-		repo:         repo,
-		notifService: notifService,
-		logService:   logService,
-		userService:  userService,
-		noteService:  noteService,
+		repo:           repo,
+		notifService:   notifService,
+		logService:     logService,
+		userService:    userService,
+		noteService:    noteService,
+		studentService: studentService,
 	}
 }
 
@@ -62,7 +66,16 @@ func (s *Service) CreateAppointment(
 		StatusID:              1,
 	}
 
-	err := datastore.RunInTransaction(
+	// Graduated Student Protocol: Lock records for Graduated or Archived students
+	isLocked, err := s.studentService.IsStudentLocked(ctx, iirID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check student status: %w", err)
+	}
+	if isLocked {
+		return nil, fmt.Errorf("cannot create appointment: student record is locked (Graduated/Archived)")
+	}
+
+	err = datastore.RunInTransaction(
 		ctx,
 		s.repo.GetDB(),
 		func(tx datastore.DB) error {
@@ -516,7 +529,7 @@ func (s *Service) UpdateAppointment(
 		ID:                    id,
 		StatusID:              req.Status.ID,
 		Reason:                structs.ToSqlNull(req.Reason),
-		AdminNotes:           structs.ToSqlNull(req.AdminNotes),
+		AdminNotes:            structs.ToSqlNull(req.AdminNotes),
 		WhenDate:              strings.Split(req.WhenDate, "T")[0],
 		TimeSlotID:            req.TimeSlot.ID,
 		AppointmentCategoryID: req.AppointmentCategory.ID,
