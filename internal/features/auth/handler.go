@@ -259,7 +259,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	ua := c.Request.UserAgent()
 
 	// Refresh using the JTI
-	newToken, _, err := h.service.RefreshToken(
+	newAccessToken, newRefreshToken, err := h.service.RefreshToken(
 		c,
 		sessions.NewJTI(claims.ID),
 		h.cfg,
@@ -267,7 +267,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		ua,
 	)
 	if err != nil {
-		// Clear cookies on failure to prevent stale sessions
+		// Remove previous cookies
 		h.clearAuthCookies(c)
 
 		h.logService.Record(
@@ -277,6 +277,8 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 				Level:     audit.LevelError,
 				Category:  audit.CategorySecurity,
 				Action:    audit.ActionInvalidToken,
+				UserID:    structs.StringToNullableString(claims.UserID),
+				UserEmail: structs.StringToNullableString(claims.UserEmail),
 				Message:   "Token refresh failed: " + err.Error(),
 				IPAddress: structs.StringToNullableString(ip),
 				UserAgent: structs.StringToNullableString(ua),
@@ -291,7 +293,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		return
 	}
 
-	h.setAuthCookies(c, newToken, "")
+	h.setAuthCookies(c, newAccessToken, newRefreshToken)
 
 	response.SendSuccess(c, gin.H{"message": "Session refreshed"})
 }

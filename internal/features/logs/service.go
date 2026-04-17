@@ -76,7 +76,7 @@ func (s *Service) Record(
 	}
 
 	// Notify Superadmins for critical events
-	if level == audit.LevelError {
+	if level == audit.LevelError && entry.Action != audit.ActionLoginFailed && entry.Action != audit.ActionInvalidToken {
 		s.notifySuperadmins(ctx, entry)
 	}
 }

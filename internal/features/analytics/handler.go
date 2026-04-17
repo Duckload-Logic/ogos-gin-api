@@ -1,6 +1,7 @@
 package analytics
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,14 @@ func NewHandler(service ServiceInterface) *Handler {
 func (h *Handler) GetAnalyticsDashboard(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	dashboardData, err := h.service.GetDashboard(ctx)
+	yearStr := c.DefaultQuery("year", "0")
+	courseIDStr := c.DefaultQuery("course_id", "0")
+
+	var year, courseID int
+	fmt.Sscanf(yearStr, "%d", &year)
+	fmt.Sscanf(courseIDStr, "%d", &courseID)
+
+	dashboardData, err := h.service.GetDashboard(ctx, year, courseID)
 	if err != nil {
 		response.SendError(
 			c,

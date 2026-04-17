@@ -3,30 +3,31 @@ package analytics
 import "context"
 
 type ServiceInterface interface {
-	GetDashboard(ctx context.Context) (*DashboardResponseDTO, error)
+	GetDashboard(ctx context.Context, year int, courseID int) (*DashboardResponseDTO, error)
 	GetAdminDashboard(ctx context.Context, timeRange string, source string) (*AdminDashboardResponseDTO, error)
 }
 
 type RepositoryInterface interface {
-	GetTotalStudents(ctx context.Context) (int, error)
-	GetAgeStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetCivilStatusStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetReligionStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetCityAddressStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetMonthlyIncomeStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetOrdinalPositionStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetFatherEducationStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetMotherEducationStats(ctx context.Context) ([]AggregatedStatModel, error)
+	GetTotalStudents(ctx context.Context, year int, courseID int) (int, error)
+	GetGenderStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetAgeStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetCivilStatusStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetReligionStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetCityAddressStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetMonthlyIncomeStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetOrdinalPositionStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetFatherEducationStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetMotherEducationStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
 	GetParentsMaritalStatusStats(
-		ctx context.Context,
+		ctx context.Context, year int, courseID int,
 	) ([]AggregatedStatModel, error)
-	GetQuietStudyPlaceStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetHSGWAStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetElementaryStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetJuniorHighStats(ctx context.Context) ([]AggregatedStatModel, error)
-	GetSeniorHighStats(ctx context.Context) ([]AggregatedStatModel, error)
+	GetQuietStudyPlaceStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetHSGWAStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetElementaryStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetJuniorHighStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
+	GetSeniorHighStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error)
 	GetNatureOfSchoolingStats(
-		ctx context.Context,
+		ctx context.Context, year int, courseID int,
 	) ([]AggregatedStatModel, error)
 	GetTotalReports(ctx context.Context) (int, error)
 	GetTotalAppointments(ctx context.Context) (int, error)
