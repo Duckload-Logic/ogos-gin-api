@@ -45,6 +45,7 @@ func RegisterRoutes(
 			"/student-relationship-types",
 			h.GetStudentRelationshipTypes,
 		)
+		lookupRoutes.GET("/student-statuses", h.GetStudentStatuses)
 	}
 
 	inventoryRoutes := routes.Group("/inventory")
@@ -55,6 +56,7 @@ func RegisterRoutes(
 	))
 	{
 		counselorRoutes.GET("/records", h.GetStudentList)
+		counselorRoutes.PATCH("/records/bulk-status", h.PatchStudentBulkStatus)
 	}
 
 	userRoutes := inventoryRoutes.Group("/")
