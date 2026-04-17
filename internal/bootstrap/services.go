@@ -96,6 +96,7 @@ func getServices(
 		systemLogService,
 		userService,
 		noteService,
+		studentService,
 	)
 	slipService := slips.NewService(
 		repos.SlipRepo,
@@ -103,6 +104,7 @@ func getServices(
 		notificationsService,
 		fileStorage,
 		userService,
+		studentService,
 	)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo, redis)
 
