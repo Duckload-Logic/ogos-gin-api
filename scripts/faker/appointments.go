@@ -24,71 +24,61 @@ func insertAdmissionSlip(
 	tx *sqlx.Tx,
 	iirID string,
 ) string {
-	// More realistic status distribution (pending less likely for
-	// historical data)
-	statusName := chooseAdmissionSlipStatus()
+	now := time.Now().Truncate(24 * time.Hour)
+
+	// Randomly decide if this slip is for a past or future absence
+	// Most are past (80%), some are upcoming (20%)
+	var daysOffset int
+	if rand.Float32() < 0.2 {
+		daysOffset = rand.Intn(14) + 1 // 1-14 days in future
+	} else {
+		daysOffset = -(rand.Intn(90) + 1) // 1-90 days in past
+	}
+
+	absDate := now.AddDate(0, 0, daysOffset)
+	dateOfAbsence := absDate.Format("2006-01-02")
+
+	// Status depends on time
+	statusName := chooseAdmissionSlipStatus(absDate, now)
 	statusID, ok := admissionSlipStatusesByName[statusName]
 	if !ok {
-		log.Printf(
-			"[Seeder] {Insert AdmissionSlip}: status '%s' not found",
-			statusName)
 		statusID = randomChoice(admissionSlipStatusIDs).(int)
 	}
-	categoryID := randomChoice(admissionSlipCategoryIDs).(int)
 
-	// Realistic reasons for admission slips
+	categoryID := randomChoice(admissionSlipCategoryIDs).(int)
 	reason := generateRealisticAdmissionReason()
 
-	daysAgo := rand.Intn(7) + 2 // 2-8 days ago
-	dateOfAbsence := time.Now().AddDate(0, 0, -daysAgo).Format(
-		"2006-01-02")
-
-	// Date needed: submission should be a few days to weeks after
-	// absence
-	daysAfterAbsence := rand.Intn(7) + 1
-	targetDate := time.Now().AddDate(0, 0, -daysAgo+daysAfterAbsence)
-
-	// If targetDate is before "Now", set it to "Now"
-	if targetDate.Before(time.Now()) {
-		targetDate = time.Now()
+	// Date needed: submission should be near the absence date
+	// for future, it's usually current; for past, it was around then
+	var dateNeeded string
+	if absDate.After(now) {
+		dateNeeded = now.Format("2006-01-02")
+	} else {
+		dateNeeded = absDate.AddDate(0, 0, rand.Intn(3)+1).Format("2006-01-02")
 	}
 
-	dateNeeded := targetDate.Format("2006-01-02")
-
-	// Use PDF as primary extension (more realistic for official
-	// documents)
-	extensions := []string{
-		".pdf", ".pdf", ".pdf", ".jpg", ".jpeg",
-		".png",
-	}
+	// Use PDF as primary extension...
+	extensions := []string{".pdf", ".pdf", ".pdf", ".jpg", ".jpeg", ".png"}
 	ext := extensions[rand.Intn(len(extensions))]
 	basePath := "./uploads"
 	subFolder := gofakeit.UUID()
 
-	// More realistic file names for admission documents
 	baseFileName := generateAdmissionFileName()
 	readableFileName := baseFileName + ext
 	fileName := hash.GetSHA256Hash(readableFileName, 16) + ext
 
-	// DISK PATH (Where Go writes the bytes)
-	fullStoragePath := filepath.Join(basePath, "slips", subFolder,
-		fileName)
+	fullStoragePath := filepath.Join(basePath, "slips", subFolder, fileName)
 
 	dbURL := fmt.Sprintf("/slips/%s/%s", subFolder, fileName)
-	// Create directory and file
 	dir := filepath.Dir(fullStoragePath)
 	os.MkdirAll(dir, os.ModePerm)
 	f, _ := os.Create(fullStoragePath)
-	// Write realistic dummy content
 	content := fmt.Sprintf(
-		"ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %s\nDate: %s\n"+
-			"Reason: %s\n\n[Document content created for admission "+
-			"purposes]",
+		"ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %s\nDate of Absence: %s\nReason: %s\n",
 		iirID, dateOfAbsence, reason)
 	f.WriteString(content)
 	f.Close()
 
-	// Admin notes more realistic based on status
 	adminNotes := generateAdmissionNotes(statusName)
 	admissionSlipID := uuid.New().String()
 
@@ -125,15 +115,20 @@ func insertAdmissionSlip(
 	return admissionSlipID
 }
 
-func chooseAdmissionSlipStatus() string {
+func chooseAdmissionSlipStatus(absDate, now time.Time) string {
+	// Future absences can only be pending
+	if absDate.After(now) {
+		return "pending"
+	}
+
+	// Past absences are processed
 	statuses := []struct {
 		name   string
 		weight int
 	}{
-		{"approved", 50},
-		{"pending", 25},
-		{"for revision", 15},
-		{"rejected", 10},
+		{"approved", 70},
+		{"rejected", 20},
+		{"for revision", 10},
 	}
 
 	totalWeight := 0
@@ -148,7 +143,7 @@ func chooseAdmissionSlipStatus() string {
 			return s.name
 		}
 	}
-	return "pending"
+	return "approved"
 }
 
 func generateRealisticAdmissionReason() string {
@@ -225,15 +220,12 @@ func generateAdmissionNotes(status string) sql.NullString {
 func insertAppointment(ctx context.Context, tx *sqlx.Tx, iirID string) string {
 	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 ||
 		len(appointmentStatusIDs) == 0 {
-		log.Printf(
-			"[Seeder] {Insert Appointment}: missing lookup data for "+
-				"iir %s",
-			iirID)
 		return ""
 	}
 
-	whenDate, timeSlotID := reserveAppointmentSlot()
-	statusID := chooseAppointmentStatusID()
+	now := time.Now().Truncate(24 * time.Hour)
+	whenDateStr, timeSlotID, whenDate := reserveAppointmentSlot(now)
+	statusID := chooseAppointmentStatusID(whenDate, now)
 	concernCategoryID := randomChoice(appointmentCategoryIDs).(int)
 
 	// Determine admin_notes value
@@ -246,7 +238,7 @@ func insertAppointment(ctx context.Context, tx *sqlx.Tx, iirID string) string {
 		}
 	}
 	if statusName == "cancelled" || statusName == "rejected" ||
-		strings.Contains(statusName, "show") {
+		strings.Contains(statusName, "show") || statusName == "completed" {
 		adminNotes = sql.NullString{
 			String: gofakeit.Sentence(rand.Intn(5) + 5),
 			Valid:  true,
@@ -261,11 +253,11 @@ func insertAppointment(ctx context.Context, tx *sqlx.Tx, iirID string) string {
 		ID:    appointmentID,
 		IIRID: iirID,
 		Reason: sql.NullString{
-			String: gofakeit.Sentence(rand.Intn(11) + 20),
+			String: gofakeit.Sentence(rand.Intn(11) + 15),
 			Valid:  true,
 		},
 		AdminNotes:            adminNotes,
-		WhenDate:              whenDate,
+		WhenDate:              whenDateStr,
 		TimeSlotID:            timeSlotID,
 		AppointmentCategoryID: concernCategoryID,
 		StatusID:              statusID,
@@ -280,16 +272,25 @@ func insertAppointment(ctx context.Context, tx *sqlx.Tx, iirID string) string {
 	return appointmentID
 }
 
-func reserveAppointmentSlot() (string, int) {
+func reserveAppointmentSlot(now time.Time) (string, int, time.Time) {
 	if len(timeSlotIDs) == 0 {
 		log.Fatal("no time slots found in time_slots")
 	}
 
-	for attempts := 0; attempts < 500; attempts++ {
-		when := time.Now().AddDate(0, 0, rand.Intn(180)+1)
+	for attempts := 0; attempts < 1000; attempts++ {
+		// Randomly decide if past or future
+		var when time.Time
+		if rand.Float32() < 0.3 {
+			// Future (up to 2 weeks)
+			when = now.AddDate(0, 0, rand.Intn(14))
+		} else {
+			// Past (up to 90 days)
+			when = now.AddDate(0, 0, -(rand.Intn(90) + 1))
+		}
+
 		weekday := when.Weekday()
 		if weekday == time.Saturday || weekday == time.Sunday {
-			continue // skip weekends
+			continue
 		}
 		whenDate := when.Format("2006-01-02")
 		timeSlotID := randomChoice(timeSlotIDs).(int)
@@ -300,18 +301,16 @@ func reserveAppointmentSlot() (string, int) {
 		if !exists {
 			reservedAppointmentSlots[key] = struct{}{}
 			appointmentSlotMu.Unlock()
-			return whenDate, timeSlotID
+			return whenDate, timeSlotID, when
 		}
 		appointmentSlotMu.Unlock()
 	}
 
-	log.Fatal(
-		"unable to reserve unique appointment slot after multiple attempts",
-	)
-	return "", 0
+	log.Fatal("unable to reserve unique appointment slot")
+	return "", 0, time.Time{}
 }
 
-func chooseAppointmentStatusID() int {
+func chooseAppointmentStatusID(apptDate, now time.Time) int {
 	if len(appointmentStatusByName) == 0 {
 		return randomChoice(appointmentStatusIDs).(int)
 	}
@@ -331,17 +330,19 @@ func chooseAppointmentStatusID() int {
 		}
 	}
 
-	add("pending", 50)
-	add("approved", 20)
-	add("completed", 15)
-	add("cancelled", 10)
-	add("rejected", 20)
-	add("rescheduled", 10)
+	isFuture := apptDate.After(now) || apptDate.Equal(now)
 
-	for _, id := range appointmentStatusIDs {
-		if !used[id] {
-			weighted = append(weighted, weightedStatus{id: id, weight: 3})
-		}
+	if isFuture {
+		// Future: pending, approved (scheduled), rescheduled
+		add("pending", 60)
+		add("approved", 30) // means Scheduled
+		add("rescheduled", 10)
+	} else {
+		// Past: completed, no-show, rejected, cancelled
+		add("completed", 60)
+		add("no-show", 20)
+		add("rejected", 10)
+		add("cancelled", 10)
 	}
 
 	if len(weighted) == 0 {

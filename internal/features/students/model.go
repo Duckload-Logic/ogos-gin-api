@@ -67,6 +67,11 @@ type SibilingSupportType struct {
 	SupportName string `db:"name" json:"name,omitempty"`
 }
 
+type StudentStatus struct {
+	ID         int    `db:"id"          json:"id"`
+	StatusName string `db:"status_name" json:"name,omitempty"`
+}
+
 type ActivityOption struct {
 	ID       int    `db:"id"        json:"id"`
 	Name     string `db:"name"      json:"name,omitempty"`     // "Academic" or "Extra-Curricular"
@@ -96,6 +101,8 @@ type StudentProfileView struct {
 	CourseID      int            `db:"course_id"      json:"courseId"`
 	Section       int            `db:"section"        json:"section"`
 	YearLevel     int            `db:"year_level"     json:"yearLevel"`
+	StatusID      int            `db:"status_id"      json:"statusId"`
+	StatusName    string         `db:"status_name"    json:"statusName,omitempty"`
 }
 
 // Core Student Records
@@ -152,6 +159,8 @@ type StudentPersonalInfo struct {
 	EmployerAddress sql.NullString `db:"employer_address" json:"employerAddress"`
 	MobileNumber    string         `db:"mobile_number"    json:"mobileNumber"`
 	TelephoneNumber sql.NullString `db:"telephone_number" json:"telephoneNumber"`
+	StatusID        int            `db:"status_id"        json:"statusId"`
+	GraduationYear  sql.NullInt64  `db:"graduation_year"  json:"graduationYear,omitempty"`
 	CreatedAt       time.Time      `db:"created_at"       json:"createdAt"`
 	UpdatedAt       time.Time      `db:"updated_at"       json:"updatedAt"`
 }

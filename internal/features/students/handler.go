@@ -185,6 +185,21 @@ func (h *Handler) GetStudentRelationshipTypes(c *gin.Context) {
 	response.SendSuccess(c, relationshipTypes)
 }
 
+func (h *Handler) GetStudentStatuses(c *gin.Context) {
+	statuses, err := h.service.GetStudentStatuses(c.Request.Context())
+	if err != nil {
+		response.SendError(
+			c,
+			"Failed to get student statuses",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(c, statuses)
+}
+
 func (h *Handler) GetNatureOfResidenceTypes(c *gin.Context) {
 	types, err := h.service.GetNatureOfResidenceTypes(c.Request.Context())
 	if err != nil {
@@ -757,4 +772,29 @@ func (h *Handler) GenerateIIR(c *gin.Context) {
 	c.Header("Content-Type", "application/pdf")
 	c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
+}
+
+// PatchStudentBulkStatus handles PATCH /students/inventory/records/bulk-status.
+// It applies a lifecycle status transition to multiple student records in a
+// single transaction. For the "Graduated" status the service layer enforces
+// eligibility (Diploma/Year-3, Bachelor/Year-4) and quietly skips ineligible
+// records — the response always reports the attempted count so the frontend
+// can surface a warning if the actual count differs.
+func (h *Handler) PatchStudentBulkStatus(c *gin.Context) {
+	var req BulkUpdateStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "[PatchStudentBulkStatus] {Bind JSON}: " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.service.BulkUpdateStudentStatus(c.Request.Context(), req); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "[PatchStudentBulkStatus] {Bulk Update}: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Student statuses updated successfully"})
 }

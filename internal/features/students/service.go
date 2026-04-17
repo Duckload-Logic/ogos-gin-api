@@ -215,6 +215,16 @@ func (s *Service) GetStudentRelationshipTypes(
 	return types, nil
 }
 
+// GetStudentStatuses retrieves all available student statuses.
+func (s *Service) GetStudentStatuses(ctx context.Context) ([]StudentStatus, error) {
+	statuses, err := s.repo.GetStudentStatuses(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get student statuses: %w", err)
+	}
+
+	return statuses, nil
+}
+
 // Retrieve - List
 // ListStudents retrieves a paginated list of student profiles.
 func (s *Service) ListStudents(
@@ -231,6 +241,7 @@ func (s *Service) ListStudents(
 		req.CourseID,
 		req.GenderID,
 		req.YearLevel,
+		req.StatusID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list students: %w", err)
@@ -281,6 +292,10 @@ func (s *Service) ListStudents(
 				Course:        *course,
 				Section:       st.Section,
 				YearLevel:     st.YearLevel,
+				Status: StudentStatus{
+					ID:         st.StatusID,
+					StatusName: st.StatusName,
+				},
 			}
 		}(i, st)
 	}
@@ -299,6 +314,7 @@ func (s *Service) ListStudents(
 		req.CourseID,
 		req.GenderID,
 		req.YearLevel,
+		req.StatusID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total students count: %w", err)
@@ -1802,4 +1818,137 @@ func (s *Service) GetFormattedDate(date string) string {
 	}
 
 	return t.Format(outputLayout)
+}
+
+// IsStudentLocked checks if a student's record is locked from further
+// appointments or slips.
+func (s *Service) IsStudentLocked(ctx context.Context, iirID string) (bool, error) {
+	return s.repo.IsStudentLocked(ctx, iirID)
+}
+
+// diplomaCourseCode is the prefix that identifies Diploma programmes.
+// Diploma courses only qualify for graduation at year 3.
+// Bachelor programmes (BS* prefix) qualify at year 4.
+const (
+	diplomaPrefix  = "D"
+	bachelorPrefix = "BS"
+
+	diplomaFinalYear  = 3
+	bachelorFinalYear = 4
+
+	// statusIDGraduated mirrors the student_statuses seed row.
+	statusIDGraduated = 2
+)
+
+// BulkUpdateStudentStatus applies a lifecycle status change to a batch of
+// students. For the "Graduated" status a graduation eligibility guard runs
+// first: only Diploma year-3 and Bachelor year-4 students are eligible.
+// Any ineligible IDs are stripped from the request before delegation to the
+// repository. The number of skipped records is returned as an error so the
+// caller can surface a warning without aborting the whole operation.
+func (s *Service) BulkUpdateStudentStatus(
+	ctx context.Context,
+	req BulkUpdateStatusRequest,
+) error {
+	if req.StatusID != statusIDGraduated {
+		// Non-graduation transitions have no eligibility constraint.
+		return s.repo.BulkUpdateStudentStatus(ctx, req)
+	}
+
+	// For graduation we evaluate eligibility per student.
+	// SelectAllMatching fetches matching profiles across all pages.
+	type candidate struct {
+		iirID      string
+		yearLevel  int
+		courseCode string
+	}
+
+	var candidates []candidate
+	var err error
+
+	if req.SelectAllMatching {
+		rows, listErr := s.repo.ListStudents(
+			ctx,
+			req.Filters.Search,
+			0, 100000, // intentionally large: eligibility check only
+			"created_at DESC",
+			req.Filters.CourseID,
+			0,
+			req.Filters.YearLevel,
+			0,
+		)
+		if listErr != nil {
+			err = listErr
+		}
+		for _, r := range rows {
+			course, cErr := s.repo.GetCourseByID(ctx, r.CourseID)
+			if cErr != nil {
+				continue
+			}
+			candidates = append(candidates, candidate{
+				iirID:      r.IIRID,
+				yearLevel:  r.YearLevel,
+				courseCode: course.Code,
+			})
+		}
+	} else {
+		for _, id := range req.IIRIDs {
+			info, fetchErr := s.repo.GetStudentPersonalInfo(ctx, id)
+			if fetchErr != nil {
+				continue
+			}
+			course, fetchErr := s.repo.GetCourseByID(ctx, info.CourseID)
+			if fetchErr != nil {
+				continue
+			}
+			candidates = append(candidates, candidate{
+				iirID:      id,
+				yearLevel:  info.YearLevel,
+				courseCode: course.Code,
+			})
+		}
+	}
+	if err != nil {
+		return fmt.Errorf(
+			"[BulkUpdateStudentStatus] {Fetch Candidates}: %w", err,
+		)
+	}
+
+	var eligibleIDs []string
+	for _, c := range candidates {
+		// Honour explicit exclusions in SelectAllMatching mode.
+		excluded := false
+		for _, ex := range req.ExcludedIIRIDs {
+			if ex == c.iirID {
+				excluded = true
+				break
+			}
+		}
+		if excluded {
+			continue
+		}
+
+		code := strings.ToUpper(c.courseCode)
+		isDiploma := strings.HasPrefix(code, "D") &&
+			!strings.HasPrefix(code, "DS")
+		isBachelor := strings.HasPrefix(code, "BS")
+
+		eligible := (isDiploma && c.yearLevel == diplomaFinalYear) ||
+			(isBachelor && c.yearLevel == bachelorFinalYear)
+
+		if eligible {
+			eligibleIDs = append(eligibleIDs, c.iirID)
+		}
+	}
+
+	if len(eligibleIDs) == 0 {
+		return nil
+	}
+
+	// Override to the explicit eligible-only list.
+	req.SelectAllMatching = false
+	req.ExcludedIIRIDs = nil
+	req.IIRIDs = eligibleIDs
+
+	return s.repo.BulkUpdateStudentStatus(ctx, req)
 }

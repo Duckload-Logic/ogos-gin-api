@@ -58,6 +58,8 @@ var (
 	admissionSlipStatusesByName map[string]int
 	appointmentCategoryIDs      []int
 	admissionSlipCategoryIDs    []int
+	studentStatusIDs            []int
+	studentStatusByName         map[string]int
 	appointmentSlotMu           sync.Mutex
 	reservedAppointmentSlots    = make(map[string]struct{})
 )

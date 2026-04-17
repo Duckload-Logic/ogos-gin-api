@@ -373,13 +373,34 @@ func insertPersonalInfo(
 	studentIndex int,
 	emergencyContactID int,
 ) {
-	studentStatus := rand.Intn(2) % 2 // 0 or 1
+	// Select status based on weights
+	roll := rand.Float32()
+	var statusID int
+	var graduationYear sql.NullInt64
+
+	if roll < 0.80 {
+		statusID = studentStatusByName["active"]
+	} else if roll < 0.90 {
+		statusID = studentStatusByName["graduated"]
+		graduationYear = sql.NullInt64{
+			Int64: int64(time.Now().Year() - rand.Intn(5) - 1),
+			Valid: true,
+		}
+	} else if roll < 0.95 {
+		statusID = studentStatusByName["on leave"]
+	} else {
+		statusID = studentStatusByName["archived"]
+	}
+
 	isEmployed := studentIndex%2 == 0
+	yearLevel := rand.Intn(4) + 1
+	enrollmentYear := time.Now().Year() - yearLevel
+
 	studentNumber := fmt.Sprintf(
 		"%d-%05d-TG-%d",
-		time.Now().Year(),
+		enrollmentYear,
 		rand.Intn(100000),
-		studentStatus,
+		statusID,
 	)
 	var employerName, employerAddress sql.NullString
 	if isEmployed {
@@ -412,7 +433,7 @@ func insertPersonalInfo(
 		Complexion:      gofakeit.Color(),
 		HighSchoolGWA:   gofakeit.Float64Range(75, 98),
 		CourseID:        randomChoice(courseIDs).(int),
-		YearLevel:       rand.Intn(4) + 1,
+		YearLevel:       yearLevel,
 		Section:         rand.Intn(5) + 1,
 		PlaceOfBirth:    gofakeit.City(),
 		DateOfBirth:     dob.Format("2006-01-02"),
@@ -421,6 +442,8 @@ func insertPersonalInfo(
 		EmployerAddress: employerAddress,
 		MobileNumber:    mobileNumber,
 		TelephoneNumber: telephoneNumber,
+		StatusID:        statusID,
+		GraduationYear:  graduationYear,
 	}
 
 	err := studentsRepo.UpsertStudentPersonalInfo(ctx, tx, info)
