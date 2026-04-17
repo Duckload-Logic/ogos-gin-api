@@ -15,6 +15,7 @@ type ServiceInterface interface {
 	GetStudentSupportTypes(ctx context.Context) ([]StudentSupportType, error)
 	GetSiblingSupportTypes(ctx context.Context) ([]SibilingSupportType, error)
 	GetEducationalLevels(ctx context.Context) ([]EducationalLevel, error)
+	GetStudentStatuses(ctx context.Context) ([]StudentStatus, error)
 	GetCourses(ctx context.Context) ([]Course, error)
 	GetCivilStatusTypes(ctx context.Context) ([]CivilStatusType, error)
 	GetReligions(ctx context.Context) ([]Religion, error)
@@ -109,6 +110,11 @@ type ServiceInterface interface {
 		req ComprehensiveProfileDTO,
 	) (string, error)
 	GenerateIIR(ctx context.Context, iirID string) ([]byte, string, error)
+	IsStudentLocked(ctx context.Context, iirID string) (bool, error)
+	BulkUpdateStudentStatus(
+		ctx context.Context,
+		req BulkUpdateStatusRequest,
+	) error
 }
 
 type RepositoryInterface interface {
@@ -120,6 +126,7 @@ type RepositoryInterface interface {
 	GetIncomeRanges(ctx context.Context) ([]IncomeRange, error)
 	GetStudentSupportTypes(ctx context.Context) ([]StudentSupportType, error)
 	GetSiblingSupportTypes(ctx context.Context) ([]SibilingSupportType, error)
+	GetStudentStatuses(ctx context.Context) ([]StudentStatus, error)
 	GetEducationalLevels(ctx context.Context) ([]EducationalLevel, error)
 	GetCourses(ctx context.Context) ([]Course, error)
 	GetCivilStatusTypes(ctx context.Context) ([]CivilStatusType, error)
@@ -136,6 +143,7 @@ type RepositoryInterface interface {
 		courseID int,
 		genderID int,
 		yearLevel int,
+		statusID int,
 	) (int, error)
 	ListStudents(
 		ctx context.Context,
@@ -146,6 +154,7 @@ type RepositoryInterface interface {
 		courseID int,
 		genderID int,
 		yearLevel int,
+		statusID int,
 	) ([]StudentProfileView, error)
 	GetStudentBasicInfo(
 		ctx context.Context,
@@ -407,5 +416,10 @@ type RepositoryInterface interface {
 		ctx context.Context,
 		tx datastore.DB,
 		iirID string,
+	) error
+	IsStudentLocked(ctx context.Context, iirID string) (bool, error)
+	BulkUpdateStudentStatus(
+		ctx context.Context,
+		req BulkUpdateStatusRequest,
 	) error
 }
