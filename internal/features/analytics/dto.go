@@ -12,7 +12,8 @@ type DemographicStatDTO struct {
 }
 
 type DashboardResponseDTO struct {
-	TotalStudents int `json:"totalStudents"`
+	TotalStudents      int                  `json:"totalStudents"`
+	GenderDistribution []DemographicStatDTO `json:"genderDistribution"`
 
 	// Personal Information
 	AgeDistribution []DemographicStatDTO `json:"ageDistribution"`

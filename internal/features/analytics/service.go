@@ -21,8 +21,10 @@ func NewService(
 
 func (s *Service) GetDashboard(
 	ctx context.Context,
+	year int,
+	courseID int,
 ) (*DashboardResponseDTO, error) {
-	total, err := s.repo.GetTotalStudents(ctx)
+	total, err := s.repo.GetTotalStudents(ctx, year, courseID)
 	if err != nil {
 		return nil, err
 	}
@@ -44,56 +46,60 @@ func (s *Service) GetDashboard(
 		SeniorHigh:           []DemographicStatDTO{},
 		NatureOfSchooling:    []DemographicStatDTO{},
 		QuietStudyPlace:      []DemographicStatDTO{},
+		GenderDistribution:   []DemographicStatDTO{},
 	}
 
 	if total > 0 {
 		// Demographic data
-		rawAges, _ := s.repo.GetAgeStats(ctx)
+		rawGender, _ := s.repo.GetGenderStats(ctx, year, courseID)
+		dashboard.GenderDistribution = s.mapToDTO(rawGender, total)
+
+		rawAges, _ := s.repo.GetAgeStats(ctx, year, courseID)
 		dashboard.AgeDistribution = s.mapToDTO(rawAges, total)
 
-		rawCivilStatus, _ := s.repo.GetCivilStatusStats(ctx)
+		rawCivilStatus, _ := s.repo.GetCivilStatusStats(ctx, year, courseID)
 		dashboard.CivilStatus = s.mapToDTO(rawCivilStatus, total)
 
-		rawReligions, _ := s.repo.GetReligionStats(ctx)
+		rawReligions, _ := s.repo.GetReligionStats(ctx, year, courseID)
 		dashboard.Religions = s.mapToDTO(rawReligions, total)
 
-		rawCityAddress, _ := s.repo.GetCityAddressStats(ctx)
+		rawCityAddress, _ := s.repo.GetCityAddressStats(ctx, year, courseID)
 		dashboard.CityAddress = s.mapToDTO(rawCityAddress, total)
 
 		// Economic/Social data
-		rawMonthlyIncome, _ := s.repo.GetMonthlyIncomeStats(ctx)
+		rawMonthlyIncome, _ := s.repo.GetMonthlyIncomeStats(ctx, year, courseID)
 		dashboard.MonthlyIncome = s.mapToDTO(rawMonthlyIncome, total)
 
-		rawOrdinalPosition, _ := s.repo.GetOrdinalPositionStats(ctx)
+		rawOrdinalPosition, _ := s.repo.GetOrdinalPositionStats(ctx, year, courseID)
 		dashboard.OrdinalPosition = s.mapToDTO(rawOrdinalPosition, total)
 
-		rawQuietPlace, _ := s.repo.GetQuietStudyPlaceStats(ctx)
+		rawQuietPlace, _ := s.repo.GetQuietStudyPlaceStats(ctx, year, courseID)
 		dashboard.QuietStudyPlace = s.mapToDTO(rawQuietPlace, total)
 
 		// Family data
-		rawFatherEd, _ := s.repo.GetFatherEducationStats(ctx)
+		rawFatherEd, _ := s.repo.GetFatherEducationStats(ctx, year, courseID)
 		dashboard.FatherEducation = s.mapToDTO(rawFatherEd, total)
 
-		rawMotherEd, _ := s.repo.GetMotherEducationStats(ctx)
+		rawMotherEd, _ := s.repo.GetMotherEducationStats(ctx, year, courseID)
 		dashboard.MotherEducation = s.mapToDTO(rawMotherEd, total)
 
-		rawParentsMarital, _ := s.repo.GetParentsMaritalStatusStats(ctx)
+		rawParentsMarital, _ := s.repo.GetParentsMaritalStatusStats(ctx, year, courseID)
 		dashboard.ParentsMaritalStatus = s.mapToDTO(rawParentsMarital, total)
 
 		// Academic data
-		rawHSGWA, _ := s.repo.GetHSGWAStats(ctx)
+		rawHSGWA, _ := s.repo.GetHSGWAStats(ctx, year, courseID)
 		dashboard.HighSchoolGWA = s.mapToDTO(rawHSGWA, total)
 
-		rawElem, _ := s.repo.GetElementaryStats(ctx)
+		rawElem, _ := s.repo.GetElementaryStats(ctx, year, courseID)
 		dashboard.Elementary = s.mapToDTO(rawElem, total)
 
-		rawJHS, _ := s.repo.GetJuniorHighStats(ctx)
+		rawJHS, _ := s.repo.GetJuniorHighStats(ctx, year, courseID)
 		dashboard.JuniorHigh = s.mapToDTO(rawJHS, total)
 
-		rawSHS, _ := s.repo.GetSeniorHighStats(ctx)
+		rawSHS, _ := s.repo.GetSeniorHighStats(ctx, year, courseID)
 		dashboard.SeniorHigh = s.mapToDTO(rawSHS, total)
 
-		rawNature, _ := s.repo.GetNatureOfSchoolingStats(ctx)
+		rawNature, _ := s.repo.GetNatureOfSchoolingStats(ctx, year, courseID)
 		dashboard.NatureOfSchooling = s.mapToDTO(rawNature, total)
 	}
 
@@ -105,7 +111,7 @@ func (s *Service) GetAdminDashboard(
 	timeRange string,
 	source string,
 ) (*AdminDashboardResponseDTO, error) {
-	totalStudents, err := s.repo.GetTotalStudents(ctx)
+	totalStudents, err := s.repo.GetTotalStudents(ctx, 0, 0)
 	if err != nil {
 		return nil, err
 	}
