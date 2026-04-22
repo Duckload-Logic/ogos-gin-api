@@ -10,7 +10,7 @@ type TTL int
 
 const (
 	AccessTokenTTL  TTL = 60 * 60      // 1 hour
-	RefreshTokenTTL TTL = 60 * 60 * 12 // 12 hours
+	RefreshTokenTTL TTL = 60 * 60 * 12 // hours
 )
 
 type MeResponse struct {

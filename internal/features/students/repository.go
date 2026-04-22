@@ -2391,7 +2391,7 @@ func (r *Repository) IsStudentLocked(
 		return false, err
 	}
 
-	// Graduated, 4: Archived, 5: Withdrawn
+	// 2: Graduated, 4: Archived, 5: Withdrawn
 	if statusID == 2 || statusID == 4 || statusID == 5 {
 		return true, nil
 	}

@@ -1819,6 +1819,9 @@ func (s *Service) IsStudentLocked(
 // Diploma courses only qualify for graduation at year 3.
 // Bachelor programmes (BS* prefix) qualify at year 4.
 const (
+	diplomaPrefix  = "D"
+	bachelorPrefix = "BS"
+
 	diplomaFinalYear  = 3
 	bachelorFinalYear = 4
 

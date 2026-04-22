@@ -55,11 +55,6 @@ type ServiceInterface interface {
 		accessToken string,
 		cfg *config.Config,
 	) (*idp.IDPUserInfo, error)
-	ValidateIDPSession(
-		ctx context.Context,
-		sessionID string,
-		cfg *config.Config,
-	) (*idp.IDPSessionResponse, error)
 	BlockUser(ctx context.Context, userID string) error
 	UnblockUser(ctx context.Context, userID string) error
 }
@@ -76,4 +71,5 @@ type RepositoryInterface interface {
 	BlockUser(ctx context.Context, tx datastore.DB, userID string) error
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error
 	CheckUserWhitelist(ctx context.Context, email string) (int, error)
+	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 }
