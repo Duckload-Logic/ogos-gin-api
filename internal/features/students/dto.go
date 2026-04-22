@@ -108,15 +108,15 @@ type StudentPersonalInfoDTO struct {
 
 type BulkUpdateStatusRequest struct {
 	IIRIDs            []string `json:"iirIds"`
-	ExcludedIIRIDs   []string `json:"excludedIirIds"`
+	ExcludedIIRIDs    []string `json:"excludedIirIds"`
 	SelectAllMatching bool     `json:"selectAllMatching"`
-	StatusID         int      `json:"statusId" binding:"required"`
-	GraduationYear   *int     `json:"graduationYear,omitempty"`
-	Filters          struct {
-		Search    string `json:"search"`
-		CourseID  int    `json:"courseId"`
-		YearLevel int    `form:"yearLevel"`
-		EnrollYear int   `json:"enrollYear"`
+	StatusID          int      `json:"statusId"                 binding:"required"`
+	GraduationYear    *int     `json:"graduationYear,omitempty"`
+	Filters           struct {
+		Search     string `json:"search"`
+		CourseID   int    `json:"courseId"`
+		YearLevel  int    `form:"yearLevel"`
+		EnrollYear int    `json:"enrollYear"`
 	} `json:"filters"`
 }
 
