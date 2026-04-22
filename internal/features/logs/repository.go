@@ -2,11 +2,10 @@ package logs
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
@@ -22,13 +21,22 @@ func (r *Repository) GetDB() *sqlx.DB {
 	return r.db
 }
 
-// Record inserts a new system log entry
+func (r *Repository) WithTransaction(
+	ctx context.Context,
+	fn func(datastore.DB) error,
+) error {
+	return datastore.RunInTransaction(ctx, r.db, fn)
+}
+
 func (r *Repository) Record(
 	ctx context.Context,
 	tx datastore.DB,
 	log *SystemLog,
 ) error {
-	cols, vals := datastore.GetInsertStatement(log, []string{"created_at"})
+	dbModel := MapSystemLogToDB(*log)
+	cols, vals := datastore.GetInsertStatement(
+		&dbModel, []string{"created_at"},
+	)
 	query := fmt.Sprintf(`
 		INSERT INTO system_logs (%s)
 		VALUES (%s)
@@ -39,7 +47,7 @@ func (r *Repository) Record(
 		exec = r.db
 	}
 
-	_, err := exec.NamedExecContext(ctx, query, log)
+	_, err := exec.NamedExecContext(ctx, query, dbModel)
 	if err != nil {
 		return fmt.Errorf("failed to insert system log: %w", err)
 	}
@@ -47,7 +55,6 @@ func (r *Repository) Record(
 	return nil
 }
 
-// List retrieves system log entries with filtering and pagination
 func (r *Repository) List(
 	ctx context.Context, offset, limit int,
 	category, action, userEmail, targetType, targetEmail,
@@ -56,7 +63,7 @@ func (r *Repository) List(
 	query, args := r.applyLogFilters(
 		fmt.Sprintf(
 			"SELECT %s FROM system_logs WHERE 1=1",
-			datastore.GetColumns(&SystemLog{}),
+			datastore.GetColumns(&SystemLogDB{}),
 		),
 		nil,
 		category,
@@ -76,13 +83,13 @@ func (r *Repository) List(
 	query += fmt.Sprintf(" ORDER BY %s DESC LIMIT ? OFFSET ?", orderBy)
 	args = append(args, limit, offset)
 
-	var logs []SystemLog
+	var logs []SystemLogDB
 	err := r.db.SelectContext(ctx, &logs, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list system logs: %w", err)
 	}
 
-	return logs, nil
+	return MapSystemLogsToDomain(logs), nil
 }
 
 // GetTotalCount returns the total count of system log entries matching filters
@@ -165,7 +172,7 @@ func (r *Repository) applyLogFilters(
 func (r *Repository) GetStats(
 	ctx context.Context,
 	startDate, endDate string,
-) ([]LogStatsDTO, error) {
+) ([]audit.LogStatsDTO, error) {
 	query, args := r.applyLogFilters(
 		"SELECT category, COUNT(*) as count FROM system_logs WHERE 1=1",
 		nil,
@@ -174,7 +181,7 @@ func (r *Repository) GetStats(
 
 	query += " GROUP BY category ORDER BY category"
 
-	var stats []LogStatsDTO
+	var stats []audit.LogStatsDTO
 	err := r.db.SelectContext(ctx, &stats, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get log stats: %w", err)
@@ -186,9 +193,9 @@ func (r *Repository) GetStats(
 // GetActivityStats returns log counts grouped by hour for the last 24 hours
 func (r *Repository) GetActivityStats(
 	ctx context.Context,
-) ([]LogActivityDTO, error) {
+) ([]audit.LogActivityDTO, error) {
 	query := `
-		SELECT 
+		SELECT
 			DATE_FORMAT(created_at, '%Y-%m-%d %H:00') as time,
 			COUNT(CASE WHEN level != 'ERROR' THEN 1 END) as requests,
 			COUNT(CASE WHEN level = 'ERROR' THEN 1 END) as errors
@@ -198,25 +205,11 @@ func (r *Repository) GetActivityStats(
 		ORDER BY time ASC
 	`
 
-	var stats []LogActivityDTO
+	var stats []audit.LogActivityDTO
 	err := r.db.SelectContext(ctx, &stats, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get log activity stats: %w", err)
 	}
 
 	return stats, nil
-}
-
-// toNullString converts a value to sql.NullString
-func toNullString(v interface{}) sql.NullString {
-	if v == nil {
-		return sql.NullString{Valid: false}
-	}
-
-	bytes, err := json.Marshal(v)
-	if err != nil {
-		return sql.NullString{Valid: false}
-	}
-
-	return sql.NullString{String: string(bytes), Valid: true}
 }
