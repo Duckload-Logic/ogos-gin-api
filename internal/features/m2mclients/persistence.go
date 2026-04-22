@@ -5,7 +5,8 @@ import (
 	"time"
 )
 
-type M2MClient struct {
+// M2MClientDB represents the database model for the m2m_clients table.
+type M2MClientDB struct {
 	ID                int            `db:"id"`
 	UserID            string         `db:"user_id"`
 	ClientName        string         `db:"client_name"`

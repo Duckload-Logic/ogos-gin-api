@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,6 +13,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
@@ -43,20 +42,16 @@ func NewService(
 	}
 }
 
-// CreateClient creates a new M2M client, returns the client and plaintext
-// secret.
 func (s *Service) CreateClient(
 	ctx context.Context,
 	userID string,
 	req CreateM2MClientRequest,
 ) (*CreateM2MClientResponse, error) {
-	// Restriction: Only one active M2M client per developer account
 	existing, _ := s.repo.GetActiveByUserID(ctx, userID)
 	if existing != nil {
 		return nil, fmt.Errorf("developer already has an active m2m client")
 	}
 
-	// Generate a random 32-byte secret
 	rawSecret := make([]byte, 32)
 	if _, err := rand.Read(rawSecret); err != nil {
 		return nil, fmt.Errorf("failed to generate random secret: %w", err)
@@ -68,13 +63,13 @@ func (s *Service) CreateClient(
 
 	clientID := uuid.New().String()
 
-	var scopesJSON sql.NullString
+	var scopesStr string
 	if len(req.Scopes) > 0 {
 		b, _ := json.Marshal(req.Scopes)
-		scopesJSON = sql.NullString{String: string(b), Valid: true}
+		scopesStr = string(b)
 	}
 
-	var expiresAt sql.NullTime
+	var expiresAt structs.NullableTime
 	if req.ExpiresAt != nil {
 		t, err := time.Parse(time.RFC3339, *req.ExpiresAt)
 		if err != nil {
@@ -83,7 +78,7 @@ func (s *Service) CreateClient(
 				err,
 			)
 		}
-		expiresAt = sql.NullTime{Time: t, Valid: true}
+		expiresAt = structs.TimeToNullableTime(t)
 	}
 
 	client := M2MClient{
@@ -92,13 +87,13 @@ func (s *Service) CreateClient(
 		ClientID:          clientID,
 		ClientSecretHash:  secretHash,
 		ClientDescription: req.ClientDescription,
-		Scopes:            scopesJSON,
+		Scopes:            structs.StringToNullableString(scopesStr),
 		IsVerified:        false,
 		IsActive:          true,
 		ExpiresAt:         expiresAt,
 	}
 
-	id, err := s.repo.Create(ctx, s.repo.GetDB(), client)
+	id, err := s.repo.Create(ctx, nil, client)
 	if err != nil {
 		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 			Log: &audit.LogParams{
@@ -117,8 +112,8 @@ func (s *Service) CreateClient(
 		return nil, err
 	}
 
+	client.ID = id
 	dto := mapClientToDTO(client)
-	dto.ID = id
 
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
@@ -148,7 +143,6 @@ func (s *Service) CreateClient(
 	}, nil
 }
 
-// Authenticate validates client credentials and returns the client record.
 func (s *Service) Authenticate(
 	ctx context.Context,
 	clientID, clientSecret string,
@@ -177,11 +171,10 @@ func (s *Service) Authenticate(
 		return nil, fmt.Errorf("client has expired")
 	}
 
-	// Update last_used_at
 	go func() {
 		_ = s.repo.TouchLastUsed(
 			context.Background(),
-			s.repo.GetDB(),
+			nil,
 			client.ID,
 		)
 	}()
@@ -189,7 +182,6 @@ func (s *Service) Authenticate(
 	return client, nil
 }
 
-// IssueToken generates a new JWT and stores it in Redis as a session.
 func (s *Service) IssueToken(
 	ctx context.Context,
 	client *M2MClient,
@@ -206,10 +198,8 @@ func (s *Service) IssueToken(
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	// Set M2M marker in claims
 	claims.M2MClientID = client.ClientID
 
-	// Access Token session in Redis
 	accessSession := map[string]string{
 		"clientId":   client.ClientID,
 		"clientName": client.ClientName,
@@ -226,7 +216,6 @@ func (s *Service) IssueToken(
 		return nil, fmt.Errorf("failed to store m2m access session: %w", err)
 	}
 
-	// Refresh Token (24 hours)
 	refreshToken, rClaims, err := s.tokenService.GenerateToken(
 		client.ClientName,
 		"",
@@ -239,7 +228,6 @@ func (s *Service) IssueToken(
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
-	// Refresh Token session in Redis
 	refreshSession := map[string]string{
 		"clientId":   client.ClientID,
 		"clientName": client.ClientName,
@@ -263,18 +251,15 @@ func (s *Service) IssueToken(
 	}, nil
 }
 
-// RefreshToken validates a refresh token and issues a new pair.
 func (s *Service) RefreshToken(
 	ctx context.Context,
 	refreshToken string,
 ) (*M2MTokenResponse, error) {
-	// Validate the refresh token
 	claims, err := s.tokenService.ValidateToken(refreshToken)
 	if err != nil {
 		return nil, fmt.Errorf("invalid or expired refresh token")
 	}
 
-	// Check Redis session for this refresh token
 	session, err := s.sessionService.GetToken(ctx, sessions.NewJTI(claims.ID))
 	if err != nil {
 		return nil, fmt.Errorf("refresh session expired or revoked")
@@ -285,22 +270,18 @@ func (s *Service) RefreshToken(
 		return nil, fmt.Errorf("invalid session data")
 	}
 
-	// Fetch client from DB to ensure they are still active
 	client, err := s.repo.GetByClientID(ctx, clientID)
 	if err != nil || !client.IsActive {
 		return nil, fmt.Errorf("client is inactive or revoked")
 	}
 
-	// Issue new token pair
 	newTokens, err := s.IssueToken(ctx, client)
 	if err != nil {
 		return nil, err
 	}
 
-	// Revoke the OLD refresh token session
 	_ = s.sessionService.DeleteToken(ctx, sessions.NewJTI(claims.ID))
 
-	// Log the refresh event
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
 			Level:    audit.LevelInfo,
@@ -335,7 +316,6 @@ func (s *Service) ListClients(
 	for i, c := range clients {
 		dto := mapClientToDTO(c)
 
-		// Masking logic: Hide sensitive info if not verified and not superadmin
 		if roleID != int(constants.SuperAdminRoleID) && !c.IsVerified {
 			dto.ClientID = "********"
 			dto.Scopes = []string{"********"}
@@ -346,27 +326,25 @@ func (s *Service) ListClients(
 	return dtos, nil
 }
 
-// RegenerateSecret generates a new secret for an existing M2M client.
 func (s *Service) RegenerateSecret(
 	ctx context.Context,
 	id int,
 ) (string, error) {
-	// Generate a new random 32-byte secret
 	rawSecret := make([]byte, 32)
 	if _, err := rand.Read(rawSecret); err != nil {
 		return "", fmt.Errorf("failed to generate random secret: %w", err)
 	}
-	plaintextSecret := base64.URLEncoding.EncodeToString(rawSecret)
+	plaintextSecret := hex.EncodeToString(rawSecret)
 
-	// Hash the new secret
 	sum := sha256.Sum256([]byte(plaintextSecret))
 	secretHash := hex.EncodeToString(sum[:])
 
-	err := datastore.RunInTransaction(
+	err := s.repo.WithTransaction(
 		ctx,
-		s.repo.GetDB(),
 		func(tx datastore.DB) error {
-			if err := s.repo.UpdateSecret(ctx, tx, id, secretHash); err != nil {
+			if err := s.repo.UpdateSecret(
+				ctx, tx, id, secretHash,
+			); err != nil {
 				return err
 			}
 
@@ -402,11 +380,9 @@ func (s *Service) RegenerateSecret(
 	return plaintextSecret, nil
 }
 
-// RevokeClient deactivates an M2M client.
 func (s *Service) RevokeClient(ctx context.Context, id int) error {
-	return datastore.RunInTransaction(
+	return s.repo.WithTransaction(
 		ctx,
-		s.repo.GetDB(),
 		func(tx datastore.DB) error {
 			err := s.repo.Revoke(ctx, tx, id)
 			if err != nil {
@@ -461,19 +437,10 @@ func (s *Service) RevokeClient(ctx context.Context, id int) error {
 	)
 }
 
-// VerifyClient toggles the verified status of an M2M client.
 func (s *Service) VerifyClient(ctx context.Context, id int) error {
-	return datastore.RunInTransaction(
+	return s.repo.WithTransaction(
 		ctx,
-		s.repo.GetDB(),
 		func(tx datastore.DB) error {
-			// Get current status is not strictly necessary for a 단순 toggle
-			// but we use it for audit logging.
-			// However, the task implies a "Verification" endpoint, usually
-			// setting it to true. Let's make it a toggle for flexibility.
-
-			// For simplicity and following user request "VerifyClient",
-			// I'll set it to true.
 			err := s.repo.UpdateVerificationStatus(ctx, tx, id, true)
 			if err != nil {
 				return err
