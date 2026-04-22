@@ -9,12 +9,12 @@ import (
 
 type Service struct {
 	repo  RepositoryInterface
-	redis *datastore.RedisClient
+	redis datastore.RedisClientInterface
 }
 
 func NewService(
 	repo RepositoryInterface,
-	redis *datastore.RedisClient,
+	redis datastore.RedisClientInterface,
 ) *Service {
 	return &Service{repo: repo, redis: redis}
 }
@@ -70,7 +70,11 @@ func (s *Service) GetDashboard(
 		rawMonthlyIncome, _ := s.repo.GetMonthlyIncomeStats(ctx, year, courseID)
 		dashboard.MonthlyIncome = s.mapToDTO(rawMonthlyIncome, total)
 
-		rawOrdinalPosition, _ := s.repo.GetOrdinalPositionStats(ctx, year, courseID)
+		rawOrdinalPosition, _ := s.repo.GetOrdinalPositionStats(
+			ctx,
+			year,
+			courseID,
+		)
 		dashboard.OrdinalPosition = s.mapToDTO(rawOrdinalPosition, total)
 
 		rawQuietPlace, _ := s.repo.GetQuietStudyPlaceStats(ctx, year, courseID)
@@ -83,7 +87,11 @@ func (s *Service) GetDashboard(
 		rawMotherEd, _ := s.repo.GetMotherEducationStats(ctx, year, courseID)
 		dashboard.MotherEducation = s.mapToDTO(rawMotherEd, total)
 
-		rawParentsMarital, _ := s.repo.GetParentsMaritalStatusStats(ctx, year, courseID)
+		rawParentsMarital, _ := s.repo.GetParentsMaritalStatusStats(
+			ctx,
+			year,
+			courseID,
+		)
 		dashboard.ParentsMaritalStatus = s.mapToDTO(rawParentsMarital, total)
 
 		// Academic data
@@ -144,8 +152,8 @@ func (s *Service) GetAdminDashboard(
 
 	// Count live sessions (session: prefix)
 	liveSessions := 0
-	if s.redis != nil && s.redis.Client != nil {
-		keys, err := s.redis.Client.Keys(ctx, "session:*").Result()
+	if s.redis != nil {
+		keys, err := s.redis.Keys(ctx, "session:*")
 		if err == nil {
 			liveSessions = len(keys)
 		}
@@ -162,7 +170,7 @@ func (s *Service) GetAdminDashboard(
 }
 
 func (s *Service) mapToDTO(
-	rawStats []AggregatedStatModel,
+	rawStats []DemographicStat,
 	totalStudents int,
 ) []DemographicStatDTO {
 	dtos := make([]DemographicStatDTO, 0)
