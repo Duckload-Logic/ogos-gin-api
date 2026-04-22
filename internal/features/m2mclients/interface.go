@@ -37,6 +37,7 @@ type ServiceInterface interface {
 }
 
 type RepositoryInterface interface {
+	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 	GetDB() *sqlx.DB
 	Create(ctx context.Context, tx datastore.DB, client M2MClient) (int, error)
 	GetByClientID(ctx context.Context, clientID string) (*M2MClient, error)
