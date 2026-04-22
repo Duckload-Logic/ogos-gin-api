@@ -16,9 +16,7 @@ func NewHandler(service ServiceInterface) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) GetAnalyticsDashboard(c *gin.Context) {
-	ctx := c.Request.Context()
-
+func (h *Handler) GetDashboard(c *gin.Context) {
 	yearStr := c.DefaultQuery("year", "0")
 	courseIDStr := c.DefaultQuery("course_id", "0")
 
@@ -26,8 +24,13 @@ func (h *Handler) GetAnalyticsDashboard(c *gin.Context) {
 	fmt.Sscanf(yearStr, "%d", &year)
 	fmt.Sscanf(courseIDStr, "%d", &courseID)
 
-	dashboardData, err := h.service.GetDashboard(ctx, year, courseID)
+	dashboardData, err := h.service.GetDashboard(
+		c.Request.Context(),
+		year,
+		courseID,
+	)
 	if err != nil {
+		fmt.Printf("[GetDashboard] {Fetch Data}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to generate analytics dashboard",
@@ -41,12 +44,16 @@ func (h *Handler) GetAnalyticsDashboard(c *gin.Context) {
 }
 
 func (h *Handler) GetAdminDashboard(c *gin.Context) {
-	ctx := c.Request.Context()
 	timeRange := c.DefaultQuery("range", "monthly")
 	source := c.DefaultQuery("source", "appointments")
 
-	dashboardData, err := h.service.GetAdminDashboard(ctx, timeRange, source)
+	dashboardData, err := h.service.GetAdminDashboard(
+		c.Request.Context(),
+		timeRange,
+		source,
+	)
 	if err != nil {
+		fmt.Printf("[GetAdminDashboard] {Fetch Statistics}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to generate admin analytics dashboard",
