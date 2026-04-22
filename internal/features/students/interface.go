@@ -2,6 +2,7 @@ package students
 
 import (
 	"context"
+	"mime/multipart"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
@@ -10,7 +11,6 @@ import (
 type ServiceInterface interface {
 	GetGenders(ctx context.Context) ([]Gender, error)
 	GetParentalStatusTypes(ctx context.Context) ([]ParentalStatusType, error)
-	GetEnrollmentReasons(ctx context.Context) ([]EnrollmentReason, error)
 	GetIncomeRanges(ctx context.Context) ([]IncomeRange, error)
 	GetStudentSupportTypes(ctx context.Context) ([]StudentSupportType, error)
 	GetSiblingSupportTypes(ctx context.Context) ([]SibilingSupportType, error)
@@ -47,10 +47,6 @@ type ServiceInterface interface {
 		userID string,
 	) (*IIRRecord, error)
 	GetStudentIIR(ctx context.Context, iirID string) (*IIRRecord, error)
-	GetStudentEnrollmentReasons(
-		ctx context.Context,
-		iirID string,
-	) ([]StudentSelectedReasonDTO, error)
 	GetStudentPersonalInfo(
 		ctx context.Context,
 		iirID string,
@@ -115,14 +111,21 @@ type ServiceInterface interface {
 		ctx context.Context,
 		req BulkUpdateStatusRequest,
 	) error
+	SubmitCOR(
+		ctx context.Context,
+		userID string,
+		file *multipart.FileHeader,
+	) (string, error)
+	GetStudentCOR(ctx context.Context, userID string) (StudentCOR, error)
+	GetStudentCORs(ctx context.Context, userID string) ([]StudentCOR, error)
 }
 
 type RepositoryInterface interface {
+	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 	BeginTx(ctx context.Context) (datastore.DB, error)
 	GetDB() *sqlx.DB
 	GetGenders(ctx context.Context) ([]Gender, error)
 	GetParentalStatusTypes(ctx context.Context) ([]ParentalStatusType, error)
-	GetEnrollmentReasons(ctx context.Context) ([]EnrollmentReason, error)
 	GetIncomeRanges(ctx context.Context) ([]IncomeRange, error)
 	GetStudentSupportTypes(ctx context.Context) ([]StudentSupportType, error)
 	GetSiblingSupportTypes(ctx context.Context) ([]SibilingSupportType, error)
@@ -166,14 +169,6 @@ type RepositoryInterface interface {
 		userID string,
 	) (*IIRRecord, error)
 	GetStudentIIR(ctx context.Context, iirID string) (*IIRRecord, error)
-	GetStudentEnrollmentReasons(
-		ctx context.Context,
-		iirID string,
-	) ([]StudentSelectedReason, error)
-	GetEnrollmentReasonByID(
-		ctx context.Context,
-		reasonID int,
-	) (*EnrollmentReason, error)
 	GetStudentPersonalInfo(
 		ctx context.Context,
 		iirID string,
@@ -422,4 +417,7 @@ type RepositoryInterface interface {
 		ctx context.Context,
 		req BulkUpdateStatusRequest,
 	) error
+	SaveStudentCOR(ctx context.Context, tx datastore.DB, cor StudentCOR) error
+	GetStudentCORByUserID(ctx context.Context, userID string) (StudentCOR, error)
+	GetStudentCORsByUserID(ctx context.Context, userID string) ([]StudentCOR, error)
 }

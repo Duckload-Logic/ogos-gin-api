@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/pdf"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/files"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
@@ -29,6 +31,7 @@ type Service struct {
 	repo         RepositoryInterface
 	locationsSvc locations.ServiceInterface
 	userService  users.ServiceInterface
+	filesSvc     files.ServiceInterface
 	logService   audit.Logger
 	notifService audit.Notifier
 	cfg          *config.Config
@@ -40,20 +43,66 @@ func NewService(
 	repo RepositoryInterface,
 	locationsSvc locations.ServiceInterface,
 	userService users.ServiceInterface,
+	filesSvc files.ServiceInterface,
 	logService audit.Logger,
 	notifService audit.Notifier,
 	cfg *config.Config,
 	pdfService *pdf.Service,
-) *Service {
+) ServiceInterface {
 	return &Service{
 		repo:         repo,
 		locationsSvc: locationsSvc,
 		userService:  userService,
+		filesSvc:     filesSvc,
 		logService:   logService,
 		notifService: notifService,
 		cfg:          cfg,
 		pdfService:   pdfService,
 	}
+}
+
+// SubmitCOR uploads a Certificate of Registration and links it to the student.
+func (s *Service) SubmitCOR(
+	ctx context.Context,
+	userID string,
+	fileHeader *multipart.FileHeader,
+) (string, error) {
+	// Upload the file via the files service
+	// The files service will automatically trigger OCR for the "cors/" prefix
+	file, err := s.filesSvc.UploadFile(ctx, fileHeader, "cors/")
+	if err != nil {
+		return "", fmt.Errorf("[StudentService] {SubmitCOR Upload}: %w", err)
+	}
+
+	// Link the file to the student COR record
+	cor := StudentCOR{
+		FileID:    file.ID,
+		StudentID: userID,
+	}
+
+	err = s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
+		return s.repo.SaveStudentCOR(ctx, tx, cor)
+	})
+	if err != nil {
+		return "", fmt.Errorf("[StudentService] {SubmitCOR Save}: %w", err)
+	}
+
+	return file.ID, nil
+}
+
+func (s *Service) GetStudentCOR(
+	ctx context.Context,
+	userID string,
+) (StudentCOR, error) {
+	return s.repo.GetStudentCORByUserID(ctx, userID)
+}
+
+// GetStudentCORs retrieves all COR records for a specific student.
+func (s *Service) GetStudentCORs(
+	ctx context.Context,
+	userID string,
+) ([]StudentCOR, error) {
+	return s.repo.GetStudentCORsByUserID(ctx, userID)
 }
 
 // GetGenders retrieves all available gender types.
@@ -76,18 +125,6 @@ func (s *Service) GetParentalStatusTypes(
 	}
 
 	return statuses, nil
-}
-
-// GetEnrollmentReasons retrieves all available enrollment reason types.
-func (s *Service) GetEnrollmentReasons(
-	ctx context.Context,
-) ([]EnrollmentReason, error) {
-	reasons, err := s.repo.GetEnrollmentReasons(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get enrollment reasons: %w", err)
-	}
-
-	return reasons, nil
 }
 
 // GetIncomeRanges retrieves all available family income range types.
@@ -216,7 +253,9 @@ func (s *Service) GetStudentRelationshipTypes(
 }
 
 // GetStudentStatuses retrieves all available student statuses.
-func (s *Service) GetStudentStatuses(ctx context.Context) ([]StudentStatus, error) {
+func (s *Service) GetStudentStatuses(
+	ctx context.Context,
+) ([]StudentStatus, error) {
 	statuses, err := s.repo.GetStudentStatuses(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get student statuses: %w", err)
@@ -283,9 +322,9 @@ func (s *Service) ListStudents(
 				IIRID:         st.IIRID,
 				UserID:        st.UserID,
 				FirstName:     st.FirstName,
-				MiddleName:    structs.FromSqlNull(st.MiddleName),
+				MiddleName:    st.MiddleName,
 				LastName:      st.LastName,
-				SuffixName:    structs.FromSqlNull(st.SuffixName),
+				SuffixName:    st.SuffixName,
 				Gender:        *gender,
 				Email:         st.Email,
 				StudentNumber: st.StudentNumber,
@@ -293,8 +332,8 @@ func (s *Service) ListStudents(
 				Section:       st.Section,
 				YearLevel:     st.YearLevel,
 				Status: StudentStatus{
-					ID:         st.StatusID,
-					StatusName: st.StatusName,
+					ID:   st.StatusID,
+					Name: st.StatusName,
 				},
 			}
 		}(i, st)
@@ -484,7 +523,7 @@ func (s *Service) GetStudentBasicInfo(
 	basicInfo := &StudentBasicInfoViewDTO{
 		Email:      info.Email,
 		FirstName:  info.FirstName,
-		MiddleName: structs.FromSqlNull(info.MiddleName),
+		MiddleName: info.MiddleName,
 		LastName:   info.LastName,
 	}
 
@@ -537,38 +576,6 @@ func (s *Service) GetStudentIIR(
 	}
 
 	return iir, nil
-}
-
-// GetStudentEnrollmentReasons retrieves the reasons why a student enrolled.
-func (s *Service) GetStudentEnrollmentReasons(
-	ctx context.Context,
-	iirID string,
-) ([]StudentSelectedReasonDTO, error) {
-	selectedReasons, err := s.repo.GetStudentEnrollmentReasons(ctx, iirID)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get student enrollment reasons: %w",
-			err,
-		)
-	}
-
-	var reasons []StudentSelectedReasonDTO
-	for _, r := range selectedReasons {
-		reason, err := s.repo.GetEnrollmentReasonByID(ctx, r.ReasonID)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"failed to get enrollment reason by ID: %w",
-				err,
-			)
-		}
-
-		reasons = append(reasons, StudentSelectedReasonDTO{
-			Reason:          *reason,
-			OtherReasonText: r.OtherReasonText,
-		})
-	}
-
-	return reasons, nil
 }
 
 // GetStudentPersonalInfo retrieves detailed personal information for a student.
@@ -640,7 +647,7 @@ func (s *Service) GetStudentPersonalInfo(
 	emergencyContactDTO := EmergencyContactDTO{
 		ID:            emergencyContact.ID,
 		FirstName:     emergencyContact.FirstName,
-		MiddleName:    structs.FromSqlNull(emergencyContact.MiddleName),
+		MiddleName:    emergencyContact.MiddleName,
 		LastName:      emergencyContact.LastName,
 		ContactNumber: emergencyContact.ContactNumber,
 		Relationship:  *emergencyContactRelationship,
@@ -662,11 +669,11 @@ func (s *Service) GetStudentPersonalInfo(
 		Section:          personalInfo.Section,
 		PlaceOfBirth:     personalInfo.PlaceOfBirth,
 		DateOfBirth:      personalInfo.DateOfBirth,
-		TelephoneNumber:  structs.FromSqlNull(personalInfo.TelephoneNumber),
+		TelephoneNumber:  personalInfo.TelephoneNumber,
 		MobileNumber:     personalInfo.MobileNumber,
 		IsEmployed:       personalInfo.IsEmployed,
-		EmployerName:     structs.FromSqlNull(personalInfo.EmployerName),
-		EmployerAddress:  structs.FromSqlNull(personalInfo.EmployerAddress),
+		EmployerName:     personalInfo.EmployerName,
+		EmployerAddress:  personalInfo.EmployerAddress,
 		EmergencyContact: emergencyContactDTO,
 	}, nil
 }
@@ -755,17 +762,15 @@ func (s *Service) GetStudentFamilyBackground(
 		}
 
 		supportTypes = append(supportTypes, SibilingSupportType{
-			ID:          sibilingSupportType.ID,
-			SupportName: sibilingSupportType.SupportName,
+			ID:   sibilingSupportType.ID,
+			Name: sibilingSupportType.Name,
 		})
 	}
 
 	family = &FamilyBackgroundDTO{
-		ID:             studentFamily.ID,
-		ParentalStatus: *parentalStatus,
-		ParentalStatusDetails: structs.FromSqlNull(
-			studentFamily.ParentalStatusDetails,
-		),
+		ID:                    studentFamily.ID,
+		ParentalStatus:        *parentalStatus,
+		ParentalStatusDetails: studentFamily.ParentalStatusDetails,
 		Brothers:              &studentFamily.Brothers,
 		Sisters:               &studentFamily.Sisters,
 		EmployedSiblings:      &studentFamily.EmployedSiblings,
@@ -773,10 +778,8 @@ func (s *Service) GetStudentFamilyBackground(
 		HaveQuietPlaceToStudy: studentFamily.HaveQuietPlaceToStudy,
 		IsSharingRoom:         studentFamily.IsSharingRoom,
 		SiblingSupportTypes:   supportTypes,
-		RoomSharingDetails: structs.FromSqlNull(
-			studentFamily.RoomSharingDetails,
-		),
-		NatureOfResidence: *natureOfResidence,
+		RoomSharingDetails:    studentFamily.RoomSharingDetails,
+		NatureOfResidence:     *natureOfResidence,
 	}
 
 	return family, nil
@@ -821,18 +824,16 @@ func (s *Service) GetStudentRelatedPersons(
 			ID:               relatedPerson.ID,
 			FirstName:        relatedPerson.FirstName,
 			LastName:         relatedPerson.LastName,
-			MiddleName:       structs.FromSqlNull(relatedPerson.MiddleName),
+			MiddleName:       relatedPerson.MiddleName,
 			DateOfBirth:      relatedPerson.DateOfBirth,
 			EducationalLevel: relatedPerson.EducationalLevel,
-			Occupation:       structs.FromSqlNull(relatedPerson.Occupation),
-			EmployerName:     structs.FromSqlNull(relatedPerson.EmployerName),
-			EmployerAddress: structs.FromSqlNull(
-				relatedPerson.EmployerAddress,
-			),
-			Relationship: *relationship,
-			IsParent:     srp.IsParent,
-			IsGuardian:   srp.IsGuardian,
-			IsLiving:     srp.IsLiving,
+			Occupation:       relatedPerson.Occupation,
+			EmployerName:     relatedPerson.EmployerName,
+			EmployerAddress:  relatedPerson.EmployerAddress,
+			Relationship:     *relationship,
+			IsParent:         srp.IsParent,
+			IsGuardian:       srp.IsGuardian,
+			IsLiving:         srp.IsLiving,
 		})
 
 	}
@@ -880,19 +881,17 @@ func (s *Service) GetEducationalBackground(
 			SchoolType:       school.SchoolType,
 			YearStarted:      school.YearStarted,
 			YearCompleted:    school.YearCompleted,
-			Awards:           structs.FromSqlNull(school.Awards),
+			Awards:           school.Awards,
 		})
 	}
 
 	return &EducationalBackgroundDTO{
-		ID:                educationalBackground.ID,
-		NatureOfSchooling: educationalBackground.NatureOfSchooling,
-		InterruptedDetails: structs.FromSqlNull(
-			educationalBackground.InterruptedDetails,
-		),
-		School:    schoolDTOs,
-		CreatedAt: educationalBackground.CreatedAt,
-		UpdatedAt: educationalBackground.UpdatedAt,
+		ID:                 educationalBackground.ID,
+		NatureOfSchooling:  educationalBackground.NatureOfSchooling,
+		InterruptedDetails: educationalBackground.InterruptedDetails,
+		School:             schoolDTOs,
+		CreatedAt:          educationalBackground.CreatedAt,
+		UpdatedAt:          educationalBackground.UpdatedAt,
 	}, nil
 }
 
@@ -940,11 +939,9 @@ func (s *Service) GetStudentFinancialInfo(
 	return &StudentFinanceDTO{
 		ID:                       financialInfo.ID,
 		MonthlyFamilyIncomeRange: *incomeRange,
-		OtherIncomeDetails: structs.FromSqlNull(
-			financialInfo.OtherIncomeDetails,
-		),
-		FinancialSupportTypes: supportTypes,
-		WeeklyAllowance:       financialInfo.WeeklyAllowance,
+		OtherIncomeDetails:       financialInfo.OtherIncomeDetails,
+		FinancialSupportTypes:    supportTypes,
+		WeeklyAllowance:          financialInfo.WeeklyAllowance,
 	}, nil
 }
 
@@ -959,23 +956,15 @@ func (s *Service) GetStudentHealthRecord(
 	}
 
 	return &StudentHealthRecordDTO{
-		ID:               healthRecord.ID,
-		VisionHasProblem: healthRecord.VisionHasProblem,
-		VisionDetails: structs.FromSqlNull(
-			healthRecord.VisionDetails,
-		),
-		HearingHasProblem: healthRecord.HearingHasProblem,
-		HearingDetails: structs.FromSqlNull(
-			healthRecord.HearingDetails,
-		),
-		SpeechHasProblem: healthRecord.SpeechHasProblem,
-		SpeechDetails: structs.FromSqlNull(
-			healthRecord.SpeechDetails,
-		),
+		ID:                      healthRecord.ID,
+		VisionHasProblem:        healthRecord.VisionHasProblem,
+		VisionDetails:           healthRecord.VisionDetails,
+		HearingHasProblem:       healthRecord.HearingHasProblem,
+		HearingDetails:          healthRecord.HearingDetails,
+		SpeechHasProblem:        healthRecord.SpeechHasProblem,
+		SpeechDetails:           healthRecord.SpeechDetails,
 		GeneralHealthHasProblem: healthRecord.GeneralHealthHasProblem,
-		GeneralHealthDetails: structs.FromSqlNull(
-			healthRecord.GeneralHealthDetails,
-		),
+		GeneralHealthDetails:    healthRecord.GeneralHealthDetails,
 	}, nil
 }
 
@@ -995,8 +984,8 @@ func (s *Service) GetStudentConsultations(
 			ID:               c.ID,
 			ProfessionalType: c.ProfessionalType,
 			HasConsulted:     c.HasConsulted,
-			WhenDate:         structs.FromSqlNull(c.WhenDate),
-			ForWhat:          structs.FromSqlNull(c.ForWhat),
+			WhenDate:         c.WhenDate,
+			ForWhat:          c.ForWhat,
 		})
 	}
 
@@ -1029,9 +1018,9 @@ func (s *Service) GetStudentActivities(
 			activityDTOs[i] = StudentActivityDTO{
 				ID:                 a.ID,
 				ActivityOption:     *option,
-				OtherSpecification: structs.FromSqlNull(a.OtherSpecification),
+				OtherSpecification: a.OtherSpecification,
 				Role:               a.Role,
-				RoleSpecification:  structs.FromSqlNull(a.RoleSpecification),
+				RoleSpecification:  a.RoleSpecification,
 			}
 		}(i, a)
 	}
@@ -1182,9 +1171,8 @@ func (s *Service) SubmitStudentIIR(
 	req ComprehensiveProfileDTO,
 ) (string, error) {
 	var iirID string
-	err := datastore.RunInTransaction(
+	err := s.repo.WithTransaction(
 		ctx,
-		s.repo.GetDB(),
 		func(tx datastore.DB) error {
 			iirRecord := &IIRRecord{
 				ID:          uuid.New().String(),
@@ -1198,17 +1186,23 @@ func (s *Service) SubmitStudentIIR(
 			}
 
 			// Save Student Personal Info
-			if err := s.saveStudentPersonalInfo(ctx, tx, iirID, req.Student.StudentPersonalInfoDTO); err != nil {
+			if err := s.saveStudentPersonalInfo(
+				ctx, tx, iirID, req.Student.StudentPersonalInfoDTO,
+			); err != nil {
 				return err
 			}
 
 			// Save Student Addresses
-			if err := s.saveStudentAddresses(ctx, tx, iirID, req.Student.Addresses); err != nil {
+			if err := s.saveStudentAddresses(
+				ctx, tx, iirID, req.Student.Addresses,
+			); err != nil {
 				return err
 			}
 
 			// Save Educational Background
-			if err := s.saveEducationalBackground(ctx, tx, iirID, req.Education); err != nil {
+			if err := s.saveEducationalBackground(
+				ctx, tx, iirID, req.Education,
+			); err != nil {
 				return err
 			}
 
@@ -1224,7 +1218,9 @@ func (s *Service) SubmitStudentIIR(
 			}
 
 			// Save Financial Info
-			if err := s.saveStudentFinance(ctx, tx, iirID, req.Family.Finance); err != nil {
+			if err := s.saveStudentFinance(
+				ctx, tx, iirID, req.Family.Finance,
+			); err != nil {
 				return err
 			}
 
@@ -1339,31 +1335,25 @@ func (s *Service) saveStudentPersonalInfo(
 	dto StudentPersonalInfoDTO,
 ) error {
 	if err := s.repo.UpsertStudentPersonalInfo(ctx, tx, &StudentPersonalInfo{
-		IIRID:         iirID,
-		StudentNumber: dto.StudentNumber,
-		GenderID:      dto.Gender.ID,
-		CivilStatusID: dto.CivilStatus.ID,
-		ReligionID:    dto.Religion.ID,
-		HeightFt:      dto.HeightFt,
-		WeightKg:      dto.WeightKg,
-		Complexion:    dto.Complexion,
-		HighSchoolGWA: dto.HighSchoolGWA,
-		CourseID:      dto.Course.ID,
-		YearLevel:     dto.YearLevel,
-		Section:       dto.Section,
-		PlaceOfBirth:  dto.PlaceOfBirth,
-		DateOfBirth:   dto.DateOfBirth,
-		IsEmployed:    dto.IsEmployed,
-		EmployerName: structs.ToSqlNull(
-			dto.EmployerName,
-		),
-		EmployerAddress: structs.ToSqlNull(
-			dto.EmployerAddress,
-		),
-		MobileNumber: dto.MobileNumber,
-		TelephoneNumber: structs.ToSqlNull(
-			dto.TelephoneNumber,
-		),
+		IIRID:           iirID,
+		StudentNumber:   dto.StudentNumber,
+		GenderID:        dto.Gender.ID,
+		CivilStatusID:   dto.CivilStatus.ID,
+		ReligionID:      dto.Religion.ID,
+		HeightFt:        dto.HeightFt,
+		WeightKg:        dto.WeightKg,
+		Complexion:      dto.Complexion,
+		HighSchoolGWA:   dto.HighSchoolGWA,
+		CourseID:        dto.Course.ID,
+		YearLevel:       dto.YearLevel,
+		Section:         dto.Section,
+		PlaceOfBirth:    dto.PlaceOfBirth,
+		DateOfBirth:     dto.DateOfBirth,
+		IsEmployed:      dto.IsEmployed,
+		EmployerName:    dto.EmployerName,
+		EmployerAddress: dto.EmployerAddress,
+		MobileNumber:    dto.MobileNumber,
+		TelephoneNumber: dto.TelephoneNumber,
 	}); err != nil {
 		return fmt.Errorf("failed to upsert student personal info: %w", err)
 	}
@@ -1378,10 +1368,12 @@ func (s *Service) saveStudentPersonalInfo(
 		tx,
 		&locations.Address{
 			RegionCode:   ec.Address.Region.Code,
-			ProvinceCode: ecProvinceCode,
+			ProvinceCode: structs.PointerToNullableString(ecProvinceCode),
 			CityCode:     ec.Address.City.Code,
 			BarangayCode: ec.Address.Barangay.Code,
-			StreetDetail: &ec.Address.StreetDetail,
+			StreetDetail: structs.StringToNullableString(
+				ec.Address.StreetDetail,
+			),
 		},
 	)
 	if err != nil {
@@ -1391,7 +1383,7 @@ func (s *Service) saveStudentPersonalInfo(
 	if _, err := s.repo.UpsertEmergencyContact(ctx, tx, &EmergencyContact{
 		IIRID:          iirID,
 		FirstName:      ec.FirstName,
-		MiddleName:     structs.ToSqlNull(ec.MiddleName),
+		MiddleName:     ec.MiddleName,
 		LastName:       ec.LastName,
 		ContactNumber:  ec.ContactNumber,
 		RelationshipID: ec.Relationship.ID,
@@ -1419,10 +1411,12 @@ func (s *Service) saveStudentAddresses(
 			tx,
 			&locations.Address{
 				RegionCode:   addrDTO.Address.Region.Code,
-				ProvinceCode: addrProvinceCode,
+				ProvinceCode: structs.PointerToNullableString(addrProvinceCode),
 				CityCode:     addrDTO.Address.City.Code,
 				BarangayCode: addrDTO.Address.Barangay.Code,
-				StreetDetail: &addrDTO.Address.StreetDetail,
+				StreetDetail: structs.StringToNullableString(
+					addrDTO.Address.StreetDetail,
+				),
 			},
 		)
 		if err != nil {
@@ -1453,11 +1447,9 @@ func (s *Service) saveEducationalBackground(
 		ctx,
 		tx,
 		&EducationalBackground{
-			IIRID:             iirID,
-			NatureOfSchooling: dto.NatureOfSchooling,
-			InterruptedDetails: structs.ToSqlNull(
-				dto.InterruptedDetails,
-			),
+			IIRID:              iirID,
+			NatureOfSchooling:  dto.NatureOfSchooling,
+			InterruptedDetails: dto.InterruptedDetails,
 		},
 	)
 	if err != nil {
@@ -1477,7 +1469,7 @@ func (s *Service) saveEducationalBackground(
 			SchoolType:         schoolDTO.SchoolType,
 			YearStarted:        schoolDTO.YearStarted,
 			YearCompleted:      schoolDTO.YearCompleted,
-			Awards:             structs.ToSqlNull(schoolDTO.Awards),
+			Awards:             schoolDTO.Awards,
 		}); err != nil {
 			return fmt.Errorf("failed to save school details: %w", err)
 		}
@@ -1495,21 +1487,17 @@ func (s *Service) saveFamilyBackground(
 		ctx,
 		tx,
 		&FamilyBackground{
-			IIRID:            iirID,
-			ParentalStatusID: dto.Family.FamilyBackgroundDTO.ParentalStatus.ID,
-			ParentalStatusDetails: structs.ToSqlNull(
-				dto.Family.FamilyBackgroundDTO.ParentalStatusDetails,
-			),
+			IIRID:                 iirID,
+			ParentalStatusID:      dto.Family.FamilyBackgroundDTO.ParentalStatus.ID,
+			ParentalStatusDetails: dto.Family.FamilyBackgroundDTO.ParentalStatusDetails,
 			Brothers:              *dto.Family.FamilyBackgroundDTO.Brothers,
 			Sisters:               *dto.Family.FamilyBackgroundDTO.Sisters,
 			EmployedSiblings:      *dto.Family.FamilyBackgroundDTO.EmployedSiblings,
 			OrdinalPosition:       dto.Family.FamilyBackgroundDTO.OrdinalPosition,
 			HaveQuietPlaceToStudy: dto.Family.FamilyBackgroundDTO.HaveQuietPlaceToStudy,
 			IsSharingRoom:         dto.Family.FamilyBackgroundDTO.IsSharingRoom,
-			RoomSharingDetails: structs.ToSqlNull(
-				dto.Family.FamilyBackgroundDTO.RoomSharingDetails,
-			),
-			NatureOfResidenceId: dto.Family.FamilyBackgroundDTO.NatureOfResidence.ID,
+			RoomSharingDetails:    dto.Family.FamilyBackgroundDTO.RoomSharingDetails,
+			NatureOfResidenceId:   dto.Family.FamilyBackgroundDTO.NatureOfResidence.ID,
 		},
 	)
 	if err != nil {
@@ -1525,11 +1513,16 @@ func (s *Service) saveFamilyBackground(
 		return fmt.Errorf("failed to delete existing sibling supports: %w", err)
 	}
 
-	for _, supportType := range dto.Family.FamilyBackgroundDTO.SiblingSupportTypes {
-		if err := s.repo.CreateStudentSiblingSupport(ctx, tx, &StudentSiblingSupport{
-			FamilyBackgroundID: fbID,
-			SupportTypeID:      supportType.ID,
-		}); err != nil {
+	for _, supportType := range dto.Family.FamilyBackgroundDTO.
+		SiblingSupportTypes {
+		if err := s.repo.CreateStudentSiblingSupport(
+			ctx,
+			tx,
+			&StudentSiblingSupport{
+				FamilyBackgroundID: fbID,
+				SupportTypeID:      supportType.ID,
+			},
+		); err != nil {
 			return fmt.Errorf("failed to save sibling support: %w", err)
 		}
 	}
@@ -1544,22 +1537,14 @@ func (s *Service) saveFamilyBackground(
 			ctx,
 			tx,
 			&RelatedPerson{
-				FirstName: relPersonDTO.FirstName,
-				LastName:  relPersonDTO.LastName,
-				MiddleName: structs.ToSqlNull(
-					relPersonDTO.MiddleName,
-				),
+				FirstName:        relPersonDTO.FirstName,
+				LastName:         relPersonDTO.LastName,
+				MiddleName:       relPersonDTO.MiddleName,
 				DateOfBirth:      relPersonDTO.DateOfBirth,
 				EducationalLevel: relPersonDTO.EducationalLevel,
-				Occupation: structs.ToSqlNull(
-					relPersonDTO.Occupation,
-				),
-				EmployerName: structs.ToSqlNull(
-					relPersonDTO.EmployerName,
-				),
-				EmployerAddress: structs.ToSqlNull(
-					relPersonDTO.EmployerAddress,
-				),
+				Occupation:       relPersonDTO.Occupation,
+				EmployerName:     relPersonDTO.EmployerName,
+				EmployerAddress:  relPersonDTO.EmployerAddress,
 			},
 		)
 		if err != nil {
@@ -1598,15 +1583,17 @@ func (s *Service) saveStudentHealthRecord(
 		ctx,
 		tx,
 		&StudentHealthRecord{
-			IIRID:                   iirID,
-			VisionHasProblem:        dto.Health.StudentHealthRecordDTO.VisionHasProblem,
-			VisionDetails:           structs.ToSqlNull(dto.Health.StudentHealthRecordDTO.VisionDetails),
-			HearingHasProblem:       dto.Health.StudentHealthRecordDTO.HearingHasProblem,
-			HearingDetails:          structs.ToSqlNull(dto.Health.StudentHealthRecordDTO.HearingDetails),
-			SpeechHasProblem:        dto.Health.StudentHealthRecordDTO.SpeechHasProblem,
-			SpeechDetails:           structs.ToSqlNull(dto.Health.StudentHealthRecordDTO.SpeechDetails),
-			GeneralHealthHasProblem: dto.Health.StudentHealthRecordDTO.GeneralHealthHasProblem,
-			GeneralHealthDetails:    structs.ToSqlNull(dto.Health.StudentHealthRecordDTO.GeneralHealthDetails),
+			IIRID:             iirID,
+			VisionHasProblem:  dto.Health.StudentHealthRecordDTO.VisionHasProblem,
+			VisionDetails:     dto.Health.StudentHealthRecordDTO.VisionDetails,
+			HearingHasProblem: dto.Health.StudentHealthRecordDTO.HearingHasProblem,
+			HearingDetails:    dto.Health.StudentHealthRecordDTO.HearingDetails,
+			SpeechHasProblem:  dto.Health.StudentHealthRecordDTO.SpeechHasProblem,
+			SpeechDetails:     dto.Health.StudentHealthRecordDTO.SpeechDetails,
+			GeneralHealthHasProblem: dto.Health.
+				StudentHealthRecordDTO.GeneralHealthHasProblem,
+			GeneralHealthDetails: dto.Health.
+				StudentHealthRecordDTO.GeneralHealthDetails,
 		},
 	); err != nil {
 		return fmt.Errorf("failed to upsert student health record: %w", err)
@@ -1618,8 +1605,8 @@ func (s *Service) saveStudentHealthRecord(
 			IIRID:            iirID,
 			ProfessionalType: consultationDTO.ProfessionalType,
 			HasConsulted:     consultationDTO.HasConsulted,
-			WhenDate:         structs.ToSqlNull(consultationDTO.WhenDate),
-			ForWhat:          structs.ToSqlNull(consultationDTO.ForWhat),
+			WhenDate:         consultationDTO.WhenDate,
+			ForWhat:          consultationDTO.ForWhat,
 		}); err != nil {
 			return fmt.Errorf("failed to save student consultation: %w", err)
 		}
@@ -1640,10 +1627,8 @@ func (s *Service) saveStudentFinance(
 		&StudentFinance{
 			IIRID:                      iirID,
 			MonthlyFamilyIncomeRangeID: dto.MonthlyFamilyIncomeRange.ID,
-			OtherIncomeDetails: structs.ToSqlNull(
-				dto.OtherIncomeDetails,
-			),
-			WeeklyAllowance: dto.WeeklyAllowance,
+			OtherIncomeDetails:         dto.OtherIncomeDetails,
+			WeeklyAllowance:            dto.WeeklyAllowance,
 		},
 	)
 	if err != nil {
@@ -1696,15 +1681,16 @@ func (s *Service) saveStudentInterests(
 	}
 
 	for _, activityDTO := range dto.Interests.Activities {
-		if activityDTO.ActivityOption.ID == 0 || strings.TrimSpace(activityDTO.Role) == "" {
+		if activityDTO.ActivityOption.ID == 0 ||
+			strings.TrimSpace(activityDTO.Role) == "" {
 			continue
 		}
 		if _, err := s.repo.CreateStudentActivity(ctx, tx, &StudentActivity{
 			IIRID:              iirID,
 			OptionID:           activityDTO.ActivityOption.ID,
-			OtherSpecification: structs.ToSqlNull(activityDTO.OtherSpecification),
+			OtherSpecification: activityDTO.OtherSpecification,
 			Role:               activityDTO.Role,
-			RoleSpecification:  structs.ToSqlNull(activityDTO.RoleSpecification),
+			RoleSpecification:  activityDTO.RoleSpecification,
 		}); err != nil {
 			return fmt.Errorf("failed to save student activity: %w", err)
 		}
@@ -1822,7 +1808,10 @@ func (s *Service) GetFormattedDate(date string) string {
 
 // IsStudentLocked checks if a student's record is locked from further
 // appointments or slips.
-func (s *Service) IsStudentLocked(ctx context.Context, iirID string) (bool, error) {
+func (s *Service) IsStudentLocked(
+	ctx context.Context,
+	iirID string,
+) (bool, error) {
 	return s.repo.IsStudentLocked(ctx, iirID)
 }
 
@@ -1830,9 +1819,6 @@ func (s *Service) IsStudentLocked(ctx context.Context, iirID string) (bool, erro
 // Diploma courses only qualify for graduation at year 3.
 // Bachelor programmes (BS* prefix) qualify at year 4.
 const (
-	diplomaPrefix  = "D"
-	bachelorPrefix = "BS"
-
 	diplomaFinalYear  = 3
 	bachelorFinalYear = 4
 

@@ -17,7 +17,7 @@ func RegisterRoutes(
 	// Root group: /api/v1/students
 	routes := rg.Group("/students")
 	routes.Use(middleware.AuthMiddleware(redis))
-	routes.Use(middleware.HydrateStudentContext(db))
+	routes.Use(middleware.HydrateStudentIIRContext(db))
 
 	// Define lookups
 	userResourceLookup := middleware.OwnershipMiddleware(db, "userID")
@@ -30,7 +30,6 @@ func RegisterRoutes(
 		lookupRoutes.GET("/genders", h.GetGenders)
 		lookupRoutes.GET("/religions", h.GetReligions)
 		lookupRoutes.GET("/parental-status-types", h.GetParentalStatusTypes)
-		lookupRoutes.GET("/enrollment-reasons", h.GetEnrollmentReasons)
 		lookupRoutes.GET("/income-ranges", h.GetIncomeRanges)
 		lookupRoutes.GET("/activity-options", h.GetActivityOptions)
 		lookupRoutes.GET("/support-types", h.GetStudentSupportTypes)
@@ -56,7 +55,7 @@ func RegisterRoutes(
 	))
 	{
 		counselorRoutes.GET("/records", h.GetStudentList)
-		counselorRoutes.PATCH("/records/bulk-status", h.PatchStudentBulkStatus)
+		counselorRoutes.PATCH("/records/bulk-status", h.PatchStudentStatusBulk)
 	}
 
 	userRoutes := inventoryRoutes.Group("/")
@@ -86,11 +85,6 @@ func RegisterRoutes(
 			h.GetStudentBasicInfo,
 		)
 		userRoutes.GET(
-			"/records/iir/:iirID/enrollment-reasons",
-			iirResourceLookup,
-			h.GetStudentEnrollmentReasons,
-		)
-		userRoutes.GET(
 			"/records/iir/:iirID/personal-info",
 			iirResourceLookup,
 			h.GetStudentPersonalInfo,
@@ -113,7 +107,7 @@ func RegisterRoutes(
 		userRoutes.GET(
 			"/records/iir/:iirID/education",
 			iirResourceLookup,
-			h.GetEducationalBackground,
+			h.GetStudentEducationalBackground,
 		)
 		userRoutes.GET(
 			"/records/iir/:iirID/finance",
@@ -153,7 +147,7 @@ func RegisterRoutes(
 		userRoutes.GET(
 			"/records/iir/:iirID/download",
 			iirResourceLookup,
-			h.GenerateIIR,
+			h.GetStudentIIRPDF,
 		)
 	}
 
@@ -162,9 +156,17 @@ func RegisterRoutes(
 		int(constants.StudentRoleID),
 	))
 	{
-		studentRoutes.GET("/records/iir/draft", h.GetIIRDraft)
-		studentRoutes.POST("/records/iir/draft", h.PostIIRDraft)
+		studentRoutes.GET("/records/iir/draft", h.GetStudentIIRDraft)
+		studentRoutes.POST("/records/iir/draft", h.PostStudentIIRDraft)
 
-		studentRoutes.POST("/records/iir", h.PostIIR)
+		studentRoutes.POST("/records/iir", h.PostStudentIIR)
+
+		// COR management
+		studentRoutes.POST("/cors", h.PostStudentCOR)
+		studentRoutes.GET("/cors/user/:userID", h.GetStudentCORByUserID)
+		studentRoutes.GET("/cors", h.GetStudentCORs)
 	}
+
+	// Counselor view of CORs
+	counselorRoutes.GET("/cors/user/:userID/current", h.GetStudentCORByUserID)
 }
