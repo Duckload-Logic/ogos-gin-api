@@ -70,15 +70,15 @@ func (s *Service) GetAddressByID(
 
 	addrDTO := AddressDTO{
 		ID:           addr.ID,
-		StreetDetail: *addr.StreetDetail,
+		StreetDetail: addr.StreetDetail.String,
 		Barangay:     *barangay,
 		City:         *city,
 		Region:       *region,
 	}
 
 	// Province is optional (e.g. NCR has no provinces)
-	if addr.ProvinceCode != nil && *addr.ProvinceCode != "" {
-		province, err := s.repo.GetProvinceByCode(ctx, *addr.ProvinceCode)
+	if addr.ProvinceCode.Valid && addr.ProvinceCode.String != "" {
+		province, err := s.repo.GetProvinceByCode(ctx, addr.ProvinceCode.String)
 		if err != nil {
 			return AddressDTO{}, err
 		}
