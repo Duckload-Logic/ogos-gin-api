@@ -251,6 +251,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	}
 
 	ip := c.ClientIP()
+	ua := c.Request.UserAgent()
 	// Refresh using the JTI
 	newAccessToken, newRefreshToken, err := h.service.RefreshToken(
 		c,
