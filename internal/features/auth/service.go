@@ -16,6 +16,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
@@ -27,15 +28,15 @@ import (
 
 type Service struct {
 	repo           RepositoryInterface
-	idpClient      *idp.IDPClient
-	redis          *datastore.RedisClient
+	idpClient      idp.IDPClientInterface
+	redis          datastore.RedisClientInterface
 	sessionService *sessions.Service
 	emailer        email.Emailer
 }
 
 func NewService(
 	repo RepositoryInterface,
-	redis *datastore.RedisClient,
+	redis datastore.RedisClientInterface,
 	sessionService *sessions.Service,
 	emailer email.Emailer,
 ) *Service {
@@ -60,7 +61,7 @@ func (s *Service) RegisterUser(
 		string(constants.AuthTypeNative),
 	)
 	if existingUser != nil {
-		return "", errors.New("user already exists")
+		return "", fmt.Errorf("user already exists: %s", req.Email)
 	}
 
 	// Hash password
@@ -74,27 +75,18 @@ func (s *Service) RegisterUser(
 
 	transactionID := uuid.NewString()
 
-	// Create user object
+	// Create user object in Domain format
 	user := users.User{
-		ID:        uuid.NewString(),
-		Email:     req.Email,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		MiddleName: sql.NullString{
-			String: req.MiddleName,
-			Valid:  req.MiddleName != "",
-		},
-		SuffixName: sql.NullString{
-			String: req.SuffixName,
-			Valid:  req.SuffixName != "",
-		},
-		PasswordHash: sql.NullString{
-			String: string(hashedPassword),
-			Valid:  true,
-		},
-		RoleID:   int(constants.DeveloperRoleID),
-		AuthType: string(constants.AuthTypeNative),
-		IsActive: 0,
+		ID:           uuid.NewString(),
+		Email:        req.Email,
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		MiddleName:   structs.StringToNullableString(req.MiddleName),
+		SuffixName:   structs.StringToNullableString(req.SuffixName),
+		PasswordHash: structs.StringToNullableString(string(hashedPassword)),
+		RoleID:       int(constants.DeveloperRoleID),
+		AuthType:     string(constants.AuthTypeNative),
+		IsActive:     false,
 	}
 
 	verificationOTP, err := s.get6DigitOTP()
@@ -222,7 +214,7 @@ func (s *Service) get6DigitOTP() (string, error) {
 func (s *Service) validateEmailDomain(email string) error {
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 {
-		return errors.New("invalid email format")
+		return fmt.Errorf("invalid email format")
 	}
 	domain := parts[1]
 	mx, err := net.LookupMX(domain)
@@ -241,7 +233,7 @@ func (s *Service) sendVerificationEmail(
 		return fmt.Errorf("failed to send verification email: %v", err)
 	}
 	if !isSent {
-		return errors.New("failed to send verification email")
+		return fmt.Errorf("failed to send verification email: %v", err)
 	}
 
 	return nil
@@ -264,12 +256,12 @@ func (s *Service) VerifyUser(
 		[]byte(verificationOTP),
 	)
 	if err != nil {
-		return "", "", errors.New("invalid credentials")
+		return "", "", fmt.Errorf("invalid credentials: %v", err)
 	}
 
 	var storageData struct {
-		User         users.User     `json:"user"`
-		PasswordHash sql.NullString `json:"passwordHash"`
+		User         users.User             `json:"user"`
+		PasswordHash structs.NullableString `json:"passwordHash"`
 	}
 
 	err = json.Unmarshal([]byte(val["user"]), &storageData)
@@ -280,12 +272,11 @@ func (s *Service) VerifyUser(
 	user := storageData.User
 	user.PasswordHash = storageData.PasswordHash
 
-	user.IsActive = 1
+	user.IsActive = true
 
 	// Run in transaction
-	err = datastore.RunInTransaction(
+	err = s.repo.WithTransaction(
 		ctx,
-		s.repo.(*users.Repository).GetDB(),
 		func(tx datastore.DB) error {
 			return s.repo.CreateUser(ctx, tx, user)
 		},
@@ -308,23 +299,23 @@ func (s *Service) AuthenticateUser(
 		string(constants.AuthTypeNative),
 	)
 	if err != nil {
-		return "", "", "", errors.New("Invalid credentials")
+		return "", "", "", fmt.Errorf("invalid credentials: %v", err)
 	}
 
-	if user.IsActive == 0 {
-		return "", "", "", errors.New("User is not active")
+	if !user.IsActive {
+		return "", "", "", fmt.Errorf("user is not active: %v", err)
 	}
 
 	// Compare hashed password
 	if !user.PasswordHash.Valid {
-		return "", "", "", errors.New("Invalid credentials")
+		return "", "", "", fmt.Errorf("invalid credentials: %v", err)
 	}
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash.String),
 		[]byte(password),
 	)
 	if err != nil {
-		return "", "", "", errors.New("Invalid credentials")
+		return "", "", "", fmt.Errorf("invalid credentials: %v", err)
 	}
 
 	// Generate the token
@@ -337,7 +328,7 @@ func (s *Service) AuthenticateUser(
 		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", errors.New("Failed to generate session")
+		return "", "", "", fmt.Errorf("failed to generate session: %v", err)
 	}
 
 	// Generate refresh token
@@ -350,7 +341,9 @@ func (s *Service) AuthenticateUser(
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", errors.New("Failed to generate refresh token")
+		return "", "", "", fmt.Errorf(
+			"failed to generate refresh token: %v", err,
+		)
 	}
 
 	// Store in Redis using the Token ID (jti)
@@ -369,7 +362,7 @@ func (s *Service) AuthenticateUser(
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", fmt.Errorf("Failed to store token in redis: %v", err)
+		return "", "", "", fmt.Errorf("failed to store token in redis: %v", err)
 	}
 
 	return user.ID, token, refreshToken, nil
@@ -385,18 +378,18 @@ func (s *Service) RefreshToken(
 	// Get session from Redis
 	session, err := s.sessionService.GetToken(ctx, accessTokenJTI)
 	if err != nil {
-		return "", "", errors.New("Session expired or invalid")
+		return "", "", fmt.Errorf("session expired or invalid: %v", err)
 	}
 
 	refreshToken := session["appRefreshToken"]
 	if refreshToken == "" {
-		return "", "", errors.New("Refresh token missing from session")
+		return "", "", fmt.Errorf("refresh token missing from session: %v", err)
 	}
 
 	// Validate App Refresh Token
 	claims, err := tokens.NewService().ValidateToken(refreshToken)
 	if err != nil {
-		return "", "", errors.New("Invalid refresh token")
+		return "", "", fmt.Errorf("invalid refresh token: %v", err)
 	}
 
 	// Check token type
@@ -713,7 +706,10 @@ func (s *Service) PostIDPTokenExchange(
 
 	// Whitelist Check: Authoritative role source for IDP users.
 	// We check this on every login to support dynamic role changes (promotions).
-	whitelistRoleID, whitelistErr := s.repo.CheckUserWhitelist(ctx, userInfo.Email)
+	whitelistRoleID, whitelistErr := s.repo.CheckUserWhitelist(
+		ctx,
+		userInfo.Email,
+	)
 	log.Printf("whitelistRoleID: %v", whitelistRoleID)
 	log.Printf("whitelistErr: %v", whitelistErr)
 
@@ -747,23 +743,19 @@ func (s *Service) PostIDPTokenExchange(
 	case sql.ErrNoRows:
 		// JIT Provisioning (First Login Only)
 		localUser = &users.User{
-			ID:        uuid.NewString(),
-			Email:     userInfo.Email,
-			RoleID:    assignedRoleID,
-			FirstName: userInfo.FirstName,
-			LastName:  userInfo.LastName,
-			SuffixName: sql.NullString{
-				String: userInfo.SuffixName,
-				Valid:  userInfo.SuffixName != "",
-			},
+			ID:           uuid.NewString(),
+			Email:        userInfo.Email,
+			RoleID:       assignedRoleID,
+			FirstName:    userInfo.FirstName,
+			LastName:     userInfo.LastName,
+			SuffixName:   structs.StringToNullableString(userInfo.SuffixName),
 			AuthType:     string(constants.AuthTypeIDP),
-			PasswordHash: sql.NullString{Valid: false},
-			IsActive:     1,
+			PasswordHash: structs.NullableString{Valid: false},
+			IsActive:     true,
 		}
 
-		err = datastore.RunInTransaction(
+		err = s.repo.WithTransaction(
 			ctx,
-			s.repo.(*users.Repository).GetDB(),
 			func(tx datastore.DB) error {
 				return s.repo.CreateUser(ctx, tx, *localUser)
 			},
@@ -778,9 +770,8 @@ func (s *Service) PostIDPTokenExchange(
 		// User exists. Sync role if it changed in the whitelist
 		if localUser.RoleID != assignedRoleID {
 			localUser.RoleID = assignedRoleID
-			err = datastore.RunInTransaction(
+			err = s.repo.WithTransaction(
 				ctx,
-				s.repo.(*users.Repository).GetDB(),
 				func(tx datastore.DB) error {
 					return s.repo.CreateUser(ctx, tx, *localUser)
 				},
@@ -906,19 +897,9 @@ func (s *Service) GetIDPUserInfo(
 	return userInfo, nil
 }
 
-// ValidateIDPSession checks if the provided session ID is valid on the IDP.
-func (s *Service) ValidateIDPSession(
-	ctx context.Context,
-	sessionID string,
-	cfg *config.Config,
-) (*idp.IDPSessionResponse, error) {
-	return s.idpClient.ValidateSession(ctx, sessionID, cfg)
-}
-
 func (s *Service) BlockUser(ctx context.Context, userID string) error {
-	return datastore.RunInTransaction(
+	return s.repo.WithTransaction(
 		ctx,
-		s.repo.(*users.Repository).GetDB(),
 		func(tx datastore.DB) error {
 			return s.repo.BlockUser(ctx, tx, userID)
 		},
@@ -926,9 +907,8 @@ func (s *Service) BlockUser(ctx context.Context, userID string) error {
 }
 
 func (s *Service) UnblockUser(ctx context.Context, userID string) error {
-	return datastore.RunInTransaction(
+	return s.repo.WithTransaction(
 		ctx,
-		s.repo.(*users.Repository).GetDB(),
 		func(tx datastore.DB) error {
 			return s.repo.UnblockUser(ctx, tx, userID)
 		},
