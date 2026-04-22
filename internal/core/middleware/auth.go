@@ -99,7 +99,9 @@ func validateM2MPath(c *gin.Context, clientID string) bool {
 		)
 		c.AbortWithStatusJSON(
 			http.StatusForbidden,
-			gin.H{"error": "M2M clients are restricted to student integration routes"},
+			gin.H{
+				"error": "M2M clients are restricted to student integration routes",
+			},
 		)
 		return false
 	}

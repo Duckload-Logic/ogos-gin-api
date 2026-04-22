@@ -39,6 +39,8 @@ type Config struct {
 
 	MailPitHost string
 	MailPitPort int
+
+	AIBaseUrl string
 }
 
 func LoadConfig() *Config {
@@ -91,11 +93,21 @@ func LoadConfig() *Config {
 
 			return port
 		}(),
+
+		AIBaseUrl: os.Getenv("AI_BASE_URL"),
 	}
 
 	validateConfig(config)
 
 	return config
+}
+
+// NewTestConfig creates a configuration for testing without validation.
+func NewTestConfig() *Config {
+	return &Config{
+		JWTSecret: "test_secret",
+		AIBaseUrl: "http://test-ai",
+	}
 }
 
 func validateConfig(config *Config) {
@@ -177,5 +189,9 @@ func validateProviderConfig(config *Config) {
 	}
 	if config.IDPBaseUrl == "" {
 		panic("IDP_BASE_URL is required")
+	}
+
+	if config.AIBaseUrl == "" {
+		panic("AI_BASE_URL is required")
 	}
 }
