@@ -1,13 +1,20 @@
 package users
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
-type Role struct {
+type RoleDB struct {
 	ID   int    `db:"id"   json:"id"`
 	Name string `db:"name" json:"name"`
 }
 
-type User struct {
+type ProfilePictureDB struct {
+	FileID string `db:"file_id" json:"file_id"`
+	UserID string `db:"user_id" json:"user_id"`
+}
+
+type UserDB struct {
 	ID           string         `db:"id"            json:"id"`
 	RoleID       int            `db:"role_id"       json:"role_id"`
 	FirstName    string         `db:"first_name"    json:"firstName"`

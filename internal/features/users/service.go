@@ -12,7 +12,7 @@ type Service struct {
 }
 
 // NewService creates a new users service.
-func NewService(repo RepositoryInterface) *Service {
+func NewService(repo RepositoryInterface) ServiceInterface {
 	return &Service{repo: repo}
 }
 
@@ -87,7 +87,8 @@ func (s *Service) GetRoleDistribution(
 }
 
 func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
-	role, err := s.repo.GetRoleByID(context.Background(), user.RoleID)
+	ctx := context.Background()
+	role, err := s.repo.GetRoleByID(ctx, user.RoleID)
 	if err != nil {
 		return nil
 	}
@@ -96,20 +97,32 @@ func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
 		Role:       *role,
 		ID:         user.ID,
 		FirstName:  user.FirstName,
-		MiddleName: structs.FromSqlNull(user.MiddleName),
+		MiddleName: user.MiddleName,
 		LastName:   user.LastName,
-		SuffixName: structs.FromSqlNull(user.SuffixName),
+		SuffixName: user.SuffixName,
 		Email:      user.Email,
-		IsActive:   user.IsActive == 1,
+		IsActive:   user.IsActive,
 		CreatedAt:  user.CreatedAt.Time.String(),
 		UpdatedAt:  user.UpdatedAt.Time.String(),
 	}
 }
 
-func (s *Service) BlockUser(ctx context.Context, userID string) error {
-	return datastore.RunInTransaction(
+func (s *Service) PostProfilePicture(
+	ctx context.Context,
+	userID string,
+	fileID string,
+) error {
+	return s.repo.WithTransaction(
 		ctx,
-		s.repo.GetDB(),
+		func(tx datastore.DB) error {
+			return s.repo.PostProfilePicture(ctx, tx, userID, fileID)
+		},
+	)
+}
+
+func (s *Service) BlockUser(ctx context.Context, userID string) error {
+	return s.repo.WithTransaction(
+		ctx,
 		func(tx datastore.DB) error {
 			return s.repo.BlockUser(ctx, tx, userID)
 		},
@@ -117,9 +130,8 @@ func (s *Service) BlockUser(ctx context.Context, userID string) error {
 }
 
 func (s *Service) UnblockUser(ctx context.Context, userID string) error {
-	return datastore.RunInTransaction(
+	return s.repo.WithTransaction(
 		ctx,
-		s.repo.GetDB(),
 		func(tx datastore.DB) error {
 			return s.repo.UnblockUser(ctx, tx, userID)
 		},

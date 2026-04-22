@@ -34,11 +34,11 @@ func RegisterRoutes(
 	)
 	userRoutes.POST("/:id/block",
 		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
-		h.PostBlockUser,
+		h.PostUserBlock,
 	)
 	userRoutes.POST("/:id/unblock",
 		middleware.RoleMiddleware(int(constants.SuperAdminRoleID)),
-		h.PostUnblockUser,
+		h.PostUserUnblock,
 	)
 
 	// Session & Activity Audit (Super Admin only)
