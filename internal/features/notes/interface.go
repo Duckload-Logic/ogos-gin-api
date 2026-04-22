@@ -2,6 +2,8 @@ package notes
 
 import (
 	"context"
+
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 // ServiceInterface defines the business logic for managing student notes.
@@ -35,4 +37,5 @@ type RepositoryInterface interface {
 		ctx context.Context,
 		appointmentID string,
 	) (bool, error)
+	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 }
