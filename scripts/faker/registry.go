@@ -1,10 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
@@ -16,11 +16,11 @@ var db *sqlx.DB
 
 // global repositories
 var (
-	usersRepo        *users.Repository
-	studentsRepo     *students.Repository
-	appointmentsRepo *appointments.Repository
-	slipsRepo        *slips.Repository
-	locationsRepo    *locations.Repository
+	usersRepo        users.RepositoryInterface
+	studentsRepo     students.RepositoryInterface
+	appointmentsRepo appointments.RepositoryInterface
+	slipsRepo        slips.RepositoryInterface
+	locationsRepo    locations.RepositoryInterface
 )
 
 // notificationTypes is now defined in student.go or can be moved to a shared
@@ -56,7 +56,7 @@ var (
 	appointmentStatusByName     map[string]int
 	admissionSlipStatusIDs      []int
 	admissionSlipStatusesByName map[string]int
-	appointmentCategoryIDs      []int
+	appointmentCategories       []map[string]string
 	admissionSlipCategoryIDs    []int
 	studentStatusIDs            []int
 	studentStatusByName         map[string]int
@@ -67,16 +67,16 @@ var (
 type relatedPersonSeed struct {
 	ID            int
 	FirstName     string
-	MiddleName    sql.NullString
+	MiddleName    structs.NullableString
 	LastName      string
-	ContactNumber sql.NullString
+	ContactNumber structs.NullableString
 	AddressID     *int
 }
 
 type emergencyContactSeed struct {
 	ID             int
 	FirstName      string
-	MiddleName     sql.NullString
+	MiddleName     structs.NullableString
 	LastName       string
 	Number         string
 	RelationshipID int
