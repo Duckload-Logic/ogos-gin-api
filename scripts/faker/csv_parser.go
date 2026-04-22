@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
@@ -39,21 +40,22 @@ func parseUsersFromCSV(filePath string) ([]users.User, error) {
 		}
 
 		// map record to User struct
-		// 0: id
-		// 1: email
-		// 2: role_id
-		// 3: first_name
-		// 4: middle_name
-		// 5: last_name
-		// 6: suffix_name
-		// 7: password_hash
-		// 8: auth_type
-		// 9: is_active
-		// 10: created_at
-		// 11: updated_at
+		// id
+		// email
+		// role_id
+		// first_name
+		// middle_name
+		// last_name
+		// suffix_name
+		// password_hash
+		// auth_type
+		// is_active
+		// created_at
+		// updated_at
 
 		roleID, _ := strconv.Atoi(record[2])
-		isActive, _ := strconv.Atoi(record[9])
+		isActiveInt, _ := strconv.Atoi(record[9])
+		isActive := isActiveInt != 0
 
 		user := users.User{
 			ID:           record[0],
@@ -74,4 +76,43 @@ func parseUsersFromCSV(filePath string) ([]users.User, error) {
 	}
 
 	return usersList, nil
+}
+
+func parseAppointmentsDatasetFromCSV(
+	filePath string,
+) ([]map[string]string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open CSV file: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	// read header
+	_, err = reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CSV header: %w", err)
+	}
+
+	var appointmentsDataset []map[string]string
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CSV record: %w", err)
+		}
+
+		data := map[string]string{
+			"text":          record[0],
+			"urgency_level": strings.ToUpper(record[1]),
+			"category":      strings.ToLower(record[2]),
+		}
+
+		appointmentsDataset = append(appointmentsDataset, data)
+	}
+
+	return appointmentsDataset, nil
 }
