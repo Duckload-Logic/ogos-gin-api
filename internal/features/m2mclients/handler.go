@@ -1,7 +1,7 @@
 package m2mclients
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -22,7 +22,6 @@ func (h *Handler) GetService() ServiceInterface {
 	return h.service
 }
 
-// PostM2MClient creates a new M2M client and returns the client and secret.
 func (h *Handler) PostM2MClient(c *gin.Context) {
 	var req CreateM2MClientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -37,7 +36,7 @@ func (h *Handler) PostM2MClient(c *gin.Context) {
 			response.SendError(c, err.Error(), http.StatusConflict, nil)
 			return
 		}
-		log.Printf("[PostM2MClient] {CreateClient}: %v", err)
+		fmt.Printf("[PostM2MClient] {Create Client}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to create M2M client",
@@ -74,7 +73,11 @@ func (h *Handler) PostM2MToken(c *gin.Context) {
 		req.ClientSecret,
 	)
 	if err != nil {
-		response.SendFail(c, gin.H{"error": err.Error()}, http.StatusUnauthorized)
+		response.SendFail(
+			c,
+			gin.H{"error": err.Error()},
+			http.StatusUnauthorized,
+		)
 		return
 	}
 
@@ -92,8 +95,7 @@ func (h *Handler) PostM2MToken(c *gin.Context) {
 	response.SendSuccess(c, tokens)
 }
 
-// PatchVerifyClient
-func (h *Handler) PatchVerifyClient(c *gin.Context) {
+func (h *Handler) PatchM2MClientVerify(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -103,7 +105,7 @@ func (h *Handler) PatchVerifyClient(c *gin.Context) {
 
 	err = h.service.VerifyClient(c.Request.Context(), id)
 	if err != nil {
-		log.Printf("[PatchVerifyClient] {Service Verify}: %v", err)
+		fmt.Printf("[PatchM2MClientVerify] {Service Verify}: %v\n", err)
 		response.SendError(
 			c,
 			string(constants.ErrInternalServerError),
@@ -116,18 +118,7 @@ func (h *Handler) PatchVerifyClient(c *gin.Context) {
 	response.SendSuccess(c, gin.H{"message": "Client verified successfully"})
 }
 
-// PostM2MRefresh godoc
-// @Summary      M2M Token Refresh
-// @Description  Refreshes an existing M2M session using a valid refresh token.
-// @Tags         Auth
-// @Accept       json
-// @Produce      json
-// @Param        request body      M2MRefreshTokenRequest true "Refresh Token"
-// @Success      200     {object}  M2MTokenSuccessResponse
-// @Failure      400     {object}  response.CommonErrorResponse
-// @Failure      401     {object}  response.CommonErrorResponse
-// @Router       /auth/m2m/refresh [post]
-func (h *Handler) PostM2MRefresh(c *gin.Context) {
+func (h *Handler) PostM2MTokenRefresh(c *gin.Context) {
 	var req M2MRefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.SendFail(c, gin.H{"error": err.Error()})
@@ -139,7 +130,7 @@ func (h *Handler) PostM2MRefresh(c *gin.Context) {
 		req.RefreshToken,
 	)
 	if err != nil {
-		log.Printf("[PostM2MRefresh] {RefreshToken}: %v", err)
+		fmt.Printf("[PostM2MTokenRefresh] {RefreshToken}: %v\n", err)
 		response.SendError(c, err.Error(), http.StatusUnauthorized, nil)
 		return
 	}
@@ -147,7 +138,6 @@ func (h *Handler) PostM2MRefresh(c *gin.Context) {
 	response.SendSuccess(c, tokenResp)
 }
 
-// GetM2MClients lists all M2M clients.
 func (h *Handler) GetM2MClients(c *gin.Context) {
 	includeRevoked := c.Query("include_revoked") == "true"
 	roleID := c.MustGet("roleID").(int)
@@ -164,7 +154,7 @@ func (h *Handler) GetM2MClients(c *gin.Context) {
 		roleID,
 	)
 	if err != nil {
-		log.Printf("[GetM2MClients] {ListClients}: %v", err)
+		fmt.Printf("[GetM2MClients] {List Clients}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to list M2M clients",
@@ -177,8 +167,7 @@ func (h *Handler) GetM2MClients(c *gin.Context) {
 	response.SendSuccess(c, clients)
 }
 
-// PostM2MSecret rotates the secret for an existing M2M client.
-func (h *Handler) PostM2MSecret(c *gin.Context) {
+func (h *Handler) PostM2MClientSecret(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		response.SendFail(c, gin.H{"error": "Invalid M2M client ID"})
@@ -187,7 +176,7 @@ func (h *Handler) PostM2MSecret(c *gin.Context) {
 
 	secret, err := h.service.RegenerateSecret(c.Request.Context(), id)
 	if err != nil {
-		log.Printf("[PostM2MSecret] {RegenerateSecret}: %v", err)
+		fmt.Printf("[PostM2MClientSecret] {Regenerate Secret}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to regenerate client secret",
@@ -200,7 +189,6 @@ func (h *Handler) PostM2MSecret(c *gin.Context) {
 	response.SendSuccess(c, gin.H{"clientSecret": secret})
 }
 
-// DeleteM2MClient deactivates an M2M client.
 func (h *Handler) DeleteM2MClient(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -209,6 +197,7 @@ func (h *Handler) DeleteM2MClient(c *gin.Context) {
 	}
 
 	if err := h.service.RevokeClient(c.Request.Context(), id); err != nil {
+		fmt.Printf("[DeleteM2MClient] {Revoke Client}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to revoke M2M client",
