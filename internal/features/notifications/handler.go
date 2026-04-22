@@ -1,7 +1,7 @@
 package notifications
 
 import (
-	"log"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +24,7 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 		userID,
 	)
 	if err != nil {
-		log.Printf("[GetNotifications] {Database Query}: %v", err)
+		fmt.Printf("[GetNotifications] {Fetch Notifications}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to fetch notifications",
@@ -48,6 +48,7 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 func (h *Handler) PatchNotificationRead(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.service.MarkAsRead(c.Request.Context(), id); err != nil {
+		fmt.Printf("[PatchNotificationRead] {Mark Read}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to mark notification as read",
