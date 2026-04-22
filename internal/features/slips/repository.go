@@ -14,7 +14,7 @@ type Repository struct {
 	db *sqlx.DB
 }
 
-func NewRepository(db *sqlx.DB) *Repository {
+func NewRepository(db *sqlx.DB) RepositoryInterface {
 	return &Repository{db: db}
 }
 
@@ -53,6 +53,13 @@ func (r *Repository) GetDB() *sqlx.DB {
 	return r.db
 }
 
+func (r *Repository) WithTransaction(
+	ctx context.Context,
+	fn func(datastore.DB) error,
+) error {
+	return datastore.RunInTransaction(ctx, r.db, fn)
+}
+
 func (r *Repository) BeginTx(ctx context.Context) (datastore.DB, error) {
 	return r.db.BeginTxx(ctx, nil)
 }
@@ -62,8 +69,9 @@ func (r *Repository) CreateSlip(
 	tx datastore.DB,
 	slip *Slip,
 ) (*string, error) {
+	dbModel := slip.ToPersistence()
 	cols, vals := datastore.GetInsertStatement(
-		slip,
+		SlipDB{},
 		[]string{"updated_at"},
 	)
 	query := fmt.Sprintf(`
@@ -71,7 +79,7 @@ func (r *Repository) CreateSlip(
 			VALUES (:id, %s)
 		`, cols, vals)
 
-	_, err := tx.NamedExecContext(ctx, query, slip)
+	_, err := tx.NamedExecContext(ctx, query, &dbModel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert excuse slip: %w", err)
 	}
@@ -84,16 +92,19 @@ func (r *Repository) SaveSlipAttachment(
 	tx datastore.DB,
 	attachment *SlipAttachment,
 ) error {
-	cols, vals := datastore.GetInsertStatement(
-		attachment,
-		[]string{"updated_at"},
-	)
-	query := fmt.Sprintf(`
-			INSERT INTO slip_attachments (id, %s)
-			VALUES (:id, %s)
-		`, cols, vals)
+	dbModel := attachment.ToPersistence()
+	query := `
+			INSERT INTO slip_attachments (file_id, admission_slip_id, attachment_type)
+			VALUES (?, ?, ?)
+		`
 
-	_, err := tx.NamedExecContext(ctx, query, attachment)
+	_, err := tx.ExecContext(
+		ctx,
+		query,
+		dbModel.FileID,
+		dbModel.SlipID,
+		dbModel.AttachmentType,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to insert slip attachment: %w", err)
 	}
@@ -159,30 +170,38 @@ func (r *Repository) CheckStudentExistence(
 func (r *Repository) GetSlipStatuses(
 	ctx context.Context,
 ) ([]SlipStatus, error) {
-	var statuses []SlipStatus
+	var dbModels []SlipStatusDB
 	query := fmt.Sprintf(`
 		SELECT %s FROM statuses WHERE status_type IN ('slip', 'both')
-	`, datastore.GetColumns(SlipStatus{}))
-	err := r.db.SelectContext(ctx, &statuses, query)
+	`, datastore.GetColumns(SlipStatusDB{}))
+	err := r.db.SelectContext(ctx, &dbModels, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slip statuses: %w", err)
 	}
 
+	statuses := make([]SlipStatus, len(dbModels))
+	for i, m := range dbModels {
+		statuses[i] = m.ToDomain()
+	}
 	return statuses, nil
 }
 
 func (r *Repository) GetSlipCategories(
 	ctx context.Context,
 ) ([]SlipCategory, error) {
-	var categories []SlipCategory
+	var dbModels []SlipCategoryDB
 	query := fmt.Sprintf(`
 		SELECT %s FROM admission_slip_categories
-	`, datastore.GetColumns(SlipCategory{}))
-	err := r.db.SelectContext(ctx, &categories, query)
+	`, datastore.GetColumns(SlipCategoryDB{}))
+	err := r.db.SelectContext(ctx, &dbModels, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slip categories: %w", err)
 	}
 
+	categories := make([]SlipCategory, len(dbModels))
+	for i, m := range dbModels {
+		categories[i] = m.ToDomain()
+	}
 	return categories, nil
 }
 
@@ -193,7 +212,7 @@ func (r *Repository) GetSlipStats(
 ) ([]SlipStatusCount, error) {
 	filterConditions, args := r.applyFilters("1=1", nil, req, iirID)
 
-	var counts []SlipStatusCount
+	var dbModels []SlipStatusCountDB
 	query := fmt.Sprintf(`
 		SELECT
 			s.id AS id,
@@ -206,14 +225,15 @@ func (r *Repository) GetSlipStats(
 		WHERE s.status_type IN ('slip', 'both')
 		GROUP BY s.id, s.name, s.color_key
 	`, filterConditions)
-	err := r.db.SelectContext(ctx, &counts, query, args...)
+	err := r.db.SelectContext(ctx, &dbModels, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get slip status counts: %w",
-			err,
-		)
+		return nil, fmt.Errorf("failed to get status counts: %w", err)
 	}
 
+	counts := make([]SlipStatusCount, len(dbModels))
+	for i, m := range dbModels {
+		counts[i] = m.ToDomain()
+	}
 	return counts, nil
 }
 
@@ -317,7 +337,6 @@ func (r *Repository) GetUrgentSlips(
 	ctx context.Context,
 	req *ListSlipRequest,
 ) ([]SlipWithDetailsView, error) {
-	// Add urgency_score to the base query
 	query := strings.Replace(
 		slipsBaseQuery,
 		"slp.updated_at AS updated_at",
@@ -346,12 +365,16 @@ func (r *Repository) GetUrgentSlips(
 	`
 	args = append(args, req.PageSize, req.GetOffset())
 
-	var slips []SlipWithDetailsView
-	err := r.db.SelectContext(ctx, &slips, query, args...)
+	var dbModels []SlipWithDetailsViewDB
+	err := r.db.SelectContext(ctx, &dbModels, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get urgent slips: %w", err)
 	}
 
+	slips := make([]SlipWithDetailsView, len(dbModels))
+	for i, m := range dbModels {
+		slips[i] = m.ToDomain()
+	}
 	return slips, nil
 }
 
@@ -372,12 +395,16 @@ func (r *Repository) GetAll(
 	query += orderSlipsCreatedDesc
 	args = append(args, req.PageSize, req.GetOffset())
 
-	var slips []SlipWithDetailsView
-	err := r.db.SelectContext(ctx, &slips, query, args...)
+	var dbModels []SlipWithDetailsViewDB
+	err := r.db.SelectContext(ctx, &dbModels, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get excuse slips: %w", err)
 	}
 
+	slips := make([]SlipWithDetailsView, len(dbModels))
+	for i, m := range dbModels {
+		slips[i] = m.ToDomain()
+	}
 	return slips, nil
 }
 
@@ -396,15 +423,16 @@ func (r *Repository) GetByUserID(
 	query += orderSlipsCreatedDesc
 	args = append(args, req.PageSize, req.GetOffset())
 
-	var slips []SlipWithDetailsView
-	err := r.db.SelectContext(ctx, &slips, query, args...)
+	var dbModels []SlipWithDetailsViewDB
+	err := r.db.SelectContext(ctx, &dbModels, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get slips for user: %w",
-			err,
-		)
+		return nil, fmt.Errorf("failed to get slips for user: %w", err)
 	}
 
+	slips := make([]SlipWithDetailsView, len(dbModels))
+	for i, m := range dbModels {
+		slips[i] = m.ToDomain()
+	}
 	return slips, nil
 }
 
@@ -423,15 +451,16 @@ func (r *Repository) GetByIIRID(
 	query += orderSlipsCreatedDesc
 	args = append(args, req.PageSize, req.GetOffset())
 
-	var slips []SlipWithDetailsView
-	err := r.db.SelectContext(ctx, &slips, query, args...)
+	var dbModels []SlipWithDetailsViewDB
+	err := r.db.SelectContext(ctx, &dbModels, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"failed to get slips for IIR: %w",
-			err,
-		)
+		return nil, fmt.Errorf("failed to get slips for IIR: %w", err)
 	}
 
+	slips := make([]SlipWithDetailsView, len(dbModels))
+	for i, m := range dbModels {
+		slips[i] = m.ToDomain()
+	}
 	return slips, nil
 }
 
@@ -439,36 +468,38 @@ func (r *Repository) GetSlipByID(
 	ctx context.Context,
 	id string,
 ) (*Slip, error) {
-	var slip Slip
+	var dbModel SlipDB
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM admission_slips
 		WHERE id = ?
-	`, datastore.GetColumns(Slip{}))
-	err := r.db.GetContext(ctx, &slip, query, id)
+	`, datastore.GetColumns(SlipDB{}))
+	err := r.db.GetContext(ctx, &dbModel, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get slip by ID: %w", err)
+		return nil, fmt.Errorf("failed to get slip: %w", err)
 	}
-	return &slip, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) GetSlipByIDWithDetails(
 	ctx context.Context,
 	id string,
 ) (*SlipWithDetailsView, error) {
-	var slip SlipWithDetailsView
+	var dbModel SlipWithDetailsViewDB
 	query := slipsBaseQuery + " WHERE slp.id = ?"
-	err := r.db.GetContext(ctx, &slip, query, id)
+	err := r.db.GetContext(ctx, &dbModel, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get slip with details: %w", err)
 	}
-	return &slip, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) GetUserIDBySlipID(
@@ -490,17 +521,27 @@ func (r *Repository) GetSlipAttachments(
 	ctx context.Context,
 	slipID string,
 ) ([]SlipAttachment, error) {
-	var attachments []SlipAttachment
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM slip_attachments
-		WHERE admission_slip_id = ?
-	`, datastore.GetColumns(SlipAttachment{}))
-	err := r.db.SelectContext(ctx, &attachments, query, slipID)
+	var dbModels []SlipAttachmentDB
+	query := `
+		SELECT
+			sa.file_id,
+			sa.admission_slip_id,
+			sa.attachment_type,
+			f.file_name,
+			f.file_url
+		FROM slip_attachments sa
+		JOIN files f ON sa.file_id = f.id
+		WHERE sa.admission_slip_id = ?
+	`
+	err := r.db.SelectContext(ctx, &dbModels, query, slipID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get slip attachments: %w", err)
 	}
 
+	attachments := make([]SlipAttachment, len(dbModels))
+	for i, m := range dbModels {
+		attachments[i] = m.ToDomain()
+	}
 	return attachments, nil
 }
 
@@ -508,21 +549,27 @@ func (r *Repository) GetAttachmentByID(
 	ctx context.Context,
 	attachmentID string,
 ) (*SlipAttachment, error) {
-	var attachment SlipAttachment
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM slip_attachments
-		WHERE id = ?
-	`, datastore.GetColumns(SlipAttachment{}))
-	err := r.db.GetContext(ctx, &attachment, query, attachmentID)
+	var dbModel SlipAttachmentDB
+	query := `
+		SELECT
+			sa.file_id,
+			sa.admission_slip_id,
+			sa.attachment_type,
+			f.file_name,
+			f.file_url
+		FROM slip_attachments sa
+		JOIN files f ON sa.file_id = f.id
+		WHERE sa.file_id = ?
+	`
+	err := r.db.GetContext(ctx, &dbModel, query, attachmentID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil // Not found, return nil without error
+			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get attachment by ID: %w", err)
+		return nil, fmt.Errorf("failed to get attachment: %w", err)
 	}
-
-	return &attachment, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) UpdateStatus(

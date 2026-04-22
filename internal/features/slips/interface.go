@@ -68,6 +68,7 @@ type ServiceInterface interface {
 
 // RepositoryInterface defines the data access layer for managing excuse slips.
 type RepositoryInterface interface {
+	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 	GetDB() *sqlx.DB
 	BeginTx(ctx context.Context) (datastore.DB, error)
 	CreateSlip(

@@ -16,7 +16,8 @@ func RegisterRoutes(
 ) {
 	routes := rg.Group("/slips")
 	routes.Use(middleware.AuthMiddleware(redis))
-	routes.Use(middleware.HydrateStudentContext(db))
+	routes.Use(middleware.HydrateStudentIIRContext(db))
+	routes.Use(middleware.HydrateStudentCORContext(db))
 	routes.Use(middleware.AuditContextMiddleware())
 
 	adminOnly := routes.Group("")
@@ -24,8 +25,8 @@ func RegisterRoutes(
 		int(constants.AdminRoleID),
 	))
 	{
-		adminOnly.GET("", h.GetSlipList)
-		adminOnly.GET("/urgent", h.GetUrgentSlipList)
+		adminOnly.GET("", h.GetSlips)
+		adminOnly.GET("/urgent", h.GetSlipUrgent)
 		adminOnly.PATCH("/id/:id/status", h.PatchSlipStatus)
 	}
 
@@ -34,7 +35,7 @@ func RegisterRoutes(
 		int(constants.StudentRoleID),
 	))
 	{
-		studentOnly.GET("/me", h.GetSlipListByIIR)
+		studentOnly.GET("/me", h.GetSlipMe)
 		studentOnly.POST("", h.PostSlip)
 		studentOnly.PATCH("/id/:id", h.PatchSlip)
 	}
@@ -46,22 +47,22 @@ func RegisterRoutes(
 	))
 	{
 		sharedRoutes.GET("/id/:id", h.GetSlipByID)
-		sharedRoutes.GET("/stats", h.GetSlipStatsList)
+		sharedRoutes.GET("/stats", h.GetSlipStats)
 		sharedRoutes.GET(
 			"/id/:id/attachments",
-			h.GetSlipAttachmentList,
+			h.GetSlipAttachments,
 		)
 		sharedRoutes.GET(
 			"/id/:id/attachments/:attachmentId",
-			h.GetAttachmentFile,
+			h.GetSlipAttachmentContent,
 		)
 		sharedRoutes.GET(
 			"/lookups/statuses",
-			h.GetSlipStatusList,
+			h.GetSlipStatuses,
 		)
 		sharedRoutes.GET(
 			"/lookups/categories",
-			h.GetSlipCategoryList,
+			h.GetSlipCategories,
 		)
 	}
 }
