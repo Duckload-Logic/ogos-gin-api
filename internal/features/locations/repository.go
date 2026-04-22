@@ -20,14 +20,29 @@ func (r *Repository) GetDB() *sqlx.DB {
 	return r.db
 }
 
+func (r *Repository) WithTransaction(
+	ctx context.Context,
+	fn func(datastore.DB) error,
+) error {
+	return datastore.RunInTransaction(ctx, r.db, fn)
+}
+
 func (r *Repository) GetRegions(ctx context.Context) ([]Region, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM regions ORDER BY name",
-		datastore.GetColumns(Region{}),
+		datastore.GetColumns(RegionDB{}),
 	)
-	var regions []Region
-	err := r.db.SelectContext(ctx, &regions, query)
-	return regions, err
+	var dbModels []RegionDB
+	err := r.db.SelectContext(ctx, &dbModels, query)
+	if err != nil {
+		return nil, err
+	}
+
+	regions := make([]Region, len(dbModels))
+	for i, m := range dbModels {
+		regions[i] = m.ToDomain()
+	}
+	return regions, nil
 }
 
 func (r *Repository) GetProvincesByRegion(
@@ -36,11 +51,19 @@ func (r *Repository) GetProvincesByRegion(
 ) ([]Province, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM provinces WHERE region_code = ? ORDER BY name",
-		datastore.GetColumns(Province{}),
+		datastore.GetColumns(ProvinceDB{}),
 	)
-	var provinces []Province
-	err := r.db.SelectContext(ctx, &provinces, query, regionCode)
-	return provinces, err
+	var dbModels []ProvinceDB
+	err := r.db.SelectContext(ctx, &dbModels, query, regionCode)
+	if err != nil {
+		return nil, err
+	}
+
+	provinces := make([]Province, len(dbModels))
+	for i, m := range dbModels {
+		provinces[i] = m.ToDomain()
+	}
+	return provinces, nil
 }
 
 func (r *Repository) GetCitiesByProvince(
@@ -49,11 +72,19 @@ func (r *Repository) GetCitiesByProvince(
 ) ([]City, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM cities WHERE province_code = ? ORDER BY name",
-		datastore.GetColumns(City{}),
+		datastore.GetColumns(CityDB{}),
 	)
-	var cities []City
-	err := r.db.SelectContext(ctx, &cities, query, provinceCode)
-	return cities, err
+	var dbModels []CityDB
+	err := r.db.SelectContext(ctx, &dbModels, query, provinceCode)
+	if err != nil {
+		return nil, err
+	}
+
+	cities := make([]City, len(dbModels))
+	for i, m := range dbModels {
+		cities[i] = m.ToDomain()
+	}
+	return cities, nil
 }
 
 func (r *Repository) GetCitiesByRegion(
@@ -62,11 +93,19 @@ func (r *Repository) GetCitiesByRegion(
 ) ([]City, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM cities WHERE region_code = ? ORDER BY name",
-		datastore.GetColumns(City{}),
+		datastore.GetColumns(CityDB{}),
 	)
-	var cities []City
-	err := r.db.SelectContext(ctx, &cities, query, regionCode)
-	return cities, err
+	var dbModels []CityDB
+	err := r.db.SelectContext(ctx, &dbModels, query, regionCode)
+	if err != nil {
+		return nil, err
+	}
+
+	cities := make([]City, len(dbModels))
+	for i, m := range dbModels {
+		cities[i] = m.ToDomain()
+	}
+	return cities, nil
 }
 
 func (r *Repository) GetBarangaysByCity(
@@ -75,11 +114,19 @@ func (r *Repository) GetBarangaysByCity(
 ) ([]Barangay, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM barangays WHERE city_code = ? ORDER BY name",
-		datastore.GetColumns(Barangay{}),
+		datastore.GetColumns(BarangayDB{}),
 	)
-	var barangays []Barangay
-	err := r.db.SelectContext(ctx, &barangays, query, cityCode)
-	return barangays, err
+	var dbModels []BarangayDB
+	err := r.db.SelectContext(ctx, &dbModels, query, cityCode)
+	if err != nil {
+		return nil, err
+	}
+
+	barangays := make([]Barangay, len(dbModels))
+	for i, m := range dbModels {
+		barangays[i] = m.ToDomain()
+	}
+	return barangays, nil
 }
 
 func (r *Repository) GetAddressByID(
@@ -88,14 +135,15 @@ func (r *Repository) GetAddressByID(
 ) (*Address, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM addresses WHERE id = ?",
-		datastore.GetColumns(Address{}),
+		datastore.GetColumns(AddressDB{}),
 	)
-	var address Address
-	err := r.db.GetContext(ctx, &address, query, addressID)
+	var dbModel AddressDB
+	err := r.db.GetContext(ctx, &dbModel, query, addressID)
 	if err != nil {
 		return nil, err
 	}
-	return &address, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) GetCityByCode(
@@ -104,14 +152,15 @@ func (r *Repository) GetCityByCode(
 ) (*City, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM cities WHERE code = ?",
-		datastore.GetColumns(City{}),
+		datastore.GetColumns(CityDB{}),
 	)
-	var city City
-	err := r.db.GetContext(ctx, &city, query, cityCode)
+	var dbModel CityDB
+	err := r.db.GetContext(ctx, &dbModel, query, cityCode)
 	if err != nil {
 		return nil, err
 	}
-	return &city, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) GetRegionByCode(
@@ -120,14 +169,15 @@ func (r *Repository) GetRegionByCode(
 ) (*Region, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM regions WHERE code = ?",
-		datastore.GetColumns(Region{}),
+		datastore.GetColumns(RegionDB{}),
 	)
-	var region Region
-	err := r.db.GetContext(ctx, &region, query, regionCode)
+	var dbModel RegionDB
+	err := r.db.GetContext(ctx, &dbModel, query, regionCode)
 	if err != nil {
 		return nil, err
 	}
-	return &region, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) GetBarangayByCode(
@@ -136,14 +186,15 @@ func (r *Repository) GetBarangayByCode(
 ) (*Barangay, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM barangays WHERE code = ?",
-		datastore.GetColumns(Barangay{}),
+		datastore.GetColumns(BarangayDB{}),
 	)
-	var barangay Barangay
-	err := r.db.GetContext(ctx, &barangay, query, barangayCode)
+	var dbModel BarangayDB
+	err := r.db.GetContext(ctx, &dbModel, query, barangayCode)
 	if err != nil {
 		return nil, err
 	}
-	return &barangay, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) GetProvinceByCode(
@@ -152,14 +203,15 @@ func (r *Repository) GetProvinceByCode(
 ) (*Province, error) {
 	query := fmt.Sprintf(
 		"SELECT %s FROM provinces WHERE code = ?",
-		datastore.GetColumns(Province{}),
+		datastore.GetColumns(ProvinceDB{}),
 	)
-	var province Province
-	err := r.db.GetContext(ctx, &province, query, provinceCode)
+	var dbModel ProvinceDB
+	err := r.db.GetContext(ctx, &dbModel, query, provinceCode)
 	if err != nil {
 		return nil, err
 	}
-	return &province, nil
+	domainModel := dbModel.ToDomain()
+	return &domainModel, nil
 }
 
 func (r *Repository) UpsertAddress(
@@ -167,25 +219,20 @@ func (r *Repository) UpsertAddress(
 	tx datastore.DB,
 	addr *Address,
 ) (int, error) {
-	cols, vals := datastore.GetInsertStatement(
-		Address{},
-		[]string{"created_at", "updated_at"},
-	)
+	dbModel := addr.ToPersistence()
+	exclude := []string{"created_at", "updated_at"}
+	cols, vals := datastore.GetInsertStatement(AddressDB{}, exclude)
 	updateCols := datastore.GetOnDuplicateKeyUpdateStatement(
-		Address{},
-		[]string{"created_at", "updated_at"},
+		AddressDB{},
+		exclude,
 	)
-
-	if addr.ProvinceCode != nil && *addr.ProvinceCode == "" {
-		addr.ProvinceCode = nil
-	}
 
 	query := fmt.Sprintf(`
 		INSERT INTO addresses (%s)
 		VALUES (%s)
 		ON DUPLICATE KEY UPDATE %s
 	`, cols, vals, updateCols)
-	result, err := tx.NamedExecContext(ctx, query, addr)
+	result, err := tx.NamedExecContext(ctx, query, &dbModel)
 	if err != nil {
 		return 0, fmt.Errorf("failed to upsert address: %w", err)
 	}
