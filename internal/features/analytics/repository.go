@@ -15,7 +15,11 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) GetTotalStudents(ctx context.Context, year int, courseID int) (int, error) {
+func (r *Repository) GetTotalStudents(
+	ctx context.Context,
+	year int,
+	courseID int,
+) (int, error) {
 	var total int
 	filter, args := r.buildFilter(year, courseID)
 	query := "SELECT COUNT(*) FROM student_personal_info spi WHERE 1=1" + filter
@@ -23,11 +27,15 @@ func (r *Repository) GetTotalStudents(ctx context.Context, year int, courseID in
 	return total, err
 }
 
-func (r *Repository) GetGenderStats(ctx context.Context, year int, courseID int) ([]AggregatedStatModel, error) {
-	var results []AggregatedStatModel
+func (r *Repository) GetGenderStats(
+	ctx context.Context,
+	year int,
+	courseID int,
+) ([]DemographicStat, error) {
+	var results []DemographicStatDB
 	filter, args := r.buildFilter(year, courseID)
 	query := `
-		SELECT 
+		SELECT
 			g.gender_name as category,
 			SUM(CASE WHEN g.gender_name = 'Male' THEN 1 ELSE 0 END) as male_count,
 			SUM(CASE WHEN g.gender_name = 'Female' THEN 1 ELSE 0 END) as female_count,
@@ -39,7 +47,10 @@ func (r *Repository) GetGenderStats(ctx context.Context, year int, courseID int)
 		GROUP BY g.gender_name;`
 
 	err := r.db.SelectContext(ctx, &results, query, args...)
-	return results, err
+	if err != nil {
+		return nil, err
+	}
+	return MapDemographicStatsToDomain(results), nil
 }
 
 func (r *Repository) GetTotalReports(ctx context.Context) (int, error) {
@@ -174,7 +185,7 @@ func (r *Repository) GetMonthlyAppointmentStats(
 
 func (r *Repository) GetAgeStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -192,7 +203,7 @@ func (r *Repository) GetAgeStats(
 
 func (r *Repository) GetCivilStatusStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -212,7 +223,7 @@ func (r *Repository) GetCivilStatusStats(
 
 func (r *Repository) GetReligionStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -232,7 +243,7 @@ func (r *Repository) GetReligionStats(
 
 func (r *Repository) GetCityAddressStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -246,7 +257,7 @@ func (r *Repository) GetCityAddressStats(
 		LEFT JOIN addresses a ON sa.address_id = a.id
 		LEFT JOIN cities c ON a.city_code = c.code
 		LEFT JOIN genders g ON spi.gender_id = g.id
-		WHERE 1=1 ` + filter + `
+		WHERE 1=1 AND sa.address_type = "Residential" ` + filter + `
 		GROUP BY category;`
 	return r.executeStatQuery(ctx, query, args...)
 }
@@ -255,7 +266,7 @@ func (r *Repository) GetCityAddressStats(
 
 func (r *Repository) GetMonthlyIncomeStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -275,7 +286,7 @@ func (r *Repository) GetMonthlyIncomeStats(
 
 func (r *Repository) GetOrdinalPositionStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -294,7 +305,7 @@ func (r *Repository) GetOrdinalPositionStats(
 
 func (r *Repository) GetFatherEducationStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -315,7 +326,7 @@ func (r *Repository) GetFatherEducationStats(
 
 func (r *Repository) GetMotherEducationStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -336,7 +347,7 @@ func (r *Repository) GetMotherEducationStats(
 
 func (r *Repository) GetParentsMaritalStatusStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -356,7 +367,7 @@ func (r *Repository) GetParentsMaritalStatusStats(
 
 func (r *Repository) GetQuietStudyPlaceStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -377,7 +388,7 @@ func (r *Repository) GetQuietStudyPlaceStats(
 
 func (r *Repository) GetHSGWAStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -402,7 +413,7 @@ func (r *Repository) GetHSGWAStats(
 
 func (r *Repository) GetElementaryStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -423,7 +434,7 @@ func (r *Repository) GetElementaryStats(
 
 func (r *Repository) GetJuniorHighStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -444,7 +455,7 @@ func (r *Repository) GetJuniorHighStats(
 
 func (r *Repository) GetSeniorHighStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -465,7 +476,7 @@ func (r *Repository) GetSeniorHighStats(
 
 func (r *Repository) GetNatureOfSchoolingStats(
 	ctx context.Context, year int, courseID int,
-) ([]AggregatedStatModel, error) {
+) ([]DemographicStat, error) {
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -484,7 +495,10 @@ func (r *Repository) GetNatureOfSchoolingStats(
 
 // --- HELPERS ---
 
-func (r *Repository) buildFilter(year int, courseID int) (string, []interface{}) {
+func (r *Repository) buildFilter(
+	year int,
+	courseID int,
+) (string, []interface{}) {
 	filter := ""
 	args := []interface{}{}
 
@@ -503,13 +517,16 @@ func (r *Repository) executeStatQuery(
 	ctx context.Context,
 	query string,
 	args ...interface{},
-) ([]AggregatedStatModel, error) {
-	stats := make([]AggregatedStatModel, 0)
+) ([]DemographicStat, error) {
+	stats := make([]DemographicStatDB, 0)
 	var err error
 	if len(args) > 0 {
 		err = r.db.SelectContext(ctx, &stats, query, args...)
 	} else {
 		err = r.db.SelectContext(ctx, &stats, query)
 	}
-	return stats, err
+	if err != nil {
+		return nil, err
+	}
+	return MapDemographicStatsToDomain(stats), nil
 }

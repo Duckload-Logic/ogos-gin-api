@@ -2,8 +2,8 @@ package analytics
 
 import "time"
 
-// AggregatedStatModel
-type AggregatedStatModel struct {
+// DemographicStatDB represents the database model for statistics.
+type DemographicStatDB struct {
 	Category    string `db:"category"`
 	MaleCount   int    `db:"male_count"`
 	FemaleCount int    `db:"female_count"`
@@ -11,8 +11,8 @@ type AggregatedStatModel struct {
 	RankPos     int    `db:"rank_pos"`
 }
 
-// StudentPersonalInfo
-type StudentPersonalInfo struct {
+// StudentPersonalInfoDB represents the database model for personal info.
+type StudentPersonalInfoDB struct {
 	ID              int       `db:"id"`
 	IIRID           string    `db:"iir_id"`
 	StudentNumber   string    `db:"student_number"`
@@ -36,24 +36,21 @@ type StudentPersonalInfo struct {
 	UpdatedAt       time.Time `db:"updated_at"`
 }
 
-// StudentFinances
-type StudentFinances struct {
+type StudentFinancesDB struct {
 	ID                         int     `db:"id"`
 	IIRID                      string  `db:"iir_id"`
 	MonthlyFamilyIncomeRangeID *int    `db:"monthly_family_income_range_id"`
 	WeeklyAllowance            float64 `db:"weekly_allowance"`
 }
 
-// FamilyBackground
-type FamilyBackground struct {
+type FamilyBackgroundDB struct {
 	IIRID                 string `db:"iir_id"`
 	ParentalStatusID      int    `db:"parental_status_id"`
 	OrdinalPosition       int    `db:"ordinal_position"`
 	HaveQuietPlaceToStudy bool   `db:"have_quiet_place_to_study"`
 }
 
-// EducationalBackground
-type EducationalBackground struct {
+type EducationalBackgroundDB struct {
 	ID               int     `db:"id"`
 	IIRID            string  `db:"iir_id"`
 	EducationLevelID int     `db:"education_level_id"`
