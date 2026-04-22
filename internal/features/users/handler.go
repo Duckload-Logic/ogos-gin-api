@@ -2,7 +2,6 @@ package users
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,25 +9,27 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/response"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 )
 
 type Handler struct {
 	service        ServiceInterface
 	sessionService *sessions.Service
-	logService     logs.ServiceInterface
+	logger         audit.Logger
+	logReader      audit.LogReader
 }
 
 // NewHandler creates a new users handler.
 func NewHandler(
 	service ServiceInterface,
 	sessionService *sessions.Service,
-	logService logs.ServiceInterface,
+	logger audit.Logger,
+	logReader audit.LogReader,
 ) *Handler {
 	return &Handler{
 		service:        service,
 		sessionService: sessionService,
-		logService:     logService,
+		logger:         logger,
+		logReader:      logReader,
 	}
 }
 
@@ -53,7 +54,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 
 	resp, err := h.service.GetUserByID(c.Request.Context(), userID)
 	if err != nil {
-		log.Printf("[GetMe] {GetUserByID}: %v", err)
+		fmt.Printf("[GetMe] {GetUserByID}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to get current user",
@@ -81,8 +82,8 @@ func (h *Handler) GetMe(c *gin.Context) {
 func (h *Handler) GetUserByEmail(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
-		log.Printf(
-			"[GetUserByEmail] {Check Query Email}: Email query parameter is required",
+		fmt.Printf(
+			"[GetUserByEmail] {Check Query}: Email parameter is required\n",
 		)
 		response.SendFail(
 			c,
@@ -95,7 +96,7 @@ func (h *Handler) GetUserByEmail(c *gin.Context) {
 
 	resp, err := h.service.GetUserByEmail(c.Request.Context(), email, authType)
 	if err != nil {
-		log.Printf("[GetUserByEmail] {GetUserByEmail}: %v", err)
+		fmt.Printf("[GetUserByEmail] {GetUserByEmail}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to get user by email",
@@ -130,7 +131,7 @@ func (h *Handler) GetUsers(c *gin.Context) {
 
 	resp, err := h.service.ListUsers(c.Request.Context(), params)
 	if err != nil {
-		log.Printf("[GetUsers] {ListUsers}: %v", err)
+		fmt.Printf("[GetUsers] {ListUsers}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to list users",
@@ -154,7 +155,7 @@ func (h *Handler) GetUsers(c *gin.Context) {
 func (h *Handler) GetRoleDistribution(c *gin.Context) {
 	resp, err := h.service.GetRoleDistribution(c.Request.Context())
 	if err != nil {
-		log.Printf("[GetRoleDistribution] {GetRoleDistribution}: %v", err)
+		fmt.Printf("[GetRoleDistribution] {GetRoleDistribution}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to get role distribution",
@@ -167,11 +168,11 @@ func (h *Handler) GetRoleDistribution(c *gin.Context) {
 	response.SendSuccess(c, resp)
 }
 
-func (h *Handler) PostBlockUser(c *gin.Context) {
+func (h *Handler) PostUserBlock(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
-		log.Printf(
-			"[BlockUser] {Check Param ID}: User ID parameter is required",
+		fmt.Printf(
+			"[PostUserBlock] {Check Param}: User ID is required\n",
 		)
 		response.SendFail(
 			c,
@@ -182,7 +183,7 @@ func (h *Handler) PostBlockUser(c *gin.Context) {
 
 	err := h.service.BlockUser(c.Request.Context(), userID)
 	if err != nil {
-		log.Printf("[BlockUser] {BlockUser}: %v", err)
+		fmt.Printf("[PostUserBlock] {BlockUser}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to block user",
@@ -195,11 +196,11 @@ func (h *Handler) PostBlockUser(c *gin.Context) {
 	response.SendSuccess(c, gin.H{"message": "User blocked successfully"})
 }
 
-func (h *Handler) PostUnblockUser(c *gin.Context) {
+func (h *Handler) PostUserUnblock(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
-		log.Printf(
-			"[PostUnblockUser] {Check Param ID}: User ID parameter is required",
+		fmt.Printf(
+			"[PostUserUnblock] {Check Param}: User ID is required\n",
 		)
 		response.SendFail(
 			c,
@@ -210,7 +211,7 @@ func (h *Handler) PostUnblockUser(c *gin.Context) {
 
 	err := h.service.UnblockUser(c.Request.Context(), userID)
 	if err != nil {
-		log.Printf("[UnblockUser] {UnblockUser}: %v", err)
+		fmt.Printf("[PostUserUnblock] {UnblockUser}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to unblock user",
@@ -230,10 +231,18 @@ func (h *Handler) GetUserSessions(c *gin.Context) {
 		return
 	}
 
-	sessions, err := h.sessionService.ListUserSessions(c.Request.Context(), targetUserID)
+	sessions, err := h.sessionService.ListUserSessions(
+		c.Request.Context(),
+		targetUserID,
+	)
 	if err != nil {
-		log.Printf("[GetUserSessions] {ListUserSessions}: %v", err)
-		response.SendError(c, "Failed to list user sessions", http.StatusInternalServerError, nil)
+		fmt.Printf("[GetUserSessions] {ListSessions}: %v\n", err)
+		response.SendError(
+			c,
+			"Failed to list user sessions",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -244,14 +253,26 @@ func (h *Handler) DeleteUserSession(c *gin.Context) {
 	targetUserID := c.Param("id")
 	jti := c.Param("session_id")
 	if targetUserID == "" || jti == "" {
-		response.SendFail(c, gin.H{"error": "User ID and Session ID are required"})
+		response.SendFail(
+			c,
+			gin.H{"error": "User ID and Session ID are required"},
+		)
 		return
 	}
 
-	err := h.sessionService.DeleteUserToken(c.Request.Context(), targetUserID, sessions.NewJTI(jti))
+	err := h.sessionService.DeleteUserToken(
+		c.Request.Context(),
+		targetUserID,
+		sessions.NewJTI(jti),
+	)
 	if err != nil {
-		log.Printf("[DeleteUserSession] {DeleteUserToken}: %v", err)
-		response.SendError(c, "Failed to revoke session", http.StatusInternalServerError, nil)
+		fmt.Printf("[DeleteUserSession] {DeleteToken}: %v\n", err)
+		response.SendError(
+			c,
+			"Failed to revoke session",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
@@ -259,14 +280,23 @@ func (h *Handler) DeleteUserSession(c *gin.Context) {
 	adminEmail := c.MustGet("userEmail").(string)
 	adminID := c.MustGet("userID").(string)
 
-	h.logService.Record(c.Request.Context(), h.logService.GetDB(), audit.LogEntry{
-		Level:    audit.LevelWarning,
-		Category: audit.CategorySecurity,
-		Action:   audit.ActionLogout, // Or add a new ActionSessionRevoked
-		Message:  fmt.Sprintf("Superadmin %s revoked session %s for user %s", adminEmail, jti, targetUserID),
-		UserID:   structs.StringToNullableString(adminID),
-		TargetID: structs.StringToNullableString(targetUserID),
-	})
+	h.logger.Record(
+		c.Request.Context(),
+		nil, // Use default DB in logger implementation
+		audit.LogEntry{
+			Level:    audit.LevelWarning,
+			Category: audit.CategorySecurity,
+			Action:   audit.ActionLogout, // Or add a new ActionSessionRevoked
+			Message: fmt.Sprintf(
+				"Superadmin %s revoked session %s for user %s",
+				adminEmail,
+				jti,
+				targetUserID,
+			),
+			UserID:   structs.StringToNullableString(adminID),
+			TargetID: structs.StringToNullableString(targetUserID),
+		},
+	)
 
 	response.SendSuccess(c, gin.H{"message": "Session revoked successfully"})
 }
@@ -281,12 +311,12 @@ func (h *Handler) GetUserActivity(c *gin.Context) {
 	// Fetch user email first because the logs repo mostly filters by email
 	user, err := h.service.GetUserByID(c.Request.Context(), targetUserID)
 	if err != nil {
-		log.Printf("[GetUserActivity] {GetUserByID}: %v", err)
+		fmt.Printf("[GetUserActivity] {GetUserByID}: %v\n", err)
 		response.SendError(c, "Failed to find user", http.StatusNotFound, nil)
 		return
 	}
 
-	var req logs.ListSystemLogsRequest
+	var req audit.ListSystemLogsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.SendFail(c, gin.H{"error": err.Error()})
 		return
@@ -295,10 +325,15 @@ func (h *Handler) GetUserActivity(c *gin.Context) {
 	// Force filter by target user's email
 	req.UserEmail = user.Email
 
-	result, err := h.logService.ListLogs(c.Request.Context(), req)
+	result, err := h.logReader.ListLogs(c.Request.Context(), req)
 	if err != nil {
-		log.Printf("[GetUserActivity] {ListLogs}: %v", err)
-		response.SendError(c, "Failed to retrieve user activity", http.StatusInternalServerError, nil)
+		fmt.Printf("[GetUserActivity] {ListLogs}: %v\n", err)
+		response.SendError(
+			c,
+			"Failed to retrieve user activity",
+			http.StatusInternalServerError,
+			nil,
+		)
 		return
 	}
 
