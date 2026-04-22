@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/hash"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/slips"
 )
@@ -75,7 +76,10 @@ func insertAdmissionSlip(
 	f, _ := os.Create(fullStoragePath)
 	content := fmt.Sprintf(
 		"ADMISSION SLIP / EXCUSE SLIP\nStudent ID: %s\nDate of Absence: %s\nReason: %s\n",
-		iirID, dateOfAbsence, reason)
+		iirID,
+		dateOfAbsence,
+		reason,
+	)
 	f.WriteString(content)
 	f.Close()
 
@@ -99,11 +103,21 @@ func insertAdmissionSlip(
 		return ""
 	}
 
+	fileID := uuid.New().String()
+	// Insert dummy record into files table so FK check passes
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO files (id, file_name, file_url, file_type, file_size, mime_type)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, fileID, readableFileName, dbURL, "application/pdf", 1024, "application/pdf")
+	if err != nil {
+		log.Printf("[Seeder] {Insert File Metadata}: %v", err)
+		return ""
+	}
+
 	attachment := &slips.SlipAttachment{
-		ID:       uuid.New().String(),
-		SlipID:   &admissionSlipID,
-		FileName: readableFileName,
-		FileURL:  dbURL,
+		FileID:         fileID,
+		SlipID:         structs.PointerToNullableString(&admissionSlipID),
+		AttachmentType: "OTHER",
 	}
 
 	err = slipsRepo.SaveSlipAttachment(ctx, tx, attachment)
@@ -181,7 +195,7 @@ func generateAdmissionFileName() string {
 	return fileTypes[rand.Intn(len(fileTypes))]
 }
 
-func generateAdmissionNotes(status string) sql.NullString {
+func generateAdmissionNotes(status string) structs.NullableString {
 	switch status {
 	case "approved":
 		notes := []string{
@@ -193,9 +207,9 @@ func generateAdmissionNotes(status string) sql.NullString {
 		}
 		selected := notes[rand.Intn(len(notes))]
 		if selected == "" {
-			return sql.NullString{Valid: false}
+			return structs.NullableString{Valid: false}
 		}
-		return sql.NullString{String: selected, Valid: true}
+		return structs.NullableString{String: selected, Valid: true}
 	case "rejected":
 		notes := []string{
 			"Insufficient documentation",
@@ -203,7 +217,10 @@ func generateAdmissionNotes(status string) sql.NullString {
 			"Documentation not properly verified",
 			"Required supporting documents missing",
 		}
-		return sql.NullString{String: notes[rand.Intn(len(notes))], Valid: true}
+		return structs.NullableString{
+			String: notes[rand.Intn(len(notes))],
+			Valid:  true,
+		}
 	case "for revision":
 		notes := []string{
 			"Requires additional supporting documents",
@@ -211,25 +228,61 @@ func generateAdmissionNotes(status string) sql.NullString {
 			"Missing required signatures",
 			"Please provide recent medical certificate",
 		}
-		return sql.NullString{String: notes[rand.Intn(len(notes))], Valid: true}
+		return structs.NullableString{
+			String: notes[rand.Intn(len(notes))],
+			Valid:  true,
+		}
 	default:
-		return sql.NullString{Valid: false}
+		return structs.NullableString{Valid: false}
 	}
 }
 
-func insertAppointment(ctx context.Context, tx *sqlx.Tx, iirID string) string {
-	if len(timeSlotIDs) == 0 || len(appointmentCategoryIDs) == 0 ||
+func insertAppointment(
+	ctx context.Context,
+	tx *sqlx.Tx,
+	iirID string,
+	appointmentsDataset []map[string]string,
+) string {
+	if len(timeSlotIDs) == 0 || len(appointmentCategories) == 0 ||
 		len(appointmentStatusIDs) == 0 {
 		return ""
+	}
+
+	hasDataset := false
+	if len(appointmentsDataset) > 0 {
+		hasDataset = true
+	}
+
+	selectedIdx := 0
+	var selectedAppt map[string]string
+	if hasDataset {
+		selectedIdx = rand.Intn(len(appointmentsDataset))
+		selectedAppt = (appointmentsDataset)[selectedIdx]
+	} else {
+		selectedAppt = map[string]string{
+			"text":          gofakeit.Sentence(rand.Intn(5) + 5),
+			"urgency_level": []string{"LOW", "MEDIUM", "HIGH", "CRITICAL"}[rand.Intn(4)],
+			"category":      []string{"ACADEMIC", "CAREER GUIDANCE", "PERSONAL", "MENTAL HEALTH", "FINANCIAL", "OTHER"}[rand.Intn(6)],
+		}
 	}
 
 	now := time.Now().Truncate(24 * time.Hour)
 	whenDateStr, timeSlotID, whenDate := reserveAppointmentSlot(now)
 	statusID := chooseAppointmentStatusID(whenDate, now)
-	concernCategoryID := randomChoice(appointmentCategoryIDs).(int)
+	concernCategoryID := func() string {
+		for _, category := range appointmentCategories {
+			if strings.EqualFold(category["name"], selectedAppt["category"]) {
+				return category["id"]
+			}
+		}
+
+		return "0"
+	}()
+
+	concernCategoryIDInt, _ := strconv.Atoi(concernCategoryID)
 
 	// Determine admin_notes value
-	var adminNotes sql.NullString
+	var adminNotes structs.NullableString
 	statusName := ""
 	for name, id := range appointmentStatusByName {
 		if id == statusID {
@@ -239,27 +292,26 @@ func insertAppointment(ctx context.Context, tx *sqlx.Tx, iirID string) string {
 	}
 	if statusName == "cancelled" || statusName == "rejected" ||
 		strings.Contains(statusName, "show") || statusName == "completed" {
-		adminNotes = sql.NullString{
+		adminNotes = structs.NullableString{
 			String: gofakeit.Sentence(rand.Intn(5) + 5),
 			Valid:  true,
 		}
 	} else {
-		adminNotes = sql.NullString{Valid: false}
+		adminNotes = structs.NullableString{Valid: false}
 	}
 
 	appointmentID := uuid.New().String()
 
 	appt := &appointments.Appointment{
-		ID:    appointmentID,
-		IIRID: iirID,
-		Reason: sql.NullString{
-			String: gofakeit.Sentence(rand.Intn(11) + 15),
-			Valid:  true,
-		},
+		ID:                    appointmentID,
+		IIRID:                 iirID,
+		Reason:                structs.StringToNullableString(selectedAppt["text"]),
 		AdminNotes:            adminNotes,
 		WhenDate:              whenDateStr,
 		TimeSlotID:            timeSlotID,
-		AppointmentCategoryID: concernCategoryID,
+		UrgencyLevel:          selectedAppt["urgency_level"],
+		UrgencyScore:          0.95,
+		AppointmentCategoryID: concernCategoryIDInt,
 		StatusID:              statusID,
 	}
 

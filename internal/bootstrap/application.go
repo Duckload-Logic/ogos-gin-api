@@ -32,7 +32,10 @@ func Initialize(db *sqlx.DB, cfg *config.Config) (*Application, error) {
 					err,
 				)
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(
+				context.Background(),
+				10*time.Second,
+			)
 			defer cancel()
 
 			if err := blobStorage.EnsureContainer(ctx); err != nil {

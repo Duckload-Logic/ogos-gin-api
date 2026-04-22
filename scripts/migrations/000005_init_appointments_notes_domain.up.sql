@@ -10,6 +10,8 @@ CREATE TABLE appointments (
     reason TEXT DEFAULT NULL,
     admin_notes TEXT DEFAULT NULL,
     appointment_category_id INT NOT NULL,
+    urgency_level ENUM('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') NOT NULL DEFAULT 'MEDIUM',
+    urgency_score FLOAT NOT NULL,
     status_id INT NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

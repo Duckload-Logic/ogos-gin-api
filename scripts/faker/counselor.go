@@ -2,13 +2,13 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
@@ -26,11 +26,11 @@ func createSuperAdmin(index int, password string, userFromCSV *users.User) {
 			FirstName:    "Super",
 			MiddleName:   randomMiddleName(),
 			LastName:     "Admin",
-			SuffixName:   sql.NullString{Valid: false},
+			SuffixName:   structs.NullableString{Valid: false},
 			Email:        email,
-			PasswordHash: sql.NullString{Valid: true, String: password},
+			PasswordHash: structs.NullableString{Valid: true, String: password},
 			AuthType:     "native",
-			IsActive:     1,
+			IsActive:     true,
 		}
 	}
 
@@ -65,9 +65,9 @@ func createCounselor(index int, password string, userFromCSV *users.User) {
 			LastName:     lastName,
 			SuffixName:   nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
 			Email:        email,
-			PasswordHash: sql.NullString{Valid: true, String: password},
+			PasswordHash: structs.NullableString{Valid: true, String: password},
 			AuthType:     "native",
-			IsActive:     1,
+			IsActive:     true,
 		}
 	}
 

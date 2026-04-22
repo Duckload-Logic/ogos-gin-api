@@ -23,13 +23,11 @@ CREATE INDEX idx_admission_slips_category_id ON admission_slips(category_id ASC)
 CREATE INDEX idx_admission_slips_iir_id ON admission_slips(iir_id ASC);
 
 CREATE TABLE slip_attachments (
-    id CHAR(36) NOT NULL PRIMARY KEY,
+    file_id CHAR(36) NOT NULL PRIMARY KEY,
     admission_slip_id CHAR(36) NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
-    file_url VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT slip_attachments_ibfk_1 FOREIGN KEY (admission_slip_id) REFERENCES admission_slips(id) ON DELETE CASCADE
+    attachment_type ENUM('MEDICAL', 'EXCUSE LETTER', 'PARENT VALID ID', 'OTHER') NOT NULL,
+    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
+    FOREIGN KEY (admission_slip_id) REFERENCES admission_slips(id) ON DELETE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
 
 CREATE INDEX idx_slip_attachments_admission_slip_id ON slip_attachments(admission_slip_id ASC);

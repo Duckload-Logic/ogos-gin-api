@@ -8,6 +8,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/analytics"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/appointments"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/auth"
+	"github.com/olazo-johnalbert/duckload-api/internal/features/files"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/m2mclients"
@@ -20,6 +21,7 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/email"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/gotenberg"
+	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/ocr"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/storage"
 )
 
@@ -28,6 +30,7 @@ type Services struct {
 	UserService               users.ServiceInterface
 	LocationsService          locations.ServiceInterface
 	StudentService            students.ServiceInterface
+	FileService               files.ServiceInterface
 	NoteService               notes.ServiceInterface
 	IntegrationStudentService integrations.ServiceInterface
 	AppointmentService        appointments.ServiceInterface
@@ -53,6 +56,7 @@ func getServices(
 		notificationsService,
 		userService,
 	)
+
 	tokenService := tokens.NewService()
 	sessionService := sessions.NewService(redis)
 	m2mClientService := m2mclients.NewService(
@@ -68,15 +72,25 @@ func getServices(
 		sessionService,
 		emailer,
 	)
+
 	locationsService := locations.NewService(repos.LocationsRepo)
 
 	gotenbergClient := gotenberg.NewClient(cfg.GotenbergURL)
 	pdfService := pdf.NewService(gotenbergClient)
 
+	ocrClient := ocr.NewClient(cfg.AIBaseUrl, "") // Assuming no API key for now
+
+	fileService := files.NewService(
+		repos.FileRepo,
+		fileStorage,
+		ocrClient,
+	)
+
 	studentService := students.NewService(
 		repos.StudentRepo,
 		locationsService,
 		userService,
+		fileService,
 		systemLogService,
 		notificationsService,
 		cfg,
@@ -97,6 +111,7 @@ func getServices(
 		userService,
 		noteService,
 		studentService,
+		cfg,
 	)
 	slipService := slips.NewService(
 		repos.SlipRepo,
@@ -105,6 +120,7 @@ func getServices(
 		fileStorage,
 		userService,
 		studentService,
+		fileService,
 	)
 	analyticsService := analytics.NewService(repos.AnalyticsRepo, redis)
 
@@ -116,6 +132,7 @@ func getServices(
 		NoteService:               noteService,
 		IntegrationStudentService: integrationStudentService,
 		AppointmentService:        appointmentService,
+		FileService:               fileService,
 		SlipService:               slipService,
 		AnalyticsService:          analyticsService,
 		M2MClientService:          m2mClientService,
