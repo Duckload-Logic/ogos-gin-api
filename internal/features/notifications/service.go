@@ -6,34 +6,35 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
-	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 )
 
 type Service struct {
-	repo *Repository
+	repo RepositoryInterface
 }
 
-func NewService(repo *Repository) *Service {
+func NewService(repo RepositoryInterface) *Service {
 	return &Service{repo: repo}
 }
 
-// Send handles creating a new notification using the email string as identifier
 func (s *Service) Send(
 	ctx context.Context,
 	notif audit.NotificationEntry,
 ) error {
-	return s.repo.Create(ctx, s.repo.GetDB(), &NotificationModel{
-		ID: uuid.New().String(),
-
-		ReceiverID: structs.ToSqlNull(notif.ReceiverID),
-		ActorID:    structs.ToSqlNull(notif.ActorID),
-		TargetID:   structs.ToSqlNull(notif.TargetID),
-		TargetType: structs.ToSqlNull(notif.TargetType),
-
-		Title:   notif.Title,
-		Message: notif.Message,
-		Type:    notif.Type,
+	err := s.repo.Create(ctx, nil, Notification{
+		ID:         uuid.New().String(),
+		ReceiverID: notif.ReceiverID,
+		ActorID:    notif.ActorID,
+		TargetID:   notif.TargetID,
+		TargetType: notif.TargetType,
+		Title:      notif.Title,
+		Message:    notif.Message,
+		Type:       notif.Type,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to send notification: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Service) GetUserNotifications(
@@ -42,7 +43,6 @@ func (s *Service) GetUserNotifications(
 ) ([]audit.NotificationEntry, error) {
 	models, err := s.repo.GetByUserID(ctx, userID)
 	if err != nil {
-		// Consistent error wrapping with %w
 		return nil, fmt.Errorf(
 			"failed to fetch notifications for user %s: %w",
 			userID,
@@ -50,11 +50,11 @@ func (s *Service) GetUserNotifications(
 		)
 	}
 
-	var dtos []audit.NotificationEntry
+	dtos := make([]audit.NotificationEntry, 0, len(models))
 	for _, m := range models {
 		dtos = append(dtos, audit.NotificationEntry{
 			ID:         m.ID,
-			ReceiverID: structs.NullableString(m.ReceiverID),
+			ReceiverID: m.ReceiverID,
 			Title:      m.Title,
 			Message:    m.Message,
 			Type:       m.Type,
@@ -66,5 +66,5 @@ func (s *Service) GetUserNotifications(
 }
 
 func (s *Service) MarkAsRead(ctx context.Context, id string) error {
-	return s.repo.MarkAsRead(ctx, s.repo.GetDB(), id)
+	return s.repo.MarkAsRead(ctx, nil, id)
 }
