@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -31,35 +32,41 @@ func main() {
 
 	fmt.Println("Verifying temporal constraints...")
 
-	// 1. Future Appointment Inconsistencies
+	// Future Appointment Inconsistencies
 	var futureApptErr int
 	query1 := `
-		SELECT COUNT(*) FROM appointments 
-		WHERE when_date > CURDATE() 
+		SELECT COUNT(*) FROM appointments
+		WHERE when_date > CURDATE()
 		AND status_id IN (SELECT id FROM statuses WHERE LOWER(name) IN ('completed', 'no-show'))
 	`
 	db.Get(&futureApptErr, query1)
-	fmt.Printf("Future appts with 'Completed/No-show' (Error): %d\n", futureApptErr)
+	fmt.Printf(
+		"Future appts with 'Completed/No-show' (Error): %d\n",
+		futureApptErr,
+	)
 
-	// 2. Past Appointment Inconsistencies
+	// Past Appointment Inconsistencies
 	var pastApptErr int
 	query2 := `
-		SELECT COUNT(*) FROM appointments 
-		WHERE when_date < CURDATE() 
+		SELECT COUNT(*) FROM appointments
+		WHERE when_date < CURDATE()
 		AND status_id IN (SELECT id FROM statuses WHERE LOWER(name) IN ('pending', 'scheduled'))
 	`
 	db.Get(&pastApptErr, query2)
 	fmt.Printf("Past appts with 'Pending/Scheduled' (Error): %d\n", pastApptErr)
 
-	// 3. Future Slip Inconsistencies
+	// Future Slip Inconsistencies
 	var futureSlipErr int
 	query3 := `
-		SELECT COUNT(*) FROM admission_slips 
-		WHERE date_of_absence > CURDATE() 
+		SELECT COUNT(*) FROM admission_slips
+		WHERE date_of_absence > CURDATE()
 		AND status_id IN (SELECT id FROM statuses WHERE LOWER(name) IN ('approved', 'rejected', 'for revision'))
 	`
 	db.Get(&futureSlipErr, query3)
-	fmt.Printf("Future slips with 'Processed' status (Error): %d\n", futureSlipErr)
+	fmt.Printf(
+		"Future slips with 'Processed' status (Error): %d\n",
+		futureSlipErr,
+	)
 
 	if futureApptErr == 0 && pastApptErr == 0 && futureSlipErr == 0 {
 		fmt.Println("SUCCESS: All temporal constraints verified.")
