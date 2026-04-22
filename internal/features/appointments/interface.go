@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/config"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
@@ -13,6 +14,7 @@ type ServiceInterface interface {
 		ctx context.Context,
 		iirID string,
 		req AppointmentDTO,
+		cfg *config.Config,
 	) (*Appointment, error)
 	GetAppointmentByID(ctx context.Context, id string) (*AppointmentDTO, error)
 	GetDailyStatusCount(
@@ -48,6 +50,7 @@ type ServiceInterface interface {
 }
 
 type RepositoryInterface interface {
+	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 	GetDB() *sqlx.DB
 	GetTimeSlots(ctx context.Context, date string) ([]TimeSlot, error)
 	GetCategories(ctx context.Context) ([]AppointmentCategory, error)

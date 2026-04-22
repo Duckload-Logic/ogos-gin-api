@@ -16,7 +16,8 @@ func RegisterRoutes(
 ) {
 	routes := rg.Group("/appointments")
 	routes.Use(middleware.AuthMiddleware(redis))
-	routes.Use(middleware.HydrateStudentContext(db))
+	routes.Use(middleware.HydrateStudentIIRContext(db))
+	routes.Use(middleware.HydrateStudentCORContext(db))
 	routes.Use(middleware.AuditContextMiddleware())
 
 	adminOnly := routes.Group("")
@@ -24,11 +25,8 @@ func RegisterRoutes(
 		int(constants.AdminRoleID),
 	))
 	{
-		adminOnly.GET("", h.GetAppointmentList)
-		adminOnly.GET(
-			"/calendar/stats",
-			h.GetDailyStatusCountList,
-		)
+		adminOnly.GET("", h.GetAppointments)
+		adminOnly.GET("/calendar/stats", h.GetAppointmentDailyStats)
 	}
 
 	studentOnly := routes.Group("")
@@ -36,9 +34,9 @@ func RegisterRoutes(
 		int(constants.StudentRoleID),
 	))
 	{
-		studentOnly.GET("/me", h.GetAppointmentListByIIR)
+		studentOnly.GET("/me", h.GetAppointmentMe)
 		studentOnly.POST("", h.PostAppointment)
-		studentOnly.POST("/id/:id/cancel", h.PostCancelAppointment)
+		studentOnly.POST("/id/:id/cancel", h.PostAppointmentCancel)
 	}
 
 	sharedRoutes := routes.Group("")
@@ -48,19 +46,10 @@ func RegisterRoutes(
 	))
 	{
 		sharedRoutes.GET("/id/:id", h.GetAppointmentByID)
-		sharedRoutes.GET("/stats", h.GetAppointmentStatsList)
-		sharedRoutes.GET(
-			"/lookups/categories",
-			h.GetAppointmentCategoryList,
-		)
-		sharedRoutes.GET(
-			"/lookups/slots",
-			h.GetAvailableTimeSlotList,
-		)
-		sharedRoutes.GET(
-			"/lookups/statuses",
-			h.GetAppointmentStatusList,
-		)
+		sharedRoutes.GET("/stats", h.GetAppointmentStats)
+		sharedRoutes.GET("/lookups/categories", h.GetAppointmentCategories)
+		sharedRoutes.GET("/lookups/slots", h.GetAppointmentSlots)
+		sharedRoutes.GET("/lookups/statuses", h.GetAppointmentStatuses)
 		sharedRoutes.PATCH(
 			"/id/:id",
 			h.PatchAppointment,
