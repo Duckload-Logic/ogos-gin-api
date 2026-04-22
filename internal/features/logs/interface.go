@@ -1,5 +1,7 @@
 package logs
 
+//go:generate mockgen -source=interface.go -package=logs -destination=mock_interfaces.go
+
 import (
 	"context"
 
@@ -21,16 +23,17 @@ type ServiceInterface interface {
 	)
 	ListLogs(
 		ctx context.Context,
-		req ListSystemLogsRequest,
-	) (*ListSystemLogsDTO, error)
+		req audit.ListSystemLogsRequest,
+	) (*audit.ListSystemLogsDTO, error)
 	GetStats(
 		ctx context.Context,
 		startDate, endDate string,
-	) ([]LogStatsDTO, error)
-	GetActivityStats(ctx context.Context) ([]LogActivityDTO, error)
+	) ([]audit.LogStatsDTO, error)
+	GetActivityStats(ctx context.Context) ([]audit.LogActivityDTO, error)
 }
 
 type RepositoryInterface interface {
+	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 	GetDB() *sqlx.DB
 	Record(ctx context.Context, tx datastore.DB, log *SystemLog) error
 	List(
@@ -46,6 +49,6 @@ type RepositoryInterface interface {
 	GetStats(
 		ctx context.Context,
 		startDate, endDate string,
-	) ([]LogStatsDTO, error)
-	GetActivityStats(ctx context.Context) ([]LogActivityDTO, error)
+	) ([]audit.LogStatsDTO, error)
+	GetActivityStats(ctx context.Context) ([]audit.LogActivityDTO, error)
 }
