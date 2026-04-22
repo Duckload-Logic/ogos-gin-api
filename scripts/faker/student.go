@@ -9,15 +9,24 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/locations"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/students"
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
-func createStudent(index int, password string, userFromCSV *users.User) {
+func createStudent(
+	index int,
+	password string,
+	userFromCSV *users.User,
+	appointmentsDataset []map[string]string,
+) {
 	ctx := context.Background()
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -40,22 +49,19 @@ func createStudent(index int, password string, userFromCSV *users.User) {
 
 		// users
 		user = users.User{
-			ID:        uuid.New().String(),
-			RoleID:    1, // Student
-			FirstName: gofakeit.FirstName(),
-			MiddleName: nullStringIf(
-				gofakeit.Bool(),
-				gofakeit.FirstName(),
-			),
+			ID:         uuid.New().String(),
+			RoleID:     1, // Student
+			FirstName:  gofakeit.FirstName(),
+			MiddleName: randomMiddleName(),
 			LastName:   gofakeit.LastName(),
 			SuffixName: nullStringIf(rand.Float32() < 0.1, gofakeit.RandomString([]string{"Jr.", "Sr.", "III", "IV"})),
 			Email:      studentEmail,
-			PasswordHash: sql.NullString{
+			PasswordHash: structs.NullableString{
 				Valid:  true,
 				String: password,
 			},
 			AuthType: "native",
-			IsActive: 1,
+			IsActive: true,
 		}
 	}
 
@@ -66,7 +72,15 @@ func createStudent(index int, password string, userFromCSV *users.User) {
 
 	insertNotifications(ctx, tx, user.ID)
 
-	generateFullStudentIIR(ctx, tx, user.ID, dob, birthYear, index)
+	generateFullStudentIIR(
+		ctx,
+		tx,
+		user.ID,
+		dob,
+		birthYear,
+		index,
+		appointmentsDataset,
+	)
 
 	tx.Commit()
 }
@@ -78,6 +92,7 @@ func generateFullStudentIIR(
 	dob time.Time,
 	birthYear int,
 	index int,
+	appointmentsDataset []map[string]string,
 ) {
 	iir := students.IIRRecord{
 		ID:          uuid.New().String(),
@@ -94,8 +109,8 @@ func generateFullStudentIIR(
 	insertSelectedReasons(ctx, tx, iirID)
 
 	// addresses (residential & provincial)
-	resAddr1 := insertAddress(ctx, tx)
-	resAddr2 := insertAddress(ctx, tx)
+	resAddr1 := insertAddress(ctx, tx, true)
+	resAddr2 := insertAddress(ctx, tx, false)
 	insertStudentAddress(ctx, tx, iirID, resAddr1, "Residential")
 	insertStudentAddress(ctx, tx, iirID, resAddr2, "Provincial")
 
@@ -191,7 +206,7 @@ func generateFullStudentIIR(
 	if rand.Float32() < 0.3 {
 		for i := 0; i < rand.Intn(5)+1; i++ {
 			// up to 5 appointments per student
-			apptID := insertAppointment(ctx, tx, iirID)
+			apptID := insertAppointment(ctx, tx, iirID, appointmentsDataset)
 			if apptID != "" {
 				appointmentIDs = append(appointmentIDs,
 					apptID)
@@ -335,7 +350,7 @@ func safeAddressID(addrID *int, fallback int) int {
 	return fallback
 }
 
-func validContact(contact sql.NullString) string {
+func validContact(contact structs.NullableString) string {
 	if contact.Valid && strings.TrimSpace(contact.String) != "" {
 		return contact.String
 	}
@@ -376,13 +391,13 @@ func insertPersonalInfo(
 	// Select status based on weights
 	roll := rand.Float32()
 	var statusID int
-	var graduationYear sql.NullInt64
+	var graduationYear structs.NullableInt64
 
 	if roll < 0.80 {
 		statusID = studentStatusByName["active"]
 	} else if roll < 0.90 {
 		statusID = studentStatusByName["graduated"]
-		graduationYear = sql.NullInt64{
+		graduationYear = structs.NullableInt64{
 			Int64: int64(time.Now().Year() - rand.Intn(5) - 1),
 			Valid: true,
 		}
@@ -402,18 +417,21 @@ func insertPersonalInfo(
 		rand.Intn(100000),
 		statusID,
 	)
-	var employerName, employerAddress sql.NullString
+	var employerName, employerAddress structs.NullableString
 	if isEmployed {
 		empName := gofakeit.Company()
 		empAddr := gofakeit.Address().Address
-		employerName = sql.NullString{String: empName, Valid: true}
-		employerAddress = sql.NullString{String: empAddr, Valid: true}
+		employerName = structs.NullableString{String: empName, Valid: true}
+		employerAddress = structs.NullableString{String: empAddr, Valid: true}
 	}
 
 	mobileNumber := gofakeit.Phone()
-	telephoneNumber := sql.NullString{Valid: false}
+	telephoneNumber := structs.NullableString{Valid: false}
 	if studentIndex%3 != 0 {
-		telephoneNumber = sql.NullString{String: gofakeit.Phone(), Valid: true}
+		telephoneNumber = structs.NullableString{
+			String: gofakeit.Phone(),
+			Valid:  true,
+		}
 	}
 
 	civilStatusID := chooseCivilStatusID()
@@ -472,25 +490,34 @@ func insertSelectedReasons(ctx context.Context, tx *sqlx.Tx, iirID string) {
 	}
 }
 
-func insertAddress(ctx context.Context, tx *sqlx.Tx) int {
+func insertAddress(ctx context.Context, tx *sqlx.Tx, isResidential bool) int {
 	// Pick a random city that has at least one barangay, along with its
 	// region/province
 	var cityRow struct {
-		CityCode     string         `db:"city_code"`
-		RegionCode   string         `db:"region_code"`
-		ProvinceCode sql.NullString `db:"province_code"`
+		CityCode     string                 `db:"city_code"`
+		RegionCode   string                 `db:"region_code"`
+		ProvinceCode structs.NullableString `db:"province_code"`
 	}
-	err := tx.Get(&cityRow, `
+
+	query := `
 		SELECT c.code AS city_code, c.region_code, c.province_code
 		FROM cities c
 		INNER JOIN barangays b ON c.code = b.city_code
-		WHERE c.region_code IS NOT NULL
+		WHERE c.region_code IS NOT NULL`
+
+	if isResidential {
+		query += ` AND c.region_code = '1300000000'`
+	}
+
+	query += `
 		GROUP BY c.code, c.region_code, c.province_code
 		ORDER BY RAND() LIMIT 1
-	`)
+	`
+	err := tx.Get(&cityRow, query)
 	if err != nil {
 		log.Fatal(
-			"No cities with barangays found. Please run the address seeder first (make locations): ",
+			"No cities with barangays found. Please run the address "+
+				"seeder first (make locations): ",
 			err,
 		)
 	}
@@ -517,10 +544,10 @@ func insertAddress(ctx context.Context, tx *sqlx.Tx) int {
 
 	addr := &locations.Address{
 		RegionCode:   cityRow.RegionCode,
-		ProvinceCode: provinceCode,
+		ProvinceCode: structs.PointerToNullableString(provinceCode),
 		CityCode:     cityRow.CityCode,
 		BarangayCode: barangayCode,
-		StreetDetail: &street,
+		StreetDetail: structs.PointerToNullableString(&street),
 	}
 
 	id, err := locationsRepo.UpsertAddress(ctx, tx, addr)
@@ -557,19 +584,22 @@ func insertRelatedPerson(ctx context.Context, tx *sqlx.Tx) relatedPersonSeed {
 		time.Now().AddDate(-30, 0, 0),
 	)
 	educ := randomEducationalAttainment()
-	occupation := sql.NullString{
+	occupation := structs.NullableString{
 		String: gofakeit.JobTitle(),
 		Valid:  gofakeit.Bool(),
 	}
-	employer := sql.NullString{
+	employer := structs.NullableString{
 		String: gofakeit.Company(),
 		Valid:  occupation.Valid,
 	}
-	employerAddr := sql.NullString{
+	employerAddr := structs.NullableString{
 		String: gofakeit.Address().Address,
 		Valid:  occupation.Valid,
 	}
-	contact := sql.NullString{String: gofakeit.Phone(), Valid: gofakeit.Bool()}
+	contact := structs.NullableString{
+		String: gofakeit.Phone(),
+		Valid:  gofakeit.Bool(),
+	}
 
 	rp := &students.RelatedPerson{
 		EducationalLevel: educ,
@@ -641,15 +671,15 @@ func insertFamilyBackground(
 	employedSibs := rand.Intn(brothers + sisters + 1)
 	ordinal := rand.Intn(brothers+sisters+1) + 1
 	parentalID := randomChoice(parentalStatusIDs).(int)
-	var details sql.NullString
+	var details structs.NullableString
 	if parentalID == 5 { // "Other"
-		details = sql.NullString{String: gofakeit.Sentence(3), Valid: true}
+		details = structs.NullableString{String: gofakeit.Sentence(3), Valid: true}
 	}
 	quiet := gofakeit.Bool()
 	sharing := gofakeit.Bool()
-	var shareDetails sql.NullString
+	var shareDetails structs.NullableString
 	if sharing {
-		shareDetails = sql.NullString{
+		shareDetails = structs.NullableString{
 			String: "Shares with " + gofakeit.FirstName(),
 			Valid:  true,
 		}
@@ -705,10 +735,13 @@ func insertEducationalBackground(
 	iirID string,
 ) int {
 	nature := "Continuous"
-	var details sql.NullString
-	if rand.Float32() < 0.1 { // 10% interrupted
+	var details structs.NullableString
+	if rand.Float32() < 0.1 { // interrupted
 		nature = "Interrupted"
-		details = sql.NullString{String: gofakeit.Sentence(5), Valid: true}
+		details = structs.NullableString{
+			String: gofakeit.Sentence(5),
+			Valid:  true,
+		}
 	}
 
 	eb := &students.EducationalBackground{
@@ -752,7 +785,7 @@ func insertSchoolDetails(
 			continue
 		}
 
-		levelName := strings.Title(levelKey)
+		levelName := cases.Title(language.English).String(levelKey)
 		if levelKey == "pre-elementary" {
 			levelName = "Pre-Elementary"
 		}
@@ -877,8 +910,8 @@ func insertConsultations(ctx context.Context, tx *sqlx.Tx, iirID string) {
 				IIRID:            iirID,
 				ProfessionalType: profType,
 				HasConsulted:     has,
-				WhenDate:         when,
-				ForWhat:          what,
+				WhenDate:         structs.FromSqlNull(when),
+				ForWhat:          structs.FromSqlNull(what),
 			}
 
 			_, err := studentsRepo.UpsertStudentConsultation(ctx, tx, sc)
@@ -974,7 +1007,7 @@ func insertStudentFinances(ctx context.Context, tx *sqlx.Tx, iirID string) int {
 	sf := &students.StudentFinance{
 		IIRID:                      iirID,
 		MonthlyFamilyIncomeRangeID: incRangeID,
-		OtherIncomeDetails:         otherInc,
+		OtherIncomeDetails:         structs.FromSqlNull(otherInc),
 		WeeklyAllowance:            allowance,
 	}
 
@@ -1012,9 +1045,9 @@ func insertActivities(ctx context.Context, tx *sqlx.Tx, iirID string) {
 	for i := 0; i < num; i++ {
 		optID := randomChoice(activityOptionIDs).(int)
 		role := randomChoice([]string{"Officer", "Member", "Other"}).(string)
-		var roleSpec sql.NullString
+		var roleSpec structs.NullableString
 		if role == "Other" {
-			roleSpec = sql.NullString{String: gofakeit.Word(), Valid: true}
+			roleSpec = structs.NullableString{String: gofakeit.Word(), Valid: true}
 		}
 
 		sa := &students.StudentActivity{
@@ -1079,7 +1112,7 @@ func insertHobbies(ctx context.Context, tx *sqlx.Tx, iirID string) {
 	}
 }
 
-func randomAwards() sql.NullString {
+func randomAwards() structs.NullableString {
 	awardPool := []string{
 		"With Honors",
 		"Best in Mathematics",
@@ -1091,11 +1124,11 @@ func randomAwards() sql.NullString {
 
 	r := rand.Float32()
 	if r < 0.35 {
-		return sql.NullString{Valid: false}
+		return structs.NullableString{Valid: false}
 	}
 
 	if r < 0.7 {
-		return sql.NullString{
+		return structs.NullableString{
 			String: awardPool[rand.Intn(len(awardPool))],
 			Valid:  true,
 		}
@@ -1103,7 +1136,10 @@ func randomAwards() sql.NullString {
 
 	count := rand.Intn(3) + 2
 	selected := pickUniqueStrings(awardPool, count)
-	return sql.NullString{String: strings.Join(selected, ", "), Valid: true}
+	return structs.NullableString{
+		String: strings.Join(selected, ", "),
+		Valid:  true,
+	}
 }
 
 func insertNotifications(ctx context.Context, tx *sqlx.Tx, userID string) {
