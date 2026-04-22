@@ -2,7 +2,6 @@ package auth
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,22 +14,21 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/tokens"
-	"github.com/olazo-johnalbert/duckload-api/internal/features/logs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/identity/idp"
 )
 
 type Handler struct {
-	service    ServiceInterface
-	logService logs.ServiceInterface
-	cfg        *config.Config
+	service ServiceInterface
+	logger  audit.Logger
+	cfg     *config.Config
 }
 
 func NewHandler(
 	s ServiceInterface,
-	logService logs.ServiceInterface,
+	logger audit.Logger,
 	cfg *config.Config,
 ) *Handler {
-	return &Handler{service: s, logService: logService, cfg: cfg}
+	return &Handler{service: s, logger: logger, cfg: cfg}
 }
 
 // PostLogin godoc
@@ -48,6 +46,7 @@ func NewHandler(
 func (h *Handler) PostLogin(c *gin.Context) {
 	var req LoginDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("[PostLogin] {Bind JSON}: %v\n", err)
 		response.SendFail(c, gin.H{"error": "Invalid request format"})
 		return
 	}
@@ -56,19 +55,15 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	ua := c.Request.UserAgent()
 
 	userID, token, refreshToken, err := h.service.AuthenticateUser(
-		c,
-		req.Email,
-		req.Password,
-		ip,
-		ua,
+		c, req.Email, req.Password, ip, ua,
 	)
 	if err != nil {
 		// Clear cookies on failure to prevent ghost sessions
 		h.clearAuthCookies(c)
 
-		h.logService.Record(
+		h.logger.Record(
 			c.Request.Context(),
-			h.logService.GetDB(),
+			nil,
 			audit.LogEntry{
 				Level:    audit.LevelError,
 				Category: audit.CategorySecurity,
@@ -84,7 +79,7 @@ func (h *Handler) PostLogin(c *gin.Context) {
 				UserAgent: structs.StringToNullableString(ua),
 			},
 		)
-		log.Printf("[PostLogin] {AuthenticateUser}: %v", err)
+		fmt.Printf("[PostLogin] {AuthenticateUser}: %v\n", err)
 		response.SendFail(
 			c,
 			gin.H{"error": err.Error()},
@@ -97,9 +92,9 @@ func (h *Handler) PostLogin(c *gin.Context) {
 	h.setAuthCookies(c, token, refreshToken)
 
 	// Log success
-	h.logService.Record(
+	h.logger.Record(
 		c.Request.Context(),
-		h.logService.GetDB(),
+		nil,
 		audit.LogEntry{
 			Level:     audit.LevelInfo,
 			Category:  audit.CategorySecurity,
@@ -194,9 +189,9 @@ func (h *Handler) PostVerify(c *gin.Context) {
 	}
 
 	// Log success
-	h.logService.Record(
+	h.logger.Record(
 		c.Request.Context(),
-		h.logService.GetDB(),
+		nil,
 		audit.LogEntry{
 			Level:    audit.LevelInfo,
 			Category: audit.CategorySecurity,
@@ -225,7 +220,6 @@ func (h *Handler) PostVerify(c *gin.Context) {
 // @Failure      401 {object} map[string]string
 // @Router       /auth/refresh [post]
 func (h *Handler) PostRefreshToken(c *gin.Context) {
-	// Get Access Token (which contains the session Handle/JTI)
 	accessToken, err := c.Cookie(constants.AccessTokenCookieName)
 	if err != nil {
 		authHeader := c.GetHeader("Authorization")
@@ -235,6 +229,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	}
 
 	if accessToken == "" {
+		fmt.Printf("[PostRefreshToken] {Check Cookie}: Access token missing\n")
 		response.SendFail(
 			c,
 			gin.H{"error": "Access token missing"},
@@ -243,10 +238,10 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 		return
 	}
 
-	// Parse token UNVERIFIED to get the JTI (it might be expired)
 	tokenService := tokens.NewService()
 	claims, err := tokenService.ParseTokenUnverified(accessToken)
 	if err != nil {
+		fmt.Printf("[PostRefreshToken] {Parse JTI}: %v\n", err)
 		response.SendFail(
 			c,
 			gin.H{"error": "Invalid session handle"},
@@ -258,21 +253,14 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	ip := c.ClientIP()
 	ua := c.Request.UserAgent()
 
-	// Refresh using the JTI
 	newAccessToken, newRefreshToken, err := h.service.RefreshToken(
-		c,
-		sessions.NewJTI(claims.ID),
-		h.cfg,
-		ip,
-		ua,
+		c, sessions.NewJTI(claims.ID), h.cfg, ip, ua,
 	)
 	if err != nil {
-		// Remove previous cookies
 		h.clearAuthCookies(c)
-
-		h.logService.Record(
+		h.logger.Record(
 			c.Request.Context(),
-			h.logService.GetDB(),
+			nil,
 			audit.LogEntry{
 				Level:     audit.LevelError,
 				Category:  audit.CategorySecurity,
@@ -284,7 +272,7 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 				UserAgent: structs.StringToNullableString(ua),
 			},
 		)
-		log.Printf("[PostRefreshToken] {RefreshToken}: %v", err)
+		fmt.Printf("[PostRefreshToken] {RefreshToken}: %v\n", err)
 		response.SendFail(
 			c,
 			gin.H{"error": "Session expired or invalid"},
@@ -294,7 +282,6 @@ func (h *Handler) PostRefreshToken(c *gin.Context) {
 	}
 
 	h.setAuthCookies(c, newAccessToken, newRefreshToken)
-
 	response.SendSuccess(c, gin.H{"message": "Session refreshed"})
 }
 
@@ -318,7 +305,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 	}
 
 	if accessToken == "" {
-		log.Printf("[GetMe] {Check Token}: Access token missing")
+		fmt.Printf("[GetMe] {Check Token}: Access token missing\n")
 		response.SendFail(
 			c,
 			gin.H{"error": "Access token missing"},
@@ -335,7 +322,7 @@ func (h *Handler) GetMe(c *gin.Context) {
 
 	resp, err := h.service.GetMe(c.Request.Context(), userID, tType)
 	if err != nil {
-		log.Printf("[GetMe] {GetMe}: %v", err)
+		fmt.Printf("[GetMe] {GetMe}: %v\n", err)
 		response.SendError(
 			c,
 			"Failed to get user info",
@@ -391,9 +378,9 @@ func (h *Handler) GetLogout(c *gin.Context) {
 	userID, _ := c.Get("userID")
 	userEmail, _ := c.Get("userEmail")
 	if userID != nil && userEmail != nil {
-		h.logService.Record(
+		h.logger.Record(
 			c.Request.Context(),
-			h.logService.GetDB(),
+			nil,
 			audit.LogEntry{
 				Level:    audit.LevelInfo,
 				Category: audit.CategorySecurity,
@@ -423,7 +410,11 @@ func (h *Handler) GetLogout(c *gin.Context) {
 		if candidate != "" {
 			parsedURL, err := url.Parse(candidate)
 			if err == nil {
-				origin := fmt.Sprintf("%s://%s", parsedURL.Scheme, parsedURL.Host)
+				origin := fmt.Sprintf(
+					"%s://%s",
+					parsedURL.Scheme,
+					parsedURL.Host,
+				)
 				if h.isAllowedOrigin(origin) {
 					redirectTarget = origin + "/"
 				}
@@ -459,9 +450,9 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 	// Generate authorization URL with state and PKCE parameters
 	authURL, err := h.service.GetAuthorizeURL(h.cfg)
 	if err != nil {
-		h.logService.Record(
+		h.logger.Record(
 			c.Request.Context(),
-			h.logService.GetDB(),
+			nil,
 			audit.LogEntry{
 				Level:    audit.LevelError,
 				Category: audit.CategorySecurity,
@@ -502,9 +493,9 @@ func (h *Handler) GetAuthorizeURL(c *gin.Context) {
 func (h *Handler) PostIDPToken(c *gin.Context) {
 	var req idp.IDPTokenExchangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.logService.Record(
+		h.logger.Record(
 			c.Request.Context(),
-			h.logService.GetDB(),
+			nil,
 			audit.LogEntry{
 				Category: audit.CategorySecurity,
 				Action:   audit.ActionLoginFailed,
@@ -535,9 +526,9 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 		// Clear cookies on failure to prevent ghost sessions
 		h.clearAuthCookies(c)
 
-		h.logService.Record(
+		h.logger.Record(
 			c.Request.Context(),
-			h.logService.GetDB(),
+			nil,
 			audit.LogEntry{
 				Category: audit.CategorySecurity,
 				Action:   audit.ActionLoginFailed,
@@ -551,7 +542,7 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 				),
 			},
 		)
-		log.Printf("[PostIDPTokenExchange] {Service Call}: %v", err)
+		fmt.Printf("[PostIDPToken] {Token Exchange}: %v\n", err)
 		response.SendFail(
 			c,
 			gin.H{"error": err.Error()},
@@ -564,9 +555,9 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	h.setAuthCookies(c, accessToken, refreshToken)
 
 	// Log success
-	h.logService.Record(
+	h.logger.Record(
 		c.Request.Context(),
-		h.logService.GetDB(),
+		nil,
 		audit.LogEntry{
 			Level:    audit.LevelInfo,
 			Category: audit.CategorySecurity,
@@ -591,7 +582,10 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	})
 }
 
-func (h *Handler) setAuthCookies(c *gin.Context, accessToken, refreshToken string) {
+func (h *Handler) setAuthCookies(
+	c *gin.Context,
+	accessToken, refreshToken string,
+) {
 	if h.cfg.IsProduction {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
