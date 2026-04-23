@@ -19,41 +19,44 @@ func RegisterRoutes(
 	routes.Use(middleware.HydrateStudentIIRContext(db))
 	routes.Use(middleware.HydrateStudentCORContext(db))
 	routes.Use(middleware.AuditContextMiddleware())
+	slipLookup := middleware.OwnershipMiddleware(db, "slipID")
 
 	adminOnly := routes.Group("")
 	adminOnly.Use(middleware.RoleMiddleware(
-		int(constants.AdminRoleID),
+		constants.AdminRoleID,
 	))
 	{
 		adminOnly.GET("", h.GetSlips)
 		adminOnly.GET("/urgent", h.GetSlipUrgent)
-		adminOnly.PATCH("/id/:id/status", h.PatchSlipStatus)
+		adminOnly.PATCH("/id/:slipID/status", h.PatchSlipStatus)
 	}
 
 	studentOnly := routes.Group("")
 	studentOnly.Use(middleware.RoleMiddleware(
-		int(constants.StudentRoleID),
+		constants.StudentRoleID,
 	))
 	{
 		studentOnly.GET("/me", h.GetSlipMe)
 		studentOnly.POST("", h.PostSlip)
-		studentOnly.PATCH("/id/:id", h.PatchSlip)
+		studentOnly.PATCH("/id/:slipID", slipLookup, h.PatchSlip)
 	}
 
 	sharedRoutes := routes.Group("")
 	sharedRoutes.Use(middleware.RoleMiddleware(
-		int(constants.AdminRoleID),
-		int(constants.StudentRoleID),
+		constants.AdminRoleID,
+		constants.StudentRoleID,
 	))
 	{
-		sharedRoutes.GET("/id/:id", h.GetSlipByID)
+		sharedRoutes.GET("/id/:slipID", slipLookup, h.GetSlipByID)
 		sharedRoutes.GET("/stats", h.GetSlipStats)
 		sharedRoutes.GET(
-			"/id/:id/attachments",
+			"/id/:slipID/attachments",
+			slipLookup,
 			h.GetSlipAttachments,
 		)
 		sharedRoutes.GET(
-			"/id/:id/attachments/:attachmentId",
+			"/id/:slipID/attachments/:attachmentId",
+			slipLookup,
 			h.GetSlipAttachmentContent,
 		)
 		sharedRoutes.GET(

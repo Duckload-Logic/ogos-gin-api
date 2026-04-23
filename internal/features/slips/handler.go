@@ -164,10 +164,18 @@ func (h *Handler) GetSlipStats(c *gin.Context) {
 		return
 	}
 
-	roleID := c.MustGet("roleID").(int)
+	roleIDs := c.MustGet("roleIDs").([]int)
 	var iirIDPtr *string
 
-	if roleID == int(constants.StudentRoleID) {
+	isStudent := false
+	for _, rid := range roleIDs {
+		if rid == int(constants.StudentRoleID) {
+			isStudent = true
+			break
+		}
+	}
+
+	if isStudent {
 		iirID, ok := getIIRIDFromContext(c)
 		if !ok {
 			return
@@ -315,7 +323,7 @@ func (h *Handler) GetSlipMe(c *gin.Context) {
 // @Failure      500  {object} map[string]string
 // @Router       /slips/id/{id} [get]
 func (h *Handler) GetSlipByID(c *gin.Context) {
-	idParam := c.Param("id")
+	idParam := c.Param("slipID")
 	slip, err := h.service.GetSlipByID(c.Request.Context(), idParam)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -350,7 +358,7 @@ func (h *Handler) GetSlipByID(c *gin.Context) {
 // @Failure      500  {object} map[string]string
 // @Router       /slips/id/{id}/attachments [get]
 func (h *Handler) GetSlipAttachments(c *gin.Context) {
-	idParam := c.Param("id")
+	idParam := c.Param("slipID")
 	attachments, err := h.service.GetSlipAttachments(c.Request.Context(), idParam)
 	if err != nil {
 		fmt.Printf("[GetSlipAttachments] {Fetch Attachments}: %v\n", err)
@@ -400,6 +408,10 @@ func (h *Handler) GetSlipAttachmentContent(c *gin.Context) {
 		return
 	}
 
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+
 	c.Header(
 		"Content-Disposition",
 		fmt.Sprintf("attachment; filename=%q", attachment.FileName),
@@ -420,7 +432,7 @@ func (h *Handler) GetSlipAttachmentContent(c *gin.Context) {
 // @Failure      500  {object} map[string]string
 // @Router       /slips/id/{id}/status [patch]
 func (h *Handler) PatchSlip(c *gin.Context) {
-	idParam := c.Param("id")
+	idParam := c.Param("slipID")
 	iirID, ok := getIIRIDFromContext(c)
 	if !ok {
 		return
@@ -479,7 +491,7 @@ func (h *Handler) PatchSlip(c *gin.Context) {
 
 // PatchSlipStatus godoc
 func (h *Handler) PatchSlipStatus(c *gin.Context) {
-	idParam := c.Param("id")
+	idParam := c.Param("slipID")
 	var req UpdateStatusRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.SendFail(c, gin.H{"error": "Invalid request format"})
