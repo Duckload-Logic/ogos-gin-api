@@ -75,6 +75,10 @@ func TestService_VerifyUser(t *testing.T) {
 		mockRedis.EXPECT().
 			Get(ctx, sessions.NewJTI(regID).ToSessionKey()).
 			Return(`{"verificationToken":"invalid-hash"}`, nil)
+		
+		mockRedis.EXPECT().
+			Set(ctx, sessions.NewJTI(regID).ToSessionKey(), gomock.Any(), gomock.Any()).
+			Return(nil)
 
 		_, _, err := svc.VerifyUser(ctx, regID, otp)
 		if err == nil {
@@ -95,23 +99,18 @@ func TestService_GetMe(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		user := &users.User{
-			ID:     userID,
-			Email:  "test@example.com",
-			RoleID: 1,
-		}
-		role := &users.Role{
-			ID:   1,
-			Name: "Developer",
+			ID:    userID,
+			Email: "test@example.com",
+			Roles: []users.Role{{ID: 1, Name: "Developer"}},
 		}
 
 		mockRepo.EXPECT().GetUserByID(ctx, userID).Return(user, nil)
-		mockRepo.EXPECT().GetRoleByID(ctx, user.RoleID).Return(role, nil)
 
 		resp, err := svc.GetMe(ctx, userID, "native")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if resp.Email != user.Email || resp.Role.Name != role.Name {
+		if resp.Email != user.Email || len(resp.Roles) == 0 || resp.Roles[0].Name != "Developer" {
 			t.Errorf("resp mismatch: %+v", resp)
 		}
 	})

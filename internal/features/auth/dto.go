@@ -20,9 +20,9 @@ type MeResponse struct {
 	LastName   string     `json:"lastName"`
 	SuffixName string     `json:"suffixName,omitempty"`
 	MiddleName string     `json:"middleName,omitempty"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	Role       users.Role `json:"role"`
-	Type       string     `json:"type"` // "native" or "idp"
+	CreatedAt  time.Time    `json:"createdAt"`
+	Roles      []users.Role `json:"roles"`
+	Type       string       `json:"type"` // "native" or "idp"
 }
 
 type IDPRefreshRequest struct {

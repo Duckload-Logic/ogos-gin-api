@@ -54,6 +54,12 @@ func (s *Service) RegisterUser(
 	ctx context.Context,
 	req RegisterDTO,
 ) (string, error) {
+	// Check cooldown
+	cooldownKey := fmt.Sprintf("cooldown:%s", req.Email)
+	if val, _ := s.redis.Get(ctx, cooldownKey); val != "" {
+		return "", fmt.Errorf("please wait before requesting another verification email")
+	}
+
 	// Check if user already exists
 	existingUser, _ := s.repo.GetUserByEmail(
 		ctx,
@@ -62,6 +68,11 @@ func (s *Service) RegisterUser(
 	)
 	if existingUser != nil {
 		return "", fmt.Errorf("user already exists: %s", req.Email)
+	}
+
+	// Validate password length
+	if len(req.Password) < 8 {
+		return "", fmt.Errorf("password must be at least 8 characters long")
 	}
 
 	// Hash password
@@ -84,7 +95,7 @@ func (s *Service) RegisterUser(
 		MiddleName:   structs.StringToNullableString(req.MiddleName),
 		SuffixName:   structs.StringToNullableString(req.SuffixName),
 		PasswordHash: structs.StringToNullableString(string(hashedPassword)),
-		RoleID:       int(constants.DeveloperRoleID),
+		Roles:        []users.Role{{ID: int(constants.DeveloperRoleID)}},
 		AuthType:     string(constants.AuthTypeNative),
 		IsActive:     false,
 	}
@@ -137,6 +148,9 @@ func (s *Service) RegisterUser(
 		return "", err
 	}
 
+	// Set cooldown
+	_ = s.redis.Set(ctx, cooldownKey, "1", 120*time.Second)
+
 	return transactionID, nil
 }
 
@@ -147,6 +161,31 @@ func (s *Service) ResendVerification(
 	val, err := s.sessionService.GetToken(ctx, sessions.NewJTI(registrationID))
 	if err != nil {
 		return fmt.Errorf("failed to get token from redis: %v", err)
+	}
+
+	// Extract email for cooldown check
+	var storageData struct {
+		User users.User `json:"user"`
+	}
+	_ = json.Unmarshal([]byte(val["user"]), &storageData)
+	userEmail := storageData.User.Email
+
+	// Check cooldown
+	cooldownKey := fmt.Sprintf("cooldown:%s", userEmail)
+	if cval, _ := s.redis.Get(ctx, cooldownKey); cval != "" {
+		return fmt.Errorf("please wait before requesting another verification email")
+	}
+
+	// Resend limit
+	var resends int
+	if r, ok := val["resends"]; ok {
+		fmt.Sscanf(r, "%d", &resends)
+	}
+	resends++
+	val["resends"] = fmt.Sprintf("%d", resends)
+
+	if resends > 3 {
+		return fmt.Errorf("too many resends. please try again later or contact support")
 	}
 
 	verificationOTP, err := s.get6DigitOTP()
@@ -173,9 +212,6 @@ func (s *Service) ResendVerification(
 		return fmt.Errorf("failed to store token in redis: %v", err)
 	}
 
-	var storageData struct {
-		User users.User `json:"user"`
-	}
 	err = json.Unmarshal([]byte(val["user"]), &storageData)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal user: %v", err)
@@ -190,6 +226,9 @@ func (s *Service) ResendVerification(
 	if err != nil {
 		return err
 	}
+
+	// Set cooldown
+	_ = s.redis.Set(ctx, cooldownKey, "1", 120*time.Second)
 
 	return nil
 }
@@ -245,10 +284,28 @@ func (s *Service) VerifyUser(
 	verificationOTP string,
 ) (string, string, error) {
 	// Get user from Redis
-	val, err := s.sessionService.GetToken(ctx, sessions.NewJTI(registrationID))
+	jti := sessions.NewJTI(registrationID)
+	val, err := s.sessionService.GetToken(ctx, jti)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get token from redis: %v", err)
 	}
+
+	// Trials management
+	var trials int
+	if t, ok := val["trials"]; ok {
+		fmt.Sscanf(t, "%d", &trials)
+	}
+
+	trials++
+	val["trials"] = fmt.Sprintf("%d", trials)
+
+	if trials > 5 {
+		_ = s.sessionService.DeleteToken(ctx, jti)
+		return "", "", fmt.Errorf("too many verification attempts. registration expired")
+	}
+
+	// Update trials in Redis
+	_ = s.sessionService.StoreToken(ctx, jti, val, 300)
 
 	// Verify OTP
 	err = bcrypt.CompareHashAndPassword(
@@ -292,6 +349,12 @@ func (s *Service) VerifyUser(
 func (s *Service) AuthenticateUser(
 	ctx context.Context, email, password, ipAddress, userAgent string,
 ) (string, string, string, error) {
+	// Check lockout
+	lockoutKey := fmt.Sprintf("lockout:%s", email)
+	if locked, _ := s.redis.Get(ctx, lockoutKey); locked != "" {
+		return "", "", "", fmt.Errorf("account locked due to too many failed attempts. please try again in 15 minutes")
+	}
+
 	// Fetch user from database (Native only)
 	user, err := s.repo.GetUserByEmail(
 		ctx,
@@ -299,31 +362,54 @@ func (s *Service) AuthenticateUser(
 		string(constants.AuthTypeNative),
 	)
 	if err != nil {
-		return "", "", "", fmt.Errorf("invalid credentials: %v", err)
+		return "", "", "", fmt.Errorf("invalid credentials")
 	}
 
 	if !user.IsActive {
-		return "", "", "", fmt.Errorf("user is not active: %v", err)
+		return "", "", "", fmt.Errorf("invalid credentials")
 	}
 
 	// Compare hashed password
 	if !user.PasswordHash.Valid {
-		return "", "", "", fmt.Errorf("invalid credentials: %v", err)
+		return "", "", "", fmt.Errorf("invalid credentials")
 	}
+
+	failureKey := fmt.Sprintf("failed_attempts:%s", email)
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.PasswordHash.String),
 		[]byte(password),
 	)
 	if err != nil {
-		return "", "", "", fmt.Errorf("invalid credentials: %v", err)
+		// Increment failures
+		failuresStr, _ := s.redis.Get(ctx, failureKey)
+		failures := 0
+		fmt.Sscanf(failuresStr, "%d", &failures)
+		failures++
+
+		if failures >= 5 {
+			_ = s.redis.Set(ctx, lockoutKey, "true", 15*time.Minute)
+			_ = s.redis.Del(ctx, failureKey)
+			return "", "", "", fmt.Errorf("account locked due to too many failed attempts. please try again in 15 minutes")
+		}
+
+		_ = s.redis.Set(ctx, failureKey, fmt.Sprintf("%d", failures), 15*time.Minute)
+		return "", "", "", fmt.Errorf("invalid credentials")
 	}
 
+	// Success: Reset failures and lockout
+	_ = s.redis.Del(ctx, failureKey)
+	_ = s.redis.Del(ctx, lockoutKey)
+
 	// Generate the token
+	roleIDs := make([]int, len(user.Roles))
+	for i, r := range user.Roles {
+		roleIDs[i] = r.ID
+	}
+
 	token, claims, err := tokens.NewService().GenerateToken(
 		user.Email,
 		user.ID,
-		user.RoleID,
-		"",
+		roleIDs,
 		string(constants.AuthTypeNative),
 		constants.AccessTokenMaxAge,
 	)
@@ -335,8 +421,7 @@ func (s *Service) AuthenticateUser(
 	refreshToken, _, err := tokens.NewService().GenerateToken(
 		user.Email,
 		user.ID,
-		user.RoleID,
-		"",
+		roleIDs,
 		string(constants.AuthTypeNative),
 		constants.RefreshTokenMaxAge,
 	)
@@ -414,8 +499,7 @@ func (s *Service) RefreshToken(
 			GenerateToken(
 				claims.UserEmail,
 				claims.UserID,
-				claims.RoleID,
-				"",
+				claims.RoleIDs,
 				string(constants.AuthTypeIDP),
 				constants.AccessTokenMaxAge,
 			)
@@ -427,8 +511,7 @@ func (s *Service) RefreshToken(
 			GenerateToken(
 				claims.UserEmail,
 				claims.UserID,
-				claims.RoleID,
-				"",
+				claims.RoleIDs,
 				string(constants.AuthTypeIDP),
 				constants.RefreshTokenMaxAge,
 			)
@@ -480,8 +563,7 @@ func (s *Service) RefreshToken(
 	newToken, newClaims, err := tokens.NewService().GenerateToken(
 		claims.UserEmail,
 		claims.UserID,
-		claims.RoleID,
-		"",
+		claims.RoleIDs,
 		string(constants.AuthTypeNative),
 		constants.AccessTokenMaxAge,
 	)
@@ -492,8 +574,7 @@ func (s *Service) RefreshToken(
 	newRefreshToken, _, err := tokens.NewService().GenerateToken(
 		claims.UserEmail,
 		claims.UserID,
-		claims.RoleID,
-		"",
+		claims.RoleIDs,
 		string(constants.AuthTypeNative),
 		constants.RefreshTokenMaxAge,
 	)
@@ -550,22 +631,6 @@ func (s *Service) GetMe(
 		return nil, err
 	}
 
-	role, err := s.repo.GetRoleByID(ctx, user.RoleID)
-	if err != nil {
-		// Fallback if role not found
-		return &MeResponse{
-			ID:         user.ID,
-			Email:      user.Email,
-			FirstName:  user.FirstName,
-			LastName:   user.LastName,
-			SuffixName: user.SuffixName.String,
-			MiddleName: user.MiddleName.String,
-			CreatedAt:  user.CreatedAt.Time,
-			Role:       users.Role{},
-			Type:       tokenType,
-		}, nil
-	}
-
 	return &MeResponse{
 		ID:         user.ID,
 		Email:      user.Email,
@@ -574,7 +639,7 @@ func (s *Service) GetMe(
 		SuffixName: user.SuffixName.String,
 		MiddleName: user.MiddleName.String,
 		CreatedAt:  user.CreatedAt.Time,
-		Role:       *role,
+		Roles:      user.Roles,
 		Type:       tokenType,
 	}, nil
 }
@@ -730,7 +795,8 @@ func (s *Service) PostIDPTokenExchange(
 		if err == sql.ErrNoRows {
 			assignedRoleID = int(constants.StudentRoleID)
 		} else {
-			assignedRoleID = localUser.RoleID
+			// User exists, they already have their roles loaded
+			assignedRoleID = 0 // Not used for existing users here
 		}
 	} else {
 		return "", "", "", "", "", fmt.Errorf(
@@ -745,7 +811,7 @@ func (s *Service) PostIDPTokenExchange(
 		localUser = &users.User{
 			ID:           uuid.NewString(),
 			Email:        userInfo.Email,
-			RoleID:       assignedRoleID,
+			Roles:        []users.Role{{ID: assignedRoleID}},
 			FirstName:    userInfo.FirstName,
 			LastName:     userInfo.LastName,
 			SuffixName:   structs.StringToNullableString(userInfo.SuffixName),
@@ -768,19 +834,34 @@ func (s *Service) PostIDPTokenExchange(
 		}
 	case nil:
 		// User exists. Sync role if it changed in the whitelist
-		if localUser.RoleID != assignedRoleID {
-			localUser.RoleID = assignedRoleID
-			err = s.repo.WithTransaction(
-				ctx,
-				func(tx datastore.DB) error {
-					return s.repo.CreateUser(ctx, tx, *localUser)
-				},
-			)
-			if err != nil {
-				return "", "", "", "", "", fmt.Errorf(
-					"[AuthService] {Update IDP User Role}: %w",
-					err,
-				)
+		if assignedRoleID != 0 {
+			hasRole := false
+			for _, r := range localUser.Roles {
+				if r.ID == assignedRoleID {
+					hasRole = true
+					break
+				}
+			}
+
+			if !hasRole {
+				// Promotion or sync from whitelist
+				err = s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
+					return s.repo.AssignRole(ctx, tx, users.RoleAssignment{
+						UserID:     localUser.ID,
+						RoleID:     assignedRoleID,
+						Reason:     structs.StringToNullableString("Whitelist synchronization"),
+						AssignedBy: structs.StringToNullableString("SYSTEM"),
+					})
+				})
+				if err != nil {
+					return "", "", "", "", "", fmt.Errorf(
+						"[AuthService] {Update IDP User Role}: %w",
+						err,
+					)
+				}
+				// Refresh roles
+				updatedRoles, _ := s.repo.GetRolesByUserID(ctx, localUser.ID)
+				localUser.Roles = updatedRoles
 			}
 		}
 	default:
@@ -792,19 +873,22 @@ func (s *Service) PostIDPTokenExchange(
 
 	appUserID := localUser.ID
 
-	// Map Role ID to Name for frontend redirection
-	role, err := s.repo.GetRoleByID(ctx, localUser.RoleID)
+	// Determine primary role name for redirection
 	roleName := "student"
-	if err == nil && role != nil {
-		roleName = role.Name
+	if len(localUser.Roles) > 0 {
+		roleName = strings.ToLower(localUser.Roles[0].Name)
+	}
+
+	roleIDs := make([]int, len(localUser.Roles))
+	for i, r := range localUser.Roles {
+		roleIDs[i] = r.ID
 	}
 
 	// Generate internal App Tokens using the actual app IDs
 	appAccessToken, accessClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		appUserID,
-		localUser.RoleID,
-		"",
+		roleIDs,
 		string(constants.AuthTypeIDP),
 		constants.AccessTokenMaxAge,
 	)
@@ -818,8 +902,7 @@ func (s *Service) PostIDPTokenExchange(
 	appRefreshToken, refreshClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		appUserID,
-		localUser.RoleID,
-		"",
+		roleIDs,
 		string(constants.AuthTypeIDP),
 		constants.RefreshTokenMaxAge,
 	)
