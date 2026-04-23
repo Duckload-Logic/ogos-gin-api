@@ -133,3 +133,21 @@ func (s *Service) ListUserSessions(
 
 	return sessions, nil
 }
+
+// RevokeAllUserSessions invalidates all active sessions for a user.
+func (s *Service) RevokeAllUserSessions(
+	ctx context.Context,
+	userID string,
+) error {
+	userKey := ToUserSessionsKey(userID)
+	jtis, err := s.redis.SMembers(ctx, userKey)
+	if err != nil {
+		return fmt.Errorf("failed to get user sessions: %w", err)
+	}
+
+	for _, jtiVal := range jtis {
+		_ = s.DeleteToken(ctx, NewJTI(jtiVal))
+	}
+
+	return s.redis.Del(ctx, userKey)
+}

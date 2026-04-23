@@ -55,6 +55,16 @@ func GetOnDuplicateKeyUpdateStatement(s interface{}, exclude []string) string {
 	return strings.Join(updates, ", ")
 }
 
+func GetPrefixColumns(s interface{}, prefix string) string {
+	cols := strings.Split(GetColumns(s), ", ")
+	var prefixedCols []string
+	for _, col := range cols {
+		prefixedCols = append(prefixedCols, fmt.Sprintf("%s.%s", prefix, col))
+	}
+
+	return strings.Join(prefixedCols, ", ")
+}
+
 func contains(slice []string, item string) bool {
 	for _, s := range slice {
 		if s == item {
