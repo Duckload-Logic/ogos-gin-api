@@ -339,3 +339,82 @@ func (h *Handler) GetUserActivity(c *gin.Context) {
 
 	response.SendSuccess(c, result)
 }
+
+func (h *Handler) PostUpdateRoles(c *gin.Context) {
+	var req UpdateRolesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	adminID := c.MustGet("userID").(string)
+
+	err := h.service.UpdateUserRoles(c.Request.Context(), req, adminID)
+	if err != nil {
+		fmt.Printf("[PostUpdateRoles] {UpdateUserRoles}: %v\n", err)
+		response.SendError(
+			c,
+			"Failed to update user roles",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	// Audit log for security visibility
+	adminEmail := c.MustGet("userEmail").(string)
+	h.logger.Record(
+		c.Request.Context(),
+		nil,
+		audit.LogEntry{
+			Level:    audit.LevelWarning,
+			Category: audit.CategorySecurity,
+			Action:   audit.ActionElevateRoles,
+			Message: fmt.Sprintf(
+				"Superadmin %s elevated/updated roles for user %s. Reason: %s, Ref: %s",
+				adminEmail,
+				req.UserID,
+				req.Reason,
+				req.ReferenceID,
+			),
+			UserID:   structs.StringToNullableString(adminID),
+			TargetID: structs.StringToNullableString(req.UserID),
+		},
+	)
+
+	response.SendSuccess(c, gin.H{"message": "User roles updated successfully"})
+}
+
+// func (h *Handler) PostProfilePicture(c *gin.Context) {
+// 	userID := c.Param("id")
+// 	if userID == "" {
+// 		response.SendFail(c, gin.H{"error": "User ID is required"})
+// 		return
+// 	}
+
+// 	var req struct {
+// 		FileID string `json:"file_id" binding:"required"`
+// 	}
+
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		response.SendFail(c, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	err := h.service.PostProfilePicture(c.Request.Context(), userID, req.FileID)
+// 	if err != nil {
+// 		fmt.Printf("[PostProfilePicture] {PostProfilePicture}: %v\n", err)
+// 		response.SendError(
+// 			c,
+// 			"Failed to set profile picture",
+// 			http.StatusInternalServerError,
+// 			nil,
+// 		)
+// 		return
+// 	}
+
+// 	response.SendSuccess(
+// 		c,
+// 		gin.H{"message": "Profile picture set successfully"},
+// 	)
+// }

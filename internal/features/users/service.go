@@ -2,18 +2,27 @@ package users
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Service struct {
-	repo RepositoryInterface
+	repo           RepositoryInterface
+	sessionService *sessions.Service
 }
 
 // NewService creates a new users service.
-func NewService(repo RepositoryInterface) ServiceInterface {
-	return &Service{repo: repo}
+func NewService(
+	repo RepositoryInterface,
+	sessionService *sessions.Service,
+) ServiceInterface {
+	return &Service{
+		repo:           repo,
+		sessionService: sessionService,
+	}
 }
 
 // GetUserByID retrieves a user by their ID.
@@ -87,15 +96,9 @@ func (s *Service) GetRoleDistribution(
 }
 
 func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
-	ctx := context.Background()
-	role, err := s.repo.GetRoleByID(ctx, user.RoleID)
-	if err != nil {
-		return nil
-	}
-
 	return &GetUserResponse{
-		Role:       *role,
 		ID:         user.ID,
+		Roles:      user.Roles,
 		FirstName:  user.FirstName,
 		MiddleName: user.MiddleName,
 		LastName:   user.LastName,
@@ -121,12 +124,20 @@ func (s *Service) PostProfilePicture(
 }
 
 func (s *Service) BlockUser(ctx context.Context, userID string) error {
-	return s.repo.WithTransaction(
+	err := s.repo.WithTransaction(
 		ctx,
 		func(tx datastore.DB) error {
 			return s.repo.BlockUser(ctx, tx, userID)
 		},
 	)
+	if err != nil {
+		return err
+	}
+
+	// Revoke sessions
+	_ = s.sessionService.RevokeAllUserSessions(ctx, userID)
+
+	return nil
 }
 
 func (s *Service) UnblockUser(ctx context.Context, userID string) error {
@@ -136,4 +147,33 @@ func (s *Service) UnblockUser(ctx context.Context, userID string) error {
 			return s.repo.UnblockUser(ctx, tx, userID)
 		},
 	)
+}
+
+func (s *Service) UpdateUserRoles(
+	ctx context.Context,
+	req UpdateRolesRequest,
+	adminID string,
+) error {
+	return s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
+		// Remove current roles
+		if err := s.repo.RemoveRoles(ctx, tx, req.UserID); err != nil {
+			return fmt.Errorf("failed to remove old roles: %w", err)
+		}
+
+		// Assign new roles
+		for _, roleID := range req.RoleIDs {
+			assignment := RoleAssignment{
+				UserID:      req.UserID,
+				RoleID:      roleID,
+				AssignedBy:  structs.StringToNullableString(adminID),
+				Reason:      structs.StringToNullableString(req.Reason),
+				ReferenceID: structs.StringToNullableString(req.ReferenceID),
+			}
+			if err := s.repo.AssignRole(ctx, tx, assignment); err != nil {
+				return fmt.Errorf("failed to assign role %d: %w", roleID, err)
+			}
+		}
+
+		return nil
+	})
 }

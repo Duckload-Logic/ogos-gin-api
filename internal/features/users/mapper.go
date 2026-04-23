@@ -8,7 +8,6 @@ import (
 func (m UserDB) ToDomain() User {
 	return User{
 		ID:           m.ID,
-		RoleID:       m.RoleID,
 		FirstName:    m.FirstName,
 		MiddleName:   structs.FromSqlNull(m.MiddleName),
 		LastName:     m.LastName,
@@ -29,7 +28,6 @@ func (d User) ToPersistence() UserDB {
 	}
 	return UserDB{
 		ID:           d.ID,
-		RoleID:       d.RoleID,
 		FirstName:    d.FirstName,
 		MiddleName:   structs.ToSqlNull(d.MiddleName),
 		LastName:     d.LastName,

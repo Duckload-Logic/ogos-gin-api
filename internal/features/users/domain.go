@@ -5,8 +5,17 @@ import (
 )
 
 type Role struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type RoleAssignment struct {
+	UserID      string
+	RoleID      int
+	AssignedAt  structs.NullableTime
+	AssignedBy  structs.NullableString
+	Reason      structs.NullableString
+	ReferenceID structs.NullableString
 }
 
 type ProfilePicture struct {
@@ -16,7 +25,7 @@ type ProfilePicture struct {
 
 type User struct {
 	ID           string
-	RoleID       int
+	Roles        []Role
 	FirstName    string
 	MiddleName   structs.NullableString
 	LastName     string
