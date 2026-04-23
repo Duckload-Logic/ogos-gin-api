@@ -113,4 +113,10 @@ type RepositoryInterface interface {
 		appt Appointment,
 	) error
 	GetUserIDByAppointmentID(ctx context.Context, id string) (string, error)
+	IsSlotAvailableForUpdate(
+		ctx context.Context,
+		tx datastore.DB,
+		date string,
+		timeSlotID int,
+	) (bool, error)
 }

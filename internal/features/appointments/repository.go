@@ -355,6 +355,28 @@ func (r *Repository) GetStatusByID(
 	return &domainModel, nil
 }
 
+func (r *Repository) IsSlotAvailableForUpdate(
+	ctx context.Context,
+	tx datastore.DB,
+	date string,
+	timeSlotID int,
+) (bool, error) {
+	var count int
+	query := `
+		SELECT COUNT(*) FROM appointments
+		WHERE when_date = ?
+			AND time_slot_id = ?
+			AND status_id != (
+				SELECT id
+				FROM statuses
+				WHERE name = 'Cancelled'
+			)
+		FOR UPDATE
+	`
+	err := tx.GetContext(ctx, &count, query, date, timeSlotID)
+	return count == 0, err
+}
+
 func (r *Repository) GetAvailableTimeSlots(
 	ctx context.Context,
 	date string,
