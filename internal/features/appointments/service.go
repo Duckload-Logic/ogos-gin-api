@@ -97,6 +97,16 @@ func (s *Service) CreateAppointment(
 	err = s.repo.WithTransaction(
 		ctx,
 		func(tx datastore.DB) error {
+			available, err := s.repo.IsSlotAvailableForUpdate(
+				ctx, tx, appt.WhenDate, appt.TimeSlotID,
+			)
+			if err != nil {
+				return err
+			}
+			if !available {
+				return fmt.Errorf("selected time slot is no longer available")
+			}
+
 			return s.repo.CreateAppointment(ctx, tx, appt)
 		},
 	)
@@ -593,7 +603,9 @@ func (s *Service) UpdateAppointment(
 			),
 			Title: "Appointment Updated Successfully",
 			Message: fmt.Sprintf(
-				"You have successfully updated the status of appointment scheduled on %s at %s to '%s'.",
+				"You have successfully updated the status of "+
+					"appointment #%s scheduled on %s at %s to '%s'.",
+				structs.TruncateString(oldAppt.ID, 7),
 				datetime.FormatDate(newAppt.WhenDate),
 				datetime.FormatTime(newAppt.TimeSlotTime),
 				newAppt.StatusName,
@@ -637,9 +649,11 @@ func (s *Service) UpdateAppointment(
 							TargetType: structs.StringToNullableString(
 								constants.AppointmentEntityType,
 							),
-							Title:   "Action Required: Significant Note",
-							Message: "Appointment completed. Please record any significant notes or incidents for this student.",
-							Type:    constants.AppointmentEntityType,
+							Title: "Action Required: Significant Note",
+							Message: "Appointment completed. Please record " +
+								"any significant notes or incidents for this " +
+								"student.",
+							Type: constants.AppointmentEntityType,
 						},
 					},
 				},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/sessions"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 	"go.uber.org/mock/gomock"
 )
@@ -13,26 +14,21 @@ func TestService_GetUserByID(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepositoryInterface(ctrl)
-	svc := NewService(mockRepo)
+	mockRedis := datastore.NewMockRedisClientInterface(ctrl)
+	sessionSvc := sessions.NewService(mockRedis)
+	svc := NewService(mockRepo, sessionSvc)
 
 	ctx := context.Background()
 	userID := "user-123"
 
 	t.Run("success", func(t *testing.T) {
 		user := &User{
-			ID:     userID,
-			Email:  "test@example.com",
-			RoleID: 1,
-		}
-		role := &Role{
-			ID:   1,
-			Name: "Admin",
+			ID:    userID,
+			Email: "test@example.com",
+			Roles: []Role{{ID: 1, Name: "Admin"}},
 		}
 
 		mockRepo.EXPECT().GetUserByID(ctx, userID).Return(user, nil)
-		mockRepo.EXPECT().
-			GetRoleByID(gomock.Any(), user.RoleID).
-			Return(role, nil)
 
 		resp, err := svc.GetUserByID(ctx, userID)
 		if err != nil {
@@ -49,7 +45,9 @@ func TestService_BlockUser(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := NewMockRepositoryInterface(ctrl)
-	svc := NewService(mockRepo)
+	mockRedis := datastore.NewMockRedisClientInterface(ctrl)
+	sessionSvc := sessions.NewService(mockRedis)
+	svc := NewService(mockRepo, sessionSvc)
 
 	ctx := context.Background()
 	userID := "user-123"
@@ -63,6 +61,14 @@ func TestService_BlockUser(t *testing.T) {
 
 		mockRepo.EXPECT().
 			BlockUser(ctx, nil, userID).
+			Return(nil)
+		
+		mockRedis.EXPECT().
+			SMembers(ctx, "user:sessions:"+userID).
+			Return(nil, nil)
+		
+		mockRedis.EXPECT().
+			Del(ctx, "user:sessions:"+userID).
 			Return(nil)
 
 		err := svc.BlockUser(ctx, userID)

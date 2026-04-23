@@ -22,7 +22,7 @@ func createSuperAdmin(index int, password string, userFromCSV *users.User) {
 
 		user = users.User{
 			ID:           uuid.New().String(),
-			RoleID:       3, // Super Admin
+			Roles:        []users.Role{{ID: 3, Name: "SuperAdmin"}},
 			FirstName:    "Super",
 			MiddleName:   randomMiddleName(),
 			LastName:     "Admin",
@@ -59,7 +59,7 @@ func createCounselor(index int, password string, userFromCSV *users.User) {
 
 		user = users.User{
 			ID:           uuid.New().String(),
-			RoleID:       2, // Counselor
+			Roles:        []users.Role{{ID: 2, Name: "Counselor"}},
 			FirstName:    firstName,
 			MiddleName:   randomMiddleName(),
 			LastName:     lastName,

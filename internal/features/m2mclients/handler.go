@@ -140,10 +140,18 @@ func (h *Handler) PostM2MTokenRefresh(c *gin.Context) {
 
 func (h *Handler) GetM2MClients(c *gin.Context) {
 	includeRevoked := c.Query("include_revoked") == "true"
-	roleID := c.MustGet("roleID").(int)
+	roleIDs := c.MustGet("roleIDs").([]int)
+
+	isSuperAdmin := false
+	for _, rid := range roleIDs {
+		if rid == int(constants.SuperAdminRoleID) {
+			isSuperAdmin = true
+			break
+		}
+	}
 
 	var userID string
-	if roleID != int(constants.SuperAdminRoleID) {
+	if !isSuperAdmin {
 		userID = c.MustGet("userID").(string)
 	}
 
@@ -151,7 +159,7 @@ func (h *Handler) GetM2MClients(c *gin.Context) {
 		c.Request.Context(),
 		userID,
 		includeRevoked,
-		roleID,
+		roleIDs,
 	)
 	if err != nil {
 		fmt.Printf("[GetM2MClients] {List Clients}: %v\n", err)

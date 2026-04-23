@@ -60,7 +60,7 @@ func parseUsersFromCSV(filePath string) ([]users.User, error) {
 		user := users.User{
 			ID:           record[0],
 			Email:        record[1],
-			RoleID:       roleID,
+			Roles:        []users.Role{{ID: roleID}},
 			FirstName:    record[3],
 			MiddleName:   stringToNullString(record[4]),
 			LastName:     record[5],

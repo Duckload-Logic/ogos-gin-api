@@ -59,10 +59,10 @@ func HydrateStudentCORContext(db *sqlx.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Query cor_records table to find COR ID by user_id
+		// Query student_cors table to find COR ID by user_id
 		var corID string
 		err := db.QueryRow(`
-			SELECT file_id FROM cor_records WHERE student_id = ?
+			SELECT file_id FROM student_cors WHERE student_id = ?
 		`, userID).Scan(&corID)
 
 		if err == sql.ErrNoRows {
@@ -95,7 +95,7 @@ func extractStudentContext(c *gin.Context) (string, bool) {
 		return "", false
 	}
 
-	roleIDVal, exists := c.Get("roleID")
+	roleIDsVal, exists := c.Get("roleIDs")
 	if !exists {
 		return "", false
 	}
@@ -105,10 +105,16 @@ func extractStudentContext(c *gin.Context) (string, bool) {
 		return "", false
 	}
 
-	roleID, ok := roleIDVal.(int)
+	roleIDs, ok := roleIDsVal.([]int)
 	if !ok {
 		return "", false
 	}
 
-	return userID, int(constants.StudentRoleID) == roleID
+	for _, rid := range roleIDs {
+		if rid == int(constants.StudentRoleID) {
+			return userID, true
+		}
+	}
+
+	return userID, false
 }

@@ -96,6 +96,10 @@ func TestService_CreateAppointment(t *testing.T) {
 			)
 
 		mockRepo.EXPECT().
+			IsSlotAvailableForUpdate(gomock.Any(), nil, gomock.Any(), gomock.Any()).
+			Return(true, nil)
+
+		mockRepo.EXPECT().
 			CreateAppointment(gomock.Any(), nil, gomock.Any()).
 			Return(nil)
 
@@ -143,6 +147,10 @@ func TestService_CreateAppointment(t *testing.T) {
 						return fn(nil)
 					},
 				)
+
+			mockRepo.EXPECT().
+				IsSlotAvailableForUpdate(gomock.Any(), nil, gomock.Any(), gomock.Any()).
+				Return(true, nil)
 
 			mockRepo.EXPECT().
 				CreateAppointment(gomock.Any(), nil, gomock.Any()).

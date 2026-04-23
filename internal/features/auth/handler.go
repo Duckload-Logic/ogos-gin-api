@@ -107,6 +107,9 @@ func (h *Handler) PostLogin(c *gin.Context) {
 		},
 	)
 
+	// Security: Prevent caching of sensitive auth info
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+
 	// Optionally return user info (but no tokens)
 	response.SendSuccess(c, gin.H{"message": "Login successful"})
 }
@@ -427,14 +430,23 @@ func (h *Handler) GetLogout(c *gin.Context) {
 		}
 	}
 
+	// Security: Prevent caching of logout state
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+
 	c.Redirect(http.StatusFound, redirectTarget)
 }
 
 // isAllowedOrigin checks if the given origin is permitted for redirects.
 func (h *Handler) isAllowedOrigin(origin string) bool {
 	if h.cfg.IsProduction {
-		// Support subdomains of dllbsit2027.com
-		return strings.HasSuffix(origin, ".dllbsit2027.com")
+		// Exact match or subdomain match (must have the dot)
+		target := "dllbsit2027.com"
+		parsed, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		host := parsed.Hostname()
+		return host == target || strings.HasSuffix(host, "."+target)
 	}
 
 	// Support localhost development
@@ -579,6 +591,9 @@ func (h *Handler) PostIDPToken(c *gin.Context) {
 	)
 
 	// Return Message and Role info for immediate redirect
+	// Security: Prevent caching of sensitive auth info
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate")
+
 	response.SendSuccess(c, gin.H{
 		"userID":    userID,
 		"userEmail": userEmail,
@@ -592,7 +607,7 @@ func (h *Handler) setAuthCookies(
 	accessToken, refreshToken string,
 ) {
 	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
+		c.SetSameSite(http.SameSiteLaxMode)
 	} else {
 		c.SetSameSite(http.SameSiteLaxMode)
 	}
@@ -624,7 +639,7 @@ func (h *Handler) setAuthCookies(
 
 func (h *Handler) clearAuthCookies(c *gin.Context) {
 	if h.cfg.IsProduction {
-		c.SetSameSite(http.SameSiteNoneMode)
+		c.SetSameSite(http.SameSiteLaxMode)
 	} else {
 		c.SetSameSite(http.SameSiteLaxMode)
 	}

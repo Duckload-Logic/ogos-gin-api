@@ -1354,6 +1354,7 @@ func (s *Service) saveStudentPersonalInfo(
 		EmployerAddress: dto.EmployerAddress,
 		MobileNumber:    dto.MobileNumber,
 		TelephoneNumber: dto.TelephoneNumber,
+		StatusID:        1, // Active status by default
 	}); err != nil {
 		return fmt.Errorf("failed to upsert student personal info: %w", err)
 	}

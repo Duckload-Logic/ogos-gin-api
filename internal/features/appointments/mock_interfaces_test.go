@@ -526,3 +526,18 @@ func (mr *MockRepositoryInterfaceMockRecorder) WithTransaction(ctx, fn any) *gom
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithTransaction", reflect.TypeOf((*MockRepositoryInterface)(nil).WithTransaction), ctx, fn)
 }
+
+// IsSlotAvailableForUpdate mocks base method.
+func (m *MockRepositoryInterface) IsSlotAvailableForUpdate(ctx context.Context, tx datastore.DB, date string, timeSlotID int) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsSlotAvailableForUpdate", ctx, tx, date, timeSlotID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsSlotAvailableForUpdate indicates an expected call of IsSlotAvailableForUpdate.
+func (mr *MockRepositoryInterfaceMockRecorder) IsSlotAvailableForUpdate(ctx, tx, date, timeSlotID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsSlotAvailableForUpdate", reflect.TypeOf((*MockRepositoryInterface)(nil).IsSlotAvailableForUpdate), ctx, tx, date, timeSlotID)
+}

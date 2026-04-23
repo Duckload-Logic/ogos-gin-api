@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
@@ -52,7 +53,13 @@ func (r *Repository) GetUserByID(
 		return nil, err
 	}
 
+	roles, err := r.GetRolesByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user roles: %w", err)
+	}
+
 	domainModel := dbModel.ToDomain()
+	domainModel.Roles = roles
 	return &domainModel, nil
 }
 
@@ -73,7 +80,7 @@ func (r *Repository) GetRoleByID(
 	var dbModel RoleDB
 	query := fmt.Sprintf(`
 		SELECT %s
-		FROM user_roles
+		FROM roles
 		WHERE id = ?
 	`, datastore.GetColumns(RoleDB{}))
 
@@ -84,6 +91,30 @@ func (r *Repository) GetRoleByID(
 
 	domainModel := dbModel.ToDomain()
 	return &domainModel, nil
+}
+
+func (r *Repository) GetRolesByUserID(
+	ctx context.Context,
+	userID string,
+) ([]Role, error) {
+	var dbModels []RoleDB
+	query := `
+		SELECT r.id, r.name
+		FROM roles r
+		JOIN user_roles ur ON ur.role_id = r.id
+		WHERE ur.user_id = ?
+	`
+
+	err := r.db.SelectContext(ctx, &dbModels, query, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var roles []Role
+	for _, m := range dbModels {
+		roles = append(roles, m.ToDomain())
+	}
+	return roles, nil
 }
 
 func (r *Repository) GetUserByEmail(
@@ -104,7 +135,13 @@ func (r *Repository) GetUserByEmail(
 		return nil, err
 	}
 
+	roles, err := r.GetRolesByUserID(ctx, dbModel.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user roles: %w", err)
+	}
+
 	domainModel := dbModel.ToDomain()
+	domainModel.Roles = roles
 	return &domainModel, nil
 }
 
@@ -134,7 +171,23 @@ func (r *Repository) CreateUser(
 		`, cols, vals, onDuplicateKeyStmt)
 
 	_, err := tx.NamedExecContext(ctx, query, dbModel)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Insert roles if any
+	for _, role := range user.Roles {
+		assignment := RoleAssignment{
+			UserID: user.ID,
+			RoleID: role.ID,
+			Reason: structs.StringToNullableString("Initial account creation"),
+		}
+		if err := r.AssignRole(ctx, tx, assignment); err != nil {
+			return fmt.Errorf("failed to assign initial role: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (r *Repository) PostProfilePicture(
@@ -148,7 +201,7 @@ func (r *Repository) PostProfilePicture(
 		FileID: fileID,
 	}.ToPersistence()
 
-	query := `INSERT INTO profile_pictures (user_id, file_id) 
+	query := `INSERT INTO profile_pictures (user_id, file_id)
 			  VALUES (:user_id, :file_id)`
 	_, err := tx.NamedExecContext(ctx, query, &dbModel)
 	if err != nil {
@@ -183,7 +236,7 @@ func (r *Repository) GetUserIDsByRole(
 	roleID int,
 ) ([]string, error) {
 	var userIDs []string
-	query := `SELECT id FROM users WHERE role_id = ?`
+	query := `SELECT user_id FROM user_roles WHERE role_id = ?`
 	err := r.db.SelectContext(ctx, &userIDs, query, roleID)
 	return userIDs, err
 }
@@ -195,22 +248,24 @@ func (r *Repository) ListUsers(
 	var dbModels []UserDB
 	var total int
 
-	baseQuery := `FROM users WHERE 1=1`
+	baseQuery := `FROM users u`
+	whereClause := ` WHERE 1=1`
 	args := []interface{}{}
 
 	if params.RoleID > 0 {
-		baseQuery += ` AND role_id = ?`
+		baseQuery += ` JOIN user_roles ur ON ur.user_id = u.id`
+		whereClause += ` AND ur.role_id = ?`
 		args = append(args, params.RoleID)
 	}
 
 	if params.Search != "" {
-		baseQuery += ` AND (email LIKE ? OR first_name LIKE ? OR last_name LIKE ?)`
+		whereClause += ` AND (u.email LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ?)`
 		like := "%" + params.Search + "%"
 		args = append(args, like, like, like)
 	}
 
 	if params.Active != nil {
-		baseQuery += ` AND is_active = ?`
+		whereClause += ` AND u.is_active = ?`
 		activeVal := 0
 		if *params.Active {
 			activeVal = 1
@@ -219,15 +274,17 @@ func (r *Repository) ListUsers(
 	}
 
 	// Count total
-	countQuery := `SELECT COUNT(*) ` + baseQuery
+	countQuery := `SELECT COUNT(DISTINCT u.id) ` + baseQuery + whereClause
 	err := r.db.GetContext(ctx, &total, countQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}
 
 	// Get paginated users
-	selectQuery := fmt.Sprintf(`SELECT %s `, datastore.GetColumns(UserDB{})) +
-		baseQuery + ` ORDER BY created_at DESC LIMIT ? OFFSET ?`
+	selectQuery := fmt.Sprintf(
+		`SELECT DISTINCT %s `,
+		datastore.GetPrefixColumns(UserDB{}, "u")) +
+		baseQuery + whereClause + " ORDER BY u.created_at DESC LIMIT ? OFFSET ?"
 
 	limit := params.PageSize
 	offset := (params.Page - 1) * params.PageSize
@@ -238,9 +295,50 @@ func (r *Repository) ListUsers(
 		return nil, 0, err
 	}
 
+	if len(dbModels) == 0 {
+		return []User{}, 0, nil
+	}
+
+	// Fetch roles for all users in one go to avoid N+1
+	userIDs := make([]string, len(dbModels))
+	for i, m := range dbModels {
+		userIDs[i] = m.ID
+	}
+
+	query, roleArgs, err := sqlx.In(`
+		SELECT ur.user_id, r.id, r.name
+		FROM roles r
+		JOIN user_roles ur ON ur.role_id = r.id
+		WHERE ur.user_id IN (?)
+	`, userIDs)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to build role query: %w", err)
+	}
+
+	type UserRoleRow struct {
+		UserID string `db:"user_id"`
+		ID     int    `db:"id"`
+		Name   string `db:"name"`
+	}
+	var roleRows []UserRoleRow
+	err = r.db.SelectContext(ctx, &roleRows, query, roleArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch roles for list: %w", err)
+	}
+
+	userRolesMap := make(map[string][]Role)
+	for _, row := range roleRows {
+		userRolesMap[row.UserID] = append(userRolesMap[row.UserID], Role{
+			ID:   row.ID,
+			Name: row.Name,
+		})
+	}
+
 	var users []User
 	for _, m := range dbModels {
-		users = append(users, m.ToDomain())
+		user := m.ToDomain()
+		user.Roles = userRolesMap[user.ID]
+		users = append(users, user)
 	}
 
 	return users, total, nil
@@ -250,9 +348,9 @@ func (r *Repository) GetRoleDistribution(
 	ctx context.Context,
 ) ([]RoleDistributionDTO, error) {
 	query := `
-		SELECT r.name as role_name, COUNT(u.id) as count
-		FROM user_roles r
-		LEFT JOIN users u ON u.role_id = r.id
+		SELECT r.name as role_name, COUNT(ur.user_id) as count
+		FROM roles r
+		LEFT JOIN user_roles ur ON ur.role_id = r.id
 		GROUP BY r.name
 	`
 
@@ -263,4 +361,41 @@ func (r *Repository) GetRoleDistribution(
 	}
 
 	return distribution, nil
+}
+
+func (r *Repository) AssignRole(
+	ctx context.Context,
+	tx datastore.DB,
+	assignment RoleAssignment,
+) error {
+	query := `
+		INSERT INTO user_roles (user_id, role_id, assigned_by, reason, reference_id)
+		VALUES (:user_id, :role_id, :assigned_by, :reason, :reference_id)
+		ON DUPLICATE KEY UPDATE
+			assigned_by = VALUES(assigned_by),
+			reason = VALUES(reason),
+			reference_id = VALUES(reference_id)
+	`
+
+	// Convert domain assignment to persistence row
+	dbRow := UserRoleDB{
+		UserID:      assignment.UserID,
+		RoleID:      assignment.RoleID,
+		AssignedBy:  structs.ToSqlNull(assignment.AssignedBy),
+		Reason:      structs.ToSqlNull(assignment.Reason),
+		ReferenceID: structs.ToSqlNull(assignment.ReferenceID),
+	}
+
+	_, err := tx.NamedExecContext(ctx, query, dbRow)
+	return err
+}
+
+func (r *Repository) RemoveRoles(
+	ctx context.Context,
+	tx datastore.DB,
+	userID string,
+) error {
+	query := `DELETE FROM user_roles WHERE user_id = ?`
+	_, err := tx.ExecContext(ctx, query, userID)
+	return err
 }

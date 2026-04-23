@@ -61,7 +61,7 @@ func StringToNullableString(s string) NullableString {
 }
 
 func PointerToNullableString(ps *string) NullableString {
-	if ps == nil {
+	if ps == nil || *ps == "" {
 		return NullableString{Valid: false}
 	}
 	return NullableString{String: *ps, Valid: true}

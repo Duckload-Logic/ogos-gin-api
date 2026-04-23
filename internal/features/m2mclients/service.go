@@ -93,7 +93,13 @@ func (s *Service) CreateClient(
 		ExpiresAt:         expiresAt,
 	}
 
-	id, err := s.repo.Create(ctx, nil, client)
+	var id int
+	err := s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
+		var err error
+		id, err = s.repo.Create(ctx, tx, client)
+		return err
+	})
+
 	if err != nil {
 		audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 			Log: &audit.LogParams{
@@ -189,8 +195,7 @@ func (s *Service) IssueToken(
 	accessToken, claims, err := s.tokenService.GenerateToken(
 		client.ClientName,
 		"", // No userID for M2M
-		0,  // No roleID for M2M
-		"m2m_client",
+		[]int{},
 		string(constants.AuthTypeM2M),
 		constants.M2MAccessTokenMaxAge,
 	)
@@ -219,8 +224,7 @@ func (s *Service) IssueToken(
 	refreshToken, rClaims, err := s.tokenService.GenerateToken(
 		client.ClientName,
 		"",
-		0,
-		"m2m_client",
+		[]int{},
 		string(constants.AuthTypeM2M),
 		constants.M2MRefreshTokenMaxAge,
 	)
@@ -305,18 +309,26 @@ func (s *Service) ListClients(
 	ctx context.Context,
 	userID string,
 	includeRevoked bool,
-	roleID int,
+	roleIDs []int,
 ) ([]M2MClientDTO, error) {
 	clients, err := s.repo.List(ctx, userID, includeRevoked)
 	if err != nil {
 		return nil, err
 	}
 
+	isSuperAdmin := false
+	for _, rid := range roleIDs {
+		if rid == int(constants.SuperAdminRoleID) {
+			isSuperAdmin = true
+			break
+		}
+	}
+
 	dtos := make([]M2MClientDTO, len(clients))
 	for i, c := range clients {
 		dto := mapClientToDTO(c)
 
-		if roleID != int(constants.SuperAdminRoleID) && !c.IsVerified {
+		if !isSuperAdmin && !c.IsVerified {
 			dto.ClientID = "********"
 			dto.Scopes = []string{"********"}
 		}
@@ -410,6 +422,51 @@ func (s *Service) RevokeClient(ctx context.Context, id int) error {
 				return err
 			}
 
+			actorID := audit.ExtractUserID(ctx)
+			m2mClient, err := s.repo.GetByID(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+
+			notifications := []audit.NotificationParams{
+				{
+					ReceiverID: structs.StringToNullableString(actorID),
+					TargetID: structs.StringToNullableString(
+						fmt.Sprintf("%d", id),
+					),
+					TargetType: structs.StringToNullableString(
+						constants.M2MClientEntityType,
+					),
+					Title: "M2M Client Revoked",
+					Message: fmt.Sprintf(
+						"You have revoked M2M client %s",
+						m2mClient.ClientName,
+					),
+					Type: constants.SystemEntityType,
+				},
+			}
+
+			// Notify owner if different from actor
+			if m2mClient.UserID != "" && m2mClient.UserID != actorID {
+				notifications = append(notifications, audit.NotificationParams{
+					ReceiverID: structs.StringToNullableString(
+						m2mClient.UserID,
+					),
+					TargetID: structs.StringToNullableString(
+						fmt.Sprintf("%d", id),
+					),
+					TargetType: structs.StringToNullableString(
+						constants.M2MClientEntityType,
+					),
+					Title: "Your M2M Client has been Revoked",
+					Message: fmt.Sprintf(
+						"Your M2M client %s has been revoked",
+						m2mClient.ClientName,
+					),
+					Type: constants.SystemEntityType,
+				})
+			}
+
 			audit.Dispatch(
 				ctx,
 				s.logService,
@@ -429,6 +486,7 @@ func (s *Service) RevokeClient(ctx context.Context, id int) error {
 							EntityID:   fmt.Sprintf("%d", id),
 						},
 					},
+					Notifications: notifications,
 				},
 			)
 
@@ -444,6 +502,50 @@ func (s *Service) VerifyClient(ctx context.Context, id int) error {
 			err := s.repo.UpdateVerificationStatus(ctx, tx, id, true)
 			if err != nil {
 				return err
+			}
+
+			actorID := audit.ExtractUserID(ctx)
+			m2mClient, err := s.repo.GetByID(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+
+			notifications := []audit.NotificationParams{
+				{
+					ReceiverID: structs.StringToNullableString(actorID),
+					TargetID: structs.StringToNullableString(
+						fmt.Sprintf("%d", id),
+					),
+					TargetType: structs.StringToNullableString(
+						constants.M2MClientEntityType,
+					),
+					Title: "M2M Client Verified",
+					Message: fmt.Sprintf(
+						"You have verified M2M client #%d", id,
+					),
+					Type: constants.SystemEntityType,
+				},
+			}
+
+			// Notify owner if different from actor
+			if m2mClient.UserID != "" && m2mClient.UserID != actorID {
+				notifications = append(notifications, audit.NotificationParams{
+					ReceiverID: structs.StringToNullableString(
+						m2mClient.UserID,
+					),
+					TargetID: structs.StringToNullableString(
+						fmt.Sprintf("%d", id),
+					),
+					TargetType: structs.StringToNullableString(
+						constants.M2MClientEntityType,
+					),
+					Title: "Your M2M Client has been Verified",
+					Message: fmt.Sprintf(
+						"Your M2M client %s has been verified",
+						structs.TruncateString(m2mClient.ClientName, 20),
+					),
+					Type: constants.SystemEntityType,
+				})
 			}
 
 			audit.Dispatch(
@@ -465,6 +567,7 @@ func (s *Service) VerifyClient(ctx context.Context, id int) error {
 							EntityID:   fmt.Sprintf("%d", id),
 						},
 					},
+					Notifications: notifications,
 				},
 			)
 

@@ -50,7 +50,7 @@ func createStudent(
 		// users
 		user = users.User{
 			ID:         uuid.New().String(),
-			RoleID:     1, // Student
+			Roles:      []users.Role{{ID: 1, Name: "Student"}},
 			FirstName:  gofakeit.FirstName(),
 			MiddleName: randomMiddleName(),
 			LastName:   gofakeit.LastName(),

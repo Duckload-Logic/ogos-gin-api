@@ -12,7 +12,6 @@ func TestService_TokenWorkflow(t *testing.T) {
 	userEmail := "test@example.com"
 	userID := "user-123"
 	roleID := 1
-	roleName := "admin"
 	tokenType := "access"
 	expireSeconds := 60
 
@@ -20,8 +19,7 @@ func TestService_TokenWorkflow(t *testing.T) {
 		tokenString, claims, err := svc.GenerateToken(
 			userEmail,
 			userID,
-			roleID,
-			roleName,
+			[]int{roleID},
 			tokenType,
 			expireSeconds,
 		)
@@ -61,8 +59,7 @@ func TestService_TokenWorkflow(t *testing.T) {
 		tokenString, _, _ := svc.GenerateToken(
 			userEmail,
 			userID,
-			roleID,
-			roleName,
+			[]int{roleID},
 			tokenType,
 			expireSeconds,
 		)
@@ -82,8 +79,7 @@ func TestService_TokenWorkflow(t *testing.T) {
 		tokenString, _, _ := svc.GenerateToken(
 			userEmail,
 			userID,
-			roleID,
-			roleName,
+			[]int{roleID},
 			tokenType,
 			-60,
 		)

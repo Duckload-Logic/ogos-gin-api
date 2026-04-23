@@ -65,6 +65,16 @@ func (s *Service) UploadFile(
 	return files[0], nil
 }
 
+const (
+	MaxFileSize = 5 * 1024 * 1024 // 5MB limit
+)
+
+var AllowedMimeTypes = map[string]bool{
+	"image/jpeg":      true,
+	"image/png":       true,
+	"application/pdf": true,
+}
+
 func (s *Service) UploadFiles(
 	ctx context.Context,
 	filesHeaders []*multipart.FileHeader,
@@ -72,8 +82,17 @@ func (s *Service) UploadFiles(
 ) ([]File, error) {
 	var filesToCreate []File
 	var ocrResults []OCRResult
+	var uploadedBlobPaths []string
 
 	for _, fh := range filesHeaders {
+		// Size Validation
+		if fh.Size > MaxFileSize {
+			return nil, fmt.Errorf(
+				"file %s exceeds maximum size of 5MB",
+				fh.Filename,
+			)
+		}
+
 		ext := strings.ToLower(filepath.Ext(fh.Filename))
 		fileHash := hash.GetSHA256Hash(
 			fmt.Sprintf("%s%d", fh.Filename, time.Now().UnixNano()),
@@ -97,7 +116,16 @@ func (s *Service) UploadFiles(
 			return nil, err
 		}
 
+		// MIME Type Validation
 		contentType := http.DetectContentType(data)
+		if !AllowedMimeTypes[contentType] {
+			return nil, fmt.Errorf(
+				"file %s has unauthorized type: %s",
+				fh.Filename,
+				contentType,
+			)
+		}
+
 		reader := bytes.NewReader(data)
 
 		if err := s.storage.Upload(
@@ -105,6 +133,7 @@ func (s *Service) UploadFiles(
 		); err != nil {
 			return nil, fmt.Errorf("failed to upload %s: %w", fh.Filename, err)
 		}
+		uploadedBlobPaths = append(uploadedBlobPaths, blobPath)
 
 		fileID := uuid.New().String()
 		fileRecord := File{
@@ -160,6 +189,7 @@ func (s *Service) UploadFiles(
 		}
 	}
 
+	// Transaction with Cleanup (Reliability)
 	err := s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
 		if _, err := s.repo.CreateBulk(ctx, tx, filesToCreate); err != nil {
 			return err
@@ -173,6 +203,10 @@ func (s *Service) UploadFiles(
 		return nil
 	})
 	if err != nil {
+		// Cleanup uploaded files if DB transaction fails
+		for _, path := range uploadedBlobPaths {
+			_ = s.storage.Delete(ctx, path)
+		}
 		return nil, fmt.Errorf("failed to save file metadata: %w", err)
 	}
 
@@ -190,6 +224,12 @@ func (s *Service) DeleteFile(ctx context.Context, id string) error {
 
 	err = s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
 		blobPath := strings.TrimPrefix(file.FileURL, "/")
+
+		// Security: Path Traversal Protection
+		if strings.Contains(blobPath, "..") {
+			return fmt.Errorf("security: invalid file path detected")
+		}
+
 		_ = s.storage.Delete(ctx, blobPath)
 
 		return s.repo.Delete(ctx, tx, id)

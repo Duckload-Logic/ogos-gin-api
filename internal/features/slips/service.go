@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
@@ -323,6 +324,61 @@ func (s *Service) GetAttachmentFile(
 	return attachment, nil
 }
 
+func (s *Service) validateFiles(files []*multipart.FileHeader) error {
+	allowedTypes := map[string]bool{
+		".pdf":  true,
+		".jpg":  true,
+		".jpeg": true,
+		".png":  true,
+	}
+
+	for _, file := range files {
+		// Check File Size
+		if file.Size > MaxFileSize {
+			return fmt.Errorf(
+				"file '%s' is too large: maximum 5MB allowed",
+				file.Filename,
+			)
+		}
+
+		// Check File Type (Content-Aware)
+		f, err := file.Open()
+		if err != nil {
+			return fmt.Errorf("failed to open file %s", file.Filename)
+		}
+		defer f.Close()
+
+		// Read first 512 bytes to detect content type
+		buffer := make([]byte, 512)
+		_, _ = f.Read(buffer)
+		contentType := http.DetectContentType(buffer)
+
+		allowedMime := map[string]bool{
+			"application/pdf": true,
+			"image/jpeg":      true,
+			"image/png":       true,
+		}
+
+		if !allowedMime[contentType] {
+			return fmt.Errorf(
+				"invalid content type for '%s': expected PDF or Image, got %s",
+				file.Filename,
+				contentType,
+			)
+		}
+
+		// Double check extension just in case
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if !allowedTypes[ext] {
+			return fmt.Errorf(
+				"invalid file extension for '%s'",
+				file.Filename,
+			)
+		}
+	}
+	return nil
+}
+
 // SubmitExcuseSlip creates a new slip with attachments.
 func (s *Service) SubmitExcuseSlip(
 	ctx context.Context,
@@ -342,30 +398,8 @@ func (s *Service) SubmitExcuseSlip(
 	}
 
 	// Validate all files
-	allowedTypes := map[string]bool{
-		".pdf":  true,
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-	}
-
-	for _, file := range files {
-		// Check File Size
-		if file.Size > MaxFileSize {
-			return nil, fmt.Errorf(
-				"file '%s' is too large: maximum 5MB allowed",
-				file.Filename,
-			)
-		}
-
-		// Check File Type
-		ext := strings.ToLower(filepath.Ext(file.Filename))
-		if !allowedTypes[ext] {
-			return nil, fmt.Errorf(
-				"invalid file type for '%s': PDF and images only",
-				file.Filename,
-			)
-		}
+	if err := s.validateFiles(files); err != nil {
+		return nil, err
 	}
 
 	dateOfAbsence := strings.Split(req.DateOfAbsence, "T")[0]
@@ -525,7 +559,8 @@ func (s *Service) UpdateExcuseSlip(
 	req CreateSlipRequest,
 	files []*multipart.FileHeader,
 ) (*Slip, error) {
-	// Graduated Student Protocol: Lock records for Graduated or Archived students
+	// Graduated Student Protocol: Lock records for Graduated or
+	// Archived students
 	isLocked, err := s.studentService.IsStudentLocked(ctx, iirID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check student status: %w", err)
@@ -554,20 +589,8 @@ func (s *Service) UpdateExcuseSlip(
 	}
 
 	// Validate all files
-	allowedTypes := map[string]bool{
-		".pdf":  true,
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-	}
-	for _, file := range files {
-		if file.Size > MaxFileSize {
-			return nil, fmt.Errorf("file '%s' is too large", file.Filename)
-		}
-		ext := strings.ToLower(filepath.Ext(file.Filename))
-		if !allowedTypes[ext] {
-			return nil, fmt.Errorf("invalid file type for '%s'", file.Filename)
-		}
+	if err := s.validateFiles(files); err != nil {
+		return nil, err
 	}
 
 	// Delete old attachments from both slip records and files table
@@ -624,6 +647,7 @@ func (s *Service) UpdateExcuseSlip(
 		return nil, err
 	}
 
+	studentUserID, _ := s.repo.GetUserIDBySlipID(ctx, slipID)
 	audit.Dispatch(ctx, s.logService, s.notifService, audit.DispatchParams{
 		Log: &audit.LogParams{
 			Level:    audit.LevelInfo,
@@ -634,6 +658,22 @@ func (s *Service) UpdateExcuseSlip(
 				EntityType: constants.SlipEntityType,
 				EntityID:   slipID,
 				NewValues:  updatedSlip,
+			},
+		},
+		Notifications: []audit.NotificationParams{
+			// Notification para sa Student
+			{
+				ReceiverID: structs.StringToNullableString(studentUserID),
+				Title:      "Slip Updated",
+				Message:    fmt.Sprintf("Your slip #%s has been updated", slipID),
+				Type:       constants.SlipEntityType,
+			},
+			// Notification para sa Counselor (if needed)
+			{
+				ReceiverID: structs.StringToNullableString(audit.ExtractUserID(ctx)),
+				Title:      "New Slip Update",
+				Message:    fmt.Sprintf("Student updated slip #%s", slipID),
+				Type:       constants.SlipEntityType,
 			},
 		},
 	})
@@ -657,6 +697,13 @@ func (s *Service) DownloadAttachment(
 
 	// Convert URL path "/slips/hash/file" to blob path "slips/hash/file"
 	blobPath := strings.TrimPrefix(attachment.FileURL, "/")
+
+	// Security: Path Traversal Protection (Jail Check)
+	if strings.Contains(blobPath, "..") ||
+		!(strings.HasPrefix(blobPath, "slips/") ||
+			strings.HasPrefix(blobPath, "cors/")) {
+		return nil, fmt.Errorf("security: invalid file path detected")
+	}
 
 	if err := s.fileStorage.Download(ctx, blobPath, writer); err != nil {
 		return nil, fmt.Errorf("failed to download file: %w", err)
@@ -754,8 +801,8 @@ func (s *Service) UpdateExcuseSlipStatus(
 					),
 					Title: "Admission Slip Updated Successfully",
 					Message: fmt.Sprintf(
-						"You have successfully updated the status of admission slip #%s to '%s'.",
-						id,
+						"You have successfully updated the status of admission slip %s to '%s'.",
+						structs.TruncateString(id, 7),
 						newStatus,
 					),
 					Type: constants.SlipEntityType,

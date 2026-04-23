@@ -8,90 +8,90 @@ import (
 
 // Gender represents the domain entity for student gender.
 type Gender struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // ParentalStatusType represents the domain entity for parental status types.
 type ParentalStatusType struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // StudentSupportType represents the domain entity for student support types.
 type StudentSupportType struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // EnrollmentReason represents the domain entity for enrollment reasons.
 type EnrollmentReason struct {
-	ID   int
-	Text string
+	ID   int    `json:"id"`
+	Text string `json:"text"`
 }
 
 // IncomeRange represents the domain entity for family income ranges.
 type IncomeRange struct {
-	ID   int
-	Text string
+	ID   int    `json:"id"`
+	Text string `json:"text"`
 }
 
 // EducationalLevel represents the domain entity for educational levels.
 type EducationalLevel struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // Course represents the domain entity for academic courses.
 type Course struct {
-	ID   int
-	Code string
-	Name string
+	ID   int    `json:"id"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 // CivilStatusType represents the domain entity for civil status types.
 type CivilStatusType struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // Religion represents the domain entity for religious affiliations.
 type Religion struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // StudentRelationshipType represents the domain entity for
 // relationships (e.g., Father, Mother).
 type StudentRelationshipType struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // NatureOfResidenceType represents the domain entity for residence types.
 type NatureOfResidenceType struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // SibilingSupportType represents the domain entity for sibling support.
 type SibilingSupportType struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // StudentStatus represents the domain entity for academic status.
 type StudentStatus struct {
-	ID   int
-	Name string
+	ID   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 // ActivityOption represents the domain entity for student activities.
 type ActivityOption struct {
-	ID       int
-	Name     string
-	Category string
-	IsActive bool
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+	IsActive bool   `json:"isActive"`
 }
 
 // StudentBasicInfoView represents a simplified view of student
@@ -134,11 +134,11 @@ type IIRDraft struct {
 
 // IIRRecord represents a submitted Initial Interview Record entry.
 type IIRRecord struct {
-	ID          string
-	UserID      string
-	IsSubmitted bool
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID          string    `json:"id"`
+	UserID      string    `json:"userId"`
+	IsSubmitted bool      `json:"isSubmitted"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
 // StudentSelectedReason represents the domain mapping for enrollment reasons.

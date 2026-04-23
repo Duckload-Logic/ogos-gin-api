@@ -4,7 +4,7 @@ import "github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 
 type GetUserResponse struct {
 	ID         string                 `json:"id"`
-	Role       Role                   `json:"role"`
+	Roles      []Role                 `json:"roles"`
 	FirstName  string                 `json:"firstName"`
 	MiddleName structs.NullableString `json:"middleName,omitempty"`
 	LastName   string                 `json:"lastName"`
@@ -41,4 +41,11 @@ type ListUsersResponse struct {
 type RoleDistributionDTO struct {
 	RoleName string `json:"roleName" db:"role_name"`
 	Count    int    `json:"count"    db:"count"`
+}
+
+type UpdateRolesRequest struct {
+	UserID      string `json:"userId"      binding:"required"`
+	RoleIDs     []int  `json:"roleIds"     binding:"required,min=1"`
+	Reason      string `json:"reason"      binding:"required"`
+	ReferenceID string `json:"referenceId"`
 }

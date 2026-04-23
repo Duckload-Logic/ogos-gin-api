@@ -21,7 +21,7 @@ func RegisterRoutes(
 
 	// Admin-only routes (Requires SuperAdmin role)
 	adminOnly := activityGroup.Group("")
-	adminOnly.Use(middleware.RoleMiddleware(int(constants.SuperAdminRoleID)))
+	adminOnly.Use(middleware.RoleMiddleware(constants.SuperAdminRoleID))
 	{
 		adminOnly.GET("", h.GetLogs)
 		adminOnly.GET("/audit", h.GetLogsAudit)
@@ -29,5 +29,6 @@ func RegisterRoutes(
 		adminOnly.GET("/security", h.GetLogsSecurity)
 		adminOnly.GET("/stats", h.GetLogsStats)
 		adminOnly.GET("/activity-stats", h.GetLogsActivity)
+		adminOnly.POST("/cleanup", h.PostLogsCleanup)
 	}
 }

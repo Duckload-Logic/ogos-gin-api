@@ -67,9 +67,12 @@ type RepositoryInterface interface {
 	) (*users.User, error)
 	GetUserByID(ctx context.Context, userID string) (*users.User, error)
 	GetRoleByID(ctx context.Context, roleID int) (*users.Role, error)
+	GetRolesByUserID(ctx context.Context, userID string) ([]users.Role, error)
 	CreateUser(ctx context.Context, tx datastore.DB, user users.User) error
 	BlockUser(ctx context.Context, tx datastore.DB, userID string) error
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error
+	AssignRole(ctx context.Context, tx datastore.DB, assignment users.RoleAssignment) error
+	RemoveRoles(ctx context.Context, tx datastore.DB, userID string) error
 	CheckUserWhitelist(ctx context.Context, email string) (int, error)
 	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 }

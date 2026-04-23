@@ -29,7 +29,7 @@ type ServiceInterface interface {
 		ctx context.Context,
 		userID string,
 		includeRevoked bool,
-		roleID int,
+		roleIDs []int,
 	) ([]M2MClientDTO, error)
 	RevokeClient(ctx context.Context, id int) error
 	RegenerateSecret(ctx context.Context, id int) (string, error)
@@ -41,6 +41,7 @@ type RepositoryInterface interface {
 	GetDB() *sqlx.DB
 	Create(ctx context.Context, tx datastore.DB, client M2MClient) (int, error)
 	GetByClientID(ctx context.Context, clientID string) (*M2MClient, error)
+	GetByID(ctx context.Context, tx datastore.DB, id int) (*M2MClient, error)
 	GetActiveByUserID(ctx context.Context, userID string) (*M2MClient, error)
 	List(
 		ctx context.Context,

@@ -830,12 +830,7 @@ func (h *Handler) GetStudentCORByUserID(c *gin.Context) {
 }
 
 func (h *Handler) GetStudentCORs(c *gin.Context) {
-	// If ID is provided in param, use it (for counselors),
-	// otherwise use current user ID (for students)
-	userID := c.Param("userID")
-	if userID == "" {
-		userID = c.MustGet("userID").(string)
-	}
+	userID := c.MustGet("userID").(string)
 
 	cors, err := h.service.GetStudentCORs(c.Request.Context(), userID)
 	if err != nil {

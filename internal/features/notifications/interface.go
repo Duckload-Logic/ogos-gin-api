@@ -17,17 +17,32 @@ type ServiceInterface interface {
 		ctx context.Context,
 		userID string,
 	) ([]audit.NotificationEntry, error)
-	MarkAsRead(ctx context.Context, id string) error
+	Subscribe(
+		ctx context.Context,
+		userID string,
+	) (<-chan audit.NotificationEntry, func())
+	Unsubscribe(
+		ctx context.Context,
+		userID string,
+		ch chan audit.NotificationEntry,
+	)
+	Broadcast(
+		ctx context.Context,
+		notif audit.NotificationEntry,
+	) error
+	MarkAsRead(ctx context.Context, id string, userID string) error
+	DeleteOldNotifications(ctx context.Context, days int) (int64, error)
 }
 
 // RepositoryInterface defines the data access layer for managing notifications.
 type RepositoryInterface interface {
 	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 	GetByUserID(ctx context.Context, userID string) ([]Notification, error)
-	MarkAsRead(ctx context.Context, tx datastore.DB, id string) error
+	MarkAsRead(ctx context.Context, tx datastore.DB, id string, userID string) error
 	Create(
 		ctx context.Context,
 		tx datastore.DB,
 		notif Notification,
 	) error
+	DeleteOldNotifications(ctx context.Context, days int) (int64, error)
 }

@@ -168,7 +168,7 @@ func (h *Handler) PostAppointment(c *gin.Context) {
 // @Failure      500  {object}  map[string]string
 // @Router       /appointments/id/{id} [get]
 func (h *Handler) GetAppointmentByID(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("appointmentID")
 	if id == "" {
 		response.SendFail(c, gin.H{"error": "Invalid ID format"})
 		return
@@ -337,10 +337,18 @@ func (h *Handler) GetAppointmentMe(c *gin.Context) {
 // @Router       /appointments/stats [get]
 func (h *Handler) GetAppointmentStats(c *gin.Context) {
 	iirIDVal, exists := c.Get("iirID")
-	roleID := c.MustGet("roleID").(int)
+	roleIDs := c.MustGet("roleIDs").([]int)
+
+	isStudent := false
+	for _, rid := range roleIDs {
+		if rid == int(constants.StudentRoleID) {
+			isStudent = true
+			break
+		}
+	}
 
 	var iirIDPtr *string
-	if roleID == int(constants.StudentRoleID) {
+	if isStudent {
 		if !exists {
 			response.SendFail(c, gin.H{
 				"error": "Please complete your IIR profile",
@@ -401,7 +409,7 @@ type CancelAppointmentRequest struct {
 }
 
 func (h *Handler) PostAppointmentCancel(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("appointmentID")
 	userID := audit.ExtractUserID(c.Request.Context())
 
 	ownerID, err := h.service.GetUserIDByAppointmentID(c.Request.Context(), id)
@@ -509,7 +517,7 @@ func (h *Handler) PostAppointmentCancel(c *gin.Context) {
 
 // PatchAppointment godoc
 func (h *Handler) PatchAppointment(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("appointmentID")
 	if id == "" {
 		response.SendFail(c, gin.H{"error": "Invalid ID format"})
 		return

@@ -23,6 +23,7 @@ type ServiceInterface interface {
 	PostProfilePicture(ctx context.Context, userID string, fileID string) error
 	BlockUser(ctx context.Context, userID string) error
 	UnblockUser(ctx context.Context, userID string) error
+	UpdateUserRoles(ctx context.Context, req UpdateRolesRequest, adminID string) error
 }
 
 type RepositoryInterface interface {
@@ -30,6 +31,7 @@ type RepositoryInterface interface {
 	GetDB() *sqlx.DB
 	GetUserByID(ctx context.Context, userID string) (*User, error)
 	GetRoleByID(ctx context.Context, roleID int) (*Role, error)
+	GetRolesByUserID(ctx context.Context, userID string) ([]Role, error)
 	GetUserByEmail(
 		ctx context.Context,
 		email string,
@@ -47,5 +49,7 @@ type RepositoryInterface interface {
 	) error
 	BlockUser(ctx context.Context, tx datastore.DB, userID string) error
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error
+	AssignRole(ctx context.Context, tx datastore.DB, assignment RoleAssignment) error
+	RemoveRoles(ctx context.Context, tx datastore.DB, userID string) error
 	CheckUserWhitelist(ctx context.Context, email string) (int, error)
 }

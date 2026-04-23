@@ -50,7 +50,8 @@ func getServices(
 	emailer email.Emailer,
 ) *Services {
 	notificationsService := notifications.NewService(repos.NotificationRepo)
-	userService := users.NewService(repos.UserRepo)
+	sessionService := sessions.NewService(redis)
+	userService := users.NewService(repos.UserRepo, sessionService)
 	systemLogService := logs.NewService(
 		repos.SystemLogRepo,
 		notificationsService,
@@ -58,7 +59,7 @@ func getServices(
 	)
 
 	tokenService := tokens.NewService()
-	sessionService := sessions.NewService(redis)
+
 	m2mClientService := m2mclients.NewService(
 		repos.M2MClientRepo,
 		systemLogService,
