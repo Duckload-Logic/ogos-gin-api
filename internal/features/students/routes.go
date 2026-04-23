@@ -51,7 +51,7 @@ func RegisterRoutes(
 
 	counselorRoutes := inventoryRoutes.Group("/")
 	counselorRoutes.Use(middleware.RoleMiddleware(
-		int(constants.AdminRoleID),
+		constants.AdminRoleID,
 	))
 	{
 		counselorRoutes.GET("/records", h.GetStudentList)
@@ -60,8 +60,8 @@ func RegisterRoutes(
 
 	userRoutes := inventoryRoutes.Group("/")
 	userRoutes.Use(middleware.RoleMiddleware(
-		int(constants.StudentRoleID),
-		int(constants.AdminRoleID),
+		constants.StudentRoleID,
+		constants.AdminRoleID,
 	))
 	{
 		userRoutes.GET(
@@ -153,7 +153,7 @@ func RegisterRoutes(
 
 	studentRoutes := inventoryRoutes.Group("/")
 	studentRoutes.Use(middleware.RoleMiddleware(
-		int(constants.StudentRoleID),
+		constants.StudentRoleID,
 	))
 	{
 		studentRoutes.GET("/records/iir/draft", h.GetStudentIIRDraft)
@@ -163,7 +163,7 @@ func RegisterRoutes(
 
 		// COR management
 		studentRoutes.POST("/cors", h.PostStudentCOR)
-		studentRoutes.GET("/cors/user/:userID", h.GetStudentCORByUserID)
+		studentRoutes.GET("/cors/user/:userID", userResourceLookup, h.GetStudentCORByUserID)
 		studentRoutes.GET("/cors", h.GetStudentCORs)
 	}
 
