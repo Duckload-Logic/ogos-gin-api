@@ -50,13 +50,18 @@ func (r *Repository) MarkAsRead(
 	ctx context.Context,
 	tx datastore.DB,
 	id string,
+	userID string,
 ) error {
 	if tx == nil {
 		tx = r.db
 	}
 
-	query := `UPDATE notifications SET is_read = TRUE WHERE id = ?`
-	_, err := tx.ExecContext(ctx, query, id)
+	query := `
+		UPDATE notifications
+		SET is_read = TRUE
+		WHERE id = ? AND receiver_id = ?
+	`
+	res, err := tx.ExecContext(ctx, query, id, userID)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to mark notification %s as read: %w",
@@ -64,6 +69,12 @@ func (r *Repository) MarkAsRead(
 			err,
 		)
 	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("notification not found or unauthorized")
+	}
+
 	return nil
 }
 
@@ -91,4 +102,25 @@ func (r *Repository) Create(
 		)
 	}
 	return nil
+}
+
+func (r *Repository) DeleteOldNotifications(
+	ctx context.Context,
+	days int,
+) (int64, error) {
+	query := `
+		DELETE FROM notifications
+		WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)
+	`
+	res, err := r.db.ExecContext(ctx, query, days)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete old notifications: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return rows, nil
 }

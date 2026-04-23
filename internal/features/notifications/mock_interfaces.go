@@ -58,17 +58,73 @@ func (mr *MockServiceInterfaceMockRecorder) GetUserNotifications(ctx, userID any
 }
 
 // MarkAsRead mocks base method.
-func (m *MockServiceInterface) MarkAsRead(ctx context.Context, id string) error {
+func (m *MockServiceInterface) MarkAsRead(ctx context.Context, id, userID string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarkAsRead", ctx, id)
+	ret := m.ctrl.Call(m, "MarkAsRead", ctx, id, userID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // MarkAsRead indicates an expected call of MarkAsRead.
-func (mr *MockServiceInterfaceMockRecorder) MarkAsRead(ctx, id any) *gomock.Call {
+func (mr *MockServiceInterfaceMockRecorder) MarkAsRead(ctx, id, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkAsRead", reflect.TypeOf((*MockServiceInterface)(nil).MarkAsRead), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkAsRead", reflect.TypeOf((*MockServiceInterface)(nil).MarkAsRead), ctx, id, userID)
+}
+
+// Subscribe mocks base method.
+func (m *MockServiceInterface) Subscribe(ctx context.Context, userID string) (<-chan audit.NotificationEntry, func()) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Subscribe", ctx, userID)
+	ret0, _ := ret[0].(<-chan audit.NotificationEntry)
+	ret1, _ := ret[1].(func())
+	return ret0, ret1
+}
+
+// Subscribe indicates an expected call of Subscribe.
+func (mr *MockServiceInterfaceMockRecorder) Subscribe(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockServiceInterface)(nil).Subscribe), ctx, userID)
+}
+
+// Unsubscribe mocks base method.
+func (m *MockServiceInterface) Unsubscribe(ctx context.Context, userID string, ch chan audit.NotificationEntry) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "Unsubscribe", ctx, userID, ch)
+}
+
+// Unsubscribe indicates an expected call of Unsubscribe.
+func (mr *MockServiceInterfaceMockRecorder) Unsubscribe(ctx, userID, ch any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unsubscribe", reflect.TypeOf((*MockServiceInterface)(nil).Unsubscribe), ctx, userID, ch)
+}
+
+// Broadcast mocks base method.
+func (m *MockServiceInterface) Broadcast(ctx context.Context, notif audit.NotificationEntry) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Broadcast", ctx, notif)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Broadcast indicates an expected call of Broadcast.
+func (mr *MockServiceInterfaceMockRecorder) Broadcast(ctx, notif any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Broadcast", reflect.TypeOf((*MockServiceInterface)(nil).Broadcast), ctx, notif)
+}
+
+// DeleteOldNotifications mocks base method.
+func (m *MockServiceInterface) DeleteOldNotifications(ctx context.Context, days int) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteOldNotifications", ctx, days)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteOldNotifications indicates an expected call of DeleteOldNotifications.
+func (mr *MockServiceInterfaceMockRecorder) DeleteOldNotifications(ctx, days any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOldNotifications", reflect.TypeOf((*MockServiceInterface)(nil).DeleteOldNotifications), ctx, days)
 }
 
 // Send mocks base method.
@@ -139,17 +195,32 @@ func (mr *MockRepositoryInterfaceMockRecorder) GetByUserID(ctx, userID any) *gom
 }
 
 // MarkAsRead mocks base method.
-func (m *MockRepositoryInterface) MarkAsRead(ctx context.Context, tx datastore.DB, id string) error {
+func (m *MockRepositoryInterface) MarkAsRead(ctx context.Context, tx datastore.DB, id, userID string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarkAsRead", ctx, tx, id)
+	ret := m.ctrl.Call(m, "MarkAsRead", ctx, tx, id, userID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // MarkAsRead indicates an expected call of MarkAsRead.
-func (mr *MockRepositoryInterfaceMockRecorder) MarkAsRead(ctx, tx, id any) *gomock.Call {
+func (mr *MockRepositoryInterfaceMockRecorder) MarkAsRead(ctx, tx, id, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkAsRead", reflect.TypeOf((*MockRepositoryInterface)(nil).MarkAsRead), ctx, tx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkAsRead", reflect.TypeOf((*MockRepositoryInterface)(nil).MarkAsRead), ctx, tx, id, userID)
+}
+
+// DeleteOldNotifications mocks base method.
+func (m *MockRepositoryInterface) DeleteOldNotifications(ctx context.Context, days int) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteOldNotifications", ctx, days)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteOldNotifications indicates an expected call of DeleteOldNotifications.
+func (mr *MockRepositoryInterfaceMockRecorder) DeleteOldNotifications(ctx, days any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOldNotifications", reflect.TypeOf((*MockRepositoryInterface)(nil).DeleteOldNotifications), ctx, days)
 }
 
 // WithTransaction mocks base method.
