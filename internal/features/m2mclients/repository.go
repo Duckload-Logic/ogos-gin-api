@@ -20,6 +20,13 @@ func (r *Repository) GetDB() *sqlx.DB {
 	return r.db
 }
 
+func (r *Repository) getDB(tx datastore.DB) datastore.DB {
+	if tx != nil {
+		return tx
+	}
+	return r.db
+}
+
 func (r *Repository) WithTransaction(
 	ctx context.Context,
 	fn func(datastore.DB) error,
@@ -38,7 +45,7 @@ func (r *Repository) Create(
 		`INSERT INTO m2m_clients (%s) VALUES (%s)`,
 		cols, vals,
 	)
-	result, err := tx.NamedExecContext(ctx, query, dbModel)
+	result, err := r.getDB(tx).NamedExecContext(ctx, query, dbModel)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create m2m client: %w", err)
 	}
@@ -60,6 +67,21 @@ func (r *Repository) GetByClientID(
 	err := r.db.GetContext(ctx, &client, query, clientID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get m2m client by client_id: %w", err)
+	}
+	domainClient := MapM2MClientToDomain(client)
+	return &domainClient, nil
+}
+
+func (r *Repository) GetByID(
+	ctx context.Context,
+	tx datastore.DB,
+	id int,
+) (*M2MClient, error) {
+	var client M2MClientDB
+	query := `SELECT * FROM m2m_clients WHERE id = ?`
+	err := r.getDB(tx).GetContext(ctx, &client, query, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get m2m client by id: %w", err)
 	}
 	domainClient := MapM2MClientToDomain(client)
 	return &domainClient, nil
@@ -112,7 +134,7 @@ func (r *Repository) Revoke(
 	id int,
 ) error {
 	query := `UPDATE m2m_clients SET is_active = 0 WHERE id = ?`
-	_, err := tx.ExecContext(ctx, query, id)
+	_, err := r.getDB(tx).ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to revoke m2m client: %w", err)
 	}
@@ -126,7 +148,7 @@ func (r *Repository) UpdateSecret(
 	secretHash string,
 ) error {
 	query := `UPDATE m2m_clients SET client_secret_hash = ? WHERE id = ?`
-	_, err := tx.ExecContext(ctx, query, secretHash, id)
+	_, err := r.getDB(tx).ExecContext(ctx, query, secretHash, id)
 	if err != nil {
 		return fmt.Errorf("failed to update client secret: %w", err)
 	}
@@ -140,7 +162,7 @@ func (r *Repository) UpdateVerificationStatus(
 	isVerified bool,
 ) error {
 	query := `UPDATE m2m_clients SET is_verified = ? WHERE id = ?`
-	_, err := tx.ExecContext(ctx, query, isVerified, id)
+	_, err := r.getDB(tx).ExecContext(ctx, query, isVerified, id)
 	if err != nil {
 		return fmt.Errorf("failed to update verification status: %w", err)
 	}
@@ -153,7 +175,7 @@ func (r *Repository) TouchLastUsed(
 	id int,
 ) error {
 	query := `UPDATE m2m_clients SET last_used_at = NOW() WHERE id = ?`
-	_, err := tx.ExecContext(ctx, query, id)
+	_, err := r.getDB(tx).ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to update last_used_at: %w", err)
 	}

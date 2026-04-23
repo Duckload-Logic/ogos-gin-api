@@ -25,7 +25,7 @@ func TestService_ListClients(t *testing.T) {
 		}
 		mockRepo.EXPECT().List(ctx, userID, false).Return(clients, nil)
 
-		resp, err := svc.ListClients(ctx, userID, false, 0)
+		resp, err := svc.ListClients(ctx, userID, false, []int{})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -60,6 +60,10 @@ func TestService_VerifyClient(t *testing.T) {
 		mockRepo.EXPECT().
 			UpdateVerificationStatus(ctx, nil, id, true).
 			Return(nil)
+
+		mockRepo.EXPECT().
+			GetByID(ctx, nil, id).
+			Return(&M2MClient{ID: id, ClientName: "Test", UserID: "user-1"}, nil)
 
 		// Mock audit record
 		mockAuditLog.EXPECT().

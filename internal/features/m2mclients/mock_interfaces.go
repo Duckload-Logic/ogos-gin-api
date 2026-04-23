@@ -243,6 +243,21 @@ func (mr *MockRepositoryInterfaceMockRecorder) GetByClientID(ctx, clientID any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByClientID", reflect.TypeOf((*MockRepositoryInterface)(nil).GetByClientID), ctx, clientID)
 }
 
+// GetByID mocks base method.
+func (m *MockRepositoryInterface) GetByID(ctx context.Context, tx datastore.DB, id int) (*M2MClient, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", ctx, tx, id)
+	ret0, _ := ret[0].(*M2MClient)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockRepositoryInterfaceMockRecorder) GetByID(ctx, tx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockRepositoryInterface)(nil).GetByID), ctx, tx, id)
+}
+
 // GetDB mocks base method.
 func (m *MockRepositoryInterface) GetDB() *sqlx.DB {
 	m.ctrl.T.Helper()
