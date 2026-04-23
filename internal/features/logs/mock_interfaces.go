@@ -44,6 +44,21 @@ func (m *MockServiceInterface) EXPECT() *MockServiceInterfaceMockRecorder {
 	return m.recorder
 }
 
+// DeleteLogsOlderThan mocks base method.
+func (m *MockServiceInterface) DeleteLogsOlderThan(ctx context.Context, days int) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteLogsOlderThan", ctx, days)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteLogsOlderThan indicates an expected call of DeleteLogsOlderThan.
+func (mr *MockServiceInterfaceMockRecorder) DeleteLogsOlderThan(ctx, days any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLogsOlderThan", reflect.TypeOf((*MockServiceInterface)(nil).DeleteLogsOlderThan), ctx, days)
+}
+
 // GetActivityStats mocks base method.
 func (m *MockServiceInterface) GetActivityStats(ctx context.Context) ([]audit.LogActivityDTO, error) {
 	m.ctrl.T.Helper()
@@ -149,6 +164,21 @@ func NewMockRepositoryInterface(ctrl *gomock.Controller) *MockRepositoryInterfac
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRepositoryInterface) EXPECT() *MockRepositoryInterfaceMockRecorder {
 	return m.recorder
+}
+
+// DeleteLogsOlderThan mocks base method.
+func (m *MockRepositoryInterface) DeleteLogsOlderThan(ctx context.Context, days int) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteLogsOlderThan", ctx, days)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteLogsOlderThan indicates an expected call of DeleteLogsOlderThan.
+func (mr *MockRepositoryInterfaceMockRecorder) DeleteLogsOlderThan(ctx, days any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLogsOlderThan", reflect.TypeOf((*MockRepositoryInterface)(nil).DeleteLogsOlderThan), ctx, days)
 }
 
 // GetActivityStats mocks base method.

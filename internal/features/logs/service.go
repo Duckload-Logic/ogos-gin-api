@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/olazo-johnalbert/duckload-api/internal/core/audit"
 	"github.com/olazo-johnalbert/duckload-api/internal/core/constants"
@@ -52,6 +53,7 @@ func (s *Service) Record(
 
 	var metaStr string
 	if entry.Metadata != nil {
+		s.sanitizeMetadata(entry.Metadata)
 		b, _ := json.Marshal(entry.Metadata)
 		metaStr = string(b)
 	}
@@ -216,4 +218,44 @@ func (s *Service) mapLogsToDTOs(logs []SystemLog) []audit.SystemLogDTO {
 	}
 
 	return dtos
+}
+
+func (s *Service) DeleteLogsOlderThan(
+	ctx context.Context,
+	days int,
+) (int64, error) {
+	return s.repo.DeleteLogsOlderThan(ctx, days)
+}
+
+func (s *Service) sanitizeMetadata(meta *audit.LogMetadata) {
+	if meta == nil {
+		return
+	}
+	s.sanitizeValue(meta.OldValues)
+	s.sanitizeValue(meta.NewValues)
+}
+
+func (s *Service) sanitizeValue(val interface{}) {
+	m, ok := val.(map[string]interface{})
+	if !ok {
+		return
+	}
+
+	sensitiveKeys := []string{
+		"password",
+		"secret",
+		"token",
+		"key",
+		"authorization",
+		"credential",
+	}
+	for k := range m {
+		lowerK := strings.ToLower(k)
+		for _, sk := range sensitiveKeys {
+			if strings.Contains(lowerK, sk) {
+				delete(m, k)
+				break
+			}
+		}
+	}
 }

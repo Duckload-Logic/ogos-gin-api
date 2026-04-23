@@ -30,6 +30,7 @@ type ServiceInterface interface {
 		startDate, endDate string,
 	) ([]audit.LogStatsDTO, error)
 	GetActivityStats(ctx context.Context) ([]audit.LogActivityDTO, error)
+	DeleteLogsOlderThan(ctx context.Context, days int) (int64, error)
 }
 
 type RepositoryInterface interface {
@@ -51,4 +52,5 @@ type RepositoryInterface interface {
 		startDate, endDate string,
 	) ([]audit.LogStatsDTO, error)
 	GetActivityStats(ctx context.Context) ([]audit.LogActivityDTO, error)
+	DeleteLogsOlderThan(ctx context.Context, days int) (int64, error)
 }

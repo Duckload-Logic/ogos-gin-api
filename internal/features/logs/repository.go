@@ -213,3 +213,24 @@ func (r *Repository) GetActivityStats(
 
 	return stats, nil
 }
+
+func (r *Repository) DeleteLogsOlderThan(
+	ctx context.Context,
+	days int,
+) (int64, error) {
+	query := `
+		DELETE FROM system_logs
+		WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)
+	`
+	res, err := r.db.ExecContext(ctx, query, days)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete old logs: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return rows, nil
+}
