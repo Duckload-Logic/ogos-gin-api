@@ -40,7 +40,7 @@ func createDeveloper(index int, passwordHash string, userFromCSV *users.User) {
 				String: passwordHash,
 				Valid:  true,
 			},
-			RoleID:   int(constants.DeveloperRoleID),
+			Roles: []users.Role{{ID: int(constants.DeveloperRoleID), Name: "Developer"}},
 			AuthType: string(constants.AuthTypeNative),
 			IsActive: true,
 		}

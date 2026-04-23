@@ -5,10 +5,10 @@ VALUES
 
 INSERT IGNORE INTO user_roles (id, `name`)
 VALUES
-    (1, 'Student'),
-    (2, 'Admin'),
-    (3, 'Super Admin'),
-    (4, 'Developer');
+    (1, 'STUDENT'),
+    (2, 'ADMIN'),
+    (3, 'SUPERADMIN'),
+    (4, 'DEVELOPER');
 
 INSERT INTO enrollment_reasons (id, reason_text) VALUES
     (1, 'Lower tuition fee'),
