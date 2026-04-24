@@ -77,16 +77,3 @@ CREATE INDEX idx_system_logs_target_email ON system_logs(target_email ASC);
 CREATE INDEX idx_system_logs_created_at ON system_logs(created_at ASC);
 CREATE INDEX idx_system_logs_category_created ON system_logs(created_at ASC);
 CREATE INDEX idx_system_logs_user_id ON system_logs(user_id ASC);
-
-CREATE TABLE counselor_profiles (
-    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    user_id CHAR(36) NOT NULL,
-    license_number VARCHAR(50) DEFAULT NULL,
-    specialization VARCHAR(100) DEFAULT NULL,
-    is_available TINYINT(1) DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_counselor_profiles_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci;
-
-CREATE UNIQUE INDEX idx_counselor_profiles_user_unique ON counselor_profiles(user_id ASC);
-CREATE INDEX idx_counselor_profiles_user_id ON counselor_profiles(user_id ASC);

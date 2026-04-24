@@ -256,7 +256,6 @@ func clearStudentData() {
 		"student_personal_info",
 		"iir_records",
 		"appointments",
-		"counselor_profiles",
 		"notifications",
 		"users",
 	}

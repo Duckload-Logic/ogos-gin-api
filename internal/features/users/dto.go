@@ -49,3 +49,12 @@ type UpdateRolesRequest struct {
 	Reason      string `json:"reason"      binding:"required"`
 	ReferenceID string `json:"referenceId"`
 }
+
+type AddUserToWhitelistRequest struct {
+	Email   string `json:"email" binding:"required,email"`
+	RoleIDs []int  `json:"roleIds" binding:"required,min=1"`
+}
+
+type RemoveUserFromWhitelistRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}

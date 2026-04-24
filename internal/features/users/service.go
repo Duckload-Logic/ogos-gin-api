@@ -177,3 +177,33 @@ func (s *Service) UpdateUserRoles(
 		return nil
 	})
 }
+
+func (s *Service) AddUserToWhitelist(
+	ctx context.Context,
+	req AddUserToWhitelistRequest,
+) error {
+	return s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
+		for _, roleID := range req.RoleIDs {
+			if err := s.repo.AddUserToWhitelist(
+				ctx, tx, req.Email, roleID,
+			); err != nil {
+				return fmt.Errorf(
+					"failed to add user to whitelist: %w", err,
+				)
+			}
+		}
+		return nil
+	})
+}
+
+func (s *Service) RemoveUserFromWhitelist(
+	ctx context.Context,
+	req RemoveUserFromWhitelistRequest,
+) error {
+	return s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
+		if err := s.repo.RemoveUserFromWhitelist(ctx, tx, req.Email); err != nil {
+			return fmt.Errorf("failed to remove user from whitelist: %w", err)
+		}
+		return nil
+	})
+}

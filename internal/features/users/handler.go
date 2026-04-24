@@ -385,6 +385,58 @@ func (h *Handler) PostUpdateRoles(c *gin.Context) {
 	response.SendSuccess(c, gin.H{"message": "User roles updated successfully"})
 }
 
+func (h *Handler) PostUserToWhitelist(c *gin.Context) {
+	var req AddUserToWhitelistRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.service.AddUserToWhitelist(c.Request.Context(), req)
+	if err != nil {
+		fmt.Printf("[PostUserToWhitelist] {AddUserToWhitelist}: %v\n", err)
+		response.SendError(
+			c,
+			"Failed to add user to whitelist",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(
+		c,
+		gin.H{"message": "User added to whitelist successfully"},
+	)
+}
+
+func (h *Handler) PostRemoveUserFromWhitelist(c *gin.Context) {
+	var req RemoveUserFromWhitelistRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.SendFail(c, gin.H{"error": err.Error()})
+		return
+	}
+
+	err := h.service.RemoveUserFromWhitelist(c.Request.Context(), req)
+	if err != nil {
+		fmt.Printf(
+			"[PostRemoveUserFromWhitelist] {RemoveUserFromWhitelist}: %v\n", err,
+		)
+		response.SendError(
+			c,
+			"Failed to remove user from whitelist",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	response.SendSuccess(
+		c,
+		gin.H{"message": "User removed from whitelist successfully"},
+	)
+}
+
 // func (h *Handler) PostProfilePicture(c *gin.Context) {
 // 	userID := c.Param("id")
 // 	if userID == "" {
