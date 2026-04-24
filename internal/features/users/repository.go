@@ -13,7 +13,7 @@ type Repository struct {
 	db *sqlx.DB
 }
 
-func NewRepository(db *sqlx.DB) RepositoryInterface {
+func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -28,27 +28,21 @@ func (r *Repository) WithTransaction(
 	return datastore.RunInTransaction(ctx, r.db, fn)
 }
 
-// =============================================
-// |                                           |
-// |                                           |
-// |                                           |
-// =============================================
-
-// GetUserByID fetches a user by their ID and maps to Domain.
+// GetUserByID fetches a user by their ID.
 func (r *Repository) GetUserByID(
 	ctx context.Context,
 	userID string,
 ) (*User, error) {
-	var dbModel UserDB
+	var user User
 
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM users
 		WHERE id = ?
 		LIMIT 1
-	`, datastore.GetColumns(UserDB{}))
+	`, datastore.GetColumns(User{}))
 
-	err := r.db.GetContext(ctx, &dbModel, query, userID)
+	err := r.db.GetContext(ctx, &user, query, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,9 +52,8 @@ func (r *Repository) GetUserByID(
 		return nil, fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-	domainModel := dbModel.ToDomain()
-	domainModel.Roles = roles
-	return &domainModel, nil
+	user.Roles = roles
+	return &user, nil
 }
 
 func (r *Repository) CheckUserWhitelist(
@@ -77,27 +70,26 @@ func (r *Repository) GetRoleByID(
 	ctx context.Context,
 	roleID int,
 ) (*Role, error) {
-	var dbModel RoleDB
+	var role Role
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM roles
 		WHERE id = ?
-	`, datastore.GetColumns(RoleDB{}))
+	`, datastore.GetColumns(Role{}))
 
-	err := r.db.GetContext(ctx, &dbModel, query, roleID)
+	err := r.db.GetContext(ctx, &role, query, roleID)
 	if err != nil {
 		return nil, err
 	}
 
-	domainModel := dbModel.ToDomain()
-	return &domainModel, nil
+	return &role, nil
 }
 
 func (r *Repository) GetRolesByUserID(
 	ctx context.Context,
 	userID string,
 ) ([]Role, error) {
-	var dbModels []RoleDB
+	var roles []Role
 	query := `
 		SELECT r.id, r.name
 		FROM roles r
@@ -105,15 +97,11 @@ func (r *Repository) GetRolesByUserID(
 		WHERE ur.user_id = ?
 	`
 
-	err := r.db.SelectContext(ctx, &dbModels, query, userID)
+	err := r.db.SelectContext(ctx, &roles, query, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	var roles []Role
-	for _, m := range dbModels {
-		roles = append(roles, m.ToDomain())
-	}
 	return roles, nil
 }
 
@@ -121,47 +109,39 @@ func (r *Repository) GetUserByEmail(
 	ctx context.Context,
 	email, authType string,
 ) (*User, error) {
-	var dbModel UserDB
+	var user User
 
 	query := fmt.Sprintf(`
 		SELECT %s
 		FROM users
 		WHERE email = ? AND auth_type = ?
 		LIMIT 1
-	`, datastore.GetColumns(UserDB{}))
+	`, datastore.GetColumns(User{}))
 
-	err := r.db.GetContext(ctx, &dbModel, query, email, authType)
+	err := r.db.GetContext(ctx, &user, query, email, authType)
 	if err != nil {
 		return nil, err
 	}
 
-	roles, err := r.GetRolesByUserID(ctx, dbModel.ID)
+	roles, err := r.GetRolesByUserID(ctx, user.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch user roles: %w", err)
 	}
 
-	domainModel := dbModel.ToDomain()
-	domainModel.Roles = roles
-	return &domainModel, nil
+	user.Roles = roles
+	return &user, nil
 }
 
-// =============================================
-// |                                           |
-// |                                           |
-// |                                           |
-// =============================================
-
-// CreateUser inserts or updates a user using the persistence model.
+// CreateUser inserts or updates a user.
 func (r *Repository) CreateUser(
 	ctx context.Context,
 	tx datastore.DB,
 	user User,
 ) error {
-	dbModel := user.ToPersistence()
 	exclude := []string{"updated_at"}
-	cols, vals := datastore.GetInsertStatement(UserDB{}, exclude)
+	cols, vals := datastore.GetInsertStatement(User{}, exclude)
 	onDuplicateKeyStmt := datastore.GetOnDuplicateKeyUpdateStatement(
-		UserDB{},
+		User{},
 		exclude,
 	)
 	query := fmt.Sprintf(`
@@ -170,7 +150,7 @@ func (r *Repository) CreateUser(
 			ON DUPLICATE KEY UPDATE %s
 		`, cols, vals, onDuplicateKeyStmt)
 
-	_, err := tx.NamedExecContext(ctx, query, dbModel)
+	_, err := tx.NamedExecContext(ctx, query, user)
 	if err != nil {
 		return err
 	}
@@ -196,14 +176,9 @@ func (r *Repository) PostProfilePicture(
 	userID string,
 	fileID string,
 ) error {
-	dbModel := ProfilePicture{
-		UserID: userID,
-		FileID: fileID,
-	}.ToPersistence()
-
 	query := `INSERT INTO profile_pictures (user_id, file_id)
-			  VALUES (:user_id, :file_id)`
-	_, err := tx.NamedExecContext(ctx, query, &dbModel)
+			  VALUES (?, ?)`
+	_, err := tx.ExecContext(ctx, query, userID, fileID)
 	if err != nil {
 		return fmt.Errorf("failed to post profile picture: %w", err)
 	}
@@ -243,9 +218,9 @@ func (r *Repository) GetUserIDsByRole(
 
 func (r *Repository) ListUsers(
 	ctx context.Context,
-	params ListUsersParams,
+	params ListUsersRequest,
 ) ([]User, int, error) {
-	var dbModels []UserDB
+	var users []User
 	var total int
 
 	baseQuery := `FROM users u`
@@ -283,26 +258,26 @@ func (r *Repository) ListUsers(
 	// Get paginated users
 	selectQuery := fmt.Sprintf(
 		`SELECT DISTINCT %s `,
-		datastore.GetPrefixColumns(UserDB{}, "u")) +
+		datastore.GetPrefixColumns(User{}, "u")) +
 		baseQuery + whereClause + " ORDER BY u.created_at DESC LIMIT ? OFFSET ?"
 
 	limit := params.PageSize
 	offset := (params.Page - 1) * params.PageSize
 	args = append(args, limit, offset)
 
-	err = r.db.SelectContext(ctx, &dbModels, selectQuery, args...)
+	err = r.db.SelectContext(ctx, &users, selectQuery, args...)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	if len(dbModels) == 0 {
+	if len(users) == 0 {
 		return []User{}, 0, nil
 	}
 
 	// Fetch roles for all users in one go to avoid N+1
-	userIDs := make([]string, len(dbModels))
-	for i, m := range dbModels {
-		userIDs[i] = m.ID
+	userIDs := make([]string, len(users))
+	for i, u := range users {
+		userIDs[i] = u.ID
 	}
 
 	query, roleArgs, err := sqlx.In(`
@@ -334,11 +309,8 @@ func (r *Repository) ListUsers(
 		})
 	}
 
-	var users []User
-	for _, m := range dbModels {
-		user := m.ToDomain()
-		user.Roles = userRolesMap[user.ID]
-		users = append(users, user)
+	for i := range users {
+		users[i].Roles = userRolesMap[users[i].ID]
 	}
 
 	return users, total, nil
@@ -377,16 +349,7 @@ func (r *Repository) AssignRole(
 			reference_id = VALUES(reference_id)
 	`
 
-	// Convert domain assignment to persistence row
-	dbRow := UserRoleDB{
-		UserID:      assignment.UserID,
-		RoleID:      assignment.RoleID,
-		AssignedBy:  structs.ToSqlNull(assignment.AssignedBy),
-		Reason:      structs.ToSqlNull(assignment.Reason),
-		ReferenceID: structs.ToSqlNull(assignment.ReferenceID),
-	}
-
-	_, err := tx.NamedExecContext(ctx, query, dbRow)
+	_, err := tx.NamedExecContext(ctx, query, assignment)
 	return err
 }
 
@@ -406,16 +369,9 @@ func (r *Repository) AddUserToWhitelist(
 	email string,
 	roleID int,
 ) error {
-	query := `INSERT INTO user_whitelist (email, role_id) VALUES ?`
-	_, err := tx.NamedExecContext(ctx, query, map[string]interface{}{
-		"email":   email,
-		"role_id": roleID,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	query := `INSERT INTO whitelists (email, role_id) VALUES (?, ?)`
+	_, err := tx.ExecContext(ctx, query, email, roleID)
+	return err
 }
 
 func (r *Repository) RemoveUserFromWhitelist(
@@ -423,9 +379,7 @@ func (r *Repository) RemoveUserFromWhitelist(
 	tx datastore.DB,
 	email string,
 ) error {
-	query := `DELETE FROM user_whitelist WHERE email = :email`
-	_, err := tx.NamedExecContext(ctx, query, map[string]interface{}{
-		"email": email,
-	})
+	query := `DELETE FROM whitelists WHERE email = ?`
+	_, err := tx.ExecContext(ctx, query, email)
 	return err
 }

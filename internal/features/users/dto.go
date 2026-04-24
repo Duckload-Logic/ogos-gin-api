@@ -2,7 +2,7 @@ package users
 
 import "github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 
-type GetUserResponse struct {
+type UserResponse struct {
 	ID         string                 `json:"id"`
 	Roles      []Role                 `json:"roles"`
 	FirstName  string                 `json:"firstName"`
@@ -25,7 +25,7 @@ type CreateUserRequest struct {
 	Password   string `json:"password"   binding:"required,min=8"`
 }
 
-type ListUsersParams struct {
+type ListUsersRequest struct {
 	Page     int    `form:"page,default=1"`
 	PageSize int    `form:"page_size,default=10"`
 	RoleID   int    `form:"role_id"`
@@ -34,7 +34,7 @@ type ListUsersParams struct {
 }
 
 type ListUsersResponse struct {
-	Users []GetUserResponse          `json:"users"`
+	Users []UserResponse          `json:"users"`
 	Meta  structs.PaginationMetadata `json:"meta"`
 }
 
