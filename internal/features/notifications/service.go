@@ -10,12 +10,12 @@ import (
 )
 
 type Service struct {
-	repo        RepositoryInterface
+	repo        *Repository
 	mu          sync.RWMutex
 	subscribers map[string][]chan audit.NotificationEntry
 }
 
-func NewService(repo RepositoryInterface) *Service {
+func NewService(repo *Repository) *Service {
 	return &Service{
 		repo:        repo,
 		subscribers: make(map[string][]chan audit.NotificationEntry),

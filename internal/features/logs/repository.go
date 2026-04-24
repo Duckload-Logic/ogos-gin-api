@@ -33,21 +33,22 @@ func (r *Repository) Record(
 	tx datastore.DB,
 	log *SystemLog,
 ) error {
-	dbModel := MapSystemLogToDB(*log)
-	cols, vals := datastore.GetInsertStatement(
-		&dbModel, []string{"created_at"},
-	)
-	query := fmt.Sprintf(`
-		INSERT INTO system_logs (%s)
-		VALUES (%s)
-	`, cols, vals)
+	query := `
+		INSERT INTO system_logs (
+			level, category, action, message, user_id, target_id, target_type,
+			user_email, target_email, ip_address, user_agent, metadata, trace_id
+		) VALUES (
+			:level, :category, :action, :message, :user_id, :target_id, :target_type,
+			:user_email, :target_email, :ip_address, :user_agent, :metadata, :trace_id
+		)
+	`
 
 	exec := tx
 	if exec == nil {
 		exec = r.db
 	}
 
-	_, err := exec.NamedExecContext(ctx, query, dbModel)
+	_, err := exec.NamedExecContext(ctx, query, log)
 	if err != nil {
 		return fmt.Errorf("failed to insert system log: %w", err)
 	}
@@ -61,10 +62,7 @@ func (r *Repository) List(
 	search, startDate, endDate, orderBy string,
 ) ([]SystemLog, error) {
 	query, args := r.applyLogFilters(
-		fmt.Sprintf(
-			"SELECT %s FROM system_logs WHERE 1=1",
-			datastore.GetColumns(&SystemLogDB{}),
-		),
+		"SELECT id, level, category, action, message, user_id, target_id, target_type, user_email, target_email, ip_address, user_agent, metadata, trace_id, created_at FROM system_logs WHERE 1=1",
 		nil,
 		category,
 		action,
@@ -83,13 +81,13 @@ func (r *Repository) List(
 	query += fmt.Sprintf(" ORDER BY %s DESC LIMIT ? OFFSET ?", orderBy)
 	args = append(args, limit, offset)
 
-	var logs []SystemLogDB
+	var logs []SystemLog
 	err := r.db.SelectContext(ctx, &logs, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list system logs: %w", err)
 	}
 
-	return MapSystemLogsToDomain(logs), nil
+	return logs, nil
 }
 
 // GetTotalCount returns the total count of system log entries matching filters
@@ -234,3 +232,4 @@ func (r *Repository) DeleteLogsOlderThan(
 
 	return rows, nil
 }
+

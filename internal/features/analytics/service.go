@@ -8,13 +8,13 @@ import (
 )
 
 type Service struct {
-	repo  RepositoryInterface
-	redis datastore.RedisClientInterface
+	repo  *Repository
+	redis *datastore.RedisClient
 }
 
 func NewService(
-	repo RepositoryInterface,
-	redis datastore.RedisClientInterface,
+	repo *Repository,
+	redis *datastore.RedisClient,
 ) *Service {
 	return &Service{repo: repo, redis: redis}
 }
@@ -23,13 +23,13 @@ func (s *Service) GetDashboard(
 	ctx context.Context,
 	year int,
 	courseID int,
-) (*DashboardResponseDTO, error) {
+) (*DashboardResponse, error) {
 	total, err := s.repo.GetTotalStudents(ctx, year, courseID)
 	if err != nil {
 		return nil, err
 	}
 
-	dashboard := &DashboardResponseDTO{
+	dashboard := &DashboardResponse{
 		TotalStudents:        total,
 		AgeDistribution:      []DemographicStatDTO{},
 		CivilStatus:          []DemographicStatDTO{},
@@ -118,7 +118,7 @@ func (s *Service) GetAdminDashboard(
 	ctx context.Context,
 	timeRange string,
 	source string,
-) (*AdminDashboardResponseDTO, error) {
+) (*AdminDashboardResponse, error) {
 	totalStudents, err := s.repo.GetTotalStudents(ctx, 0, 0)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (s *Service) GetAdminDashboard(
 		}
 	}
 
-	return &AdminDashboardResponseDTO{
+	return &AdminDashboardResponse{
 		TotalStudents:     totalStudents,
 		TotalReports:      totalReports,
 		TotalAppointments: totalAppointments,

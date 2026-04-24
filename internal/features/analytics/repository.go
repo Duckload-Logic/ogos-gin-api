@@ -32,7 +32,7 @@ func (r *Repository) GetGenderStats(
 	year int,
 	courseID int,
 ) ([]DemographicStat, error) {
-	var results []DemographicStatDB
+	var results []DemographicStat
 	filter, args := r.buildFilter(year, courseID)
 	query := `
 		SELECT
@@ -50,7 +50,7 @@ func (r *Repository) GetGenderStats(
 	if err != nil {
 		return nil, err
 	}
-	return MapDemographicStatsToDomain(results), nil
+	return results, nil
 }
 
 func (r *Repository) GetTotalReports(ctx context.Context) (int, error) {
@@ -170,13 +170,15 @@ func (r *Repository) GetMonthlyAppointmentStats(
 			0 as logins,
 			0 as activity,
 			COUNT(*) as count
-		FROM appointments
+		FROM appointments a
+		JOIN statuses s ON s.id = a.status_id
 		WHERE when_date >= DATE_SUB(` + baseDate + `, INTERVAL ` + interval + `)
-		  AND status_id = (SELECT id FROM statuses WHERE name = 'Completed')
+		  AND UPPER(s.name) = 'COMPLETED'
 		GROUP BY DATE_FORMAT(when_date, '` + groupBy + `'), period, month
 		ORDER BY DATE_FORMAT(when_date, '` + groupBy + `') ASC;
 	`
-	var stats []MonthlyVisitorStatDTO
+
+	stats := []MonthlyVisitorStatDTO{}
 	err := r.db.SelectContext(ctx, &stats, query)
 	return stats, err
 }
@@ -518,15 +520,15 @@ func (r *Repository) executeStatQuery(
 	query string,
 	args ...interface{},
 ) ([]DemographicStat, error) {
-	stats := make([]DemographicStatDB, 0)
+	results := make([]DemographicStat, 0)
 	var err error
 	if len(args) > 0 {
-		err = r.db.SelectContext(ctx, &stats, query, args...)
+		err = r.db.SelectContext(ctx, &results, query, args...)
 	} else {
-		err = r.db.SelectContext(ctx, &stats, query)
+		err = r.db.SelectContext(ctx, &results, query)
 	}
 	if err != nil {
 		return nil, err
 	}
-	return MapDemographicStatsToDomain(stats), nil
+	return results, nil
 }

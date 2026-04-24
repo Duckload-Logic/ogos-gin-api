@@ -16,11 +16,11 @@ var db *sqlx.DB
 
 // global repositories
 var (
-	usersRepo        users.RepositoryInterface
-	studentsRepo     students.RepositoryInterface
-	appointmentsRepo appointments.RepositoryInterface
-	slipsRepo        slips.RepositoryInterface
-	locationsRepo    locations.RepositoryInterface
+	usersRepo        *users.Repository
+	studentsRepo     *students.Repository
+	appointmentsRepo *appointments.Repository
+	slipsRepo        *slips.Repository
+	locationsRepo    *locations.Repository
 )
 
 // notificationTypes is now defined in student.go or can be moved to a shared

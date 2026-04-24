@@ -12,7 +12,7 @@ import (
 )
 
 type Handler struct {
-	service        ServiceInterface
+	service        *Service
 	sessionService *sessions.Service
 	logger         audit.Logger
 	logReader      audit.LogReader
@@ -20,7 +20,7 @@ type Handler struct {
 
 // NewHandler creates a new users handler.
 func NewHandler(
-	service ServiceInterface,
+	service *Service,
 	sessionService *sessions.Service,
 	logger audit.Logger,
 	logReader audit.LogReader,
@@ -33,21 +33,6 @@ func NewHandler(
 	}
 }
 
-// ========================================
-// |                                      |
-// |      RETRIEVE HANDLER FUNCTIONS      |
-// |                                      |
-// ========================================
-
-// GetMe godoc
-// @Summary      Get current user
-// @Description  Retrieves information about the currently authenticated user.
-// @Tags         Users
-// @Accept       json
-// @Produce      json
-// @Success      200      {object}  GetUserResponse        "Returns current user details"
-// @Failure      500      {object}  map[string]string     "Failed to get current user"
-// @Router       /users/me [get]
 // GetMe retrieves the currently authenticated user's information.
 func (h *Handler) GetMe(c *gin.Context) {
 	userID := c.MustGet("userID").(string)
@@ -67,17 +52,6 @@ func (h *Handler) GetMe(c *gin.Context) {
 	response.SendSuccess(c, resp)
 }
 
-// GetUserByEmail godoc
-// @Summary      Get user by email
-// @Description  Retrieves user information based on the provided email.
-// @Tags         Users
-// @Accept       json
-// @Produce      json
-// @Param        email   query     string true "User Email"
-// @Success      200      {object}  GetUserResponse        "Returns user details"
-// @Failure      400      {object}  map[string]string     "Email query parameter is required"
-// @Failure      500      {object}  map[string]string     "Failed to get user by email"
-// @Router       /users [get]
 // GetUserByEmail retrieves user information by their email address.
 func (h *Handler) GetUserByEmail(c *gin.Context) {
 	email := c.Query("email")
@@ -109,21 +83,9 @@ func (h *Handler) GetUserByEmail(c *gin.Context) {
 	response.SendSuccess(c, resp)
 }
 
-// GetUsers godoc
-// @Summary      List all users
-// @Description  Retrieves a paginated list of all users with filtering options.
-// @Tags         Users
-// @Accept       json
-// @Produce      json
-// @Param        page       query     int     false  "Page number"
-// @Param        page_size  query     int     false  "Items per page"
-// @Param        role_id    query     int     false  "Filter by role"
-// @Param        search     query     string  false  "Search by name/email"
-// @Param        active     query     bool    false  "Filter by status"
-// @Success      200        {object}  ListUsersResponse
-// @Router       /users/all [get]
+// GetUsers retrieves a paginated list of all users.
 func (h *Handler) GetUsers(c *gin.Context) {
-	var params ListUsersParams
+	var params ListUsersRequest
 	if err := c.ShouldBindQuery(&params); err != nil {
 		response.SendFail(c, gin.H{"error": err.Error()})
 		return
@@ -144,14 +106,7 @@ func (h *Handler) GetUsers(c *gin.Context) {
 	response.SendSuccess(c, resp)
 }
 
-// GetRoleDistribution godoc
-// @Summary      Get user role distribution
-// @Description  Returns the count of users for each role in the system.
-// @Tags         Users
-// @Accept       json
-// @Produce      json
-// @Success      200      {array}   RoleDistributionDTO
-// @Router       /users/distribution [get]
+// GetRoleDistribution returns the count of users for each role.
 func (h *Handler) GetRoleDistribution(c *gin.Context) {
 	resp, err := h.service.GetRoleDistribution(c.Request.Context())
 	if err != nil {
@@ -171,13 +126,7 @@ func (h *Handler) GetRoleDistribution(c *gin.Context) {
 func (h *Handler) PostUserBlock(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
-		fmt.Printf(
-			"[PostUserBlock] {Check Param}: User ID is required\n",
-		)
-		response.SendFail(
-			c,
-			gin.H{"error": "User ID parameter is required"},
-		)
+		response.SendFail(c, gin.H{"error": "User ID parameter is required"})
 		return
 	}
 
@@ -199,13 +148,7 @@ func (h *Handler) PostUserBlock(c *gin.Context) {
 func (h *Handler) PostUserUnblock(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
-		fmt.Printf(
-			"[PostUserUnblock] {Check Param}: User ID is required\n",
-		)
-		response.SendFail(
-			c,
-			gin.H{"error": "User ID parameter is required"},
-		)
+		response.SendFail(c, gin.H{"error": "User ID parameter is required"})
 		return
 	}
 
@@ -282,11 +225,11 @@ func (h *Handler) DeleteUserSession(c *gin.Context) {
 
 	h.logger.Record(
 		c.Request.Context(),
-		nil, // Use default DB in logger implementation
+		nil,
 		audit.LogEntry{
 			Level:    audit.LevelWarning,
 			Category: audit.CategorySecurity,
-			Action:   audit.ActionLogout, // Or add a new ActionSessionRevoked
+			Action:   audit.ActionLogout,
 			Message: fmt.Sprintf(
 				"Superadmin %s revoked session %s for user %s",
 				adminEmail,
@@ -308,7 +251,7 @@ func (h *Handler) GetUserActivity(c *gin.Context) {
 		return
 	}
 
-	// Fetch user email first because the logs repo mostly filters by email
+	// Fetch user email first
 	user, err := h.service.GetUserByID(c.Request.Context(), targetUserID)
 	if err != nil {
 		fmt.Printf("[GetUserActivity] {GetUserByID}: %v\n", err)
@@ -322,7 +265,7 @@ func (h *Handler) GetUserActivity(c *gin.Context) {
 		return
 	}
 
-	// Force filter by target user's email
+	// Filter by target user's email
 	req.UserEmail = user.Email
 
 	result, err := h.logReader.ListLogs(c.Request.Context(), req)
@@ -361,7 +304,7 @@ func (h *Handler) PostUpdateRoles(c *gin.Context) {
 		return
 	}
 
-	// Audit log for security visibility
+	// Audit log
 	adminEmail := c.MustGet("userEmail").(string)
 	h.logger.Record(
 		c.Request.Context(),
@@ -391,7 +334,6 @@ func (h *Handler) PostUserToWhitelist(c *gin.Context) {
 		response.SendFail(c, gin.H{"error": err.Error()})
 		return
 	}
-
 	err := h.service.AddUserToWhitelist(c.Request.Context(), req)
 	if err != nil {
 		fmt.Printf("[PostUserToWhitelist] {AddUserToWhitelist}: %v\n", err)
@@ -436,37 +378,3 @@ func (h *Handler) PostRemoveUserFromWhitelist(c *gin.Context) {
 		gin.H{"message": "User removed from whitelist successfully"},
 	)
 }
-
-// func (h *Handler) PostProfilePicture(c *gin.Context) {
-// 	userID := c.Param("id")
-// 	if userID == "" {
-// 		response.SendFail(c, gin.H{"error": "User ID is required"})
-// 		return
-// 	}
-
-// 	var req struct {
-// 		FileID string `json:"file_id" binding:"required"`
-// 	}
-
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		response.SendFail(c, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	err := h.service.PostProfilePicture(c.Request.Context(), userID, req.FileID)
-// 	if err != nil {
-// 		fmt.Printf("[PostProfilePicture] {PostProfilePicture}: %v\n", err)
-// 		response.SendError(
-// 			c,
-// 			"Failed to set profile picture",
-// 			http.StatusInternalServerError,
-// 			nil,
-// 		)
-// 		return
-// 	}
-
-// 	response.SendSuccess(
-// 		c,
-// 		gin.H{"message": "Profile picture set successfully"},
-// 	)
-// }

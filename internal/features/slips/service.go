@@ -23,24 +23,24 @@ import (
 
 const MaxFileSize = 5 * 1024 * 1024 // 5MB limit
 type Service struct {
-	repo           RepositoryInterface
+	repo           *Repository
 	logService     audit.Logger
 	notifService   audit.Notifier
 	fileStorage    storage.FileStorage
-	userService    users.ServiceInterface
-	studentService students.ServiceInterface
-	filesService   files.ServiceInterface
+	userService    *users.Service
+	studentService *students.Service
+	filesService   *files.Service
 }
 
 func NewService(
-	repo RepositoryInterface,
+	repo *Repository,
 	logService audit.Logger,
 	notifService audit.Notifier,
 	fileStorage storage.FileStorage,
-	userService users.ServiceInterface,
-	studentService students.ServiceInterface,
-	filesService files.ServiceInterface,
-) ServiceInterface {
+	userService *users.Service,
+	studentService *students.Service,
+	filesService *files.Service,
+) *Service {
 	return &Service{
 		repo:           repo,
 		logService:     logService,
@@ -85,7 +85,7 @@ func (s *Service) GetSlipByID(
 	return &SlipDTO{
 		ID:    slip.ID,
 		IIRID: slip.IIRID,
-		User: users.GetUserResponse{
+		User: users.UserResponse{
 			FirstName:  slip.UserFirstName,
 			MiddleName: slip.UserMiddleName,
 			LastName:   slip.UserLastName,
@@ -112,8 +112,8 @@ func (s *Service) GetSlipByID(
 
 func (s *Service) GetUrgentSlips(
 	ctx context.Context,
-	req *ListSlipRequest,
-) (*ListSlipsDTO, error) {
+	req *ListSlipsRequest,
+) (*ListSlipsResponse, error) {
 	req.SetDefaults("urgency_score")
 
 	slips, err := s.repo.GetUrgentSlips(ctx, req)
@@ -125,7 +125,7 @@ func (s *Service) GetUrgentSlips(
 	for s := range slips {
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID: slips[s].ID,
-			User: users.GetUserResponse{
+			User: users.UserResponse{
 				ID:         "",
 				FirstName:  slips[s].UserFirstName,
 				MiddleName: slips[s].UserMiddleName,
@@ -156,7 +156,7 @@ func (s *Service) GetUrgentSlips(
 		return nil, fmt.Errorf("failed to get slips count: %w", err)
 	}
 
-	return &ListSlipsDTO{
+	return &ListSlipsResponse{
 		Slips: slipDTOs,
 		Meta:  structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}, nil
@@ -165,7 +165,7 @@ func (s *Service) GetUrgentSlips(
 func (s *Service) GetSlipStats(
 	ctx context.Context,
 	iirID *string,
-	req *ListSlipRequest,
+	req *ListSlipsRequest,
 ) ([]SlipStatusCount, error) {
 	stats, err := s.repo.GetSlipStats(ctx, iirID, req)
 	if err != nil {
@@ -177,8 +177,8 @@ func (s *Service) GetSlipStats(
 
 func (s *Service) GetAllExcuseSlips(
 	ctx context.Context,
-	req ListSlipRequest,
-) (*ListSlipsDTO, error) {
+	req ListSlipsRequest,
+) (*ListSlipsResponse, error) {
 	req.SetDefaults("created_at")
 
 	slips, err := s.repo.GetAll(ctx, &req)
@@ -191,7 +191,7 @@ func (s *Service) GetAllExcuseSlips(
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID:    slips[s].ID,
 			IIRID: slips[s].IIRID,
-			User: users.GetUserResponse{
+			User: users.UserResponse{
 				ID:         "",
 				FirstName:  slips[s].UserFirstName,
 				MiddleName: slips[s].UserMiddleName,
@@ -222,7 +222,7 @@ func (s *Service) GetAllExcuseSlips(
 		return nil, fmt.Errorf("failed to get slips count: %w", err)
 	}
 
-	return &ListSlipsDTO{
+	return &ListSlipsResponse{
 		Slips: slipDTOs,
 		Meta:  structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}, nil
@@ -231,8 +231,8 @@ func (s *Service) GetAllExcuseSlips(
 func (s *Service) GetExcuseSlipsByIIRID(
 	ctx context.Context,
 	iirID string,
-	req ListSlipRequest,
-) (*ListSlipsDTO, error) {
+	req ListSlipsRequest,
+) (*ListSlipsResponse, error) {
 	req.SetDefaults("created_at")
 
 	slips, err := s.repo.GetByIIRID(ctx, iirID, &req)
@@ -245,7 +245,7 @@ func (s *Service) GetExcuseSlipsByIIRID(
 		slipDTOs = append(slipDTOs, SlipDTO{
 			ID:    slips[s].ID,
 			IIRID: slips[s].IIRID,
-			User: users.GetUserResponse{
+			User: users.UserResponse{
 				ID:         "",
 				FirstName:  slips[s].UserFirstName,
 				MiddleName: slips[s].UserMiddleName,
@@ -279,7 +279,7 @@ func (s *Service) GetExcuseSlipsByIIRID(
 		)
 	}
 
-	return &ListSlipsDTO{
+	return &ListSlipsResponse{
 		Slips: slipDTOs,
 		Meta:  structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}, nil

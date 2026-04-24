@@ -3,14 +3,15 @@ package locations
 import (
 	"context"
 
+	"github.com/olazo-johnalbert/duckload-api/internal/core/structs"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
 )
 
 type Service struct {
-	repo RepositoryInterface
+	repo *Repository
 }
 
-func NewService(repo RepositoryInterface) *Service {
+func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
@@ -122,4 +123,29 @@ func (s *Service) SaveAddress(
 	addr *Address,
 ) (int, error) {
 	return s.repo.UpsertAddress(ctx, tx, addr)
+}
+
+func (s *Service) UpsertAddress(
+	ctx context.Context,
+	tx datastore.DB,
+	dto AddressDTO,
+) (int, error) {
+	addr := s.mapDTOToAddress(dto)
+	return s.repo.UpsertAddress(ctx, tx, &addr)
+}
+
+func (s *Service) mapDTOToAddress(dto AddressDTO) Address {
+	addr := Address{
+		ID:           dto.ID,
+		RegionCode:   dto.Region.Code,
+		CityCode:     dto.City.Code,
+		BarangayCode: dto.Barangay.Code,
+		StreetDetail: structs.StringToNullableString(dto.StreetDetail),
+	}
+
+	if dto.Province != nil {
+		addr.ProvinceCode = structs.StringToNullableString(dto.Province.Code)
+	}
+
+	return addr
 }

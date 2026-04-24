@@ -10,32 +10,31 @@ import (
 )
 
 type Service struct {
-	repo           RepositoryInterface
+	repo           *Repository
 	sessionService *sessions.Service
 }
 
 // NewService creates a new users service.
 func NewService(
-	repo RepositoryInterface,
+	repo *Repository,
 	sessionService *sessions.Service,
-) ServiceInterface {
+) *Service {
 	return &Service{
 		repo:           repo,
 		sessionService: sessionService,
 	}
 }
 
-// GetUserByID retrieves a user by their ID.
+// GetUserByID retrieves a user by their ID and returns a DTO.
 func (s *Service) GetUserByID(
 	ctx context.Context,
 	userID string,
-) (*GetUserResponse, error) {
+) (*UserResponse, error) {
 	user, err := s.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-
-	return s.mapUserModelToResponse(user), nil
+	return s.mapToResponse(user), nil
 }
 
 // GetUserByEmail retrieves a user by their email and auth type.
@@ -43,13 +42,12 @@ func (s *Service) GetUserByEmail(
 	ctx context.Context,
 	email string,
 	authType string,
-) (*GetUserResponse, error) {
+) (*UserResponse, error) {
 	user, err := s.repo.GetUserByEmail(ctx, email, authType)
 	if err != nil {
 		return nil, err
 	}
-
-	return s.mapUserModelToResponse(user), nil
+	return s.mapToResponse(user), nil
 }
 
 func (s *Service) GetUserIDsByRole(
@@ -59,55 +57,51 @@ func (s *Service) GetUserIDsByRole(
 	return s.repo.GetUserIDsByRole(ctx, roleID)
 }
 
-func (s *Service) ListUsers(
-	ctx context.Context,
-	params ListUsersParams,
-) (*ListUsersResponse, error) {
-	users, total, err := s.repo.ListUsers(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-
-	dtos := make([]GetUserResponse, 0, len(users))
-	for _, user := range users {
-		dto := s.mapUserModelToResponse(&user)
-		if dto != nil {
-			dtos = append(dtos, *dto)
-		}
-	}
-
-	totalPages := (total + params.PageSize - 1) / params.PageSize
-
-	return &ListUsersResponse{
-		Users: dtos,
-		Meta: structs.PaginationMetadata{
-			Total:      total,
-			Page:       params.Page,
-			PageSize:   params.PageSize,
-			TotalPages: totalPages,
-		},
-	}, nil
-}
-
 func (s *Service) GetRoleDistribution(
 	ctx context.Context,
 ) ([]RoleDistributionDTO, error) {
 	return s.repo.GetRoleDistribution(ctx)
 }
 
-func (s *Service) mapUserModelToResponse(user *User) *GetUserResponse {
-	return &GetUserResponse{
-		ID:         user.ID,
-		Roles:      user.Roles,
-		FirstName:  user.FirstName,
-		MiddleName: user.MiddleName,
-		LastName:   user.LastName,
-		SuffixName: user.SuffixName,
-		Email:      user.Email,
-		IsActive:   user.IsActive,
-		CreatedAt:  user.CreatedAt.Time.String(),
-		UpdatedAt:  user.UpdatedAt.Time.String(),
+func (s *Service) GetRolesByUserID(
+	ctx context.Context,
+	userID string,
+) ([]Role, error) {
+	return s.repo.GetRolesByUserID(ctx, userID)
+}
+
+func (s *Service) GetRoleByID(
+	ctx context.Context,
+	roleID int,
+) (*Role, error) {
+	return s.repo.GetRoleByID(ctx, roleID)
+}
+
+func (s *Service) CheckUserWhitelist(
+	ctx context.Context,
+	email string,
+) ([]int, error) {
+	return s.repo.CheckUserWhitelist(ctx, email)
+}
+
+func (s *Service) ListUsers(
+	ctx context.Context,
+	params ListUsersRequest,
+) (*ListUsersResponse, error) {
+	users, total, err := s.repo.ListUsers(ctx, params)
+	if err != nil {
+		return nil, err
 	}
+
+	dtos := make([]UserResponse, 0, len(users))
+	for _, u := range users {
+		dtos = append(dtos, *s.mapToResponse(&u))
+	}
+
+	return &ListUsersResponse{
+		Users: dtos,
+		Meta:  structs.CalculateMetadata(total, params.Page, params.PageSize),
+	}, nil
 }
 
 func (s *Service) PostProfilePicture(
@@ -206,4 +200,18 @@ func (s *Service) RemoveUserFromWhitelist(
 		}
 		return nil
 	})
+}
+func (s *Service) mapToResponse(user *User) *UserResponse {
+	return &UserResponse{
+		ID:         user.ID,
+		Roles:      user.Roles,
+		FirstName:  user.FirstName,
+		MiddleName: user.MiddleName,
+		LastName:   user.LastName,
+		SuffixName: user.SuffixName,
+		Email:      user.Email,
+		IsActive:   user.IsActive,
+		CreatedAt:  user.CreatedAt.Time.String(),
+		UpdatedAt:  user.UpdatedAt.Time.String(),
+	}
 }

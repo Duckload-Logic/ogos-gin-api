@@ -17,18 +17,18 @@ import (
 )
 
 type Repositories struct {
-	UserRepo               users.RepositoryInterface
-	StudentRepo            students.RepositoryInterface
-	NoteRepo               notes.RepositoryInterface
+	UserRepo               *users.Repository
+	StudentRepo            *students.Repository
+	NoteRepo               *notes.Repository
 	IntegrationStudentRepo integrations.RepositoryInterface
-	AppointmentRepo        appointments.RepositoryInterface
-	SlipRepo               slips.RepositoryInterface
-	LocationsRepo          locations.RepositoryInterface
-	AnalyticsRepo          analytics.RepositoryInterface
-	M2MClientRepo          m2mclients.RepositoryInterface
-	NotificationRepo       notifications.RepositoryInterface
-	SystemLogRepo          logs.RepositoryInterface
-	FileRepo               files.RepositoryInterface
+	AppointmentRepo        *appointments.Repository
+	SlipRepo               *slips.Repository
+	LocationsRepo          *locations.Repository
+	AnalyticsRepo          *analytics.Repository
+	M2MClientRepo          *m2mclients.Repository
+	NotificationRepo       *notifications.Repository
+	SystemLogRepo          *logs.Repository
+	FileRepo               *files.Repository
 }
 
 func getRepositories(db *sqlx.DB) *Repositories {

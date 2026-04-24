@@ -39,10 +39,9 @@ func parseUsersFromCSV(filePath string) ([]users.User, error) {
 			return nil, fmt.Errorf("failed to read CSV record: %w", err)
 		}
 
-		// map record to User struct
+	// map record to User struct
 		// id
 		// email
-		// role_id
 		// first_name
 		// middle_name
 		// last_name
@@ -53,23 +52,22 @@ func parseUsersFromCSV(filePath string) ([]users.User, error) {
 		// created_at
 		// updated_at
 
-		roleID, _ := strconv.Atoi(record[2])
-		isActiveInt, _ := strconv.Atoi(record[9])
+		isActiveInt, _ := strconv.Atoi(record[8])
 		isActive := isActiveInt != 0
 
 		user := users.User{
 			ID:           record[0],
 			Email:        record[1],
-			Roles:        []users.Role{{ID: roleID}},
-			FirstName:    record[3],
-			MiddleName:   stringToNullString(record[4]),
-			LastName:     record[5],
-			SuffixName:   stringToNullString(record[6]),
-			PasswordHash: stringToNullString(record[7]),
-			AuthType:     record[8],
+			Roles:        []users.Role{{ID: 1}}, // Default: Student
+			FirstName:    record[2],
+			MiddleName:   stringToNullString(record[3]),
+			LastName:     record[4],
+			SuffixName:   stringToNullString(record[5]),
+			PasswordHash: stringToNullString(record[6]),
+			AuthType:     record[7],
 			IsActive:     isActive,
-			CreatedAt:    stringToNullTime(record[10]),
-			UpdatedAt:    stringToNullTime(record[11]),
+			CreatedAt:    stringToNullTime(record[9]),
+			UpdatedAt:    stringToNullTime(record[10]),
 		}
 
 		usersList = append(usersList, user)

@@ -13,13 +13,13 @@ import (
 )
 
 type Service struct {
-	repo         RepositoryInterface
+	repo         *Repository
 	notifService audit.Notifier
 	userSvc      audit.UserGetter
 }
 
 func NewService(
-	repo RepositoryInterface,
+	repo *Repository,
 	notifService audit.Notifier,
 	userSvc audit.UserGetter,
 ) *Service {

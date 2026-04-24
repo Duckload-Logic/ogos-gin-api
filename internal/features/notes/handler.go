@@ -10,12 +10,12 @@ import (
 )
 
 type Handler struct {
-	service ServiceInterface
+	service *Service
 	logger  audit.Logger
 }
 
 func NewHandler(
-	service ServiceInterface,
+	service *Service,
 	logger audit.Logger,
 ) *Handler {
 	return &Handler{

@@ -43,16 +43,16 @@ const appointmentsBaseQuery = `
 		a.urgency_level AS urgency_level,
 		a.urgency_score AS urgency_score
 	FROM appointments a
-	LEFT JOIN iir_records ir ON a.iir_id = ir.id
-	LEFT JOIN users u ON ir.user_id = u.id
-	LEFT JOIN student_personal_info spi ON ir.id = spi.iir_id
+	JOIN iir_records ir ON a.iir_id = ir.id
+	JOIN users u ON ir.user_id = u.id
+	JOIN student_personal_info spi ON ir.id = spi.iir_id
 	JOIN time_slots ts ON a.time_slot_id = ts.id
 	JOIN appointment_categories ac ON
 		a.appointment_category_id = ac.id
 	JOIN statuses as2 ON a.status_id = as2.id
 `
 
-func NewRepository(db *sqlx.DB) RepositoryInterface {
+func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -71,42 +71,28 @@ func (r *Repository) GetTimeSlots(
 	ctx context.Context,
 	date string,
 ) ([]TimeSlot, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM time_slots
-	`, datastore.GetColumns(TimeSlotDB{}))
+	query := `SELECT id, time FROM time_slots`
 
-	var dbModels []TimeSlotDB
-	err := r.db.SelectContext(ctx, &dbModels, query, date)
+	var slots []TimeSlot
+	err := r.db.SelectContext(ctx, &slots, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get time slots: %w", err)
 	}
 
-	slots := make([]TimeSlot, len(dbModels))
-	for i, m := range dbModels {
-		slots[i] = m.ToDomain()
-	}
 	return slots, nil
 }
 
 func (r *Repository) GetCategories(
 	ctx context.Context,
 ) ([]AppointmentCategory, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM appointment_categories
-	`, datastore.GetColumns(AppointmentCategoryDB{}))
+	query := `SELECT id, name FROM appointment_categories`
 
-	var dbModels []AppointmentCategoryDB
-	err := r.db.SelectContext(ctx, &dbModels, query)
+	var categories []AppointmentCategory
+	err := r.db.SelectContext(ctx, &categories, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get concern categories: %w", err)
 	}
 
-	categories := make([]AppointmentCategory, len(dbModels))
-	for i, m := range dbModels {
-		categories[i] = m.ToDomain()
-	}
 	return categories, nil
 }
 
@@ -119,8 +105,8 @@ func (r *Repository) GetAppointment(
 		WHERE a.id = ?
 	`, appointmentsBaseQuery)
 
-	var dbModel AppointmentWithDetailsViewDB
-	err := r.db.GetContext(ctx, &dbModel, query, id)
+	var appt AppointmentWithDetailsView
+	err := r.db.GetContext(ctx, &appt, query, id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -128,8 +114,7 @@ func (r *Repository) GetAppointment(
 		return nil, fmt.Errorf("failed to get appointment: %w", err)
 	}
 
-	domainModel := dbModel.ToDomain()
-	return &domainModel, nil
+	return &appt, nil
 }
 
 func (r *Repository) GetUserIDByAppointmentID(
@@ -163,16 +148,12 @@ func (r *Repository) GetDailyStatusCount(
 		GROUP BY DATE(a.when_date);
 	`
 
-	var dbModels []DailyStatusCountDB
-	err := r.db.SelectContext(ctx, &dbModels, query, startDate, endDate)
+	var dsc []DailyStatusCount
+	err := r.db.SelectContext(ctx, &dsc, query, startDate, endDate)
 	if err != nil {
 		return nil, err
 	}
 
-	dsc := make([]DailyStatusCount, len(dbModels))
-	for i, m := range dbModels {
-		dsc[i] = m.ToDomain()
-	}
 	return dsc, nil
 }
 
@@ -278,10 +259,10 @@ func (r *Repository) List(
 
 	finalQuery := r.db.Rebind(expandedQuery)
 
-	var dbModels []AppointmentWithDetailsViewDB
+	var appts []AppointmentWithDetailsView
 	err = r.db.SelectContext(
 		ctx,
-		&dbModels,
+		&appts,
 		finalQuery,
 		expandedArgs...,
 	)
@@ -289,10 +270,6 @@ func (r *Repository) List(
 		return nil, fmt.Errorf("failed to list appointments: %w", err)
 	}
 
-	appts := make([]AppointmentWithDetailsView, len(dbModels))
-	for i, m := range dbModels {
-		appts[i] = m.ToDomain()
-	}
 	return appts, nil
 }
 
@@ -300,59 +277,48 @@ func (r *Repository) GetTimeSlotByID(
 	ctx context.Context,
 	id int,
 ) (*TimeSlot, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM time_slots
-		WHERE id = ?
-	`, datastore.GetColumns(TimeSlotDB{}))
-	var dbModel TimeSlotDB
-	err := r.db.GetContext(ctx, &dbModel, query, id)
+	query := `SELECT id, time FROM time_slots WHERE id = ?`
+	var slot TimeSlot
+	err := r.db.GetContext(ctx, &slot, query, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get time slot: %w", err)
 	}
 
-	domainModel := dbModel.ToDomain()
-	return &domainModel, nil
+	return &slot, nil
 }
 
 func (r *Repository) GetAppointmentCategoryByID(
 	ctx context.Context,
 	id int,
 ) (*AppointmentCategory, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
-		FROM appointment_categories
-		WHERE id = ?
-	`, datastore.GetColumns(AppointmentCategoryDB{}))
-	var dbModel AppointmentCategoryDB
-	err := r.db.GetContext(ctx, &dbModel, query, id)
+	query := `SELECT id, name FROM appointment_categories WHERE id = ?`
+	var category AppointmentCategory
+	err := r.db.GetContext(ctx, &category, query, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get category: %w", err)
 	}
 
-	domainModel := dbModel.ToDomain()
-	return &domainModel, nil
+	return &category, nil
 }
 
 func (r *Repository) GetStatusByID(
 	ctx context.Context,
 	id int,
 ) (*AppointmentStatus, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
+	query := `
+		SELECT id, name, color_key
 		FROM statuses
 		WHERE status_type IN ('appointment', 'both')
 		AND id = ?
-	`, datastore.GetColumns(AppointmentStatusDB{}))
+	`
 
-	var dbModel AppointmentStatusDB
-	err := r.db.GetContext(ctx, &dbModel, query, id)
+	var status AppointmentStatus
+	err := r.db.GetContext(ctx, &status, query, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get status: %w", err)
 	}
 
-	domainModel := dbModel.ToDomain()
-	return &domainModel, nil
+	return &status, nil
 }
 
 func (r *Repository) IsSlotAvailableForUpdate(
@@ -392,37 +358,29 @@ func (r *Repository) GetAvailableTimeSlots(
             AND a.status_id != (SELECT id FROM statuses WHERE name = 'Cancelled')
 	`
 
-	var dbModels []AvailableTimeSlotViewDB
-	err := r.db.SelectContext(ctx, &dbModels, query, date)
+	var slots []AvailableTimeSlotView
+	err := r.db.SelectContext(ctx, &slots, query, date)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available slots: %w", err)
 	}
 
-	slots := make([]AvailableTimeSlotView, len(dbModels))
-	for i, m := range dbModels {
-		slots[i] = m.ToDomain()
-	}
 	return slots, nil
 }
 
 func (r *Repository) GetStatuses(
 	ctx context.Context,
 ) ([]AppointmentStatus, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
+	query := `
+		SELECT id, name, color_key
 		FROM statuses
 		WHERE status_type IN ('appointment', 'both')
-	`, datastore.GetColumns(AppointmentStatusDB{}))
-	var dbModels []AppointmentStatusDB
-	err := r.db.SelectContext(ctx, &dbModels, query)
+	`
+	var statuses []AppointmentStatus
+	err := r.db.SelectContext(ctx, &statuses, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get statuses: %w", err)
 	}
 
-	statuses := make([]AppointmentStatus, len(dbModels))
-	for i, m := range dbModels {
-		statuses[i] = m.ToDomain()
-	}
 	return statuses, nil
 }
 
@@ -449,16 +407,12 @@ func (r *Repository) ListByUserID(
 		offset,
 	)
 
-	var dbModels []AppointmentWithDetailsViewDB
-	err := r.db.SelectContext(ctx, &dbModels, query, args...)
+	var appts []AppointmentWithDetailsView
+	err := r.db.SelectContext(ctx, &appts, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get appointments: %w", err)
 	}
 
-	appts := make([]AppointmentWithDetailsView, len(dbModels))
-	for i, m := range dbModels {
-		appts[i] = m.ToDomain()
-	}
 	return appts, nil
 }
 
@@ -485,16 +439,12 @@ func (r *Repository) ListByIIRID(
 		offset,
 	)
 
-	var dbModels []AppointmentWithDetailsViewDB
-	err := r.db.SelectContext(ctx, &dbModels, query, args...)
+	var appts []AppointmentWithDetailsView
+	err := r.db.SelectContext(ctx, &appts, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get appointments: %w", err)
 	}
 
-	appts := make([]AppointmentWithDetailsView, len(dbModels))
-	for i, m := range dbModels {
-		appts[i] = m.ToDomain()
-	}
 	return appts, nil
 }
 
@@ -538,16 +488,12 @@ func (r *Repository) GetAppointmentStats(
 		ORDER BY as2.id
 	`, joinCondition)
 
-	var dbModels []StatusCountDB
-	err := r.db.SelectContext(ctx, &dbModels, query, args...)
+	var counts []StatusCount
+	err := r.db.SelectContext(ctx, &counts, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stats: %w", err)
 	}
 
-	counts := make([]StatusCount, len(dbModels))
-	for i, m := range dbModels {
-		counts[i] = m.ToDomain()
-	}
 	return counts, nil
 }
 
@@ -556,17 +502,19 @@ func (r *Repository) CreateAppointment(
 	tx datastore.DB,
 	appt *Appointment,
 ) error {
-	dbModel := appt.ToPersistence()
-	cols, vals := datastore.GetInsertStatement(
-		AppointmentDB{},
-		[]string{"updated_at"},
-	)
-	query := fmt.Sprintf(`
-			INSERT INTO appointments (id, %s)
-			VALUES (:id, %s)
-		`, cols, vals)
+	query := `
+		INSERT INTO appointments (
+			id, iir_id, reason, admin_notes, when_date,
+			time_slot_id, appointment_category_id, status_id,
+			urgency_level, urgency_score
+		) VALUES (
+			:id, :iir_id, :reason, :admin_notes, :when_date,
+			:time_slot_id, :appointment_category_id, :status_id,
+			:urgency_level, :urgency_score
+		)
+	`
 
-	_, err := tx.NamedExecContext(ctx, query, &dbModel)
+	_, err := tx.NamedExecContext(ctx, query, appt)
 	if err != nil {
 		return fmt.Errorf("failed to create appointment: %w", err)
 	}
@@ -618,3 +566,4 @@ func (r *Repository) UpdateAppointment(
 	_, err := tx.ExecContext(ctx, query, args...)
 	return err
 }
+

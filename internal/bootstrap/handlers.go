@@ -49,7 +49,6 @@ func getHandlers(
 	return &Handlers{
 		AuthHandler: auth.NewHandler(
 			services.AuthService,
-			services.SystemLogService,
 			cfg,
 		),
 		UserHandler: users.NewHandler(

@@ -7,14 +7,14 @@ import (
 	"github.com/olazo-johnalbert/duckload-api/internal/features/users"
 )
 
-type ListSlipRequest struct {
+type ListSlipsRequest struct {
 	structs.PaginationRequest
 	StatusID  int    `form:"status_id"`
 	StartDate string `form:"start_date"`
 	EndDate   string `form:"end_date"`
 }
 
-type ListSlipsDTO struct {
+type ListSlipsResponse struct {
 	Slips []SlipDTO                  `json:"slips"`
 	Meta  structs.PaginationMetadata `json:"meta"`
 }
@@ -22,7 +22,7 @@ type ListSlipsDTO struct {
 type SlipDTO struct {
 	ID            string                 `json:"id,omitempty"`
 	IIRID         string                 `json:"iirId,omitempty"`
-	User          users.GetUserResponse  `json:"user,omitempty"`
+	User          users.UserResponse     `json:"user,omitempty"`
 	StudentNumber string                 `json:"studentNumber,omitempty"`
 	Reason        string                 `json:"reason"                  form:"reason"        binding:"required"`
 	DateOfAbsence string                 `json:"dateOfAbsence"           form:"dateOfAbsence" binding:"required"`

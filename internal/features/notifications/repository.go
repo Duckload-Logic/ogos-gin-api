@@ -27,13 +27,14 @@ func (r *Repository) GetByUserID(
 	ctx context.Context,
 	userID string,
 ) ([]Notification, error) {
-	query := fmt.Sprintf(`
-		SELECT %s FROM notifications
+	query := `
+		SELECT id, receiver_id, actor_id, target_id, target_type, title, message, type, is_read, created_at, updated_at
+		FROM notifications
 		WHERE receiver_id = ?
 		ORDER BY created_at DESC
-	`, datastore.GetColumns(NotificationDB{}))
+	`
 
-	var results []NotificationDB
+	var results []Notification
 	err := r.db.SelectContext(ctx, &results, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -43,7 +44,7 @@ func (r *Repository) GetByUserID(
 		)
 	}
 
-	return MapNotificationsToDomain(results), nil
+	return results, nil
 }
 
 func (r *Repository) MarkAsRead(
@@ -83,17 +84,18 @@ func (r *Repository) Create(
 	tx datastore.DB,
 	notif Notification,
 ) error {
-	dbModel := MapNotificationToDB(notif)
-	cols, vals := datastore.GetInsertStatement(dbModel, []string{"created_at"})
-	query := fmt.Sprintf(`
-        INSERT INTO notifications (id, %s)
-        VALUES (:id, %s)`, cols, vals)
+	query := `
+        INSERT INTO notifications (
+			id, receiver_id, actor_id, target_id, target_type, title, message, type, is_read, updated_at
+		) VALUES (
+			:id, :receiver_id, :actor_id, :target_id, :target_type, :title, :message, :type, :is_read, NOW()
+		)`
 
 	if tx == nil {
 		tx = r.db
 	}
 
-	_, err := tx.NamedExecContext(ctx, query, &dbModel)
+	_, err := tx.NamedExecContext(ctx, query, &notif)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to create notification for %s: %w",
@@ -124,3 +126,4 @@ func (r *Repository) DeleteOldNotifications(
 
 	return rows, nil
 }
+
