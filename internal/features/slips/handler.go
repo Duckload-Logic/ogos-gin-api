@@ -12,11 +12,11 @@ import (
 )
 
 type Handler struct {
-	service ServiceInterface
+	service *Service
 }
 
 // NewHandler creates a new slips handler.
-func NewHandler(service ServiceInterface) *Handler {
+func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
@@ -128,7 +128,7 @@ func (h *Handler) PostSlip(c *gin.Context) {
 // @Failure      500  {object} map[string]string
 // @Router       /slips/urgent [get]
 func (h *Handler) GetSlipUrgent(c *gin.Context) {
-	var req ListSlipRequest
+	var req ListSlipsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
@@ -158,7 +158,7 @@ func (h *Handler) GetSlipUrgent(c *gin.Context) {
 // @Failure      500  {object} map[string]string
 // @Router       /slips/stats [get]
 func (h *Handler) GetSlipStats(c *gin.Context) {
-	var req ListSlipRequest
+	var req ListSlipsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
@@ -255,7 +255,7 @@ func (h *Handler) GetSlipCategories(c *gin.Context) {
 // @Failure      500  {object} map[string]string
 // @Router       /slips [get]
 func (h *Handler) GetSlips(c *gin.Context) {
-	var req ListSlipRequest
+	var req ListSlipsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
@@ -291,7 +291,7 @@ func (h *Handler) GetSlipMe(c *gin.Context) {
 		return
 	}
 
-	var req ListSlipRequest
+	var req ListSlipsRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		response.SendFail(c, gin.H{"error": "Invalid query parameters"})
 		return
