@@ -66,11 +66,11 @@ func (r *Repository) GetUserByID(
 func (r *Repository) CheckUserWhitelist(
 	ctx context.Context,
 	email string,
-) (int, error) {
-	var roleID int
+) ([]int, error) {
+	var roleIDs []int
 	query := `SELECT role_id FROM whitelists WHERE email = ?`
-	err := r.db.GetContext(ctx, &roleID, query, email)
-	return roleID, err
+	err := r.db.SelectContext(ctx, &roleIDs, query, email)
+	return roleIDs, err
 }
 
 func (r *Repository) GetRoleByID(
@@ -397,5 +397,35 @@ func (r *Repository) RemoveRoles(
 ) error {
 	query := `DELETE FROM user_roles WHERE user_id = ?`
 	_, err := tx.ExecContext(ctx, query, userID)
+	return err
+}
+
+func (r *Repository) AddUserToWhitelist(
+	ctx context.Context,
+	tx datastore.DB,
+	email string,
+	roleID int,
+) error {
+	query := `INSERT INTO user_whitelist (email, role_id) VALUES ?`
+	_, err := tx.NamedExecContext(ctx, query, map[string]interface{}{
+		"email":   email,
+		"role_id": roleID,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repository) RemoveUserFromWhitelist(
+	ctx context.Context,
+	tx datastore.DB,
+	email string,
+) error {
+	query := `DELETE FROM user_whitelist WHERE email = :email`
+	_, err := tx.NamedExecContext(ctx, query, map[string]interface{}{
+		"email": email,
+	})
 	return err
 }

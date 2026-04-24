@@ -35,6 +35,7 @@ func RegisterRoutes(
 		))
 		{
 			common.GET("", h.GetM2MClients)
+			common.GET("/me", h.GetMyM2MClient)
 			common.POST("/:id/secret", h.PostM2MClientSecret)
 			common.DELETE("/:id", h.DeleteM2MClient)
 		}

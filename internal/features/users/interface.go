@@ -24,6 +24,8 @@ type ServiceInterface interface {
 	BlockUser(ctx context.Context, userID string) error
 	UnblockUser(ctx context.Context, userID string) error
 	UpdateUserRoles(ctx context.Context, req UpdateRolesRequest, adminID string) error
+	AddUserToWhitelist(ctx context.Context, req AddUserToWhitelistRequest) error
+	RemoveUserFromWhitelist(ctx context.Context, req RemoveUserFromWhitelistRequest) error
 }
 
 type RepositoryInterface interface {
@@ -51,5 +53,16 @@ type RepositoryInterface interface {
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error
 	AssignRole(ctx context.Context, tx datastore.DB, assignment RoleAssignment) error
 	RemoveRoles(ctx context.Context, tx datastore.DB, userID string) error
-	CheckUserWhitelist(ctx context.Context, email string) (int, error)
+	CheckUserWhitelist(ctx context.Context, email string) ([]int, error)
+	AddUserToWhitelist(
+		ctx context.Context,
+		tx datastore.DB,
+		email string,
+		roleID int,
+	) error
+	RemoveUserFromWhitelist(
+		ctx context.Context,
+		tx datastore.DB,
+		email string,
+	) error
 }

@@ -73,6 +73,6 @@ type RepositoryInterface interface {
 	UnblockUser(ctx context.Context, tx datastore.DB, userID string) error
 	AssignRole(ctx context.Context, tx datastore.DB, assignment users.RoleAssignment) error
 	RemoveRoles(ctx context.Context, tx datastore.DB, userID string) error
-	CheckUserWhitelist(ctx context.Context, email string) (int, error)
+	CheckUserWhitelist(ctx context.Context, email string) ([]int, error)
 	WithTransaction(ctx context.Context, fn func(datastore.DB) error) error
 }

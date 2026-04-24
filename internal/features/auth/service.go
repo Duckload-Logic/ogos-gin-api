@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -771,11 +770,11 @@ func (s *Service) PostIDPTokenExchange(
 
 	// Whitelist Check: Authoritative role source for IDP users.
 	// We check this on every login to support dynamic role changes (promotions).
-	whitelistRoleID, whitelistErr := s.repo.CheckUserWhitelist(
+	whitelistRoleIDs, whitelistErr := s.repo.CheckUserWhitelist(
 		ctx,
 		userInfo.Email,
 	)
-	log.Printf("whitelistRoleID: %v", whitelistRoleID)
+	log.Printf("whitelistRoleIDs: %v", whitelistRoleIDs)
 	log.Printf("whitelistErr: %v", whitelistErr)
 
 	// User Existence Check (Anchor Lookup using Email)
@@ -785,33 +784,34 @@ func (s *Service) PostIDPTokenExchange(
 		string(constants.AuthTypeIDP),
 	)
 
-	// Determine final role and if we need to sync with DB
-	var assignedRoleID int
-	if whitelistErr == nil {
-		assignedRoleID = whitelistRoleID
-	} else if errors.Is(whitelistErr, sql.ErrNoRows) {
-		// Not in whitelist. New users default to Student.
-		// Existing users keep their current role.
-		if err == sql.ErrNoRows {
-			assignedRoleID = int(constants.StudentRoleID)
-		} else {
-			// User exists, they already have their roles loaded
-			assignedRoleID = 0 // Not used for existing users here
-		}
-	} else {
+	// Determine target roles from whitelist or defaults
+	var targetRoleIDs []int
+	if whitelistErr != nil {
 		return "", "", "", "", "", fmt.Errorf(
 			"[AuthService] {Whitelist Check}: %w",
 			whitelistErr,
 		)
 	}
 
+	if len(whitelistRoleIDs) > 0 {
+		targetRoleIDs = whitelistRoleIDs
+	} else if err == sql.ErrNoRows {
+		// New users not in whitelist default to Student.
+		targetRoleIDs = []int{int(constants.StudentRoleID)}
+	}
+
 	switch err {
 	case sql.ErrNoRows:
 		// JIT Provisioning (First Login Only)
+		roles := make([]users.Role, len(targetRoleIDs))
+		for i, id := range targetRoleIDs {
+			roles[i] = users.Role{ID: id}
+		}
+
 		localUser = &users.User{
 			ID:           uuid.NewString(),
 			Email:        userInfo.Email,
-			Roles:        []users.Role{{ID: assignedRoleID}},
+			Roles:        roles,
 			FirstName:    userInfo.FirstName,
 			LastName:     userInfo.LastName,
 			SuffixName:   structs.StringToNullableString(userInfo.SuffixName),
@@ -833,32 +833,39 @@ func (s *Service) PostIDPTokenExchange(
 			)
 		}
 	case nil:
-		// User exists. Sync role if it changed in the whitelist
-		if assignedRoleID != 0 {
-			hasRole := false
-			for _, r := range localUser.Roles {
-				if r.ID == assignedRoleID {
-					hasRole = true
-					break
+		// User exists. Sync roles if they changed in the whitelist
+		if len(targetRoleIDs) > 0 {
+			addedAny := false
+			for _, targetID := range targetRoleIDs {
+				hasRole := false
+				for _, r := range localUser.Roles {
+					if r.ID == targetID {
+						hasRole = true
+						break
+					}
+				}
+
+				if !hasRole {
+					addedAny = true
+					// Promotion or sync from whitelist
+					err = s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
+						return s.repo.AssignRole(ctx, tx, users.RoleAssignment{
+							UserID:     localUser.ID,
+							RoleID:     targetID,
+							Reason:     structs.StringToNullableString("Whitelist synchronization"),
+							AssignedBy: structs.StringToNullableString("SYSTEM"),
+						})
+					})
+					if err != nil {
+						return "", "", "", "", "", fmt.Errorf(
+							"[AuthService] {Update IDP User Role}: %w",
+							err,
+						)
+					}
 				}
 			}
 
-			if !hasRole {
-				// Promotion or sync from whitelist
-				err = s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
-					return s.repo.AssignRole(ctx, tx, users.RoleAssignment{
-						UserID:     localUser.ID,
-						RoleID:     assignedRoleID,
-						Reason:     structs.StringToNullableString("Whitelist synchronization"),
-						AssignedBy: structs.StringToNullableString("SYSTEM"),
-					})
-				})
-				if err != nil {
-					return "", "", "", "", "", fmt.Errorf(
-						"[AuthService] {Update IDP User Role}: %w",
-						err,
-					)
-				}
+			if addedAny {
 				// Refresh roles
 				updatedRoles, _ := s.repo.GetRolesByUserID(ctx, localUser.ID)
 				localUser.Roles = updatedRoles

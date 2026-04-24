@@ -299,10 +299,10 @@ func (mr *MockRepositoryInterfaceMockRecorder) BlockUser(ctx, tx, userID any) *g
 }
 
 // CheckUserWhitelist mocks base method.
-func (m *MockRepositoryInterface) CheckUserWhitelist(ctx context.Context, email string) (int, error) {
+func (m *MockRepositoryInterface) CheckUserWhitelist(ctx context.Context, email string) ([]int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CheckUserWhitelist", ctx, email)
-	ret0, _ := ret[0].(int)
+	ret0, _ := ret[0].([]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

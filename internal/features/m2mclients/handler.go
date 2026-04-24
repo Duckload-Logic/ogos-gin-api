@@ -175,6 +175,34 @@ func (h *Handler) GetM2MClients(c *gin.Context) {
 	response.SendSuccess(c, clients)
 }
 
+func (h *Handler) GetMyM2MClient(c *gin.Context) {
+	userID := c.MustGet("userID").(string)
+
+	clients, err := h.service.ListClients(
+		c.Request.Context(),
+		userID,
+		false,
+		[]int{},
+	)
+	if err != nil {
+		fmt.Printf("[GetMyM2MClient] {List Clients}: %v\n", err)
+		response.SendError(
+			c,
+			"Failed to list M2M clients",
+			http.StatusInternalServerError,
+			nil,
+		)
+		return
+	}
+
+	if len(clients) == 0 {
+		response.SendFail(c, gin.H{"error": "You do not have an M2M client"})
+		return
+	}
+
+	response.SendSuccess(c, clients[0])
+}
+
 func (h *Handler) PostM2MClientSecret(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
