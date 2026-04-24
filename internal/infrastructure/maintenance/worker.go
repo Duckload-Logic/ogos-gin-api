@@ -10,13 +10,13 @@ import (
 )
 
 type MaintenanceWorker struct {
-	logService   logs.ServiceInterface
-	notifService notifications.ServiceInterface
+	logService   *logs.Service
+	notifService *notifications.Service
 }
 
 func NewMaintenanceWorker(
-	logService logs.ServiceInterface,
-	notifService notifications.ServiceInterface,
+	logService *logs.Service,
+	notifService *notifications.Service,
 ) *MaintenanceWorker {
 	return &MaintenanceWorker{
 		logService:   logService,

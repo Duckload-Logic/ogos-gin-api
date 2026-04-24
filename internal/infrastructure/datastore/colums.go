@@ -19,11 +19,10 @@ func GetColumns(s interface{}) string {
 		field := t.Field(i)
 		tag := field.Tag.Get("db")
 
-		if tag != "" && tag != "-" {
-			columns = append(columns, tag)
-		} else {
-			columns = append(columns, field.Name)
+		if tag == "" || tag == "-" {
+			continue
 		}
+		columns = append(columns, tag)
 	}
 	return strings.Join(columns, ", ")
 }
@@ -43,12 +42,18 @@ func GetInsertStatement(s interface{}, exclude []string) (string, string) {
 	return strings.Join(filteredCols, ", "), strings.Join(placeholders, ", ")
 }
 
-func GetOnDuplicateKeyUpdateStatement(s interface{}, exclude []string) string {
+func GetOnDuplicateKeyUpdateStatement(
+	s interface{}, exclude []string,
+) string {
 	cols := strings.Split(GetColumns(s), ", ")
 	var updates []string
 	for _, col := range cols {
-		if !contains(exclude, col) && !contains(excludeOnUpsert, col) {
-			updates = append(updates, fmt.Sprintf("%s = VALUES(%s)", col, col))
+		if !contains(exclude, col) &&
+			!contains(excludeOnUpsert, col) {
+			updates = append(
+				updates,
+				fmt.Sprintf("%s = VALUES(%s)", col, col),
+			)
 		}
 	}
 

@@ -10,10 +10,10 @@ import (
 )
 
 type Service struct {
-	redis datastore.RedisClientInterface
+	redis *datastore.RedisClient
 }
 
-func NewService(redis datastore.RedisClientInterface) *Service {
+func NewService(redis *datastore.RedisClient) *Service {
 	return &Service{redis: redis}
 }
 
