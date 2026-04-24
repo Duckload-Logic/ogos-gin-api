@@ -15,12 +15,12 @@ import (
 )
 
 type Handler struct {
-	service ServiceInterface
+	service *Service
 	cfg     *config.Config
 }
 
 // NewHandler creates a new appointments handler.
-func NewHandler(service ServiceInterface, cfg *config.Config) *Handler {
+func NewHandler(service *Service, cfg *config.Config) *Handler {
 	return &Handler{service: service, cfg: cfg}
 }
 

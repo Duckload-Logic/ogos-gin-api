@@ -22,24 +22,24 @@ import (
 )
 
 type Service struct {
-	repo           RepositoryInterface
+	repo           *Repository
 	notifService   audit.Notifier
 	logService     audit.Logger
-	userService    users.ServiceInterface
-	noteService    notes.ServiceInterface
-	studentService students.ServiceInterface
+	userService    *users.Service
+	noteService    *notes.Service
+	studentService *students.Service
 	classifier     classifier.ServiceInterface
 }
 
 func NewService(
-	repo RepositoryInterface,
+	repo *Repository,
 	notifService audit.Notifier,
 	logService audit.Logger,
-	userService users.ServiceInterface,
-	noteService notes.ServiceInterface,
-	studentService students.ServiceInterface,
+	userService *users.Service,
+	noteService *notes.Service,
+	studentService *students.Service,
 	cfg *config.Config,
-) ServiceInterface {
+) *Service {
 	return &Service{
 		repo:           repo,
 		notifService:   notifService,
@@ -200,7 +200,7 @@ func (s *Service) GetAppointmentByID(
 
 	dto := &AppointmentDTO{
 		ID: appt.ID,
-		User: users.GetUserResponse{
+		User: users.UserResponse{
 			ID:         "",
 			FirstName:  appt.UserFirstName,
 			MiddleName: appt.UserMiddleName,
@@ -269,7 +269,7 @@ func (s *Service) GetDailyStatusCount(
 func (s *Service) ListAppointments(
 	ctx context.Context,
 	req ListAppointmentsRequest,
-) (*ListAppointmentsDTO, error) {
+) (*ListAppointmentsResponse, error) {
 	req.SetDefaults("created_at")
 
 	statusIDs := []string{}
@@ -295,7 +295,7 @@ func (s *Service) ListAppointments(
 	for i := range appts {
 		dto := AppointmentDTO{
 			ID: appts[i].ID,
-			User: users.GetUserResponse{
+			User: users.UserResponse{
 				ID:         "",
 				FirstName:  appts[i].UserFirstName,
 				MiddleName: appts[i].UserMiddleName,
@@ -341,7 +341,7 @@ func (s *Service) ListAppointments(
 		return nil, err
 	}
 
-	return &ListAppointmentsDTO{
+	return &ListAppointmentsResponse{
 		Appointments: dtos,
 		Meta:         structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}, nil
@@ -351,7 +351,7 @@ func (s *Service) GetAppointmentsByUserID(
 	ctx context.Context,
 	userID string,
 	req ListAppointmentsRequest,
-) (*ListAppointmentsDTO, error) {
+) (*ListAppointmentsResponse, error) {
 	req.SetDefaults("created_at")
 
 	appts, err := s.repo.ListByUserID(
@@ -372,7 +372,7 @@ func (s *Service) GetAppointmentsByUserID(
 	for i := range appts {
 		dto := AppointmentDTO{
 			ID: appts[i].ID,
-			User: users.GetUserResponse{
+			User: users.UserResponse{
 				ID:         "",
 				FirstName:  appts[i].UserFirstName,
 				MiddleName: appts[i].UserMiddleName,
@@ -416,7 +416,7 @@ func (s *Service) GetAppointmentsByUserID(
 		return nil, err
 	}
 
-	return &ListAppointmentsDTO{
+	return &ListAppointmentsResponse{
 		Appointments: dtos,
 		Meta:         structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}, nil
@@ -426,7 +426,7 @@ func (s *Service) GetAppointmentsByIIRID(
 	ctx context.Context,
 	iirID string,
 	req ListAppointmentsRequest,
-) (*ListAppointmentsDTO, error) {
+) (*ListAppointmentsResponse, error) {
 	req.SetDefaults("created_at")
 
 	appts, err := s.repo.ListByIIRID(
@@ -447,7 +447,7 @@ func (s *Service) GetAppointmentsByIIRID(
 	for i := range appts {
 		dto := AppointmentDTO{
 			ID: appts[i].ID,
-			User: users.GetUserResponse{
+			User: users.UserResponse{
 				ID:         "",
 				FirstName:  appts[i].UserFirstName,
 				MiddleName: appts[i].UserMiddleName,
@@ -491,7 +491,7 @@ func (s *Service) GetAppointmentsByIIRID(
 		return nil, err
 	}
 
-	return &ListAppointmentsDTO{
+	return &ListAppointmentsResponse{
 		Appointments: dtos,
 		Meta:         structs.CalculateMetadata(total, req.Page, req.PageSize),
 	}, nil

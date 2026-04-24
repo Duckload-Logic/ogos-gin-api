@@ -14,14 +14,14 @@ type ListAppointmentsRequest struct {
 	EndDate   string `form:"end_date"`
 }
 
-type ListAppointmentsDTO struct {
+type ListAppointmentsResponse struct {
 	Appointments []AppointmentDTO           `json:"appointments"`
 	Meta         structs.PaginationMetadata `json:"meta"`
 }
 
 type AppointmentDTO struct {
 	ID                  string                 `json:"id,omitempty"`
-	User                users.GetUserResponse  `json:"user,omitempty"`
+	User                users.UserResponse     `json:"user,omitempty"`
 	IIRID               string                 `json:"iirId,omitempty"`
 	StudentNumber       string                 `json:"studentNumber,omitempty"`
 	Reason              structs.NullableString `json:"reason,omitempty"`
