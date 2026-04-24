@@ -26,16 +26,16 @@ import (
 )
 
 type Service struct {
-	repo           RepositoryInterface
+	repo           *users.Repository
 	idpClient      idp.IDPClientInterface
-	redis          datastore.RedisClientInterface
+	redis          *datastore.RedisClient
 	sessionService *sessions.Service
 	emailer        email.Emailer
 }
 
 func NewService(
-	repo RepositoryInterface,
-	redis datastore.RedisClientInterface,
+	repo *users.Repository,
+	redis *datastore.RedisClient,
 	sessionService *sessions.Service,
 	emailer email.Emailer,
 ) *Service {
@@ -51,12 +51,14 @@ func NewService(
 // RegisterUser handles native user registration.
 func (s *Service) RegisterUser(
 	ctx context.Context,
-	req RegisterDTO,
+	req RegisterRequest,
 ) (string, error) {
 	// Check cooldown
 	cooldownKey := fmt.Sprintf("cooldown:%s", req.Email)
 	if val, _ := s.redis.Get(ctx, cooldownKey); val != "" {
-		return "", fmt.Errorf("please wait before requesting another verification email")
+		return "", fmt.Errorf(
+			"please wait before requesting another verification email",
+		)
 	}
 
 	// Check if user already exists
@@ -172,7 +174,9 @@ func (s *Service) ResendVerification(
 	// Check cooldown
 	cooldownKey := fmt.Sprintf("cooldown:%s", userEmail)
 	if cval, _ := s.redis.Get(ctx, cooldownKey); cval != "" {
-		return fmt.Errorf("please wait before requesting another verification email")
+		return fmt.Errorf(
+			"please wait before requesting another verification email",
+		)
 	}
 
 	// Resend limit
@@ -184,7 +188,9 @@ func (s *Service) ResendVerification(
 	val["resends"] = fmt.Sprintf("%d", resends)
 
 	if resends > 3 {
-		return fmt.Errorf("too many resends. please try again later or contact support")
+		return fmt.Errorf(
+			"too many resends. please try again later or contact support",
+		)
 	}
 
 	verificationOTP, err := s.get6DigitOTP()
@@ -227,7 +233,7 @@ func (s *Service) ResendVerification(
 	}
 
 	// Set cooldown
-	_ = s.redis.Set(ctx, cooldownKey, "1", 120*time.Second)
+	_ = s.redis.Set(ctx, userEmail, "1", 120*time.Second)
 
 	return nil
 }
@@ -300,7 +306,9 @@ func (s *Service) VerifyUser(
 
 	if trials > 5 {
 		_ = s.sessionService.DeleteToken(ctx, jti)
-		return "", "", fmt.Errorf("too many verification attempts. registration expired")
+		return "", "", fmt.Errorf(
+			"too many verification attempts. registration expired",
+		)
 	}
 
 	// Update trials in Redis
@@ -351,7 +359,11 @@ func (s *Service) AuthenticateUser(
 	// Check lockout
 	lockoutKey := fmt.Sprintf("lockout:%s", email)
 	if locked, _ := s.redis.Get(ctx, lockoutKey); locked != "" {
-		return "", "", "", fmt.Errorf("account locked due to too many failed attempts. please try again in 15 minutes")
+		log.Printf("Account locked for user: %s", email)
+		return "", "", "", fmt.Errorf(
+			"account locked due to too many failed attempts. " +
+				"Please try again in 15 minutes",
+		)
 	}
 
 	// Fetch user from database (Native only)
@@ -382,22 +394,54 @@ func (s *Service) AuthenticateUser(
 		// Increment failures
 		failuresStr, _ := s.redis.Get(ctx, failureKey)
 		failures := 0
-		fmt.Sscanf(failuresStr, "%d", &failures)
+		if failuresStr != "" {
+			fmt.Sscanf(failuresStr, "%d", &failures)
+		}
+
 		failures++
 
 		if failures >= 5 {
-			_ = s.redis.Set(ctx, lockoutKey, "true", 15*time.Minute)
-			_ = s.redis.Del(ctx, failureKey)
-			return "", "", "", fmt.Errorf("account locked due to too many failed attempts. please try again in 15 minutes")
+			err = s.redis.Set(ctx, lockoutKey, "true", 15*time.Minute)
+			if err != nil {
+				return "", "", "", fmt.Errorf(
+					"[REDIS:SET-LOCKOUT]:%v", err,
+				)
+			}
+			err = s.redis.Del(ctx, failureKey)
+			if err != nil {
+				return "", "", "", fmt.Errorf(
+					"[REDIS:DEL-FAILURES]:%v", err,
+				)
+			}
+
+			return "", "", "", fmt.Errorf(
+				"account locked due to too many failed attempts. " +
+					"please try again in 15 minutes",
+			)
 		}
 
-		_ = s.redis.Set(ctx, failureKey, fmt.Sprintf("%d", failures), 15*time.Minute)
+		err = s.redis.Set(
+			ctx,
+			failureKey,
+			fmt.Sprintf("%d", failures),
+			15*time.Minute, // 15 minutes lockout period
+		)
+		if err != nil {
+			return "", "", "", fmt.Errorf("[REDIS:SET-FAILURES]:%v", err)
+		}
+
 		return "", "", "", fmt.Errorf("invalid credentials")
 	}
 
 	// Success: Reset failures and lockout
-	_ = s.redis.Del(ctx, failureKey)
-	_ = s.redis.Del(ctx, lockoutKey)
+	err = s.redis.Del(ctx, failureKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("[REDIS:DEL-FAILURES]:%v", err)
+	}
+	err = s.redis.Del(ctx, lockoutKey)
+	if err != nil {
+		return "", "", "", fmt.Errorf("[REDIS:DEL-LOCKOUT]:%v", err)
+	}
 
 	// Generate the token
 	roleIDs := make([]int, len(user.Roles))
@@ -680,12 +724,19 @@ func (s *Service) Logout(
 
 	// Delete the primary session key
 	if userID := claims.UserID; userID != "" {
-		if err := s.sessionService.DeleteUserToken(ctx, userID, sessions.NewJTI(accessJTI)); err != nil {
+		if err := s.sessionService.DeleteUserToken(
+			ctx,
+			userID,
+			sessions.NewJTI(accessJTI),
+		); err != nil {
 			log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
 		}
 	} else {
 		// Fallback for M2M or cases where userID missing
-		if err := s.sessionService.DeleteToken(ctx, sessions.NewJTI(accessJTI)); err != nil {
+		if err := s.sessionService.DeleteToken(
+			ctx,
+			sessions.NewJTI(accessJTI),
+		); err != nil {
 			log.Printf("[AuthService:Logout] {Redis Error}: %v", err)
 		}
 	}
@@ -704,15 +755,6 @@ func (s *Service) Logout(
 // IDP integration methods
 
 // GetAuthorizeURL generates the complete OAuth 2.0 authorization URL
-// with PKCE parameters. This method creates a state parameter for CSRF
-// protection, generates PKCE verifier and challenge, stores the state
-// with metadata, and builds the authorization URL.
-//
-// Parameters:
-//   - cfg: Application configuration containing IDP endpoints
-//
-// Returns the authorization URL and state parameter, or an error if
-// generation fails.
 func (s *Service) GetAuthorizeURL(
 	cfg *config.Config,
 ) (string, error) {
@@ -729,17 +771,7 @@ func (s *Service) GetAuthorizeURL(
 	return authURL, nil
 }
 
-// PostIDPTokenExchange orchestrates the complete IDP login flow:
-// validates state, exchanges code for token, fetches user info,
-// provisions user, and generates application JWT tokens.
-//
-// Parameters:
-//   - ctx: Context for database and HTTP operations
-//   - code: Authorization code from IDP callback
-//   - state: State parameter from IDP callback
-//   - cfg: Application configuration
-//
-// Returns user ID and JWT tokens, or an error if any step fails.
+// PostIDPTokenExchange orchestrates the complete IDP login flow
 func (s *Service) PostIDPTokenExchange(
 	ctx context.Context,
 	code string,
@@ -777,7 +809,7 @@ func (s *Service) PostIDPTokenExchange(
 	log.Printf("whitelistRoleIDs: %v", whitelistRoleIDs)
 	log.Printf("whitelistErr: %v", whitelistErr)
 
-	// User Existence Check (Anchor Lookup using Email)
+	// User Existence Check
 	localUser, err := s.repo.GetUserByEmail(
 		ctx,
 		userInfo.Email,
@@ -850,10 +882,14 @@ func (s *Service) PostIDPTokenExchange(
 					// Promotion or sync from whitelist
 					err = s.repo.WithTransaction(ctx, func(tx datastore.DB) error {
 						return s.repo.AssignRole(ctx, tx, users.RoleAssignment{
-							UserID:     localUser.ID,
-							RoleID:     targetID,
-							Reason:     structs.StringToNullableString("Whitelist synchronization"),
-							AssignedBy: structs.StringToNullableString("SYSTEM"),
+							UserID: localUser.ID,
+							RoleID: targetID,
+							Reason: structs.StringToNullableString(
+								"Whitelist synchronization",
+							),
+							AssignedBy: structs.StringToNullableString(
+								constants.SystemEntityType,
+							),
 						})
 					})
 					if err != nil {
@@ -880,7 +916,6 @@ func (s *Service) PostIDPTokenExchange(
 
 	appUserID := localUser.ID
 
-	// Determine primary role name for redirection
 	roleName := "student"
 	if len(localUser.Roles) > 0 {
 		roleName = strings.ToLower(localUser.Roles[0].Name)
@@ -891,7 +926,6 @@ func (s *Service) PostIDPTokenExchange(
 		roleIDs[i] = r.ID
 	}
 
-	// Generate internal App Tokens using the actual app IDs
 	appAccessToken, accessClaims, err := tokens.NewService().GenerateToken(
 		userInfo.Email,
 		appUserID,
@@ -900,10 +934,7 @@ func (s *Service) PostIDPTokenExchange(
 		constants.AccessTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", "", "", fmt.Errorf(
-			"[AuthService] {Generate App Access Token}: %w",
-			err,
-		)
+		return "", "", "", "", "", err
 	}
 
 	appRefreshToken, refreshClaims, err := tokens.NewService().GenerateToken(
@@ -914,13 +945,9 @@ func (s *Service) PostIDPTokenExchange(
 		constants.RefreshTokenMaxAge,
 	)
 	if err != nil {
-		return "", "", "", "", "", fmt.Errorf(
-			"[AuthService] {Generate App Refresh Token}: %w",
-			err,
-		)
+		return "", "", "", "", "", err
 	}
 
-	// Update Redis: App Access session
 	val := map[string]string{
 		"userID":          appUserID,
 		"tokenType":       string(constants.AuthTypeIDP),
@@ -936,14 +963,9 @@ func (s *Service) PostIDPTokenExchange(
 		val,
 		constants.RefreshTokenMaxAge,
 	); err != nil {
-		return "", "", "", "", "", fmt.Errorf(
-			"[AuthService] {Store Access in Redis}: %w",
-			err,
-		)
+		return "", "", "", "", "", err
 	}
 
-	// Store IDP Refresh Token in Redis associated with the App
-	// Refresh Token's ID (jti)
 	idpRefreshKey := sessions.NewJTI(refreshClaims.ID).ToIDPRefreshKey()
 	err = s.redis.Set(
 		ctx,
@@ -952,26 +974,14 @@ func (s *Service) PostIDPTokenExchange(
 		time.Duration(constants.RefreshTokenMaxAge)*time.Second,
 	)
 	if err != nil {
-		return "", "", "", "", "", fmt.Errorf(
-			"[AuthService] {Store IDP Refresh in Redis}: %w",
-			err,
-		)
+		return "", "", "", "", "", err
 	}
 
 	return appAccessToken, appRefreshToken, appUserID, userInfo.Email,
 		roleName, nil
 }
 
-// GetIDPUserInfo fetches user information from the IDP userinfo endpoint
-// using the provided access token. This is typically called after a
-// successful token exchange to retrieve user details for provisioning.
-//
-// Parameters:
-//   - ctx: Context for the HTTP request
-//   - accessToken: Access token obtained from IDP token exchange
-//   - cfg: Application configuration containing IDP endpoints
-//
-// Returns the IDP user information or an error if retrieval fails.
+// GetIDPUserInfo fetches user information from the IDP
 func (s *Service) GetIDPUserInfo(
 	ctx context.Context,
 	accessToken string,
