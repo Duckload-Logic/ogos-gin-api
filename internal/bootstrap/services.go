@@ -26,19 +26,19 @@ import (
 )
 
 type Services struct {
-	AuthService               auth.ServiceInterface
-	UserService               users.ServiceInterface
-	LocationsService          locations.ServiceInterface
-	StudentService            students.ServiceInterface
-	FileService               files.ServiceInterface
-	NoteService               notes.ServiceInterface
+	AuthService               *auth.Service
+	UserService               *users.Service
+	LocationsService          *locations.Service
+	StudentService            *students.Service
+	FileService               *files.Service
+	NoteService               *notes.Service
 	IntegrationStudentService integrations.ServiceInterface
-	AppointmentService        appointments.ServiceInterface
-	SlipService               slips.ServiceInterface
-	AnalyticsService          analytics.ServiceInterface
-	M2MClientService          m2mclients.ServiceInterface
-	NotificationsService      notifications.ServiceInterface
-	SystemLogService          logs.ServiceInterface
+	AppointmentService        *appointments.Service
+	SlipService               *slips.Service
+	AnalyticsService          *analytics.Service
+	M2MClientService          *m2mclients.Service
+	NotificationsService      *notifications.Service
+	SystemLogService          *logs.Service
 	SessionService            *sessions.Service
 }
 

@@ -3,7 +3,7 @@ VALUES
     (1, 'Male'),
     (2, 'Female');
 
-INSERT IGNORE INTO user_roles (id, `name`)
+INSERT IGNORE INTO roles (id, `name`)
 VALUES
     (1, 'STUDENT'),
     (2, 'ADMIN'),

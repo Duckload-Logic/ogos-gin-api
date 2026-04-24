@@ -1005,10 +1005,10 @@ func insertStudentFinances(ctx context.Context, tx *sqlx.Tx, iirID string) int {
 	allowance := gofakeit.Float64Range(100, 1500)
 
 	sf := &students.StudentFinance{
-		IIRID:                      iirID,
-		MonthlyFamilyIncomeRangeID: incRangeID,
-		OtherIncomeDetails:         structs.FromSqlNull(otherInc),
-		WeeklyAllowance:            allowance,
+		IIRID:           iirID,
+		IncomeRangeID:   incRangeID,
+		OtherIncome:     structs.FromSqlNull(otherInc),
+		WeeklyAllowance: allowance,
 	}
 
 	id, err := studentsRepo.UpsertStudentFinance(ctx, tx, sf)
