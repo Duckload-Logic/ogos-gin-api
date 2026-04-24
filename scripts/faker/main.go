@@ -42,11 +42,11 @@ func main() {
 	flag.Parse()
 
 	// ---------- CONFIGURATION ----------
-	numStudents := 1_000 // number of students to generate
-	numCounselors := 5   // number of counselors (admins)
-	numSuperAdmin := 4   // number of super admins
-	numWorkers := 100    // number of concurrent student workers
-	numDevelopers := 2   // number of developers
+	numStudents := 50  // number of students to generate
+	numCounselors := 5 // number of counselors (admins)
+	numSuperAdmin := 4 // number of super admins
+	numWorkers := 100  // number of concurrent student workers
+	numDevelopers := 2 // number of developers
 	passwordHash := fakePasswordHash()
 	_ = godotenv.Load()
 	dsn := buildDSNFromEnv()
