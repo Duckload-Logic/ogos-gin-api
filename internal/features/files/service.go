@@ -20,16 +20,16 @@ import (
 )
 
 type Service struct {
-	repo      RepositoryInterface
+	repo      *Repository
 	storage   storage.FileStorage
 	ocrClient *ocr.OCRClient
 }
 
 func NewService(
-	repo RepositoryInterface,
+	repo *Repository,
 	storage storage.FileStorage,
 	ocrClient *ocr.OCRClient,
-) ServiceInterface {
+) *Service {
 	return &Service{
 		repo:      repo,
 		storage:   storage,

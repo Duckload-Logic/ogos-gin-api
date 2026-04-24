@@ -12,7 +12,7 @@ type Repository struct {
 	db *sqlx.DB
 }
 
-func NewRepository(db *sqlx.DB) RepositoryInterface {
+func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -27,14 +27,14 @@ func (r *Repository) GetStudentSignificantNotes(
 	ctx context.Context,
 	iirID string,
 ) ([]SignificantNote, error) {
-	query := fmt.Sprintf(`
-		SELECT %s
+	query := `
+		SELECT id, iir_id, appointment_id, admission_slip_id, note, remarks, created_at, updated_at
 		FROM significant_notes
 		WHERE iir_id = ?
-	`, datastore.GetColumns(SignificantNoteDB{}))
+	`
 
-	var notes []SignificantNoteDB
-	err := r.db.SelectContext(ctx, &notes, query, iirID)
+	var results []SignificantNote
+	err := r.db.SelectContext(ctx, &results, query, iirID)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to get student significant notes: %w",
@@ -42,13 +42,7 @@ func (r *Repository) GetStudentSignificantNotes(
 		)
 	}
 
-	fmt.Printf(
-		"[GetStudentSignificantNotes] {Query}: Retrieved %d notes for %s\n",
-		len(notes),
-		iirID,
-	)
-
-	return MapSignificantNotesToDomain(notes), nil
+	return results, nil
 }
 
 func (r *Repository) CreateSignificantNote(
@@ -59,21 +53,18 @@ func (r *Repository) CreateSignificantNote(
 		ctx,
 		r.db,
 		func(tx datastore.DB) (string, error) {
-			dbModel := MapSignificantNoteToDB(*sn)
-			cols, vals := datastore.GetInsertStatement(
-				SignificantNoteDB{},
-				[]string{"created_at", "updated_at"},
-			)
-
-			query := fmt.Sprintf(`
-				INSERT INTO significant_notes (id, %s)
-				VALUES (:id, %s)
-			`, cols, vals)
+			query := `
+				INSERT INTO significant_notes (
+					id, iir_id, appointment_id, admission_slip_id, note, remarks, updated_at
+				) VALUES (
+					:id, :iir_id, :appointment_id, :admission_slip_id, :note, :remarks, NOW()
+				)
+			`
 
 			_, err := tx.NamedExecContext(
 				ctx,
 				query,
-				dbModel,
+				sn,
 			)
 			if err != nil {
 				return "", fmt.Errorf(
@@ -103,3 +94,4 @@ func (r *Repository) HasNoteForAppointment(
 
 	return count > 0, nil
 }
+

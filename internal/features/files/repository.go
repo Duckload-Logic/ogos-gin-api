@@ -2,7 +2,6 @@ package files
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/olazo-johnalbert/duckload-api/internal/infrastructure/datastore"
@@ -12,7 +11,7 @@ type Repository struct {
 	db *sqlx.DB
 }
 
-func NewRepository(db *sqlx.DB) RepositoryInterface {
+func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
@@ -31,23 +30,22 @@ func (r *Repository) GetFileByID(
 	ctx context.Context,
 	id string,
 ) (*File, error) {
-	var file FileDB
-	query := `SELECT * FROM files WHERE id = ?`
+	var file File
+	query := `SELECT id, file_name, file_url, file_type, file_size, mime_type, created_at, updated_at, deleted_at FROM files WHERE id = ?`
 	err := r.db.GetContext(ctx, &file, query, id)
 	if err != nil {
 		return nil, err
 	}
 
-	domainFile := MapFileToDomain(file)
-	return &domainFile, nil
+	return &file, nil
 }
 
 func (r *Repository) GetFilesByIDs(
 	ctx context.Context,
 	ids []string,
 ) ([]File, error) {
-	var files []FileDB
-	query, args, err := sqlx.In(`SELECT * FROM files WHERE id IN (?)`, ids)
+	var files []File
+	query, args, err := sqlx.In(`SELECT id, file_name, file_url, file_type, file_size, mime_type, created_at, updated_at, deleted_at FROM files WHERE id IN (?)`, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -58,11 +56,7 @@ func (r *Repository) GetFilesByIDs(
 		return nil, err
 	}
 
-	domainFiles := make([]File, len(files))
-	for i, f := range files {
-		domainFiles[i] = MapFileToDomain(f)
-	}
-	return domainFiles, nil
+	return files, nil
 }
 
 func (r *Repository) Create(
@@ -70,10 +64,14 @@ func (r *Repository) Create(
 	tx datastore.DB,
 	file File,
 ) (string, error) {
-	dbModel := MapFileToDB(file)
-	cols, vals := datastore.GetInsertStatement(&dbModel, []string{})
-	query := fmt.Sprintf(`INSERT INTO files (%s) VALUES (%s)`, cols, vals)
-	_, err := tx.NamedExecContext(ctx, query, dbModel)
+	query := `
+		INSERT INTO files (
+			id, file_name, file_url, file_type, file_size, mime_type, updated_at
+		) VALUES (
+			:id, :file_name, :file_url, :file_type, :file_size, :mime_type, NOW()
+		)
+	`
+	_, err := tx.NamedExecContext(ctx, query, &file)
 	if err != nil {
 		return "", err
 	}
@@ -107,3 +105,4 @@ func (r *Repository) Delete(
 	_, err := tx.ExecContext(ctx, query, id)
 	return err
 }
+
