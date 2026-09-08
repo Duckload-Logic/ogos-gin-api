@@ -947,6 +947,7 @@ func (s *Service) mapToDTO(
 		},
 		IIRID:         appt.IIRID,
 		StudentNumber: appt.StudentNumber,
+		ContactNumber: appt.ContactNumber,
 		Reason:        appt.Reason,
 		AdminNotes:    appt.AdminNotes,
 		WhenDate:      appt.WhenDate,

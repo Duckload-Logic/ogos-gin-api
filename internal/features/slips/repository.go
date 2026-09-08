@@ -29,6 +29,7 @@ const (
 		u.last_name AS user_last_name,
 		u.email AS user_email,
 		spi.student_number AS student_number,
+		COALESCE(spi.mobile_number, '') AS contact_number,
 		slp.reason AS reason,
 		DATE_FORMAT(slp.date_of_absence, '%Y-%m-%d') AS date_of_absence,
 		DATE_FORMAT(slp.date_needed, '%Y-%m-%d') AS date_needed,

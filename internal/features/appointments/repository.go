@@ -25,6 +25,7 @@ const appointmentsBaseQuery = `
 		COALESCE(u.id, '') AS user_id,
 		COALESCE(ir.id, '') AS iir_id,
 		COALESCE(spi.student_number, '') AS student_number,
+		COALESCE(spi.mobile_number, '') AS contact_number,
 		COALESCE(u.first_name, '') AS user_first_name,
 		u.middle_name AS user_middle_name,
 		COALESCE(u.last_name, '') AS user_last_name,

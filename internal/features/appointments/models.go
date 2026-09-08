@@ -68,6 +68,7 @@ type AppointmentWithDetailsView struct {
 	UserID             string                 `db:"user_id"`
 	IIRID              string                 `db:"iir_id"`
 	StudentNumber      string                 `db:"student_number"`
+	ContactNumber      string                 `db:"contact_number"`
 	UserFirstName      string                 `db:"user_first_name"`
 	UserMiddleName     structs.NullableString `db:"user_middle_name"`
 	UserLastName       string                 `db:"user_last_name"`

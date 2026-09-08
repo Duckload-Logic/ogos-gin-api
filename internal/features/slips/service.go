@@ -1369,6 +1369,7 @@ func (s *Service) mapToDTO(slip *SlipWithDetailsView) *SlipDTO {
 			Email:      slip.UserEmail,
 		},
 		StudentNumber: slip.StudentNumber,
+		ContactNumber: slip.ContactNumber,
 		Reason:        slip.Reason,
 		DateOfAbsence: slip.DateOfAbsence,
 		DateNeeded:    slip.DateNeeded,
