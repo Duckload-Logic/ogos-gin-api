@@ -125,6 +125,12 @@ func (s *Service) SubmitCOR(
 		os.Getenv("APP_ENV") == "staging"
 
 	if isStaging {
+		setting, sErr := s.repo.GetAcademicSetting(ctx)
+		if sErr == nil && setting != nil {
+			cor.YearStart = setting.CurrentYearStart
+			cor.YearEnd = setting.CurrentYearEnd
+			cor.Term = setting.CurrentTerm
+		}
 		cor.ValidFrom = structs.TimeToNullableTime(time.Now())
 		cor.ValidUntil = structs.TimeToNullableTime(
 			time.Now().AddDate(0, 5, 0),
