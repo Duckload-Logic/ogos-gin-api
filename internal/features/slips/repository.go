@@ -791,13 +791,26 @@ func sanitizeSort(orderBy, sortOrder string) (string, string) {
 func (r *Repository) StartProcessDuration(
 	ctx context.Context,
 	slipID string,
+	offsetMinutes int,
 ) error {
-	query := `
-		UPDATE admission_slips
-		SET started_at = NOW()
-		WHERE id = ? AND started_at IS NULL
-	`
-	_, err := r.db.ExecContext(ctx, query, slipID)
+	var query string
+	var args []interface{}
+	if offsetMinutes > 0 {
+		query = `
+			UPDATE admission_slips
+			SET started_at = DATE_SUB(NOW(), INTERVAL ? MINUTE)
+			WHERE id = ?
+		`
+		args = []interface{}{offsetMinutes, slipID}
+	} else {
+		query = `
+			UPDATE admission_slips
+			SET started_at = NOW()
+			WHERE id = ? AND started_at IS NULL
+		`
+		args = []interface{}{slipID}
+	}
+	_, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to start slip process duration: %w", err)
 	}

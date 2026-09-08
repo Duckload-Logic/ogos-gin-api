@@ -77,3 +77,7 @@ type TicketDTO struct {
 type TicketClaimRequest struct {
 	TicketCode string `json:"ticketCode" binding:"required"`
 }
+
+type StartSlipRequest struct {
+	OffsetMinutes int `json:"offsetMinutes"`
+}

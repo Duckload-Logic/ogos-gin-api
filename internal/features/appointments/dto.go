@@ -49,3 +49,7 @@ type AppointmentDTO struct {
 	CreatedAt           time.Time              `json:"createdAt,omitempty"`
 	UpdatedAt           time.Time              `json:"updatedAt,omitempty"`
 }
+
+type StartAppointmentRequest struct {
+	OffsetMinutes int `json:"offsetMinutes"`
+}

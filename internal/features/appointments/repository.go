@@ -665,13 +665,26 @@ func (r *Repository) UpdateAppointment(
 func (r *Repository) StartProcessDuration(
 	ctx context.Context,
 	apptID string,
+	offsetMinutes int,
 ) error {
-	query := `
-		UPDATE appointments
-		SET started_at = NOW()
-		WHERE id = ? AND started_at IS NULL
-	`
-	_, err := r.db.ExecContext(ctx, query, apptID)
+	var query string
+	var args []interface{}
+	if offsetMinutes > 0 {
+		query = `
+			UPDATE appointments
+			SET started_at = DATE_SUB(NOW(), INTERVAL ? MINUTE)
+			WHERE id = ?
+		`
+		args = []interface{}{offsetMinutes, apptID}
+	} else {
+		query = `
+			UPDATE appointments
+			SET started_at = NOW()
+			WHERE id = ? AND started_at IS NULL
+		`
+		args = []interface{}{apptID}
+	}
+	_, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to start appointment duration: %w", err)
 	}

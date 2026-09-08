@@ -632,7 +632,14 @@ func (h *Handler) PostAppointmentStart(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.StartAppointment(c.Request.Context(), id); err != nil {
+	var req StartAppointmentRequest
+	_ = c.ShouldBindJSON(&req)
+
+	if err := h.service.StartAppointment(
+		c.Request.Context(),
+		id,
+		req.OffsetMinutes,
+	); err != nil {
 		fmt.Printf("[PostAppointmentStart] {Start Appointment}: %v\n", err)
 		response.SendError(
 			c,
