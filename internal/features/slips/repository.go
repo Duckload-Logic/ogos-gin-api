@@ -580,7 +580,10 @@ func (r *Repository) UpdateStatus(
 	updateQuery := `
 		UPDATE admission_slips
 		SET status_id = ?, admin_notes = ?, updated_at = NOW(),
-		    completed_at = CASE WHEN ? = 'Approved' THEN NOW() ELSE completed_at END
+		    completed_at = CASE
+		        WHEN ? = 'Rejected' THEN NOW()
+		        ELSE completed_at
+		    END
 		WHERE id = ?
 	`
 
