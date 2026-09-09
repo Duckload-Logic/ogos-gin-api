@@ -947,6 +947,7 @@ func (s *Service) mapToDTO(
 		},
 		IIRID:         appt.IIRID,
 		StudentNumber: appt.StudentNumber,
+		ContactNumber: appt.ContactNumber,
 		Reason:        appt.Reason,
 		AdminNotes:    appt.AdminNotes,
 		WhenDate:      appt.WhenDate,
@@ -1004,6 +1005,7 @@ func (s *Service) mapToDTO(
 func (s *Service) StartAppointment(
 	ctx context.Context,
 	id string,
+	offsetMinutes int,
 ) error {
-	return s.repo.StartProcessDuration(ctx, id)
+	return s.repo.StartProcessDuration(ctx, id, offsetMinutes)
 }

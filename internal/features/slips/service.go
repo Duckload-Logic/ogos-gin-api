@@ -1347,7 +1347,7 @@ func (s *Service) GetSlipByTicketCode(
 		return nil, nil
 	}
 
-	_ = s.repo.StartProcessDuration(ctx, slip.ID)
+	_ = s.repo.StartProcessDuration(ctx, slip.ID, 0)
 	slip, _ = s.repo.GetSlipByTicketCode(ctx, code)
 
 	return s.mapToDTO(slip), nil
@@ -1369,6 +1369,7 @@ func (s *Service) mapToDTO(slip *SlipWithDetailsView) *SlipDTO {
 			Email:      slip.UserEmail,
 		},
 		StudentNumber: slip.StudentNumber,
+		ContactNumber: slip.ContactNumber,
 		Reason:        slip.Reason,
 		DateOfAbsence: slip.DateOfAbsence,
 		DateNeeded:    slip.DateNeeded,
@@ -1404,6 +1405,7 @@ func (s *Service) mapToDTO(slip *SlipWithDetailsView) *SlipDTO {
 func (s *Service) StartSlipDuration(
 	ctx context.Context,
 	slipID string,
+	offsetMinutes int,
 ) error {
-	return s.repo.StartProcessDuration(ctx, slipID)
+	return s.repo.StartProcessDuration(ctx, slipID, offsetMinutes)
 }

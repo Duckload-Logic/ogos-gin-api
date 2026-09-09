@@ -28,6 +28,7 @@ type SlipDTO struct {
 	IIRID              string                 `json:"iirId,omitempty"`
 	User               users.UserResponse     `json:"user,omitempty"`
 	StudentNumber      string                 `json:"studentNumber,omitempty"`
+	ContactNumber      string                 `json:"contactNumber,omitempty"`
 	Reason             string                 `json:"reason"`
 	DateOfAbsence      string                 `json:"dateOfAbsence"`
 	DateNeeded         string                 `json:"dateNeeded"`
@@ -76,4 +77,8 @@ type TicketDTO struct {
 
 type TicketClaimRequest struct {
 	TicketCode string `json:"ticketCode" binding:"required"`
+}
+
+type StartSlipRequest struct {
+	OffsetMinutes int `json:"offsetMinutes"`
 }

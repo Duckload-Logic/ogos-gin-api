@@ -29,6 +29,7 @@ type SlipWithDetailsView struct {
 	UserLastName   string                 `db:"user_last_name"   json:"userLastName"`
 	UserEmail      string                 `db:"user_email"       json:"userEmail"`
 	StudentNumber  string                 `db:"student_number"   json:"studentNumber"`
+	ContactNumber  string                 `db:"contact_number"   json:"contactNumber"`
 	Reason         string                 `db:"reason"           json:"reason"`
 	DateOfAbsence  string                 `db:"date_of_absence"  json:"dateOfAbsence"`
 	DateNeeded     string                 `db:"date_needed"      json:"dateNeeded"`

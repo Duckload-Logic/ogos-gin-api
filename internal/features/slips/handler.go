@@ -710,7 +710,14 @@ func (h *Handler) PostSlipStart(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.StartSlipDuration(c.Request.Context(), id); err != nil {
+	var req StartSlipRequest
+	_ = c.ShouldBindJSON(&req)
+
+	if err := h.service.StartSlipDuration(
+		c.Request.Context(),
+		id,
+		req.OffsetMinutes,
+	); err != nil {
 		fmt.Printf("[PostSlipStart] {Start Slip}: %v\n", err)
 		response.SendError(
 			c,

@@ -28,6 +28,7 @@ type AppointmentDTO struct {
 	User                users.UserResponse     `json:"user,omitempty"`
 	IIRID               string                 `json:"iirId,omitempty"`
 	StudentNumber       string                 `json:"studentNumber,omitempty"`
+	ContactNumber       string                 `json:"contactNumber,omitempty"`
 	Reason              structs.NullableString `json:"reason,omitempty"`
 	WhenDate            string                 `json:"whenDate,omitempty"`
 	TimeSlot            TimeSlot               `json:"timeSlot,omitempty"`
@@ -48,4 +49,8 @@ type AppointmentDTO struct {
 	CompletedAt         structs.NullableTime   `json:"completedAt,omitempty"`
 	CreatedAt           time.Time              `json:"createdAt,omitempty"`
 	UpdatedAt           time.Time              `json:"updatedAt,omitempty"`
+}
+
+type StartAppointmentRequest struct {
+	OffsetMinutes int `json:"offsetMinutes"`
 }

@@ -29,6 +29,7 @@ const (
 		u.last_name AS user_last_name,
 		u.email AS user_email,
 		spi.student_number AS student_number,
+		COALESCE(spi.mobile_number, '') AS contact_number,
 		slp.reason AS reason,
 		DATE_FORMAT(slp.date_of_absence, '%Y-%m-%d') AS date_of_absence,
 		DATE_FORMAT(slp.date_needed, '%Y-%m-%d') AS date_needed,
@@ -580,7 +581,10 @@ func (r *Repository) UpdateStatus(
 	updateQuery := `
 		UPDATE admission_slips
 		SET status_id = ?, admin_notes = ?, updated_at = NOW(),
-		    completed_at = CASE WHEN ? = 'Approved' THEN NOW() ELSE completed_at END
+		    completed_at = CASE
+		        WHEN ? = 'Rejected' THEN NOW()
+		        ELSE completed_at
+		    END
 		WHERE id = ?
 	`
 
@@ -791,13 +795,26 @@ func sanitizeSort(orderBy, sortOrder string) (string, string) {
 func (r *Repository) StartProcessDuration(
 	ctx context.Context,
 	slipID string,
+	offsetMinutes int,
 ) error {
-	query := `
-		UPDATE admission_slips
-		SET started_at = NOW()
-		WHERE id = ? AND started_at IS NULL
-	`
-	_, err := r.db.ExecContext(ctx, query, slipID)
+	var query string
+	var args []interface{}
+	if offsetMinutes > 0 {
+		query = `
+			UPDATE admission_slips
+			SET started_at = DATE_SUB(NOW(), INTERVAL ? MINUTE)
+			WHERE id = ?
+		`
+		args = []interface{}{offsetMinutes, slipID}
+	} else {
+		query = `
+			UPDATE admission_slips
+			SET started_at = NOW()
+			WHERE id = ? AND started_at IS NULL
+		`
+		args = []interface{}{slipID}
+	}
+	_, err := r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to start slip process duration: %w", err)
 	}
